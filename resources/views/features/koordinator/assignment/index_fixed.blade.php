@@ -1,0 +1,601 @@
+@extends('layouts.admin')
+
+@section('title', 'Assignment Pengawas')
+@section('page-title', 'Assignment Pengawas')
+@section('page-description', 'Kelola penugasan pengawas ke sesi ruangan')
+
+@section('content')
+    <div class="space-y-6">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
+                <div class="flex items-center gap-4">
+                    <div class="bg-blue-100 text-blue-600 p-3 rounded-full">
+                        <i class="fa-solid fa-calendar-alt text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800">{{ $stats['total_sesi'] }}</div>
+                        <div class="text-gray-600 font-medium">Total Sesi</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
+                <div class="flex items-center gap-4">
+                    <div class="bg-green-100 text-green-600 p-3 rounded-full">
+                        <i class="fa-solid fa-user-check text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800">{{ $stats['assigned'] }}</div>
+                        <div class="text-gray-600 font-medium">Sudah Ditugaskan</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
+                <div class="flex items-center gap-4">
+                    <div class="bg-red-100 text-red-600 p-3 rounded-full">
+                        <i class="fa-solid fa-user-times text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800">{{ $stats['unassigned'] }}</div>
+                        <div class="text-gray-600 font-medium">Belum Ditugaskan</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-yellow-500">
+                <div class="flex items-center gap-4">
+                    <div class="bg-yellow-100 text-yellow-600 p-3 rounded-full">
+                        <i class="fa-solid fa-clock text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-gray-800">{{ $stats['berlangsung'] }}</div>
+                        <div class="text-gray-600 font-medium">Sedang Berlangsung</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <div>
+                    <label for="tanggal" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-calendar mr-1 text-gray-400"></i>
+                        Tanggal
+                    </label>
+                    <input type="date" id="tanggal" name="tanggal" value="{{ request('tanggal') }}"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-info-circle mr-1 text-gray-400"></i>
+                        Status Sesi
+                    </label>
+                    <select id="status" name="status"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua Status</option>
+                        <option value="belum_mulai" {{ request('status') == 'belum_mulai' ? 'selected' : '' }}>Belum Mulai
+                        </option>
+                        <option value="berlangsung" {{ request('status') == 'berlangsung' ? 'selected' : '' }}>Berlangsung
+                        </option>
+                        <option value="selesai" {{ request('status') == 'selesai' ? 'selected' : '' }}>Selesai</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="assignment_status" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-user-tag mr-1 text-gray-400"></i>
+                        Status Penugasan
+                    </label>
+                    <select id="assignment_status" name="assignment_status"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua</option>
+                        <option value="assigned" {{ request('assignment_status') == 'assigned' ? 'selected' : '' }}>Sudah
+                            Ditugaskan</option>
+                        <option value="unassigned" {{ request('assignment_status') == 'unassigned' ? 'selected' : '' }}>
+                            Belum Ditugaskan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="per_page" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-list-ol mr-1 text-gray-400"></i>
+                        Per Halaman
+                    </label>
+                    <select id="per_page" name="per_page"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="15" {{ request('per_page') == 15 ? 'selected' : '' }}>15</option>
+                        <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                    </select>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fa-solid fa-search mr-1"></i>
+                        Filter
+                    </button>
+                    <a href="{{ route('koordinator.assignment.index') }}"
+                        class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-times mr-1"></i>
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div id="bulk-actions" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-info-circle text-yellow-600 mr-2"></i>
+                    <span class="text-sm font-medium text-yellow-800">
+                        <span id="selected-count">0</span> sesi dipilih
+                    </span>
+                </div>
+                <div class="flex space-x-2">
+                    <select id="bulk-pengawas-select" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                        <option value="">Pilih Pengawas</option>
+                        @foreach ($availablePengawas as $pengawas)
+                            <option value="{{ $pengawas->id }}">{{ $pengawas->nama }}</option>
+                        @endforeach
+                    </select>
+                    <button onclick="bulkAssign()"
+                        class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                        <i class="fa-solid fa-user-plus mr-1"></i>Assign Bulk
+                    </button>
+                    <button onclick="clearSelection()"
+                        class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                        <i class="fa-solid fa-times mr-1"></i>Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sessions Table -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Daftar Sesi Ruangan</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Kelola penugasan pengawas untuk setiap sesi ujian
+                </p>
+            </div>
+
+            @if ($sesiRuangans->count() > 0)
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <input type="checkbox" id="select-all"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Sesi & Ruangan
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Jadwal
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Pengawas
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Peserta
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Aksi
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach ($sesiRuangans as $sesi)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <input type="checkbox"
+                                            class="sesi-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            value="{{ $sesi->id }}" {{ $sesi->pengawas_id ? 'disabled' : '' }}>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ $sesi->nama_sesi }}</div>
+                                        <div class="text-sm text-gray-500">
+                                            <i class="fa-solid fa-door-open mr-1"></i>
+                                            {{ $sesi->ruangan->nama_ruangan ?? 'N/A' }}
+                                        </div>
+                                        <div class="text-xs text-gray-400">{{ $sesi->kode_sesi }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ $sesi->tanggal->format('d M Y') }}</div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ $sesi->waktu_mulai }} - {{ $sesi->waktu_selesai }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if ($sesi->pengawas)
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0">
+                                                    <div
+                                                        class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                                                        <i class="fa-solid fa-user text-green-600 text-xs"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-2">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $sesi->pengawas->nama }}</div>
+                                                    <div class="text-sm text-gray-500">{{ $sesi->pengawas->nip ?? 'N/A' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                Belum Ditugaskan
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ $sesi->sesiRuanganSiswa->count() }} siswa
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            Kapasitas: {{ $sesi->ruangan->kapasitas ?? 0 }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $sesi->status_label['class'] }}">
+                                            {{ $sesi->status_label['text'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
+                                        @if (!$sesi->pengawas_id)
+                                            <button onclick="showAssignModal({{ $sesi->id }})"
+                                                class="text-blue-600 hover:text-blue-900" title="Assign Pengawas">
+                                                <i class="fa-solid fa-user-plus"></i>
+                                            </button>
+                                        @else
+                                            <button
+                                                onclick="showPengawasSchedule({{ $sesi->pengawas_id }}, '{{ $sesi->tanggal }}')"
+                                                class="text-green-600 hover:text-green-900" title="Lihat Jadwal Pengawas">
+                                                <i class="fa-solid fa-calendar-alt"></i>
+                                            </button>
+                                            @if ($sesi->status === 'belum_mulai')
+                                                <button onclick="unassignPengawas({{ $sesi->id }})"
+                                                    class="text-red-600 hover:text-red-900" title="Batalkan Penugasan">
+                                                    <i class="fa-solid fa-user-minus"></i>
+                                                </button>
+                                            @endif
+                                        @endif
+                                        <a href="{{ route('koordinator.monitoring.show', $sesi->id) }}"
+                                            class="text-gray-600 hover:text-gray-900" title="Monitor Sesi">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-3 border-t border-gray-200">
+                    {{ $sesiRuangans->appends(request()->query())->links() }}
+                </div>
+            @else
+                <div class="text-center py-12">
+                    <i class="fa-solid fa-calendar-times text-gray-400 text-6xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Tidak Ada Sesi</h3>
+                    <p class="text-gray-500">Tidak ditemukan sesi ruangan dengan filter yang dipilih.</p>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Assign Modal -->
+    <div id="assign-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Assign Pengawas</h3>
+                    <button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+
+                <form id="assign-form">
+                    <input type="hidden" id="assign-sesi-id" name="sesi_ruangan_id">
+
+                    <div class="mb-4">
+                        <label for="assign-pengawas" class="block text-sm font-medium text-gray-700 mb-2">
+                            Pilih Pengawas
+                        </label>
+                        <select id="assign-pengawas" name="pengawas_id" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Pilih Pengawas</option>
+                            @foreach ($availablePengawas as $pengawas)
+                                <option value="{{ $pengawas->id }}">{{ $pengawas->nama }} -
+                                    {{ $pengawas->nip ?? 'N/A' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div id="conflict-warning" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md hidden">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fa-solid fa-exclamation-triangle mr-1"></i>
+                            <span id="conflict-message"></span>
+                        </p>
+                    </div>
+
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeAssignModal()"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Batal
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            <i class="fa-solid fa-user-plus mr-1"></i>
+                            Assign
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pengawas Schedule Modal -->
+    <div id="schedule-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-2/3 max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Jadwal Pengawas</h3>
+                    <button onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+
+                <div id="schedule-content">
+                    <!-- Schedule content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Bulk selection functionality
+            const selectAllCheckbox = document.getElementById('select-all');
+            const sesiCheckboxes = document.querySelectorAll('.sesi-checkbox:not([disabled])');
+            const bulkActionsDiv = document.getElementById('bulk-actions');
+            const selectedCountSpan = document.getElementById('selected-count');
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    sesiCheckboxes.forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                    updateBulkActions();
+                });
+            }
+
+            sesiCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateBulkActions);
+            });
+
+            function updateBulkActions() {
+                const selectedCount = document.querySelectorAll('.sesi-checkbox:checked').length;
+
+                if (selectedCountSpan) {
+                    selectedCountSpan.textContent = selectedCount;
+                }
+
+                if (bulkActionsDiv) {
+                    if (selectedCount > 0) {
+                        bulkActionsDiv.classList.remove('hidden');
+                    } else {
+                        bulkActionsDiv.classList.add('hidden');
+                    }
+                }
+            }
+
+            // Assign form submission
+            const assignForm = document.getElementById('assign-form');
+            if (assignForm) {
+                assignForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitAssignment();
+                });
+            }
+
+            // Check for conflicts when pengawas changes
+            const assignPengawasSelect = document.getElementById('assign-pengawas');
+            if (assignPengawasSelect) {
+                assignPengawasSelect.addEventListener('change', checkConflicts);
+            }
+        });
+
+        // Modal functions
+        function showAssignModal(sesiId) {
+            document.getElementById('assign-sesi-id').value = sesiId;
+            document.getElementById('assign-modal').classList.remove('hidden');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assign-modal').classList.add('hidden');
+            document.getElementById('assign-form').reset();
+            document.getElementById('conflict-warning').classList.add('hidden');
+        }
+
+        // Check for conflicts
+        function checkConflicts() {
+            const pengawasId = document.getElementById('assign-pengawas').value;
+            const sesiId = document.getElementById('assign-sesi-id').value;
+
+            if (!pengawasId) {
+                document.getElementById('conflict-warning').classList.add('hidden');
+                return;
+            }
+
+            // Get session date (you'd need to pass this data or make an AJAX call)
+            // For now, we'll skip the actual conflict check implementation
+        }
+
+        // Submit assignment
+        function submitAssignment() {
+            const formData = new FormData(document.getElementById('assign-form'));
+
+            fetch('{{ route('koordinator.assignment.assign') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        closeAssignModal();
+                        location.reload();
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error: ' + error.message, 'error');
+                });
+        }
+
+        // Unassign pengawas
+        function unassignPengawas(sesiId) {
+            if (confirm('Yakin ingin membatalkan penugasan pengawas?')) {
+                fetch('{{ route('koordinator.assignment.unassign') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sesi_ruangan_id: sesiId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(data.message, 'success');
+                            location.reload();
+                        } else {
+                            showToast(data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error: ' + error.message, 'error');
+                    });
+            }
+        }
+
+        // Bulk assign
+        function bulkAssign() {
+            const selectedIds = Array.from(document.querySelectorAll('.sesi-checkbox:checked')).map(cb => cb.value);
+            const pengawasId = document.getElementById('bulk-pengawas-select').value;
+
+            if (selectedIds.length === 0) {
+                showToast('Pilih minimal satu sesi', 'error');
+                return;
+            }
+
+            if (!pengawasId) {
+                showToast('Pilih pengawas', 'error');
+                return;
+            }
+
+            if (confirm(`Assign pengawas ke ${selectedIds.length} sesi terpilih?`)) {
+                const assignments = selectedIds.map(id => ({
+                    sesi_ruangan_id: id,
+                    pengawas_id: pengawasId
+                }));
+
+                fetch('{{ route('koordinator.assignment.bulk-assign') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            assignments: assignments
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(data.message, 'success');
+                            if (data.errors && data.errors.length > 0) {
+                                console.log('Errors:', data.errors);
+                            }
+                            location.reload();
+                        } else {
+                            showToast(data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error: ' + error.message, 'error');
+                    });
+            }
+        }
+
+        // Clear selection
+        function clearSelection() {
+            document.querySelectorAll('.sesi-checkbox, #select-all').forEach(cb => cb.checked = false);
+            document.getElementById('bulk-actions').classList.add('hidden');
+        }
+
+        // Show pengawas schedule
+        function showPengawasSchedule(pengawasId, tanggal) {
+            document.getElementById('schedule-modal').classList.remove('hidden');
+            document.getElementById('schedule-content').innerHTML =
+                '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
+
+            fetch(`{{ route('koordinator.assignment.schedule', ['pengawas' => '__PENGAWAS_ID__', 'tanggal' => '__TANGGAL__']) }}`
+                    .replace('__PENGAWAS_ID__', pengawasId).replace('__TANGGAL__', tanggal))
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('schedule-content').innerHTML = data;
+                })
+                .catch(error => {
+                    document.getElementById('schedule-content').innerHTML =
+                        '<div class="text-center py-4 text-red-600"><i class="fa-solid fa-exclamation-triangle"></i> Error loading schedule</div>';
+                });
+        }
+
+        function closeScheduleModal() {
+            document.getElementById('schedule-modal').classList.add('hidden');
+        }
+
+        // Toast function
+        function showToast(message, type) {
+            // Simple toast implementation - you can replace with your preferred toast library
+            const toast = document.createElement('div');
+            toast.className =
+                `fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 3000);
+        }
+    </script>
+@endsection

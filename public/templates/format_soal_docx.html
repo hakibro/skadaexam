@@ -1,0 +1,49 @@
+# Tutorial Format Soal dan Import DOCX ## Struktur File DOCX untuk Import Soal
+File DOCX untuk import soal harus memiliki format yang tepat agar sistem dapat
+mengenali soal, pilihan jawaban, kunci jawaban, dan pembahasan dengan benar.
+Berikut adalah struktur yang harus diikuti: ### 1. Format Soal - Soal harus
+dimulai dengan nomor diikuti titik dan spasi, misal: `1. Apa ibukota Indonesia?`
+- Setelah teks soal, Anda dapat menyisipkan gambar jika diperlukan. - Setiap
+soal akan otomatis dipisahkan berdasarkan penomoran ini. ### 2. Format Pilihan
+Jawaban - Pilihan jawaban harus dimulai dengan huruf kapital (A-E) diikuti
+titik, misal: `A. Jakarta` - Jawaban yang benar ditandai dengan `[*]` di akhir
+teks, misal: `A. Jakarta [*]` - Untuk pilihan jawaban berupa gambar, tulis huruf
+pilihan diikuti titik lalu sisipkan gambar, misal: `B. [gambar]` - Jangan
+gunakan tanda `[*]` untuk jawaban yang salah. ### 3. Format Pembahasan -
+Pembahasan soal dimulai dengan kata "Pembahasan:", misal: `Pembahasan: Jakarta
+adalah ibukota Indonesia sejak tahun 1945.` - Pembahasan bisa berisi teks atau
+gambar atau keduanya. ### 4. Contoh Format Soal Lengkap ``` 1. Apa ibukota
+Indonesia? A. Jakarta [*] B. Bandung C. Surabaya D. Medan E. Makassar
+Pembahasan: Jakarta adalah ibukota Indonesia yang terletak di pulau Jawa. 2.
+Perhatikan gambar berikut. Hewan ini termasuk dalam famili? [GAMBAR HEWAN] A.
+Felidae [*] B. Canidae C. Ursidae D. Bovidae E. [GAMBAR] Pembahasan: Hewan
+tersebut adalah kucing yang termasuk dalam famili Felidae. ``` ## Struktur
+Direktori Penyimpanan Sistem akan menyimpan file dan gambar soal dalam struktur
+direktori sebagai berikut: ``` public/ ├── storage/ (hasil symbolic link dari
+storage/app/public) │ ├── bank-soal/ (untuk file DOCX sumber) │ │ └── sources/ │
+└── soal/ (untuk gambar dalam soal) │ ├── pertanyaan/ (gambar untuk pertanyaan)
+│ ├── pilihan/ (gambar untuk pilihan jawaban) │ └── pembahasan/ (gambar untuk
+pembahasan) ``` ## Tips Impor Soal 1. **Persiapkan DOCX dengan tepat** - Gunakan
+template yang disediakan. - Pastikan semua gambar tertanam dalam dokumen (bukan
+referensi eksternal). - Hindari format khusus seperti tabel, header, atau
+footer. 2. **Batasan ukuran** - File DOCX maksimal 10MB. - Jika file terlalu
+besar, bagi menjadi beberapa file yang lebih kecil. 3. **Penanganan Gambar** -
+Gambar akan otomatis dideteksi dan disimpan. - Untuk gambar dalam pilihan
+jawaban, posisikan tepat setelah huruf pilihan dan titik. - Kompres gambar
+sebelum dimasukkan ke dokumen untuk mempercepat proses. 4. **Ketika Impor
+Gagal** - Periksa log kesalahan yang ditampilkan. - Pastikan format penomoran
+soal dan pilihan sudah benar. - Verifikasi bahwa kunci jawaban ditandai dengan
+benar. 5. **Setelah Impor Berhasil** - Periksa semua soal yang diimpor. -
+Verifikasi gambar muncul dengan benar. - Pastikan kunci jawaban sudah tepat. ##
+Contoh Kasus ### Soal Matematika dengan Rumus ``` 1. Jika f(x) = 2x + 3, maka
+nilai f(4) adalah... A. 8 B. 9 C. 10 D. 11 [*] E. 12 Pembahasan: f(4) = 2(4) + 3
+= 8 + 3 = 11 ``` ### Soal dengan Gambar pada Pertanyaan ``` 2. Perhatikan gambar
+di bawah ini. Struktur yang ditunjuk dengan tanda panah adalah... [GAMBAR
+STRUKTUR SEL] A. Mitokondria B. Ribosom [*] C. Nukleus D. Retikulum Endoplasma
+E. Badan Golgi Pembahasan: Struktur yang ditunjuk adalah ribosom yang berfungsi
+dalam sintesis protein. ``` ### Soal dengan Gambar pada Pilihan Jawaban ``` 3.
+Manakah dari berikut ini yang merupakan contoh energi potensial? A. [GAMBAR BOLA
+JATUH] B. [GAMBAR BOLA DI KETINGGIAN] [*] C. [GAMBAR BOLA MENGGELINDING] D.
+[GAMBAR BOLA DIAM DI LANTAI] E. [GAMBAR BOLA MEMANTUL] Pembahasan: Energi
+potensial adalah energi yang dimiliki suatu benda karena posisinya. Bola di
+ketinggian memiliki energi potensial gravitasi. ```

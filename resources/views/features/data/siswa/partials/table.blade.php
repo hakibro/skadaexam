@@ -1,135 +1,102 @@
-<!-- filepath: resources\views\features\data\siswa\partials\table.blade.php -->
-
+{{-- filepath: c:\laragon\www\skadaexam\resources\views\features\data\siswa\partials\table.blade.php --}}
 @if ($siswas->count() > 0)
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student
+                    <th scope="col" class="relative px-6 py-3">
+                        <input type="checkbox" id="select-all"
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Recommendation</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment
-                        Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sync
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID Yayasan
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student Info
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kelas
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment Status
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Rekomendasi
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
                     </th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach ($siswas as $siswa)
-                    <tr class="hover:bg-gray-50">
-                        <!-- Student Info -->
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">
-                                {{ $siswa->nama ?: $siswa->idyayasan }}
-                            </div>
-                            <div class="text-sm text-gray-500">ID: {{ $siswa->idyayasan }}</div>
-                            @if ($siswa->email)
-                                <div class="text-sm text-gray-500">{{ $siswa->email }}</div>
-                            @endif
+                            <input type="checkbox"
+                                class="siswa-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                value="{{ $siswa->id }}">
                         </td>
-
-                        <!-- Class -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $siswa->kelas ?: '-' }}
-                        </td>
-
-                        <!-- Recommendation -->
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if ($siswa->rekomendasi === 'ya')
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                    <i class="fa-solid fa-check-circle mr-1"></i>
-                                    Yes
-                                </span>
-                            @else
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                    <i class="fa-solid fa-times-circle mr-1"></i>
-                                    No
-                                </span>
-                            @endif
+                            <div class="text-sm font-medium text-gray-900">{{ $siswa->idyayasan }}</div>
                         </td>
-
-                        <!-- Payment Status -->
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @php
-                                $statusClass = match ($siswa->status_pembayaran) {
-                                    'Lunas' => 'bg-green-100 text-green-800',
-                                    'Belum Lunas' => 'bg-red-100 text-red-800',
-                                    'Cicilan' => 'bg-yellow-100 text-yellow-800',
-                                    default => 'bg-gray-100 text-gray-800',
-                                };
-                                $statusIcon = match ($siswa->status_pembayaran) {
-                                    'Lunas' => 'fa-check-circle',
-                                    'Belum Lunas' => 'fa-times-circle',
-                                    'Cicilan' => 'fa-clock',
-                                    default => 'fa-question-circle',
-                                };
-                            @endphp
-                            <div class="flex items-center space-x-2">
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusClass }}">
-                                    <i class="fa-solid {{ $statusIcon }} mr-1"></i>
-                                    {{ $siswa->status_pembayaran ?: 'Unknown' }}
-                                </span>
-
-                                <!-- Individual Sync Button -->
-                                <button class="sync-payment-btn text-blue-600 hover:text-blue-800 text-xs"
-                                    data-siswa-id="{{ $siswa->id }}" title="Sync Payment Status">
-                                    <i class="fa-solid fa-sync-alt"></i>
-                                </button>
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                        <i class="fa-solid fa-user text-gray-600"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ $siswa->nama ?? 'No Name' }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ $siswa->email ?? 'No Email' }}
+                                    </div>
+                                </div>
                             </div>
                         </td>
-
-                        <!-- Last Sync -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            @if ($siswa->payment_last_check)
-                                <div class="text-xs">{{ $siswa->payment_last_check->format('d M Y') }}</div>
-                                <div class="text-xs text-gray-400">{{ $siswa->payment_last_check->format('H:i') }}</div>
-                            @else
-                                <span class="text-gray-400">Never</span>
-                            @endif
-
-                            <!-- Sync Status Indicator -->
-                            @if ($siswa->sync_status === 'synced')
-                                <span class="inline-block w-2 h-2 bg-green-500 rounded-full ml-1" title="Synced"></span>
-                            @elseif($siswa->sync_status === 'failed')
-                                <span class="inline-block w-2 h-2 bg-red-500 rounded-full ml-1"
-                                    title="Failed: {{ $siswa->sync_error }}"></span>
-                            @else
-                                <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full ml-1"
-                                    title="Pending"></span>
-                            @endif
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ $siswa->kelas ? $siswa->kelas->nama_kelas : '-' }}
+                            </div>
                         </td>
-
-                        <!-- Actions -->
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {{ $siswa->status_pembayaran === 'Lunas' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                <span
+                                    class="w-1.5 h-1.5 mr-1.5 rounded-full
+                                    {{ $siswa->status_pembayaran === 'Lunas' ? 'bg-green-400' : 'bg-red-400' }}"></span>
+                                {{ $siswa->status_pembayaran }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {{ $siswa->rekomendasi === 'ya' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ ucfirst($siswa->rekomendasi ?? 'tidak') }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex space-x-2">
-                                <!-- View -->
+                            <div class="flex items-center space-x-3">
                                 <a href="{{ route('data.siswa.show', $siswa) }}"
-                                    class="text-blue-600 hover:text-blue-900" title="View">
+                                    class="text-blue-600 hover:text-blue-900 transition-colors duration-150">
                                     <i class="fa-solid fa-eye"></i>
                                 </a>
-
-                                <!-- Edit -->
                                 <a href="{{ route('data.siswa.edit', $siswa) }}"
-                                    class="text-green-600 hover:text-green-900" title="Edit">
+                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-150">
                                     <i class="fa-solid fa-edit"></i>
                                 </a>
-
-                                <!-- Delete -->
-                                <form action="{{ route('data.siswa.destroy', $siswa) }}" method="POST" class="inline"
-                                    onsubmit="return confirm('Delete {{ $siswa->nama ?: $siswa->idyayasan }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Delete">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
+                                <button onclick="deleteSiswa({{ $siswa->id }})"
+                                    class="text-red-600 hover:text-red-900 transition-colors duration-150">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -138,14 +105,47 @@
         </table>
     </div>
 @else
-    <!-- Empty State -->
     <div class="text-center py-12">
-        <i class="fa-solid fa-user-graduate text-gray-400 text-6xl mb-4"></i>
+        <div class="mx-auto h-16 w-16 text-gray-400 mb-4">
+            <i class="fa-solid fa-users text-6xl"></i>
+        </div>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No students found</h3>
-        <p class="text-gray-500 mb-6">Try adjusting your search terms or add new students</p>
-        <a href="{{ route('data.siswa.create') }}"
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            <i class="fa-solid fa-plus mr-1"></i>Add Student
-        </a>
+        <p class="text-gray-500">Try adjusting your search filters or import students from API</p>
     </div>
 @endif
+
+<script>
+    function deleteSiswa(id) {
+        if (confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
+            fetch(`{{ route('data.siswa.index') }}/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.message) {
+                        // Show success message
+                        const message = data.message || 'Student deleted successfully';
+                        showToast(message, 'success');
+
+                        // Refresh the page or perform search to update the table
+                        if (typeof performSearch === 'function') {
+                            performSearch();
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Delete error:', error);
+                    showToast('Error: ' + error.message, 'error');
+                });
+        }
+    }
+</script>

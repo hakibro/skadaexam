@@ -1,0 +1,43 @@
+1. Ini adalah contoh soal pertama?
+A. Pilihan A
+B. Pilihan B [*]
+C. Pilihan C
+D. Pilihan D
+E. Pilihan E
+Pembahasan: Ini adalah pembahasan untuk soal nomor 1.
+
+2. Ini adalah contoh soal kedua?
+A. Pilihan A
+B. Pilihan B 
+C. Pilihan C
+D. Pilihan D [*]
+E. Pilihan E
+Pembahasan: Ini adalah pembahasan untuk soal nomor 2.
+
+3. Perhatikan gambar berikut. Ini adalah contoh soal dengan gambar dalam pertanyaan.
+[TEMPAT GAMBAR]
+A. Pilihan A
+B. Pilihan B
+C. Pilihan C [*]
+D. Pilihan D
+E. Pilihan E
+Pembahasan: Ini adalah pembahasan untuk soal nomor 3.
+
+4. Ini adalah contoh soal keempat dengan pilihan jawaban berupa gambar?
+A. 
+[TEMPAT GAMBAR]
+B. 
+[TEMPAT GAMBAR] [*]
+C. Pilihan C
+D. Pilihan D
+E. Pilihan E
+Pembahasan: Ini adalah pembahasan untuk soal nomor 4.
+
+5. Ini adalah contoh soal terakhir?
+A. Pilihan A [*]
+B. Pilihan B
+C. Pilihan C
+D. Pilihan D
+E. Pilihan E
+Pembahasan: Ini adalah pembahasan untuk soal nomor 5 yang berisi gambar.
+[TEMPAT GAMBAR]

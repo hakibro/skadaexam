@@ -1,0 +1,327 @@
+{{-- filepath: c:\laragon\www\skadaexam\resources\views\features\ruangan\sesi\siswa\index.blade.php --}}
+@extends('layouts.admin')
+
+@section('title', 'Kelola Siswa - ' . $sesi->nama_sesi)
+@section('page-title', 'Kelola Siswa')
+@section('page-description', $sesi->nama_sesi . ' - ' . $ruangan->nama_ruangan)
+
+@section('content')
+    <div class="py-4">
+        <!-- Flash Messages -->
+        @if (session('success'))
+            <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-check-circle text-green-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-times-circle text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Session Info -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ $sesi->nama_sesi }}</h3>
+                    <p class="text-sm text-gray-600">{{ $ruangan->nama_ruangan }} - {{ $ruangan->kode_ruangan }}</p>
+                    <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                        <span><i class="fa-solid fa-calendar mr-1"></i>{{ $sesi->tanggal->format('d M Y') }}</span>
+                        <span><i
+                                class="fa-solid fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }}
+                            - {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}</span>
+                        <span><i class="fa-solid fa-users mr-1"></i>{{ $assignedSiswa->count() }} /
+                            {{ $ruangan->kapasitas }}</span>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $sesi->id]) }}"
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Kembali
+                    </a>
+                    @if ($assignedSiswa->count() > 0)
+                        <button onclick="removeAllStudents()"
+                            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            <i class="fa-solid fa-trash mr-1"></i> Hapus Semua
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Add Students Form -->
+            <div class="bg-white rounded-lg shadow-lg">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <h3 class="text-lg font-medium text-gray-900">Tambah Siswa ke Sesi</h3>
+                </div>
+
+                @if ($availableSiswa->count() > 0 && $sesi->remainingCapacity() > 0)
+                    <form action="{{ route('ruangan.sesi.siswa.store', [$ruangan->id, $sesi->id]) }}" method="POST"
+                        class="p-6">
+                        @csrf
+
+                        <!-- Filter by Class -->
+                        <div class="mb-4">
+                            <label for="filter-kelas" class="block text-sm font-medium text-gray-700 mb-2">Filter
+                                berdasarkan Kelas</label>
+                            <select id="filter-kelas" class="w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">Semua Kelas</option>
+                                @foreach ($kelasList as $kelas)
+                                    <option value="{{ $kelas->id }}">{{ $kelas->nama_kelas }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Search -->
+                        <div class="mb-4">
+                            <label for="search-siswa" class="block text-sm font-medium text-gray-700 mb-2">Cari
+                                Siswa</label>
+                            <input type="text" id="search-siswa" placeholder="Nama atau NIS siswa"
+                                class="w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+
+                        <!-- Student Selection -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-medium text-gray-700">Pilih Siswa</label>
+                                <button type="button" id="select-all-available"
+                                    class="text-sm text-blue-600 hover:text-blue-800">
+                                    Pilih Semua
+                                </button>
+                            </div>
+
+                            <div class="border rounded-md max-h-64 overflow-y-auto">
+                                @foreach ($availableSiswa as $siswa)
+                                    <div class="siswa-item p-2 border-b hover:bg-gray-50"
+                                        data-kelas="{{ $siswa->kelas->id ?? '' }}">
+                                        <label class="flex items-center">
+                                            <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}"
+                                                class="rounded border-gray-300 text-blue-600 available-checkbox mr-2">
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium text-gray-900 siswa-nama">
+                                                    {{ $siswa->nama }}</div>
+                                                <div class="text-xs text-gray-500 siswa-info">
+                                                    NIS: <span class="siswa-nis">{{ $siswa->nis }}</span> -
+                                                    Kelas: {{ $siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">
+                                Sisa kapasitas: <strong>{{ $sesi->remainingCapacity() }}</strong> siswa
+                            </span>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                <i class="fa-solid fa-plus mr-1"></i> Tambah ke Sesi
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="p-6 text-center text-gray-500">
+                        @if ($sesi->remainingCapacity() == 0)
+                            <i class="fa-solid fa-users-slash text-4xl mb-4"></i>
+                            <p>Sesi sudah penuh. Tidak dapat menambah siswa lagi.</p>
+                        @else
+                            <i class="fa-solid fa-user-slash text-4xl mb-4"></i>
+                            <p>Tidak ada siswa yang tersedia untuk ditambahkan ke sesi ini.</p>
+                        @endif
+                    </div>
+                @endif
+            </div>
+
+            <!-- Current Students -->
+            <div class="bg-white rounded-lg shadow-lg">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-900">Siswa dalam Sesi</h3>
+                        <span class="text-sm text-gray-500">{{ $assignedSiswa->count() }} siswa</span>
+                    </div>
+                </div>
+
+                @if ($assignedSiswa->count() > 0)
+                    <div class="max-h-96 overflow-y-auto">
+                        @foreach ($assignedSiswa as $sesiSiswa)
+                            <div class="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50">
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium text-gray-900">{{ $sesiSiswa->siswa->nama }}</div>
+                                    <div class="text-xs text-gray-500">
+                                        NIS: {{ $sesiSiswa->siswa->nis }} -
+                                        Kelas: {{ $sesiSiswa->siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span
+                                        class="px-2 py-1 text-xs rounded-full 
+                                        {{ $sesiSiswa->status == 'hadir'
+                                            ? 'bg-green-100 text-green-800'
+                                            : ($sesiSiswa->status == 'logout'
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-gray-100 text-gray-800') }}">
+                                        {{ ucfirst($sesiSiswa->status) }}
+                                    </span>
+                                    <button onclick="removeStudent({{ $sesiSiswa->siswa->id }})"
+                                        class="text-red-600 hover:text-red-800" title="Hapus dari sesi">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-12 text-center text-gray-500">
+                        <i class="fa-solid fa-user-plus text-4xl mb-4"></i>
+                        <p>Belum ada siswa yang ditambahkan ke sesi ini.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Hidden forms for delete actions -->
+        <form id="remove-all-form" action="{{ route('ruangan.sesi.siswa.destroy-all', [$ruangan->id, $sesi->id]) }}"
+            method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+
+        @foreach ($assignedSiswa as $sesiSiswa)
+            <form id="remove-student-{{ $sesiSiswa->siswa->id }}"
+                action="{{ route('ruangan.sesi.siswa.destroy', [$ruangan->id, $sesi->id, $sesiSiswa->siswa->id]) }}"
+                method="POST" class="hidden">
+                @csrf
+                @method('DELETE')
+            </form>
+        @endforeach
+    </div>
+@endsection
+
+@section('scripts')
+    <script>
+        // Search and filter functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterKelas = document.getElementById('filter-kelas');
+            const searchSiswa = document.getElementById('search-siswa');
+            const siswaItems = document.querySelectorAll('.siswa-item');
+            const selectAllBtn = document.getElementById('select-all-available');
+            const checkboxes = document.querySelectorAll('.available-checkbox');
+
+            // Filter by class
+            if (filterKelas) {
+                filterKelas.addEventListener('change', function() {
+                    const selectedKelas = this.value;
+
+                    siswaItems.forEach(item => {
+                        const kelasId = item.dataset.kelas;
+                        if (selectedKelas === '' || kelasId === selectedKelas) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                            // Uncheck if hidden
+                            const checkbox = item.querySelector('.available-checkbox');
+                            if (checkbox) checkbox.checked = false;
+                        }
+                    });
+
+                    updateSelectAllButton();
+                });
+            }
+
+            // Search functionality
+            if (searchSiswa) {
+                searchSiswa.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+
+                    siswaItems.forEach(item => {
+                        const nama = item.querySelector('.siswa-nama').textContent.toLowerCase();
+                        const nis = item.querySelector('.siswa-nis').textContent.toLowerCase();
+
+                        if (nama.includes(searchTerm) || nis.includes(searchTerm)) {
+                            // Only show if also matches class filter
+                            const selectedKelas = filterKelas ? filterKelas.value : '';
+                            const kelasId = item.dataset.kelas;
+
+                            if (selectedKelas === '' || kelasId === selectedKelas) {
+                                item.style.display = 'block';
+                            }
+                        } else {
+                            item.style.display = 'none';
+                            // Uncheck if hidden
+                            const checkbox = item.querySelector('.available-checkbox');
+                            if (checkbox) checkbox.checked = false;
+                        }
+                    });
+
+                    updateSelectAllButton();
+                });
+            }
+
+            // Select all functionality
+            function updateSelectAllButton() {
+                const visibleCheckboxes = Array.from(checkboxes).filter(cb =>
+                    cb.closest('.siswa-item').style.display !== 'none'
+                );
+                const checkedVisible = visibleCheckboxes.filter(cb => cb.checked);
+
+                if (selectAllBtn) {
+                    selectAllBtn.textContent = checkedVisible.length === visibleCheckboxes.length &&
+                        visibleCheckboxes.length > 0 ?
+                        'Batal Pilih' :
+                        'Pilih Semua';
+                }
+            }
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', function() {
+                    const isSelectingAll = this.textContent === 'Pilih Semua';
+
+                    checkboxes.forEach(checkbox => {
+                        const item = checkbox.closest('.siswa-item');
+                        if (item.style.display !== 'none') {
+                            checkbox.checked = isSelectingAll;
+                        }
+                    });
+
+                    updateSelectAllButton();
+                });
+            }
+
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateSelectAllButton);
+            });
+
+            updateSelectAllButton();
+        });
+
+        // Remove student functions
+        function removeStudent(siswaId) {
+            if (confirm('Hapus siswa dari sesi ini?')) {
+                document.getElementById('remove-student-' + siswaId).submit();
+            }
+        }
+
+        function removeAllStudents() {
+            if (confirm('Hapus semua siswa dari sesi ini? Tindakan ini tidak dapat dibatalkan.')) {
+                document.getElementById('remove-all-form').submit();
+            }
+        }
+    </script>
+@endsection

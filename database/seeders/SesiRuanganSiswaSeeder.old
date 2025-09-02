@@ -1,0 +1,62 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\SesiRuangan;
+use App\Models\SesiRuanganSiswa;
+use App\Models\Siswa;
+use Illuminate\Database\Seeder;
+
+class SesiRuanganSiswaSeeder extends Seeder
+{
+    public function run(): void
+    {
+        echo "👨‍🎓 Seeding Sesi Ruangan Siswa data...\n";
+
+        $sesiRuanganList = SesiRuangan::all();
+
+        if ($sesiRuanganList->isEmpty()) {
+            echo "❌ No Sesi Ruangan found! Please run the SesiRuanganSeeder first.\n";
+            return;
+        }
+
+        $count = 0;
+        $statusOptions = ['hadir', 'tidak_hadir', 'logout'];
+
+        foreach ($sesiRuanganList as $sesiRuangan) {
+            // Get eligible students 
+            // For seeding, we'll just get random students
+            $siswaList = Siswa::inRandomOrder()->take(rand(10, 30))->get();
+
+            if ($siswaList->isEmpty()) {
+                echo "❌ No Siswa found for sesi ruangan {$sesiRuangan->id}! Please run the SiswaSeeder first.\n";
+                continue;
+            }
+
+            // For each student, create an entry in sesi_ruangan_siswa
+            foreach ($siswaList as $siswa) {
+                // Skip if already exists
+                if (SesiRuanganSiswa::where('sesi_ruangan_id', $sesiRuangan->id)
+                    ->where('siswa_id', $siswa->id)
+                    ->exists()
+                ) {
+                    continue;
+                }
+
+                // Randomize status but favor 'hadir'
+                $randValue = rand(1, 10);
+                $status = $randValue <= 7 ? 'hadir' : ($randValue <= 9 ? 'tidak_hadir' : 'logout');
+
+                SesiRuanganSiswa::create([
+                    'sesi_ruangan_id' => $sesiRuangan->id,
+                    'siswa_id' => $siswa->id,
+                    'status' => $status
+                ]);
+
+                $count++;
+            }
+        }
+
+        echo "✅ {$count} sesi ruangan siswa entries seeded successfully!\n";
+    }
+}

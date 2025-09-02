@@ -4,10 +4,17 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasRoles;
+    use HasFactory, Notifiable, HasRoles;
+
+    protected $table = 'users';
+
+    // Default guard untuk Spatie
+    protected $guard_name = 'web';
 
     /**
      * The attributes that are mass assignable.
@@ -43,54 +50,85 @@ class User extends Authenticatable
         ];
     }
 
-    // Helper methods untuk roles
+    // Override guard name untuk Spatie Permission
+    public function getDefaultGuardName(): string
+    {
+        return 'web';
+    }
+
+    // Available roles untuk users (web guard)
+    public static function getRoleOptions()
+    {
+        return [
+            'admin' => 'Administrator - Manage System & Guru',
+            'koordinator' => 'Koordinator - Manage Exam Sessions & Supervisors'
+        ];
+    }
+
+    // Role checking methods - ONLY Spatie
     public function isAdmin()
     {
-        return $this->hasRole('admin');
+        return $this->hasRole('admin', 'web');
     }
 
-    public function isGuru()
+    public function isKoordinator()
     {
-        return $this->hasRole('guru');
+        return $this->hasRole('koordinator', 'web');
     }
 
-    public function isSiswa()
+    public function canManageGuru()
     {
-        return $this->hasRole('siswa');
+        return $this->isAdmin();
     }
 
-    public function getAvailableFeatures()
+    public function canAccessAdminPanel()
     {
-        if ($this->isAdmin()) {
-            return ['admin', 'data', 'naskah', 'pengawas', 'koordinator', 'ruangan'];
-        }
-
-        $features = [];
-        $roleNames = $this->roles->pluck('name')->toArray();
-
-        foreach ($roleNames as $role) {
-            if (!in_array($role, ['guru', 'siswa'])) {
-                $features[] = $role;
-            }
-        }
-
-        return $features;
+        return $this->isAdmin();
     }
 
-    // Relasi ke guru dan siswa
-    public function guru()
+    public function canAccessKoordinatorPanel()
     {
-        return $this->hasOne(Guru::class);
+        return $this->isKoordinator() || $this->isAdmin();
     }
 
-    public function siswa()
+    public function canManageExamSessions()
     {
-        return $this->hasOne(Siswa::class);
+        return $this->canAccessKoordinatorPanel();
     }
-}
 
-// Menetapkan peran admin kepada pengguna dengan email admin@test.com
-$user = User::where('email', 'admin@test.com')->first();
-if ($user) {
-    $user->assignRole('admin');
+    public function canAssignSupervisors()
+    {
+        return $this->canAccessKoordinatorPanel();
+    }
+
+    public function canVerifyReports()
+    {
+        return $this->canAccessKoordinatorPanel();
+    }
+
+    // Relationships - User now creates bank soal and jadwal ujian based on FK constraints
+    /**
+     * Get all bank soal created by this user.
+     */
+    public function bankSoals()
+    {
+        return $this->hasMany(BankSoal::class, 'created_by');
+    }
+
+    /**
+     * Get all jadwal ujian created by this user.
+     */
+    public function jadwalUjians()
+    {
+        return $this->hasMany(JadwalUjian::class, 'created_by');
+    }
+
+    /**
+     * Check if user has any active sessions
+     */
+    public function hasActiveSessions()
+    {
+        // Implementation could check for active login sessions
+        return false;
+    }
 }

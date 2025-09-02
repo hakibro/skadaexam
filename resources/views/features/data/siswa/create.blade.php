@@ -6,153 +6,195 @@
 @section('page-title', 'Add New Siswa')
 
 @section('content')
-    <div class="max-w-2xl mx-auto">
-        <div class="bg-white shadow rounded-lg p-6">
+    <div class="max-w-4xl mx-auto">
+
+        <!-- Breadcrumb -->
+        <nav class="flex mb-6" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{{ route('data.dashboard') }}" class="text-gray-700 hover:text-blue-600">
+                        <i class="fa-solid fa-home"></i>
+                        Data Management
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-chevron-right text-gray-400 mx-2"></i>
+                        <a href="{{ route('data.siswa.index') }}" class="text-gray-700 hover:text-blue-600">Siswa</a>
+                    </div>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-chevron-right text-gray-400 mx-2"></i>
+                        <span class="text-gray-500">Add New</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Form Card -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Student Information</h3>
+                <p class="text-sm text-gray-500 mt-1">Fill in the information below to add a new student.</p>
+            </div>
+
             <form action="{{ route('data.siswa.store') }}" method="POST" id="siswa-form">
                 @csrf
 
-                <!-- ID Yayasan -->
-                <div class="mb-6">
-                    <label for="idyayasan" class="block text-sm font-medium text-gray-700 mb-2">ID Yayasan *</label>
-                    <input type="text" name="idyayasan" id="idyayasan" required
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('idyayasan') border-red-500 @enderror"
-                        value="{{ old('idyayasan') }}" placeholder="e.g., 190001">
-                    @error('idyayasan')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
+                <div class="px-6 py-6 space-y-6">
 
-                <!-- Nama -->
-                <div class="mb-6">
-                    <label for="nama" class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                    <input type="text" name="nama" id="nama"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('nama') border-red-500 @enderror"
-                        value="{{ old('nama') }}" placeholder="Full name">
-                    @error('nama')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Email - Auto Generated -->
-                <div class="mb-6">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                        <span class="text-sm text-gray-500">(Auto-generated)</span>
-                    </label>
-                    <div class="relative">
-                        <input type="email" name="email" id="email" readonly
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                            value="{{ old('email') }}" placeholder="Will be generated automatically">
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                            <i class="fa-solid fa-magic text-gray-400" title="Auto-generated"></i>
+                    <!-- ID Yayasan -->
+                    <div>
+                        <label for="idyayasan" class="block text-sm font-medium text-gray-700 mb-2">
+                            ID Yayasan <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" name="idyayasan" id="idyayasan"
+                                class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('idyayasan') border-red-500 @enderror"
+                                value="{{ old('idyayasan') }}" required>
+                            <div id="idyayasan-validation" class="hidden mt-1 text-sm text-red-500">
+                                <i class="fa-solid fa-times-circle mr-1"></i>
+                                <span id="idyayasan-message"></span>
+                            </div>
                         </div>
+                        @error('idyayasan')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
-                    <p class="text-sm text-gray-500 mt-1">
-                        <strong>Format: idyayasan@smkdata.sch.id</strong> (e.g., 190001@smkdata.sch.id)
-                    </p>
-                    @error('email')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
 
-                <!-- Kelas -->
-                <div class="mb-6">
-                    <label for="kelas" class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
-                    <input type="text" name="kelas" id="kelas"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('kelas') border-red-500 @enderror"
-                        value="{{ old('kelas') }}" placeholder="e.g., XII IPA 1">
-                    @error('kelas')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
+                    <!-- Nama Siswa -->
+                    <div>
+                        <label for="nama" class="block text-sm font-medium text-gray-700 mb-2">
+                            Nama Siswa <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="nama" id="nama"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('nama') border-red-500 @enderror"
+                            value="{{ old('nama') }}" required>
+                        @error('nama')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-                <!-- Rekomendasi - Default "tidak" -->
-                <div class="mb-6">
-                    <label for="rekomendasi" class="block text-sm font-medium text-gray-700 mb-2">
-                        Rekomendasi *
-                        <span class="text-sm text-gray-500">(Default: Tidak)</span>
-                    </label>
-                    <select name="rekomendasi" id="rekomendasi" required
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('rekomendasi') border-red-500 @enderror">
-                        <option value="tidak" {{ old('rekomendasi', 'tidak') === 'tidak' ? 'selected' : '' }}>Tidak
-                        </option>
-                        <option value="ya" {{ old('rekomendasi') === 'ya' ? 'selected' : '' }}>Ya</option>
-                    </select>
-                    @error('rekomendasi')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Catatan Rekomendasi -->
-                <div class="mb-6">
-                    <label for="catatan_rekomendasi" class="block text-sm font-medium text-gray-700 mb-2">Catatan
-                        Rekomendasi</label>
-                    <textarea name="catatan_rekomendasi" id="catatan_rekomendasi" rows="3"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('catatan_rekomendasi') border-red-500 @enderror"
-                        placeholder="Optional notes about recommendation">{{ old('catatan_rekomendasi') }}</textarea>
-                    @error('catatan_rekomendasi')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <!-- Auto-Generated Info -->
-                <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div class="flex items-start">
-                        <i class="fa-solid fa-info-circle text-blue-600 mr-2 mt-0.5"></i>
-                        <div class="text-sm text-blue-800">
-                            <h4 class="font-medium mb-1">Auto-Generated Values:</h4>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li><strong>Email:</strong> Generated from name (nama@smkdata.sch.id) or ID Yayasan if name
-                                    empty</li>
-                                <li><strong>Password:</strong> Default "password" (can be changed later)</li>
-                                <li><strong>Recommendation:</strong> Default "Tidak" selected</li>
-                            </ul>
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                            Email
+                            <span class="text-gray-400 text-xs">(Leave empty to auto-generate)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="email" name="email" id="email"
+                                class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror"
+                                value="{{ old('email') }}">
+                            <button type="button" id="preview-email-btn"
+                                class="absolute right-2 top-2 text-blue-600 hover:text-blue-800 text-sm">
+                                Preview
+                            </button>
                         </div>
+                        <div id="email-preview" class="hidden mt-1 text-sm text-blue-600">
+                            <i class="fa-solid fa-info-circle mr-1"></i>
+                            Auto-generated email: <span id="preview-email-text"></span>
+                        </div>
+                        @error('email')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
+
+                    <!-- Kelas -->
+                    <div>
+                        <label for="kelas" class="block text-sm font-medium text-gray-700 mb-2">
+                            Kelas <span class="text-red-500">*</span>
+                        </label>
+                        <select name="kelas" id="kelas"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('kelas') border-red-500 @enderror"
+                            required>
+                            <option value="">-- Pilih Kelas --</option>
+                            @foreach (App\Models\Siswa::getKelasOptions() as $kelas)
+                                <option value="{{ $kelas }}" {{ old('kelas') === $kelas ? 'selected' : '' }}>
+                                    {{ $kelas }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('kelas')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Status Pembayaran -->
+                    <div>
+                        <label for="status_pembayaran" class="block text-sm font-medium text-gray-700 mb-2">
+                            Status Pembayaran <span class="text-red-500">*</span>
+                        </label>
+                        <select name="status_pembayaran" id="status_pembayaran"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('status_pembayaran') border-red-500 @enderror"
+                            required>
+                            <option value="">-- Pilih Status --</option>
+                            @foreach (App\Models\Siswa::getStatusPembayaranOptions() as $value => $label)
+                                <option value="{{ $value }}"
+                                    {{ old('status_pembayaran') === $value ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('status_pembayaran')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                 </div>
 
-                <!-- Buttons -->
-                <div class="flex justify-end space-x-4">
-                    <a href="{{ route('data.siswa.index') }}"
-                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                        <i class="fa-solid fa-times mr-2"></i>Cancel
-                    </a>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        <i class="fa-solid fa-save mr-2"></i>Save Siswa
-                    </button>
+                <!-- Form Actions -->
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                    <div class="text-sm text-gray-500">
+                        <i class="fa-solid fa-info-circle mr-1"></i>
+                        Default password will be set to ID Yayasan
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        <a href="{{ route('data.siswa.index') }}"
+                            class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 flex items-center space-x-2">
+                            <i class="fa-solid fa-times"></i>
+                            <span>Cancel</span>
+                        </a>
+
+                        <button type="submit"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+                            id="submit-btn">
+                            <i class="fa-solid fa-save"></i>
+                            <span>Create Student</span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- JavaScript for Auto Email Generation -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const namaInput = document.getElementById('nama');
             const idyayasanInput = document.getElementById('idyayasan');
+            const namaInput = document.getElementById('nama');
             const emailInput = document.getElementById('email');
+            const previewEmailBtn = document.getElementById('preview-email-btn');
+            const emailPreview = document.getElementById('email-preview');
+            const previewEmailText = document.getElementById('preview-email-text');
+            const idyayasanValidation = document.getElementById('idyayasan-validation');
+            const idyayasanMessage = document.getElementById('idyayasan-message');
+            const submitBtn = document.getElementById('submit-btn');
 
-            let debounceTimer;
+            let validationTimeout;
 
-            // Function to generate email preview
-            function generateEmailPreview() {
-                const nama = namaInput.value.trim();
+            // Validate ID Yayasan
+            function validateIdYayasan() {
                 const idyayasan = idyayasanInput.value.trim();
 
-                if (!nama && !idyayasan) {
-                    emailInput.value = '';
+                if (!idyayasan) {
+                    hideValidation();
                     return;
                 }
 
-                // Clear previous timer
-                clearTimeout(debounceTimer);
-
-                // Show loading
-                emailInput.value = 'Generating...';
-
-                // Debounce the AJAX call
-                debounceTimer = setTimeout(() => {
-                    fetch('{{ route('data.siswa.preview-email') }}', {
+                clearTimeout(validationTimeout);
+                validationTimeout = setTimeout(() => {
+                    fetch('{{ route('data.siswa.validate-idyayasan') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -161,56 +203,85 @@
                                 'Accept': 'application/json'
                             },
                             body: JSON.stringify({
-                                nama: nama,
                                 idyayasan: idyayasan
                             })
                         })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.success) {
-                                emailInput.value = data.email;
+                            if (data.valid) {
+                                hideValidation();
                             } else {
-                                emailInput.value = '';
-                                console.error('Email generation failed:', data.message);
+                                showValidation(data.message, false);
                             }
                         })
                         .catch(error => {
-                            console.error('Error generating email:', error);
-                            // Fallback: simple client-side generation
-                            emailInput.value = generateClientSideEmail(nama, idyayasan);
+                            console.error('Validation error:', error);
+                            hideValidation();
                         });
                 }, 500);
             }
 
-            // Fallback client-side email generation
-            function generateClientSideEmail(nama, idyayasan) {
-                // PRIORITY: Use idyayasan first
-                if (idyayasan) {
-                    return idyayasan.toLowerCase().replace(/[^a-z0-9]/g, '') + '@smkdata.sch.id';
+            function showValidation(message, isValid) {
+                idyayasanMessage.textContent = message;
+                idyayasanValidation.classList.remove('hidden');
+
+                if (isValid) {
+                    idyayasanValidation.className = 'mt-1 text-sm text-green-500';
+                } else {
+                    idyayasanValidation.className = 'mt-1 text-sm text-red-500';
+                    idyayasanInput.classList.add('border-red-500');
                 }
-                // FALLBACK: Use nama if idyayasan is empty
-                else if (nama) {
-                    return nama.toLowerCase().replace(/ /g, '.').replace(/[^a-z0-9.]/g, '') + '@smkdata.sch.id';
-                }
-                return '';
+
+                submitBtn.disabled = !isValid;
             }
 
-            // Event listeners - prioritize idyayasan changes
-            idyayasanInput.addEventListener('input', generateEmailPreview);
-            namaInput.addEventListener('input', generateEmailPreview);
-
-            // Initial generation - prioritize idyayasan
-            if (idyayasanInput.value || namaInput.value) {
-                generateEmailPreview();
+            function hideValidation() {
+                idyayasanValidation.classList.add('hidden');
+                idyayasanInput.classList.remove('border-red-500');
+                submitBtn.disabled = false;
             }
 
-            // Form submission validation
-            document.getElementById('siswa-form').addEventListener('submit', function(e) {
-                if (!emailInput.value || emailInput.value === 'Generating...') {
-                    e.preventDefault();
-                    alert('Please wait for email generation to complete.');
+            // Preview email
+            function previewEmail() {
+                const nama = namaInput.value.trim();
+                const idyayasan = idyayasanInput.value.trim();
+
+                if (!nama && !idyayasan) {
+                    emailPreview.classList.add('hidden');
+                    return;
                 }
-            });
+
+                fetch('{{ route('data.siswa.preview-email') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            nama: nama,
+                            idyayasan: idyayasan
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            previewEmailText.textContent = data.email;
+                            emailPreview.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Email preview error:', error);
+                    });
+            }
+
+            // Event listeners
+            idyayasanInput.addEventListener('input', validateIdYayasan);
+            previewEmailBtn.addEventListener('click', previewEmail);
+
+            // Auto preview when nama or idyayasan changes
+            namaInput.addEventListener('input', previewEmail);
+            idyayasanInput.addEventListener('input', previewEmail);
         });
     </script>
 @endsection

@@ -1,5 +1,4 @@
-<!-- filepath: resources\views\features\data\siswa\index.blade.php -->
-
+{{-- filepath: c:\laragon\www\skadaexam\resources\views\features\data\siswa\index.blade.php --}}
 @extends('layouts.admin')
 
 @section('title', 'Manage Siswa')
@@ -8,542 +7,1301 @@
 @section('content')
     <div class="space-y-6">
 
-        <!-- Header -->
-        <div class="flex justify-between items-center">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900">All Siswa</h3>
-                <p class="text-sm text-gray-500">Total: <span id="siswa-count">{{ $siswas->total() }}</span> siswa</p>
-                <p class="text-sm text-gray-500">
-                    <span id="sync-stats-text">Loading sync stats...</span>
-                </p>
+        {{-- Flash Messages --}}
+        @if (session('success'))
+            <div id="flash-message" class="bg-green-50 border border-green-200 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-check-circle text-green-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                            class="text-green-400 hover:text-green-600">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="flex space-x-3">
-                <!-- Import Siswa Button -->
-                <a href="{{ route('data.siswa.import') }}"
-                    class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center space-x-2">
-                    <i class="fa-solid fa-file-import"></i>
-                    <span>Import Excel</span>
-                </a>
+        @endif
 
-                <!-- Sync All Payments Button -->
-                <button id="sync-all-payments-btn"
-                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2">
-                    <i class="fa-solid fa-sync-alt"></i>
-                    <span>Sync All Payments</span>
+        @if (session('error'))
+            <div id="flash-message" class="bg-red-50 border border-red-200 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-times-circle text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                            class="text-red-400 hover:text-red-600">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if (isset($totalSiswa) && $totalSiswa == 0)
+            {{-- Empty State --}}
+            <div class="text-center py-16 bg-white rounded-lg shadow">
+                <div class="mx-auto h-20 w-20 text-gray-400 mb-6">
+                    <i class="fa-solid fa-users text-8xl"></i>
+                </div>
+                <h3 class="text-xl font-medium text-gray-900 mb-2">No Students Data</h3>
+                <p class="text-gray-500 mb-8">Start by importing student data from SIKEU API</p>
+
+                {{-- API Testing Section --}}
+                <div class="mb-8 space-y-4">
+                    <div class="flex justify-center space-x-4">
+                        <button type="button" id="test-connection-btn"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 inline-flex items-center">
+                            <i class="fa-solid fa-plug mr-2"></i>
+                            Test API Connection
+                        </button>
+                        <button type="button" id="test-single-student-btn"
+                            class="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 inline-flex items-center">
+                            <i class="fa-solid fa-user-check mr-2"></i>
+                            Test Single Student
+                        </button>
+                    </div>
+
+                    {{-- Status Display --}}
+                    <div id="connection-status" class="hidden mx-auto max-w-2xl"></div>
+
+                    <div id="single-student-result" class="hidden mx-auto max-w-4xl">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+                            <h4 class="text-lg font-medium text-gray-900 mb-3">
+                                <i class="fa-solid fa-code mr-2"></i>API Response Test
+                            </h4>
+                            <div id="single-student-content"
+                                class="text-sm font-mono bg-white p-3 rounded border overflow-auto max-h-96"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Import Progress Section --}}
+                <div id="import-progress-section" class="hidden mb-8">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
+                        <h4 class="text-lg font-medium text-blue-900 mb-4">
+                            <i class="fa-solid fa-cloud-download-alt mr-2"></i>Importing Students Data
+                        </h4>
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span id="import-status-text">Initializing...</span>
+                                <span id="import-percentage">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="import-progress-bar"
+                                    class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="import-message" class="text-sm text-gray-700 mb-4">Ready to start import...</div>
+                        <button type="button" id="cancel-import-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fa-solid fa-times mr-1"></i>Cancel Import
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Import Results --}}
+                <div id="import-results-section" class="hidden mb-8">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6 max-w-2xl mx-auto">
+                        <h4 class="text-lg font-medium text-green-900 mb-4">
+                            <i class="fa-solid fa-check-circle mr-2"></i>Import Completed!
+                        </h4>
+                        <div id="import-results-content" class="text-sm"></div>
+                        <button type="button" id="close-results-btn"
+                            class="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                            Close
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Import Error --}}
+                <div id="import-error-section" class="hidden mb-8">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+                        <h4 class="text-lg font-medium text-red-900 mb-4">
+                            <i class="fa-solid fa-exclamation-triangle mr-2"></i>Import Failed
+                        </h4>
+                        <div id="import-error-content" class="text-sm text-red-700 mb-4"></div>
+                        <div class="flex justify-center space-x-2">
+                            <button type="button" id="retry-import-btn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                                <i class="fa-solid fa-redo mr-1"></i>Retry Import
+                            </button>
+                            <button type="button" id="close-error-btn"
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Import Button --}}
+                <button type="button" id="import-btn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 inline-flex items-center">
+                    <i class="fa-solid fa-cloud-download-alt mr-3"></i>
+                    Import Students from SIKEU API
                 </button>
 
-                <!-- Add New Siswa Button -->
-                <a href="{{ route('data.siswa.create') }}"
-                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Add New Siswa</span>
-                </a>
+                <div class="mt-6 text-sm text-gray-500 max-w-md mx-auto">
+                    <p>This will fetch all student data from SIKEU system including payment status and class information.
+                    </p>
+                </div>
             </div>
-        </div>
+        @else
+            {{-- Populated State --}}
 
-        <!-- Sync Progress Modal -->
-        <div id="sync-progress-modal"
-            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
-                <div class="mt-3">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Syncing Payment Data</h3>
-                        <button id="close-sync-modal" class="text-gray-400 hover:text-gray-600">
-                            <i class="fa-solid fa-times text-xl"></i>
+            {{-- Header --}}
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">All Siswa</h3>
+                    <p class="text-sm text-gray-500">
+                        Total: <span id="siswa-count">{{ $siswas->total() ?? 0 }}</span> students
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+
+                    <button type="button" id="export-btn"
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
+                        <i class="fa-solid fa-download mr-1"></i>Export
+                    </button>
+                    <button type="button" id="test-single-student-btn-populated"
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
+                        <i class="fa-solid fa-user-check mr-1"></i>Test API
+                    </button>
+                    <button type="button" id="sync-api-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
+                        <i class="fa-solid fa-sync mr-1"></i>Sync Data
+                    </button>
+                </div>
+            </div>
+
+            {{-- Status/Progress Sections --}}
+            <div id="status-sections" class="space-y-4">
+                {{-- API Status --}}
+                <div id="api-status-display" class="hidden bg-white shadow rounded-lg p-4">
+                    <h4 class="text-lg font-medium text-gray-900 mb-3">
+                        <i class="fa-solid fa-server mr-2"></i>API Status
+                    </h4>
+                    <div id="api-status-content"></div>
+                </div>
+
+                {{-- Sync Progress --}}
+                <div id="sync-progress-section" class="hidden">
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                        <h4 class="text-lg font-medium text-purple-900 mb-4">
+                            <i class="fa-solid fa-sync mr-2"></i>Syncing Data with SIKEU API
+                        </h4>
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span id="sync-status-text">Starting sync...</span>
+                                <span id="sync-percentage">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="sync-progress-bar"
+                                    class="bg-purple-600 h-3 rounded-full transition-all duration-300" style="width: 0%">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="sync-message" class="text-sm text-gray-700 mb-4">Ready to start sync...</div>
+                        <button type="button" id="cancel-sync-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fa-solid fa-times mr-1"></i>Cancel Sync
                         </button>
                     </div>
+                </div>
 
-                    <!-- Progress Bar -->
-                    <div class="mb-4">
-                        <div class="flex justify-between text-sm mb-1">
-                            <span>Progress</span>
-                            <span id="sync-progress-text">0%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div id="sync-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                                style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Stats -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-blue-600" id="sync-processed">0</div>
-                            <div class="text-sm text-gray-500">Processed</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-green-600" id="sync-success">0</div>
-                            <div class="text-sm text-gray-500">Success</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-red-600" id="sync-failed">0</div>
-                            <div class="text-sm text-gray-500">Failed</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-yellow-600" id="sync-updated">0</div>
-                            <div class="text-sm text-gray-500">Updated</div>
-                        </div>
-                    </div>
-
-                    <!-- Status -->
-                    <div id="sync-status" class="text-sm text-gray-600 mb-4">
-                        Preparing to sync...
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex justify-end space-x-3">
-                        <button id="stop-sync-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 hidden">
-                            Stop Sync
-                        </button>
-                        <button id="close-sync-btn" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                {{-- Sync Results --}}
+                <div id="sync-results-section" class="hidden">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <h4 class="text-lg font-medium text-green-900 mb-4">
+                            <i class="fa-solid fa-check-circle mr-2"></i>Sync Completed!
+                        </h4>
+                        <div id="sync-results-content"></div>
+                        <button type="button" id="close-sync-results-btn"
+                            class="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
                             Close
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Search & Filters -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-
-                <!-- Search Input -->
-                <div class="md:col-span-5">
-                    <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-search text-gray-400" id="search-icon"></i>
-                            <i class="fa-solid fa-spinner fa-spin text-gray-400 hidden" id="loading-icon"></i>
+            {{-- Search & Filters --}}
+            <div class="bg-white shadow rounded-lg p-6">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    {{-- Search Input --}}
+                    <div class="md:col-span-5">
+                        <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-search text-gray-400" id="search-icon"></i>
+                                <i class="fa-solid fa-spinner fa-spin text-gray-400 hidden" id="loading-icon"></i>
+                            </div>
+                            <input type="text" id="search-input" name="search"
+                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Search by name, ID yayasan, email..." value="{{ request('search') }}">
                         </div>
-                        <input type="text" id="search-input"
-                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Search by name, ID yayasan, email, or class..." value="{{ request('q') }}">
+                    </div>
+
+                    {{-- Payment Status Filter --}}
+                    <div class="md:col-span-2">
+                        <label for="payment-filter" class="block text-sm font-medium text-gray-700 mb-2">Payment
+                            Status</label>
+                        <select id="payment-filter" name="status_pembayaran"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Status</option>
+                            <option value="Lunas" {{ request('status_pembayaran') == 'Lunas' ? 'selected' : '' }}>
+                                Lunas
+                            </option>
+                            <option value="Belum Lunas"
+                                {{ request('status_pembayaran') == 'Belum Lunas' ? 'selected' : '' }}>Belum Lunas
+                            </option>
+                        </select>
+                    </div>
+
+                    {{-- Rekomendasi Filter --}}
+                    <div class="md:col-span-2">
+                        <label for="rekomendasi-filter"
+                            class="block text-sm font-medium text-gray-700 mb-2">Rekomendasi</label>
+                        <select id="rekomendasi-filter" name="rekomendasi"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Rekomendasi</option>
+                            <option value="ya" {{ request('rekomendasi') == 'ya' ? 'selected' : '' }}>Ya</option>
+                            <option value="tidak" {{ request('rekomendasi') == 'tidak' ? 'selected' : '' }}>Tidak
+                            </option>
+                        </select>
+                    </div>
+
+                    {{-- Kelas Filter --}}
+                    <div class="md:col-span-2">
+                        <label for="kelas-filter" class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                        <select id="kelas-filter" name="kelas_id"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Kelas</option>
+                            @if (isset($availableKelas))
+                                @foreach ($availableKelas as $id => $nama)
+                                    <option value="{{ $id }}" {{ request('kelas_id') == $id ? 'selected' : '' }}>
+                                        {{ $nama }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    {{-- Clear Button --}}
+                    <div class="md:col-span-1">
+                        <button type="button" id="clear-filters"
+                            class="w-full bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-md transition-colors inline-flex items-center justify-center">
+                            <i class="fa-solid fa-times mr-1"></i>Clear
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Payment Status Filter -->
-                <div class="md:col-span-2">
-                    <label for="payment-filter" class="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
-                    <select id="payment-filter"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">All Status</option>
-                        <option value="Lunas" {{ request('payment_status') == 'Lunas' ? 'selected' : '' }}>Lunas</option>
-                        <option value="Belum Lunas" {{ request('payment_status') == 'Belum Lunas' ? 'selected' : '' }}>Belum
-                            Lunas</option>
-                        <option value="Cicilan" {{ request('payment_status') == 'Cicilan' ? 'selected' : '' }}>Cicilan
-                        </option>
-                    </select>
-                </div>
+            {{-- Loading State --}}
+            <div id="loading-state" class="hidden bg-white shadow rounded-lg p-8 text-center">
+                <i class="fa-solid fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-600">Loading students...</p>
+            </div>
 
-                <!-- Rekomendasi Filter -->
-                <div class="md:col-span-2">
-                    <label for="rekomendasi-filter"
-                        class="block text-sm font-medium text-gray-700 mb-2">Recommendation</label>
-                    <select id="rekomendasi-filter"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">All</option>
-                        <option value="ya" {{ request('rekomendasi') == 'ya' ? 'selected' : '' }}>Ya</option>
-                        <option value="tidak" {{ request('rekomendasi') == 'tidak' ? 'selected' : '' }}>Tidak</option>
-                    </select>
-                </div>
-
-                <!-- Per Page -->
-                <div class="md:col-span-2">
-                    <label for="per-page" class="block text-sm font-medium text-gray-700 mb-2">Show</label>
-                    <select id="per-page"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
-                        <option value="25" {{ request('per_page', '25') == '25' ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
-                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
-                    </select>
-                </div>
-
-                <!-- Clear Filters -->
-                <div class="md:col-span-1">
-                    <button id="clear-filters"
-                        class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 flex items-center justify-center">
-                        <i class="fa-solid fa-times mr-1"></i>
-                        Clear
-                    </button>
+            {{-- Bulk Actions --}}
+            <div id="bulk-actions" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-yellow-800">
+                            <span id="selected-count">0</span> items selected
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="bulk-rekomendasi-select" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                            <option value="ya">Set Rekomendasi: Ya</option>
+                            <option value="tidak">Set Rekomendasi: Tidak</option>
+                        </select>
+                        <button id="bulk-update-rekomendasi"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                            Update Rekomendasi
+                        </button>
+                        <button id="bulk-delete"
+                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                            Delete Selected
+                        </button>
+                        <button id="clear-selection"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                            Clear Selection
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Flash Messages -->
-        @if (session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                {{ session('success') }}
+            {{-- Main Table Container --}}
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg" id="results-container">
+                {{-- Stats Header --}}
+                @if (isset($siswas))
+                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div class="flex flex-1 min-w-0 justify-between items-center">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">Students List</h3>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Showing <span id="showing-count">{{ $siswas->count() }}</span> of
+                                    <span id="total-count">{{ $siswas->total() }}</span> results
+                                </p>
+                            </div>
+
+
+                        </div>
+                    </div>
+                @endif
+
+
+                {{-- Table Content --}}
+                <div id="table-container">
+                    @if (isset($siswas))
+                        @include('features.data.siswa.partials.table', ['siswas' => $siswas])
+                    @else
+                        <div class="p-8 text-center text-gray-500">
+                            <p>No data available</p>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Pagination --}}
+                <div id="pagination-container">
+                    @if (isset($siswas))
+                        @include('features.data.siswa.partials.pagination', ['siswas' => $siswas])
+                    @endif
+                </div>
             </div>
         @endif
-
-        @if (session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        <!-- Search Info -->
-        <div id="search-info" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-info-circle text-blue-600"></i>
-                <span class="text-blue-800 text-sm" id="search-results-text"></span>
-            </div>
-        </div>
-
-        <!-- Table Container -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Students List</h3>
-                <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                    Showing <span id="showing-count">{{ $siswas->count() }}</span> of <span
-                        id="total-count">{{ $siswas->total() }}</span> results
-                </p>
-            </div>
-
-            <div id="table-container">
-                @include('features.data.siswa.partials.table', ['siswas' => $siswas])
-            </div>
-
-            <div id="pagination-container">
-                @include('features.data.siswa.partials.pagination', ['siswas' => $siswas])
-            </div>
-        </div>
     </div>
 
-    <!-- JavaScript -->
+    {{-- Inline JavaScript for Immediate Functionality --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Elements
+            console.log('Siswa Management JS loaded');
+
+            // Basic elements
             const searchInput = document.getElementById('search-input');
             const paymentFilter = document.getElementById('payment-filter');
             const rekomendasiFilter = document.getElementById('rekomendasi-filter');
-            const perPageSelect = document.getElementById('per-page');
-            const clearBtn = document.getElementById('clear-filters');
-            const searchIcon = document.getElementById('search-icon');
-            const loadingIcon = document.getElementById('loading-icon');
-            const searchInfo = document.getElementById('search-info');
-            const searchResultsText = document.getElementById('search-results-text');
-            const tableContainer = document.getElementById('table-container');
-            const paginationContainer = document.getElementById('pagination-container');
-            const siswaCount = document.getElementById('siswa-count');
-            const showingCount = document.getElementById('showing-count');
+            const kelasFilter = document.getElementById('kelas-filter');
+            const clearFiltersBtn = document.getElementById('clear-filters');
+            const loadingState = document.getElementById('loading-state');
+            const resultsContainer = document.getElementById('results-container');
 
-            // Sync elements
-            const syncAllBtn = document.getElementById('sync-all-payments-btn');
-            const syncModal = document.getElementById('sync-progress-modal');
-            const closeSyncModal = document.getElementById('close-sync-modal');
-            const closeSyncBtn = document.getElementById('close-sync-btn');
-            const stopSyncBtn = document.getElementById('stop-sync-btn');
-            const syncStatsText = document.getElementById('sync-stats-text');
+            // API elements
+            const testConnectionBtn = document.getElementById('test-connection-btn');
+            const testSingleStudentBtn = document.getElementById('test-single-student-btn');
+            const testSingleStudentBtnPopulated = document.getElementById('test-single-student-btn-populated');
+            const syncApiBtn = document.getElementById('sync-api-btn');
+            const importBtn = document.getElementById('import-btn');
+            const cancelImportBtn = document.getElementById('cancel-import-btn');
+            const cancelSyncBtn = document.getElementById('cancel-sync-btn');
+            const closeResultsBtn = document.getElementById('close-results-btn');
+            const closeErrorBtn = document.getElementById('close-error-btn');
+            const closeImportResultsBtn = document.getElementById('close-results-btn');
+            const closeSyncResultsBtn = document.getElementById('close-sync-results-btn');
+            const retryImportBtn = document.getElementById('retry-import-btn');
 
+            // Progress sections
+            const importProgressSection = document.getElementById('import-progress-section');
+            const importResultsSection = document.getElementById('import-results-section');
+            const importErrorSection = document.getElementById('import-error-section');
+            const syncProgressSection = document.getElementById('sync-progress-section');
+            const syncResultsSection = document.getElementById('sync-results-section');
+
+            // Progress elements
+            const importProgressBar = document.getElementById('import-progress-bar');
+            const importPercentage = document.getElementById('import-percentage');
+            const importStatusText = document.getElementById('import-status-text');
+            const importMessage = document.getElementById('import-message');
+            const importResultsContent = document.getElementById('import-results-content');
+            const importErrorContent = document.getElementById('import-error-content');
+
+            const syncProgressBar = document.getElementById('sync-progress-bar');
+            const syncPercentage = document.getElementById('sync-percentage');
+            const syncStatusText = document.getElementById('sync-status-text');
+            const syncMessage = document.getElementById('sync-message');
+            const syncResultsContent = document.getElementById('sync-results-content');
+
+            // Control variables
             let searchTimeout;
-            let syncInProgress = false;
-            let stopSync = false;
+            let importProgressInterval = null;
+            let syncProgressInterval = null;
+            let isImporting = false;
+            let isSyncing = false;
 
-            // Load sync stats on page load
-            loadSyncStats();
+            // Utility functions
+            function showLoading() {
+                if (loadingState) loadingState.classList.remove('hidden');
+                if (resultsContainer) resultsContainer.classList.add('hidden');
 
-            // Perform search
+                const searchIcon = document.getElementById('search-icon');
+                const loadingIcon = document.getElementById('loading-icon');
+                if (searchIcon) searchIcon.classList.add('hidden');
+                if (loadingIcon) loadingIcon.classList.remove('hidden');
+            }
+
+            function hideLoading() {
+                if (loadingState) loadingState.classList.add('hidden');
+                if (resultsContainer) resultsContainer.classList.remove('hidden');
+
+                const searchIcon = document.getElementById('search-icon');
+                const loadingIcon = document.getElementById('loading-icon');
+                if (searchIcon) searchIcon.classList.remove('hidden');
+                if (loadingIcon) loadingIcon.classList.add('hidden');
+            }
+
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                    type === 'success' ? 'bg-green-500 text-white' : 
+                    type === 'error' ? 'bg-red-500 text-white' : 
+                    'bg-blue-500 text-white'
+                }`;
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        <span>${message}</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="ml-3 text-white hover:text-gray-200">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 5000);
+            }
+
+            // Search functionality
             function performSearch() {
-                const query = searchInput.value.trim();
-                const paymentStatus = paymentFilter.value;
-                const rekomendasi = rekomendasiFilter.value;
-                const perPage = perPageSelect.value;
-
-                // Show loading
-                searchIcon.classList.add('hidden');
-                loadingIcon.classList.remove('hidden');
-
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    const searchUrl = new URL('{{ route('data.siswa.search') }}');
+                    executeSearch();
+                }, 300);
+            }
 
-                    if (query) searchUrl.searchParams.set('q', query);
-                    if (paymentStatus) searchUrl.searchParams.set('payment_status', paymentStatus);
-                    if (rekomendasi) searchUrl.searchParams.set('rekomendasi', rekomendasi);
-                    if (perPage) searchUrl.searchParams.set('per_page', perPage);
+            function executeSearch() {
+                const formData = new FormData();
 
-                    fetch(searchUrl.toString(), {
+                const filters = {
+                    search: searchInput?.value || '',
+                    status_pembayaran: paymentFilter?.value || '',
+                    rekomendasi: rekomendasiFilter?.value || '',
+                    kelas_id: kelasFilter?.value || ''
+                };
+
+                Object.keys(filters).forEach(key => {
+                    if (filters[key]) formData.append(key, filters[key]);
+                });
+
+                showLoading();
+
+                fetch('{{ route('data.siswa.search') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .content,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Update table
+                            const tableContainer = document.getElementById('table-container');
+                            if (tableContainer && data.data.table) {
+                                tableContainer.innerHTML = data.data.table;
+                                attachBulkEventListeners(); // Re-attach bulk listeners
+                            }
+
+                            // Update pagination
+                            const paginationContainer = document.getElementById(
+                                'pagination-container');
+                            if (paginationContainer && data.data.pagination) {
+                                paginationContainer.innerHTML = data.data.pagination;
+                            }
+
+                            // Update stats
+                            if (data.data.stats) {
+                                const showingCount = document.getElementById('showing-count');
+                                const totalCount = document.getElementById('total-count');
+
+                                if (showingCount) showingCount.textContent = data.data.stats
+                                    .showing || 0;
+                                if (totalCount) totalCount.textContent = data.data.stats.total || 0;
+                            }
+                        } else {
+                            showToast('Search failed: ' + (data.error || 'Unknown error'), 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        showToast('Search request failed: ' + error.message, 'error');
+                    })
+                    .finally(() => {
+                        hideLoading();
+                    });
+            }
+
+            // Attach search event listeners
+            if (searchInput) {
+                searchInput.addEventListener('input', performSearch);
+            }
+
+            [paymentFilter, rekomendasiFilter, kelasFilter].forEach(filter => {
+                if (filter) {
+                    filter.addEventListener('change', performSearch);
+                }
+            });
+
+            // Clear filters
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', function() {
+                    if (searchInput) searchInput.value = '';
+                    if (paymentFilter) paymentFilter.value = '';
+                    if (rekomendasiFilter) rekomendasiFilter.value = '';
+                    if (kelasFilter) kelasFilter.value = '';
+                    performSearch();
+                });
+            }
+
+            // Bulk actions functionality
+            function attachBulkEventListeners() {
+                const selectAllCheckbox = document.getElementById('select-all');
+                const siswaCheckboxes = document.querySelectorAll('.siswa-checkbox');
+                const bulkActions = document.getElementById('bulk-actions');
+                const selectedCount = document.getElementById('selected-count');
+
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function() {
+                        siswaCheckboxes.forEach(checkbox => {
+                            checkbox.checked = this.checked;
+                        });
+                        updateBulkActions();
+                    });
+                }
+
+                if (siswaCheckboxes) {
+                    siswaCheckboxes.forEach(checkbox => {
+                        checkbox.addEventListener('change', updateBulkActions);
+                    });
+                }
+
+                function updateBulkActions() {
+                    const checkedCount = document.querySelectorAll('.siswa-checkbox:checked').length;
+                    if (selectedCount) selectedCount.textContent = checkedCount;
+
+                    if (checkedCount > 0) {
+                        if (bulkActions) bulkActions.classList.remove('hidden');
+                    } else {
+                        if (bulkActions) bulkActions.classList.add('hidden');
+                    }
+                }
+            }
+
+            // Attach initial bulk event listeners
+            attachBulkEventListeners();
+
+            // API connection test
+            if (testConnectionBtn) {
+                testConnectionBtn.addEventListener('click', function() {
+                    const statusDisplay = document.getElementById('connection-status');
+                    if (statusDisplay) {
+                        statusDisplay.innerHTML =
+                            '<div class="p-4 rounded-lg bg-blue-50 text-blue-800"><div class="flex"><div class="flex-shrink-0"><i class="fa-solid fa-spinner fa-spin mr-2"></i></div><div class="flex-1"><p class="text-sm font-medium">Testing API connection...</p></div></div></div>';
+                        statusDisplay.classList.remove('hidden');
+                    }
+
+                    fetch('{{ route('data.siswa.test-connection') }}', {
+                            method: 'POST',
                             headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (statusDisplay) {
+                                statusDisplay.innerHTML = `
+                                    <div class="p-4 rounded-lg ${
+                                        data.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                                    }">
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="fa-solid ${
+                                                    data.success ? 'fa-check-circle' : 'fa-times-circle'
+                                                } mr-2"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium">${data.message}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Connection test error:', error);
+                            if (statusDisplay) {
+                                statusDisplay.innerHTML = `
+                                    <div class="p-4 rounded-lg bg-red-50 text-red-800">
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="fa-solid fa-times-circle mr-2"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium">Connection test failed: ${error.message}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        });
+                });
+            }
+
+            // Single student test
+            if (testSingleStudentBtn) {
+                testSingleStudentBtn.addEventListener('click', function() {
+                    const resultDisplay = document.getElementById('single-student-result');
+                    const contentDisplay = document.getElementById('single-student-content');
+
+                    if (resultDisplay) {
+                        resultDisplay.classList.remove('hidden');
+                    }
+
+                    if (contentDisplay) {
+                        contentDisplay.innerHTML =
+                            '<div class="flex justify-center py-4"><i class="fa-solid fa-spinner fa-spin text-blue-500 text-xl"></i></div>';
+                    }
+
+                    fetch('{{ route('data.siswa.test-single-student') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (contentDisplay) {
+                                contentDisplay.textContent = JSON.stringify(data, null, 2);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Single student test error:', error);
+                            if (contentDisplay) {
+                                contentDisplay.innerHTML =
+                                    `<div class="text-red-500">Error: ${error.message}</div>`;
+                            }
+                        });
+                });
+            }
+
+            // Single student test (populated state)
+            if (testSingleStudentBtnPopulated) {
+                testSingleStudentBtnPopulated.addEventListener('click', function() {
+                    const studentId = prompt('Enter student ID for testing:', '');
+                    if (!studentId) return;
+
+                    const apiStatusDisplay = document.getElementById('api-status-display');
+                    const apiStatusContent = document.getElementById('api-status-content');
+
+                    if (apiStatusDisplay) {
+                        apiStatusDisplay.classList.remove('hidden');
+                    }
+
+                    if (apiStatusContent) {
+                        apiStatusContent.innerHTML =
+                            '<div class="flex justify-center py-4"><i class="fa-solid fa-spinner fa-spin text-blue-500 text-xl"></i></div>';
+                    }
+
+                    fetch('{{ route('data.siswa.test-single-student') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Content-Type': 'application/json',
                                 'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                id: studentId
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (apiStatusContent) {
+                                apiStatusContent.innerHTML = `
+                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+                                        <h4 class="text-lg font-medium text-gray-900 mb-3">
+                                            <i class="fa-solid fa-code mr-2"></i>API Response Test
+                                        </h4>
+                                        <div class="text-sm font-mono bg-white p-3 rounded border overflow-auto max-h-96">
+                                            ${JSON.stringify(data, null, 2)}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Single student test error:', error);
+                            if (apiStatusContent) {
+                                apiStatusContent.innerHTML = `
+                                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
+                                        <h4 class="text-lg font-medium text-red-900 mb-3">
+                                            <i class="fa-solid fa-exclamation-triangle mr-2"></i>Error
+                                        </h4>
+                                        <div class="text-sm text-red-700">
+                                            ${error.message}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        });
+                });
+            }
+
+            // Import students data with progress tracking
+            if (importBtn) {
+                importBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to import students data from SIKEU API?')) return;
+
+                    // Show the progress section
+                    if (importProgressSection) {
+                        importProgressSection.classList.remove('hidden');
+                    }
+
+                    // Reset progress
+                    if (importProgressBar) importProgressBar.style.width = '0%';
+                    if (importPercentage) importPercentage.textContent = '0%';
+                    if (importStatusText) importStatusText.textContent = 'Starting import...';
+                    if (importMessage) importMessage.textContent = 'Connecting to SIKEU API...';
+
+                    // Hide result sections
+                    if (importResultsSection) importResultsSection.classList.add('hidden');
+                    if (importErrorSection) importErrorSection.classList.add('hidden');
+
+                    // Start the import process
+                    isImporting = true;
+
+                    fetch('{{ route('data.siswa.import-from-api-ajax') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                // Update table and pagination
-                                tableContainer.innerHTML = data.html;
-                                paginationContainer.innerHTML = data.pagination;
-
-                                // Update counts
-                                siswaCount.textContent = data.count;
-                                showingCount.textContent = data.showing;
-
-                                // Update search info
-                                updateSearchInfo(query, paymentStatus, rekomendasi);
-
-                                // Re-attach individual sync buttons
-                                attachIndividualSyncButtons();
+                                // Start progress polling
+                                pollImportProgress();
                             } else {
-                                alert('Search failed: ' + data.message);
+                                stopImportProgress();
+                                showImportError(data.error || 'Unknown error occurred');
                             }
                         })
                         .catch(error => {
-                            console.error('Search error:', error);
-                            alert('Error performing search. Please try again.');
-                        })
-                        .finally(() => {
-                            searchIcon.classList.remove('hidden');
-                            loadingIcon.classList.add('hidden');
+                            console.error('Import error:', error);
+                            stopImportProgress();
+                            showImportError(error.message);
                         });
-                }, 300);
-            }
-
-            // Update search info
-            function updateSearchInfo(query, paymentStatus, rekomendasi) {
-                const filters = [];
-                if (query) filters.push(`"${query}"`);
-                if (paymentStatus) filters.push(`Payment: ${paymentStatus}`);
-                if (rekomendasi) filters.push(`Recommendation: ${rekomendasi}`);
-
-                if (filters.length > 0) {
-                    searchResultsText.textContent = `Filtered by: ${filters.join(', ')}`;
-                    searchInfo.classList.remove('hidden');
-                } else {
-                    searchInfo.classList.add('hidden');
-                }
-            }
-
-            // Clear all filters
-            function clearAllFilters() {
-                searchInput.value = '';
-                paymentFilter.value = '';
-                rekomendasiFilter.value = '';
-                perPageSelect.value = '25';
-                performSearch();
-            }
-
-            // Load sync statistics
-            function loadSyncStats() {
-                fetch('{{ route('data.siswa.sync-stats') }}', {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const stats = data.stats;
-                            syncStatsText.innerHTML = `
-                            Synced: <span class="font-medium text-green-600">${stats.synced_count}</span> |
-                            Failed: <span class="font-medium text-red-600">${stats.failed_count}</span> |
-                            Pending: <span class="font-medium text-yellow-600">${stats.pending_count}</span> |
-                            Last sync: <span class="font-medium">${stats.last_sync_time}</span>
-                        `;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading sync stats:', error);
-                        syncStatsText.textContent = 'Error loading sync stats';
-                    });
-            }
-
-            // Sync all payments
-            function syncAllPayments() {
-                if (syncInProgress) {
-                    alert('Sync already in progress!');
-                    return;
-                }
-
-                syncInProgress = true;
-                stopSync = false;
-                syncModal.classList.remove('hidden');
-                syncAllBtn.disabled = true;
-                stopSyncBtn.classList.remove('hidden');
-
-                // Reset progress
-                document.getElementById('sync-progress-bar').style.width = '0%';
-                document.getElementById('sync-progress-text').textContent = '0%';
-                document.getElementById('sync-processed').textContent = '0';
-                document.getElementById('sync-success').textContent = '0';
-                document.getElementById('sync-failed').textContent = '0';
-                document.getElementById('sync-updated').textContent = '0';
-                document.getElementById('sync-status').textContent = 'Starting sync...';
-
-                // Start syncing
-                syncBatch(0, {
-                    total_processed: 0,
-                    success_count: 0,
-                    failed_count: 0,
-                    updated_count: 0
                 });
             }
 
-            // Sync batch of students
-            function syncBatch(offset, cumulativeStats) {
-                if (stopSync) {
-                    document.getElementById('sync-status').textContent = 'Sync stopped by user.';
-                    finalizSync();
-                    return;
+            // Poll the server for import progress
+            function pollImportProgress() {
+                if (importProgressInterval) {
+                    clearInterval(importProgressInterval);
                 }
 
-                document.getElementById('sync-status').textContent = `Processing batch starting at ${offset}...`;
+                importProgressInterval = setInterval(() => {
+                    if (!isImporting) {
+                        clearInterval(importProgressInterval);
+                        return;
+                    }
 
-                fetch('{{ route('data.siswa.sync-all-payments') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            offset: offset,
-                            limit: 10 // Process 10 students per batch
+                    fetch('{{ route('data.siswa.import-progress') }}')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Update progress UI
+                            if (importProgressBar) importProgressBar.style.width = data.progress + '%';
+                            if (importPercentage) importPercentage.textContent = data.progress + '%';
+                            if (importStatusText) importStatusText.textContent = data.status;
+                            if (importMessage) importMessage.textContent = data.message;
+
+                            // Check if import is complete
+                            if (data.status === 'completed') {
+                                stopImportProgress();
+                                showImportResults(data.message);
+                            } else if (data.status === 'error') {
+                                stopImportProgress();
+                                showImportError(data.message);
+                            }
                         })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Update cumulative stats
-                            cumulativeStats.total_processed += data.stats.total_processed;
-                            cumulativeStats.success_count += data.stats.success_count;
-                            cumulativeStats.failed_count += data.stats.failed_count;
-                            cumulativeStats.updated_count += data.stats.updated_count;
-
-                            // Update UI
-                            document.getElementById('sync-processed').textContent = cumulativeStats
-                                .total_processed;
-                            document.getElementById('sync-success').textContent = cumulativeStats.success_count;
-                            document.getElementById('sync-failed').textContent = cumulativeStats.failed_count;
-                            document.getElementById('sync-updated').textContent = cumulativeStats.updated_count;
-
-                            if (data.progress_percentage) {
-                                document.getElementById('sync-progress-bar').style.width =
-                                    `${data.progress_percentage}%`;
-                                document.getElementById('sync-progress-text').textContent =
-                                    `${data.progress_percentage}%`;
-                            }
-
-                            // Continue with next batch if there are more
-                            if (data.has_more && !stopSync) {
-                                setTimeout(() => {
-                                    syncBatch(data.next_offset, cumulativeStats);
-                                }, 1000); // 1 second delay between batches
-                            } else {
-                                // All done
-                                document.getElementById('sync-status').textContent =
-                                    'Sync completed successfully!';
-                                document.getElementById('sync-progress-bar').style.width = '100%';
-                                document.getElementById('sync-progress-text').textContent = '100%';
-                                finalizSync();
-                            }
-                        } else {
-                            document.getElementById('sync-status').textContent = `Error: ${data.message}`;
-                            finalizSync();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Sync error:', error);
-                        document.getElementById('sync-status').textContent = `Error: ${error.message}`;
-                        finalizSync();
-                    });
+                        .catch(error => {
+                            console.error('Progress polling error:', error);
+                            // Don't stop polling on network errors
+                        });
+                }, 1000);
             }
 
-            // Finalize sync process
-            function finalizSync() {
-                syncInProgress = false;
-                syncAllBtn.disabled = false;
-                stopSyncBtn.classList.add('hidden');
-                loadSyncStats(); // Refresh stats
-                performSearch(); // Refresh table
+            function stopImportProgress() {
+                isImporting = false;
+                if (importProgressInterval) {
+                    clearInterval(importProgressInterval);
+                    importProgressInterval = null;
+                }
+
+                // Clear session data
+                fetch('{{ route('data.siswa.clear-import-progress') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                }).catch(error => console.error('Error clearing progress:', error));
             }
 
-            // Individual sync payment
-            function syncIndividualPayment(siswaId, button) {
-                if (button.disabled) return;
-
-                const originalHtml = button.innerHTML;
-                button.disabled = true;
-                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Syncing...';
-
-                fetch(`/data/siswa/${siswaId}/sync-payment`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Show success message
-                            const message = `Payment synced: ${data.data.old_status} → ${data.data.new_status}`;
-                            showNotification(message, 'success');
-
-                            // Refresh the table to show updated status
-                            performSearch();
-                        } else {
-                            showNotification(`Sync failed: ${data.message}`, 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Individual sync error:', error);
-                        showNotification('Sync error occurred', 'error');
-                    })
-                    .finally(() => {
-                        button.disabled = false;
-                        button.innerHTML = originalHtml;
-                    });
+            function showImportResults(message) {
+                // Hide progress, show results
+                if (importProgressSection) importProgressSection.classList.add('hidden');
+                if (importResultsSection) {
+                    importResultsSection.classList.remove('hidden');
+                    if (importResultsContent) {
+                        importResultsContent.innerHTML = `<p class="text-green-700">${message}</p>`;
+                    }
+                }
             }
 
-            // Attach individual sync buttons
-            function attachIndividualSyncButtons() {
-                document.querySelectorAll('.sync-payment-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const siswaId = this.dataset.siswaId;
-                        syncIndividualPayment(siswaId, this);
-                    });
+            function showImportError(message) {
+                // Hide progress, show error
+                if (importProgressSection) importProgressSection.classList.add('hidden');
+                if (importErrorSection) {
+                    importErrorSection.classList.remove('hidden');
+                    if (importErrorContent) {
+                        importErrorContent.textContent = message;
+                    }
+                }
+            }
+
+            // Cancel import
+            if (cancelImportBtn) {
+                cancelImportBtn.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to cancel the import?')) {
+                        stopImportProgress();
+                        if (importProgressSection) importProgressSection.classList.add('hidden');
+                    }
                 });
             }
 
-            // Show notification
-            function showNotification(message, type = 'info') {
-                // Simple notification - you can replace with a toast library
-                const notification = document.createElement('div');
-                notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg z-50 ${
-                    type === 'success' ? 'bg-green-500 text-white' :
-                    type === 'error' ? 'bg-red-500 text-white' :
-                    'bg-blue-500 text-white'
-                }`;
-                notification.textContent = message;
-                document.body.appendChild(notification);
+            // Close import results
+            if (closeResultsBtn) {
+                closeResultsBtn.addEventListener('click', function() {
+                    if (importResultsSection) importResultsSection.classList.add('hidden');
+                    // Ganti reload dengan update data via AJAX
+                    performSearch(); // Gunakan fungsi yang sudah ada untuk memuat ulang data
 
-                setTimeout(() => {
-                    notification.remove();
-                }, 5000);
+                    // Show success toast instead of reloading
+                    showToast('Data berhasil diperbarui', 'success');
+                });
             }
 
-            // Event listeners
-            searchInput.addEventListener('input', performSearch);
-            paymentFilter.addEventListener('change', performSearch);
-            rekomendasiFilter.addEventListener('change', performSearch);
-            perPageSelect.addEventListener('change', performSearch);
-            clearBtn.addEventListener('click', clearAllFilters);
+            // Close import error
+            if (closeErrorBtn) {
+                closeErrorBtn.addEventListener('click', function() {
+                    if (importErrorSection) importErrorSection.classList.add('hidden');
+                });
+            }
 
-            // Sync event listeners
-            syncAllBtn.addEventListener('click', syncAllPayments);
-            closeSyncModal.addEventListener('click', () => syncModal.classList.add('hidden'));
-            closeSyncBtn.addEventListener('click', () => syncModal.classList.add('hidden'));
-            stopSyncBtn.addEventListener('click', () => stopSync = true);
+            // Retry import
+            if (retryImportBtn) {
+                retryImportBtn.addEventListener('click', function() {
+                    if (importErrorSection) importErrorSection.classList.add('hidden');
+                    if (importBtn) importBtn.click(); // Trigger import again
+                });
+            }
 
-            // Initialize
-            updateSearchInfo(searchInput.value, paymentFilter.value, rekomendasiFilter.value);
-            attachIndividualSyncButtons();
+            // Sync API data with progress tracking
+            if (syncApiBtn) {
+                syncApiBtn.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to sync data with SIKEU API?')) return;
+
+                    // Show the progress section
+                    if (syncProgressSection) {
+                        syncProgressSection.classList.remove('hidden');
+                    }
+
+                    // Reset progress
+                    if (syncProgressBar) syncProgressBar.style.width = '0%';
+                    if (syncPercentage) syncPercentage.textContent = '0%';
+                    if (syncStatusText) syncStatusText.textContent = 'Starting sync...';
+                    if (syncMessage) syncMessage.textContent = 'Connecting to SIKEU API...';
+
+                    // Hide result sections
+                    if (syncResultsSection) syncResultsSection.classList.add('hidden');
+
+                    // Start the sync process
+                    isSyncing = true;
+
+                    fetch('{{ route('data.siswa.sync-from-api') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Start progress polling
+                                pollSyncProgress();
+                            } else {
+                                stopSyncProgress();
+                                showSyncError(data.error || 'Unknown error occurred');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Sync error:', error);
+                            stopSyncProgress();
+                            showSyncError(error.message);
+                        });
+                });
+            }
+
+            // Poll the server for sync progress
+            function pollSyncProgress() {
+                if (syncProgressInterval) {
+                    clearInterval(syncProgressInterval);
+                }
+
+                syncProgressInterval = setInterval(() => {
+                    if (!isSyncing) {
+                        clearInterval(syncProgressInterval);
+                        return;
+                    }
+
+                    fetch('{{ route('data.siswa.sync-progress') }}')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Update progress UI
+                            if (syncProgressBar) syncProgressBar.style.width = data.progress + '%';
+                            if (syncPercentage) syncPercentage.textContent = data.progress + '%';
+                            if (syncStatusText) syncStatusText.textContent = data.status;
+                            if (syncMessage) syncMessage.textContent = data.message;
+
+                            // Check if sync is complete
+                            if (data.status === 'completed') {
+                                stopSyncProgress();
+                                showSyncResults(data.message);
+                            } else if (data.status === 'error') {
+                                stopSyncProgress();
+                                showSyncError(data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Progress polling error:', error);
+                            // Don't stop polling on network errors
+                        });
+                }, 1000);
+            }
+
+            function stopSyncProgress() {
+                isSyncing = false;
+                if (syncProgressInterval) {
+                    clearInterval(syncProgressInterval);
+                    syncProgressInterval = null;
+                }
+
+                // Clear session data
+                fetch('{{ route('data.siswa.clear-sync-progress') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                }).catch(error => console.error('Error clearing progress:', error));
+            }
+
+            function showSyncResults(message) {
+                // Hide progress, show results
+                if (syncProgressSection) syncProgressSection.classList.add('hidden');
+                if (syncResultsSection) {
+                    syncResultsSection.classList.remove('hidden');
+                    if (syncResultsContent) {
+                        syncResultsContent.innerHTML = `<p class="text-green-700">${message}</p>`;
+                    }
+                }
+            }
+
+            function showSyncError(message) {
+                // Hide progress section
+                if (syncProgressSection) syncProgressSection.classList.add('hidden');
+
+                // Show error as toast
+                showToast('Sync failed: ' + message, 'error');
+            }
+
+            // Cancel sync
+            if (cancelSyncBtn) {
+                cancelSyncBtn.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to cancel the sync?')) {
+                        stopSyncProgress();
+                        if (syncProgressSection) syncProgressSection.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Close sync results
+            if (closeSyncResultsBtn) {
+                closeSyncResultsBtn.addEventListener('click', function() {
+                    if (syncResultsSection) syncResultsSection.classList.add('hidden');
+                    performSearch(); // Refresh data after sync
+                });
+            }
+
+            // Bulk update rekomendasi
+            const bulkUpdateRekomendasiBtn = document.getElementById('bulk-update-rekomendasi');
+            if (bulkUpdateRekomendasiBtn) {
+                bulkUpdateRekomendasiBtn.addEventListener('click', function() {
+                    const checkedBoxes = document.querySelectorAll('.siswa-checkbox:checked');
+                    const ids = Array.from(checkedBoxes).map(cb => cb.value);
+                    const rekomendasi = document.getElementById('bulk-rekomendasi-select')?.value;
+
+                    if (ids.length === 0) {
+                        showToast('Please select at least one student', 'error');
+                        return;
+                    }
+
+                    if (!confirm(`Update rekomendasi for ${ids.length} students to "${rekomendasi}"?`)) {
+                        return;
+                    }
+
+                    fetch('{{ route('data.siswa.bulk-update-rekomendasi') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ids: ids,
+                                rekomendasi: rekomendasi
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast(data.message, 'success');
+                                performSearch();
+                                const selectAllCheckbox = document.getElementById('select-all');
+                                if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                                updateBulkActions();
+                            } else {
+                                showToast('Error: ' + (data.message || 'Unknown error'), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('Request failed: ' + error.message, 'error');
+                        });
+                });
+            }
+
+            // Bulk delete
+            const bulkDeleteBtn = document.getElementById('bulk-delete');
+            if (bulkDeleteBtn) {
+                bulkDeleteBtn.addEventListener('click', function() {
+                    const checkedBoxes = document.querySelectorAll('.siswa-checkbox:checked');
+                    const ids = Array.from(checkedBoxes).map(cb => cb.value);
+
+                    if (ids.length === 0) {
+                        showToast('Please select at least one student', 'error');
+                        return;
+                    }
+
+                    if (!confirm(`Delete ${ids.length} selected students? This action cannot be undone.`)) {
+                        return;
+                    }
+
+                    fetch('{{ route('data.siswa.bulk-delete') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ids: ids
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast(data.message, 'success');
+                                performSearch();
+                                const selectAllCheckbox = document.getElementById('select-all');
+                                if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                                updateBulkActions();
+                            } else {
+                                showToast('Error: ' + (data.message || 'Unknown error'), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showToast('Request failed: ' + error.message, 'error');
+                        });
+                });
+            }
+
+            // Clear selection
+            const clearSelectionBtn = document.getElementById('clear-selection');
+            if (clearSelectionBtn) {
+                clearSelectionBtn.addEventListener('click', function() {
+                    const checkboxes = document.querySelectorAll('.siswa-checkbox, #select-all');
+                    checkboxes.forEach(checkbox => checkbox.checked = false);
+                    updateBulkActions();
+                });
+            }
+
+            function updateBulkActions() {
+                const checkedCount = document.querySelectorAll('.siswa-checkbox:checked').length;
+                const selectedCount = document.getElementById('selected-count');
+                const bulkActions = document.getElementById('bulk-actions');
+
+                if (selectedCount) selectedCount.textContent = checkedCount;
+
+                if (bulkActions) {
+                    if (checkedCount > 0) {
+                        bulkActions.classList.remove('hidden');
+                    } else {
+                        bulkActions.classList.add('hidden');
+                    }
+                }
+            }
+
+            // Handle pagination clicks via AJAX
+            document.addEventListener('click', function(e) {
+                // Cari tombol pagination yang diklik
+                const paginationLink = e.target.closest('#pagination-container a');
+
+                if (paginationLink) {
+                    e.preventDefault();
+
+                    // Ambil URL pagination
+                    const url = new URL(paginationLink.href);
+                    const page = url.searchParams.get('page');
+
+                    if (page) {
+                        // Gunakan formData yang sama dengan filter saat ini
+                        const formData = new FormData();
+
+                        // Tambahkan semua filter yang aktif
+                        const filters = {
+                            search: searchInput?.value || '',
+                            status_pembayaran: paymentFilter?.value || '',
+                            rekomendasi: rekomendasiFilter?.value || '',
+                            kelas_id: kelasFilter?.value || '',
+                            page: page // Tambahkan parameter page ke request
+                        };
+
+                        Object.keys(filters).forEach(key => {
+                            if (filters[key]) formData.append(key, filters[key]);
+                        });
+
+                        showLoading();
+
+                        // Gunakan endpoint yang sama untuk pagination
+                        fetch('{{ route('data.siswa.search') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                        .content,
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: formData
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    // Update konten dengan hasil pagination
+                                    const tableContainer = document.getElementById('table-container');
+                                    const paginationContainer = document.getElementById(
+                                        'pagination-container');
+
+                                    if (tableContainer && data.data.table) {
+                                        tableContainer.innerHTML = data.data.table;
+                                        attachBulkEventListeners(); // Pasang kembali listener
+                                    }
+
+                                    if (paginationContainer && data.data.pagination) {
+                                        paginationContainer.innerHTML = data.data.pagination;
+                                    }
+
+                                    // Update stats dan counts
+                                    if (data.data.stats) {
+                                        updateStats(data.data.stats);
+                                    }
+
+                                    // Update URL di browser tanpa reload (opsional)
+                                    const currentUrl = new URL(window.location.href);
+                                    currentUrl.searchParams.set('page', page);
+                                    window.history.pushState({}, '', currentUrl.toString());
+                                } else {
+                                    showToast('Pagination failed: ' + (data.error || 'Unknown error'),
+                                        'error');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Pagination error:', error);
+                                showToast('Pagination request failed: ' + error.message, 'error');
+                            })
+                            .finally(() => {
+                                hideLoading();
+                            });
+                    }
+                }
+            });
+
+            // Fungsi untuk update statistik
+            function updateStats(stats) {
+                const showingCount = document.getElementById('showing-count');
+                const totalCount = document.getElementById('total-count');
+
+                if (showingCount) showingCount.textContent = stats.showing || 0;
+                if (totalCount) totalCount.textContent = stats.total || 0;
+            }
         });
     </script>
+
+
 @endsection

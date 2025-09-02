@@ -120,7 +120,7 @@
                             </div>
                         </a>
 
-                        <a href="{{ route('data.siswa.create') }}"
+                        {{-- <a href="{{ route('data.siswa.create') }}"
                             class="bg-green-50 hover:bg-green-100 rounded-lg p-4 transition-colors">
                             <div class="flex items-center space-x-3">
                                 <i class="fa-solid fa-user-plus text-green-600"></i>
@@ -134,7 +134,7 @@
                                 <i class="fa-solid fa-door-open text-purple-600"></i>
                                 <span class="text-purple-800 font-medium">Add New Kelas</span>
                             </div>
-                        </a>
+                        </a> --}}
                     @endif
 
                     @if (Auth::user() && method_exists(Auth::user(), 'hasRole') && Auth::user()->hasRole('admin'))

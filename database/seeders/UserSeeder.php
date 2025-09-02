@@ -12,125 +12,179 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        echo "🚀 Starting seeding process...\n\n";
+        echo "🚀 Starting Pure Spatie Role System seeding (Laravel 12)...\n\n";
 
-        // ===== BUAT ADMIN (Tabel Users - Hanya Role Admin) =====
+        // Pastikan roles sudah ada
+        $this->call(RoleSeeder::class);
+
+        // ===== ADMIN USERS (Web Guard - Tabel Users) =====
+        echo "👨‍💼 Creating Admin Users (web guard - users table)...\n";
+
         $admin = User::updateOrCreate(
             ['email' => 'admin@skadaexam.test'],
             [
-                'name' => 'Super Admin',
+                'name' => 'Super Administrator',
                 'password' => Hash::make('password123'),
-                'role' => 'admin',
+                'email_verified_at' => now(),
+                // NO native 'role' field
             ]
         );
-        echo "✅ Admin created: {$admin->email} (Role: {$admin->role})\n";
 
-        // ===== BUAT GURU dengan Berbagai Role =====
-        $guruRoles = [
+        // ONLY Spatie role dengan web guard
+        $admin->assignRole('admin');
+
+        echo "   ✅ Admin created: {$admin->email}\n";
+        echo "      👤 Name: {$admin->name}\n";
+        echo "      🔐 Spatie Role: " . $admin->roles->pluck('name')->implode(', ') . "\n";
+        echo "      🛡️  Guard: web\n\n";
+
+        // ===== GURU PROFILES (Guru Guard - Tabel Guru) =====
+        echo "👨‍🏫 Creating Guru Profiles (guru guard - guru table)...\n";
+
+        $guruList = [
             [
-                'email' => 'data@skadaexam.test',
-                'nama' => 'Admin Data',
+                'email' => 'data.guru@skadaexam.test',
+                'nama' => 'Bu Data Management',
                 'nip' => '1001',
-                'role' => 'data'
+                'spatie_role' => 'data'
             ],
             [
-                'email' => 'ruangan@skadaexam.test',
-                'nama' => 'Admin Ruangan',
+                'email' => 'naskah.guru@skadaexam.test',
+                'nama' => 'Pak Naskah Management',
                 'nip' => '1002',
-                'role' => 'ruangan'
+                'spatie_role' => 'naskah'
             ],
             [
-                'email' => 'pengawas@skadaexam.test',
-                'nama' => 'Guru Pengawas',
+                'email' => 'ruangan.guru@skadaexam.test',
+                'nama' => 'Bu Ruangan Management',
                 'nip' => '1003',
-                'role' => 'pengawas'
+                'spatie_role' => 'ruangan'
             ],
             [
-                'email' => 'koordinator@skadaexam.test',
-                'nama' => 'Koordinator Ujian',
+                'email' => 'pengawas.guru@skadaexam.test',
+                'nama' => 'Pak Pengawas Ujian',
                 'nip' => '1004',
-                'role' => 'koordinator'
+                'spatie_role' => 'pengawas'
             ],
             [
-                'email' => 'naskah@skadaexam.test',
-                'nama' => 'Admin Naskah',
+                'email' => 'koordinator.guru@skadaexam.test',
+                'nama' => 'Bu Koordinator Ujian',
                 'nip' => '1005',
-                'role' => 'naskah'
+                'spatie_role' => 'koordinator'
             ],
             [
-                'email' => 'guru@skadaexam.test',
-                'nama' => 'Guru Biasa',
+                'email' => 'guru.default@skadaexam.test',
+                'nama' => 'Pak Guru Biasa',
                 'nip' => '1006',
-                'role' => 'guru'
-            ],
+                'spatie_role' => 'guru'
+            ]
         ];
 
-        foreach ($guruRoles as $guruData) {
+        foreach ($guruList as $guruData) {
             $guru = Guru::updateOrCreate(
                 ['email' => $guruData['email']],
                 [
                     'nama' => $guruData['nama'],
                     'nip' => $guruData['nip'],
                     'password' => Hash::make('password123'),
-                    'role' => $guruData['role'],
+                    // NO native 'role' field
                 ]
             );
-            echo "✅ Guru created: {$guru->email} (Role: {$guru->role})\n";
+
+            // ONLY Spatie role dengan guru guard
+            $guru->assignRole($guruData['spatie_role']);
+
+            echo "   ✅ Guru created: {$guru->email}\n";
+            echo "      👤 Nama: {$guru->nama} (NIP: {$guru->nip})\n";
+            echo "      🔐 Spatie Role: " . $guru->roles->pluck('name')->implode(', ') . "\n";
+            echo "      🛡️  Guard: guru\n\n";
         }
 
-        // ===== BUAT SISWA (Tanpa Role) =====
-        $siswaData = [
+        // ===== SISWA PROFILES (Siswa Guard - Tabel Siswa) =====
+        echo "👨‍🎓 Creating Siswa Profiles (siswa guard - siswa table)...\n";
+
+        // Get kelas IDs from database
+        $kelasXIIIPA1 = \App\Models\Kelas::where('nama_kelas', 'XII IPA 1')->first();
+        $kelasXIIIPS1 = \App\Models\Kelas::where('nama_kelas', 'XII IPS 1')->first();
+        $kelasXIIIPA2 = \App\Models\Kelas::where('nama_kelas', 'XII IPA 2')->first();
+
+        $siswaList = [
             [
                 'email' => 'siswa1@skadaexam.test',
                 'idyayasan' => 'SMA001',
-                'first_name' => 'Ahmad',
-                'last_name' => 'Siswa',
-                'kelas' => '12-IPA-1',
-                'pembayaran' => 'lunas'
+                'nama' => 'Ahmad Siswa Pertama',
+                'kelas_id' => $kelasXIIIPA1 ? $kelasXIIIPA1->id : null,
+                'status_pembayaran' => 'Lunas'
             ],
             [
                 'email' => 'siswa2@skadaexam.test',
                 'idyayasan' => 'SMA002',
-                'first_name' => 'Siti',
-                'last_name' => 'Siswi',
-                'kelas' => '12-IPS-1',
-                'pembayaran' => 'belum lunas'
+                'nama' => 'Siti Siswi Kedua',
+                'kelas_id' => $kelasXIIIPS1 ? $kelasXIIIPS1->id : null,
+                'status_pembayaran' => 'Belum Lunas'
             ],
+            [
+                'email' => 'siswa3@skadaexam.test',
+                'idyayasan' => 'SMA003',
+                'nama' => 'Budi Siswa Ketiga',
+                'kelas_id' => $kelasXIIIPA2 ? $kelasXIIIPA2->id : null,
+                'status_pembayaran' => 'Lunas'
+            ]
         ];
 
-        foreach ($siswaData as $siswaInfo) {
+        foreach ($siswaList as $siswaData) {
             $siswa = Siswa::updateOrCreate(
-                ['email' => $siswaInfo['email']],
+                ['email' => $siswaData['email']],
                 [
-                    'idyayasan' => $siswaInfo['idyayasan'],
-                    'first_name' => $siswaInfo['first_name'],
-                    'last_name' => $siswaInfo['last_name'],
-                    'kelas' => $siswaInfo['kelas'],
-                    'pembayaran' => $siswaInfo['pembayaran'],
+                    'idyayasan' => $siswaData['idyayasan'],
+                    'nama' => $siswaData['nama'],
+                    'kelas_id' => $siswaData['kelas_id'],
+                    'status_pembayaran' => $siswaData['status_pembayaran'],
                     'password' => Hash::make('password123'),
                 ]
             );
-            echo "✅ Siswa created: {$siswa->email} ({$siswa->full_name})\n";
+
+            // ONLY Spatie role dengan siswa guard
+            $siswa->assignRole('siswa');
+
+            echo "   ✅ Siswa created: {$siswa->email}\n";
+            echo "      👤 Nama: {$siswa->nama} (ID: {$siswa->idyayasan})\n";
+            echo "      📚 Kelas: " . ($siswa->kelas ? $siswa->kelas->nama_kelas : 'Tanpa Kelas') . "\n";
+            echo "      💰 Status: {$siswa->status_pembayaran}\n";
+            echo "      🔐 Spatie Role: " . $siswa->roles->pluck('name')->implode(', ') . "\n";
+            echo "      🛡️  Guard: siswa\n\n";
         }
 
-        echo "\n🎉 Seeding completed successfully!\n\n";
+        echo "🎉 Pure Spatie Role System seeding completed!\n\n";
+        $this->showLoginCredentials();
+    }
 
-        echo "📋 LOGIN CREDENTIALS:\n";
-        echo "══════════════════════════════════════════════════\n";
-        echo "👨‍💼 ADMIN (Login: /login)\n";
-        echo "   📧 admin@skadaexam.test (password: password123)\n\n";
+    private function showLoginCredentials()
+    {
+        echo "📋 LOGIN CREDENTIALS (Pure Spatie - Laravel 12):\n";
+        echo "══════════════════════════════════════════════════\n\n";
 
-        echo "👨‍🏫 GURU (Login: /login/guru)\n";
-        echo "   📊 data@skadaexam.test → /guru/data/dashboard\n";
-        echo "   🏢 ruangan@skadaexam.test → /guru/ruangan/dashboard\n";
-        echo "   👮 pengawas@skadaexam.test → /guru/pengawas/dashboard\n";
-        echo "   🎯 koordinator@skadaexam.test → /guru/koordinator/dashboard\n";
-        echo "   📝 naskah@skadaexam.test → /guru/naskah/dashboard\n";
-        echo "   👨‍🏫 guru@skadaexam.test → /guru/dashboard\n";
-        echo "   (All password: password123)\n\n";
+        echo "🌐 ADMIN LOGIN (/login - web guard):\n";
+        echo "   👑 admin@skadaexam.test → Admin Panel (manage guru)\n";
+        echo "   📍 Dashboard: /admin\n\n";
 
-        echo "👨‍🎓 SISWA (Login: /login/siswa)\n";
-        echo "   📧 siswa1@skadaexam.test (password: password123)\n";
-        echo "   📧 siswa2@skadaexam.test (password: password123)\n\n";
+        echo "👨‍🏫 GURU LOGIN (/login/guru - guru guard):\n";
+        echo "   📊 data.guru@skadaexam.test → Data Management\n";
+        echo "   📝 naskah.guru@skadaexam.test → Naskah Management\n";
+        echo "   🏢 ruangan.guru@skadaexam.test → Ruangan Management\n";
+        echo "   👮 pengawas.guru@skadaexam.test → Pengawas Dashboard\n";
+        echo "   🎯 koordinator.guru@skadaexam.test → Koordinator Dashboard\n";
+        echo "   👨‍🏫 guru.default@skadaexam.test → Basic Guru Dashboard\n\n";
+
+        echo "👨‍🎓 SISWA LOGIN (/login/siswa - siswa guard):\n";
+        echo "   📚 siswa1@skadaexam.test → Student Dashboard\n\n";
+
+        echo "🔑 All passwords: password123\n\n";
+
+        echo "🎯 PURE SPATIE SYSTEM:\n";
+        echo "   ✅ No native role fields\n";
+        echo "   ✅ Only Spatie Permission roles\n";
+        echo "   ✅ Multi-guard authentication\n";
+        echo "   ✅ Laravel 12 compatible middleware\n\n";
     }
 }

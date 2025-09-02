@@ -1,5 +1,8 @@
-<!-- filepath: resources\views\features\pengawas\dashboard.blade.php -->
-@extends('layouts.dashboard')
+@extends('layouts.admin')
+
+@section('title', 'Pengawas Dashboard')
+@section('page-title', 'Pengawas Dashboard')
+@section('page-description', 'Buat Token, Monitor Ujian, dan Laporan')
 
 @section('content')
     <div>

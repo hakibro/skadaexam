@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Guru;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use App\Imports\GuruImport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -42,10 +43,15 @@ class GuruController extends Controller
             'role' => 'required|in:guru,data,naskah,pengawas,koordinator,ruangan',
         ]);
 
-        // Hash password sebelum save
-        $validated['password'] = Hash::make($validated['password']);
+        $guru = Guru::create([
+            'nama' => $validated['nama'],
+            'nip' => $validated['nip'] ?? null,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
 
-        Guru::create($validated);
+        // Assign role ke guru (Spatie)
+        $guru->assignRole($validated['role']);
 
         return redirect()->route('data.guru.index')
             ->with('success', 'Guru berhasil ditambahkan!');
@@ -91,6 +97,8 @@ class GuruController extends Controller
 
         $guru->update($validated);
 
+        $guru->syncRoles([$validated['role']]);
+
         return redirect()->route('data.guru.index')
             ->with('success', 'Guru "' . $guru->nama . '" berhasil diupdate!');
     }
@@ -124,15 +132,20 @@ class GuruController extends Controller
         ]);
 
         try {
+            // Create an instance of the import class
             $import = new GuruImport();
+
+            // Import the file
             Excel::import($import, $request->file('file'));
 
+            // Get import statistics
             $successCount = $import->getSuccessCount();
             $errorCount = $import->getErrorCount();
             $errors = $import->getErrors();
 
+            // Handle partial success
             if ($errorCount > 0) {
-                return redirect()->back()
+                return redirect()->route('data.guru.import')
                     ->with('importResults', [
                         'success' => $successCount,
                         'errors' => $errorCount,
@@ -141,10 +154,11 @@ class GuruController extends Controller
                     ->with('warning', "Import completed with issues: {$successCount} successful, {$errorCount} failed.");
             }
 
+            // Full success
             return redirect()->route('data.guru.index')
                 ->with('success', "Successfully imported {$successCount} guru records!");
         } catch (\Exception $e) {
-            return redirect()->back()
+            return redirect()->route('data.guru.import')
                 ->with('error', 'Import failed: ' . $e->getMessage());
         }
     }
@@ -187,42 +201,110 @@ class GuruController extends Controller
      */
     public function search(Request $request)
     {
-        try {
-            $query = $request->get('q', '');
-            $perPage = $request->get('per_page', 25);
+        // Debug log untuk troubleshooting
+        Log::info('Guru search called with params: ' . json_encode($request->all()));
 
-            $gurus = Guru::query()
-                ->when($query, function ($q) use ($query) {
-                    $q->where('nama', 'LIKE', "%{$query}%")
-                        ->orWhere('nip', 'LIKE', "%{$query}%")
-                        ->orWhere('email', 'LIKE', "%{$query}%")
-                        ->orWhere('role', 'LIKE', "%{$query}%");
-                })
-                ->latest()
-                ->paginate($perPage);
+        // Get filter parameters
+        $query = $request->get('q', '');
+        $perPage = $request->get('per_page', 10);
+        $roleFilter = $request->get('role', '');
 
-            // For AJAX requests, return JSON with HTML
-            if ($request->expectsJson() || $request->ajax()) {
-                $tableHtml = view('features.data.guru.partials.table', compact('gurus'))->render();
-                $paginationHtml = view('features.data.guru.partials.pagination', compact('gurus'))->render();
+        // Build query
+        $gurusQuery = Guru::query();
 
-                return response()->json([
-                    'success' => true,
-                    'html' => $tableHtml,
-                    'pagination' => $paginationHtml,
-                    'count' => $gurus->total(),
-                    'showing' => $gurus->count()
-                ]);
-            }
+        // Apply search filter if provided
+        if (!empty($query)) {
+            $gurusQuery->where(function ($q) use ($query) {
+                $q->where('nama', 'like', "%{$query}%")
+                    ->orWhere('nip', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
+            });
+        }
 
-            // For regular requests, return view
-            return view('features.data.guru.index', compact('gurus'));
-        } catch (\Exception $e) {
-            \Log::error('Guru search error: ' . $e->getMessage());
+        // Apply role filter if provided
+        if (!empty($roleFilter)) {
+            $gurusQuery->whereHas('roles', function ($q) use ($roleFilter) {
+                $q->where('name', $roleFilter);
+            });
+        }
+
+        // Execute query with pagination
+        $gurus = $gurusQuery->orderBy('created_at', 'desc')->paginate($perPage);
+        $gurus->appends($request->all());
+
+        // Handle AJAX request
+        if ($request->ajax() || $request->wantsJson()) {
+            $tableHtml = view('features.data.guru.partials.table', compact('gurus'))->render();
+            $paginationHtml = view('features.data.guru.partials.pagination', compact('gurus'))->render();
 
             return response()->json([
+                'success' => true,
+                'html' => $tableHtml,
+                'pagination' => $paginationHtml,
+                'total' => $gurus->total(),
+                'current_page' => $gurus->count(),
+                'per_page' => $gurus->perPage()
+            ]);
+        }
+
+        // Handle regular request
+        return view('features.data.guru.index', compact('gurus'));
+    }
+
+    /**
+     * Bulk delete selected gurus
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:guru,id'
+        ]);
+
+        try {
+            $count = count($request->ids);
+            Guru::whereIn('id', $request->ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} guru berhasil dihapus."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
                 'success' => false,
-                'message' => 'Search failed: ' . $e->getMessage()
+                'message' => "Gagal menghapus guru: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk update role for selected gurus
+     */
+    public function bulkUpdateRole(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:guru,id',
+            'role' => 'required|in:guru,data,naskah,pengawas,koordinator,ruangan'
+        ]);
+
+        try {
+            $count = 0;
+
+            foreach ($request->ids as $id) {
+                $guru = Guru::findOrFail($id);
+                $guru->syncRoles([$request->role]);
+                $count++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Role untuk {$count} guru berhasil diupdate."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => "Gagal mengupdate role: " . $e->getMessage()
             ], 500);
         }
     }

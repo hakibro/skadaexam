@@ -23,6 +23,16 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @if (config('app.debug'))
+        <!-- Debug Reload Detector -->
+        <script src="{{ asset('js/debug-reload.js') }}"></script>
+        <!-- Interval Patch -->
+        <script src="{{ asset('js/interval-patch.js') }}"></script>
+    @endif
+
+    <!-- Navigation Fixes -->
+    <script src="{{ asset('js/sidebar-navigation-fix.js') }}"></script>
 </head>
 
 <body class="font-sans antialiased">

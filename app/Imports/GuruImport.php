@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Imports;
 
 use App\Models\Guru;
@@ -8,86 +9,83 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Validators\Failure;
 
-class GuruImport implements ToCollection, WithHeadingRow
+class GuruImport implements
+    ToCollection,
+    WithHeadingRow,
+    WithValidation,
+    SkipsOnError,
+    SkipsOnFailure
 {
-    protected $errors = [];
-    protected $successCount = 0;
-    protected $errorCount = 0;
+    private $successCount = 0;
+    private $errorCount = 0;
+    private $errors = [];
 
-    public function collection(Collection $collection)
+    public function collection(Collection $rows)
     {
-        foreach ($collection as $row) {
-            $rowData = $this->prepareRowData($row);
+        $validRoles = array_keys(Guru::getRoleOptions());
 
-            // Validate each row
-            $validator = $this->validateRow($rowData);
-
-            if ($validator->fails()) {
-                $this->errorCount++;
-                $this->errors[] = [
-                    'row' => $this->getCurrentRowNumber($collection, $row),
-                    'errors' => $validator->errors()->all(),
-                    'data' => $rowData
-                ];
-                continue;
-            }
-
+        foreach ($rows as $index => $row) {
             try {
-                // Create guru if validation passes
-                Guru::create([
-                    'nama' => $rowData['nama'],
-                    'nip' => $rowData['nip'],
-                    'email' => $rowData['email'],
-                    'password' => Hash::make($rowData['password']),
-                    'role' => $rowData['role'],
+                // Create guru
+                $guru = Guru::create([
+                    'nama' => $row['nama'],
+                    'nip' => $row['nip'] ?? null,
+                    'email' => $row['email'],
+                    'password' => Hash::make($row['password']),
                 ]);
+
+                // Assign role
+                $role = $row['role'];
+                if (in_array($role, $validRoles)) {
+                    $guru->assignRole($role);
+                } else {
+                    $guru->assignRole('guru'); // Default role
+                }
 
                 $this->successCount++;
             } catch (\Exception $e) {
                 $this->errorCount++;
                 $this->errors[] = [
-                    'row' => $this->getCurrentRowNumber($collection, $row),
-                    'errors' => ['Database error: ' . $e->getMessage()],
-                    'data' => $rowData
+                    'row' => $index + 2, // +2 for heading row and 0-index
+                    'errors' => [$e->getMessage()]
                 ];
             }
         }
     }
 
-    protected function prepareRowData($row)
+    public function rules(): array
     {
         return [
-            'nama' => trim($row['nama'] ?? ''),
-            'nip' => trim($row['nip'] ?? ''),
-            'email' => trim($row['email'] ?? ''),
-            'password' => trim($row['password'] ?? ''),
-            'role' => strtolower(trim($row['role'] ?? 'guru')),
+            'nama' => 'required|string|max:255',
+            'email' => 'required|email|unique:guru,email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|string',
         ];
     }
 
-    protected function validateRow($data)
+    public function onError(\Throwable $e)
     {
-        return Validator::make($data, [
-            'nama' => 'required|string|max:255',
-            'nip' => 'nullable|string|unique:guru,nip',
-            'email' => 'required|email|unique:guru,email',
-            'password' => 'required|string|min:6',
-            'role' => 'required|in:guru,data,naskah,pengawas,koordinator,ruangan',
-        ]);
+        $this->errorCount++;
+        $this->errors[] = [
+            'row' => 'Unknown',
+            'errors' => [$e->getMessage()]
+        ];
     }
 
-    protected function getCurrentRowNumber($collection, $currentRow)
+    public function onFailure(Failure ...$failures)
     {
-        return $collection->search(function ($item) use ($currentRow) {
-            return $item === $currentRow;
-        }) + 2; // +2 because of 1-based indexing and header row
-    }
-
-    public function getErrors()
-    {
-        return $this->errors;
+        foreach ($failures as $failure) {
+            $this->errorCount++;
+            $this->errors[] = [
+                'row' => $failure->row(),
+                'errors' => $failure->errors()
+            ];
+        }
     }
 
     public function getSuccessCount()
@@ -98,5 +96,10 @@ class GuruImport implements ToCollection, WithHeadingRow
     public function getErrorCount()
     {
         return $this->errorCount;
+    }
+
+    public function getErrors()
+    {
+        return $this->errors;
     }
 }

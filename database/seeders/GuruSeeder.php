@@ -11,67 +11,85 @@ class GuruSeeder extends Seeder
 {
     public function run()
     {
-        // ======================
-        // 1. Buat role jika belum ada
-        // ======================
+        echo "👨‍🏫 Starting Guru Profile seeding...\n\n";
 
-
-        $roles = ['admin', 'data', 'ruangan', 'pengawas', 'koordinator', 'naskah'];
-
-        foreach ($roles as $role) {
-            Role::firstOrCreate(
-                ['name' => $role, 'guard_name' => 'guru'] // pastikan guard_name 'guru'
-            );
-        }
-
+        // Note: Roles should already be created by UserSeeder->RoleSeeder
 
         // ======================
-        // 2. Buat data guru
+        // Buat Guru Profiles dengan berbagai role
         // ======================
 
         $guruList = [
             [
-                'nama' => 'Pak Budi',
-                'nip' => '1987654321',
-                'email' => 'budi@guru.com',
-                'password' => Hash::make('password123'),
-                'role' => 'admin',
+                'nama' => 'Pak Budi Santoso',
+                'nip' => '198765001',
+                'email' => 'budi.admin@guru.skada.test',
+                'role' => 'koordinator', // Changed from 'admin' to 'koordinator' for guru guard
+                'description' => 'Koordinator Ujian - Full Access'
             ],
             [
-                'nama' => 'Bu Siti',
-                'nip' => '1987654322',
-                'email' => 'siti@guru.com',
-                'password' => Hash::make('password123'),
+                'nama' => 'Bu Siti Nurhaliza',
+                'nip' => '198765002',
+                'email' => 'siti.data@guru.skada.test',
                 'role' => 'data',
+                'description' => 'Data Management Specialist'
             ],
             [
-                'nama' => 'Pak Andi',
-                'nip' => '1987654323',
-                'email' => 'andi@guru.com',
-                'password' => Hash::make('password123'),
+                'nama' => 'Pak Andi Wijaya',
+                'nip' => '198765003',
+                'email' => 'andi.pengawas@guru.skada.test',
                 'role' => 'pengawas',
+                'description' => 'Pengawas Ujian'
             ],
             [
-                'nama' => 'Bu Rina',
-                'nip' => '1987654324',
-                'email' => 'rina@guru.com',
-                'password' => Hash::make('password123'),
+                'nama' => 'Bu Rina Puspitasari',
+                'nip' => '198765004',
+                'email' => 'rina.naskah@guru.skada.test',
                 'role' => 'naskah',
+                'description' => 'Pengelola Naskah Soal'
             ],
+            [
+                'nama' => 'Pak Dedi Setiawan',
+                'nip' => '198765005',
+                'email' => 'dedi.koordinator@guru.skada.test',
+                'role' => 'koordinator',
+                'description' => 'Koordinator Ujian'
+            ],
+            [
+                'nama' => 'Bu Maya Indira',
+                'nip' => '198765006',
+                'email' => 'maya.ruangan@guru.skada.test',
+                'role' => 'ruangan',
+                'description' => 'Pengelola Ruangan'
+            ]
         ];
 
         foreach ($guruList as $guruData) {
-            $guru = Guru::firstOrCreate(
+            // Create or update guru (remove the 'role' field from database creation)
+            $guru = Guru::updateOrCreate(
                 ['email' => $guruData['email']],
                 [
                     'nama' => $guruData['nama'],
                     'nip' => $guruData['nip'],
-                    'password' => $guruData['password'],
+                    'password' => Hash::make('password123'),
                 ]
             );
 
-            // Assign role
-            $guru->assignRole($guruData['role']);
+            // Assign Spatie role dengan guru guard
+            if (!$guru->hasRole($guruData['role'])) {
+                $guru->assignRole($guruData['role']);
+            }
+
+            echo "   ✅ Guru Profile: {$guru->nama}\n";
+            echo "      📧 Email: {$guru->email}\n";
+            echo "      🆔 NIP: {$guru->nip}\n";
+            echo "      🔐 Spatie Roles: " . $guru->roles->pluck('name')->implode(', ') . "\n";
+            echo "      📝 Description: {$guruData['description']}\n";
+            echo "      🛡️  Guard: guru\n\n";
         }
+
+        echo "✨ Guru profiles created successfully!\n";
+        echo "🔗 Login URL: /login/guru\n";
+        echo "🔑 All passwords: password123\n\n";
     }
 }
