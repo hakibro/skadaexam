@@ -81,7 +81,7 @@ class EnrollmentUjianController extends Controller
     {
         $request->validate([
             'jadwal_ujian_id' => 'required|exists:jadwal_ujians,id',
-            'sesi_ujian_id' => 'required|exists:sesi_ujians,id',
+            'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
             'siswa_id' => 'required|exists:siswas,id',
             'catatan' => 'nullable|string|max:255',
         ]);
@@ -89,9 +89,7 @@ class EnrollmentUjianController extends Controller
         try {
             // Check if student is already enrolled in this exam schedule
             $existingEnrollment = EnrollmentUjian::where('siswa_id', $request->siswa_id)
-                ->whereHas('sesiUjian.jadwalUjian', function ($query) use ($request) {
-                    $query->where('jadwal_ujians.id', $request->jadwal_ujian_id);
-                })
+                ->where('jadwal_ujian_id', $request->jadwal_ujian_id)
                 ->first();
 
             if ($existingEnrollment) {
@@ -104,7 +102,8 @@ class EnrollmentUjianController extends Controller
             // Create enrollment
             EnrollmentUjian::create([
                 'siswa_id' => $request->siswa_id,
-                'sesi_ujian_id' => $request->sesi_ujian_id,
+                'jadwal_ujian_id' => $request->jadwal_ujian_id,
+                'sesi_ruangan_id' => $request->sesi_ruangan_id,
                 'status_enrollment' => 'enrolled',
                 'status_kehadiran' => 'belum_hadir',
                 'token_login' => $this->generateUniqueToken(),
@@ -128,7 +127,7 @@ class EnrollmentUjianController extends Controller
      */
     public function show(EnrollmentUjian $enrollmentUjian)
     {
-        $enrollment = $enrollmentUjian->load(['siswa.kelas', 'sesiUjian.jadwalUjian.mapel', 'hasilUjian']);
+        $enrollment = $enrollmentUjian->load(['siswa.kelas', 'sesiRuangan', 'jadwalUjian.mapel', 'hasilUjian']);
 
         return view('features.naskah.enrollment_ujian.show', compact('enrollment'));
     }
@@ -142,12 +141,12 @@ class EnrollmentUjianController extends Controller
 
         // Get all sessions for the same jadwal ujian
         $jadwalId = $enrollment->jadwal_ujian_id;
-        
+
         $sesiRuangans = SesiRuangan::whereHas('beritaAcaraUjian', function ($query) use ($jadwalId) {
             $query->where('jadwal_ujian_id', $jadwalId);
         })
-        ->orderBy('nama_sesi')
-        ->get();
+            ->orderBy('nama_sesi')
+            ->get();
 
         return view('features.naskah.enrollment_ujian.edit', compact('enrollment', 'sesiRuangans'));
     }
@@ -168,11 +167,11 @@ class EnrollmentUjianController extends Controller
             // Ensure selected session belongs to the same jadwal_ujian
             $currentJadwalId = $enrollmentUjian->jadwal_ujian_id;
             $newSesi = SesiRuangan::findOrFail($request->sesi_ruangan_id);
-            
+
             // Memeriksa apakah sesi ruangan terkait dengan jadwal ujian yang sama
-            $relatedToSameJadwal = $newSesi->beritaAcaraUjian && 
-                                   $newSesi->beritaAcaraUjian->jadwal_ujian_id == $currentJadwalId;
-            
+            $relatedToSameJadwal = $newSesi->beritaAcaraUjian &&
+                $newSesi->beritaAcaraUjian->jadwal_ujian_id == $currentJadwalId;
+
             if (!$relatedToSameJadwal) {
                 return redirect()
                     ->route('naskah.enrollment-ujian.edit', $enrollmentUjian->id)
@@ -231,14 +230,14 @@ class EnrollmentUjianController extends Controller
         $sesiList = SesiRuangan::whereHas('beritaAcaraUjian', function ($query) use ($jadwalId) {
             $query->where('jadwal_ujian_id', $jadwalId);
         })
-        ->orderBy('waktu_mulai')
-        ->get()
-        ->map(function ($sesi) {
-            return [
-                'id' => $sesi->id,
-                'text' => $sesi->nama_sesi . ' (' . $sesi->waktu_mulai->format('d M Y H:i') . ')'
-            ];
-        });
+            ->orderBy('waktu_mulai')
+            ->get()
+            ->map(function ($sesi) {
+                return [
+                    'id' => $sesi->id,
+                    'text' => $sesi->nama_sesi . ' (' . $sesi->waktu_mulai->format('d M Y H:i') . ')'
+                ];
+            });
 
         return response()->json($sesiList);
     }

@@ -44,10 +44,10 @@ class EnrollmentService
             $sesiRuangan = SesiRuangan::whereHas('beritaAcaraUjian', function ($query) use ($jadwalUjian) {
                 $query->where('jadwal_ujian_id', $jadwalUjian->id);
             })
-            ->where('tanggal', '>=', Carbon::today())
-            ->orderBy('tanggal')
-            ->orderBy('waktu_mulai')
-            ->first();
+                ->where('tanggal', '>=', Carbon::today())
+                ->orderBy('tanggal')
+                ->orderBy('waktu_mulai')
+                ->first();
 
             if (!$sesiRuangan) {
                 $result['errors'][] = 'Tidak ada sesi ruangan yang tersedia';
@@ -98,14 +98,14 @@ class EnrollmentService
                 ]);
 
                 $enrollment->save();
-                
+
                 // Create SesiRuanganSiswa record
                 SesiRuanganSiswa::create([
                     'sesi_ruangan_id' => $sesiRuangan->id,
                     'siswa_id' => $siswa->id,
                     'status' => 'belum_hadir'
                 ]);
-                
+
                 $result['success']++;
             }
 
@@ -149,10 +149,10 @@ class EnrollmentService
         if ($existingEnrollment) {
             throw new \Exception("Siswa sudah terdaftar di jadwal ujian ini");
         }
-        
+
         // Check if sesi ruangan has capacity
         $sesiRuangan = SesiRuangan::findOrFail($sesiRuanganId);
-        
+
         if ($sesiRuangan->remainingCapacity() <= 0) {
             throw new \Exception("Kapasitas ruangan sudah penuh");
         }
@@ -168,14 +168,14 @@ class EnrollmentService
             'token_dibuat_pada' => now(),
             'catatan' => $catatan,
         ]);
-        
+
         // Create SesiRuanganSiswa record
         SesiRuanganSiswa::create([
             'sesi_ruangan_id' => $sesiRuanganId,
             'siswa_id' => $siswaId,
             'status' => 'belum_hadir'
         ]);
-        
+
         return $enrollment;
     }
 
@@ -199,7 +199,7 @@ class EnrollmentService
 
         $sesiRuangan = SesiRuangan::findOrFail($sesiRuanganId);
         $remainingCapacity = $sesiRuangan->remainingCapacity();
-        
+
         if ($remainingCapacity < count($eligibleStudents)) {
             throw new \Exception("Kapasitas ruangan tidak cukup untuk {$eligibleStudents->count()} siswa. Tersisa {$remainingCapacity} kursi.");
         }
@@ -219,14 +219,14 @@ class EnrollmentService
                     'token_login' => $this->generateUniqueToken(),
                     'token_dibuat_pada' => now(),
                 ]);
-                
+
                 // Create SesiRuanganSiswa record
                 SesiRuanganSiswa::create([
                     'sesi_ruangan_id' => $sesiRuanganId,
                     'siswa_id' => $student->id,
                     'status' => 'belum_hadir'
                 ]);
-                
+
                 $count++;
             }
 
@@ -252,7 +252,7 @@ class EnrollmentService
         }
 
         // Check if session is active
-        if (!$enrollment->sesiUjian->isActive()) {
+        if (!$enrollment->sesiRuangan || $enrollment->sesiRuangan->status !== 'berlangsung') {
             return false;
         }
 
@@ -371,9 +371,8 @@ class EnrollmentService
     public function findEligibleStudents(int $jadwalUjianId, ?array $kelasIds = null)
     {
         // Get students who aren't already enrolled
-        $enrolledStudentIds = EnrollmentUjian::whereHas('sesiUjian.jadwalUjian', function ($q) use ($jadwalUjianId) {
-            $q->where('id', $jadwalUjianId);
-        })->pluck('siswa_id');
+        $enrolledStudentIds = EnrollmentUjian::where('jadwal_ujian_id', $jadwalUjianId)
+            ->pluck('siswa_id');
 
         $query = Siswa::whereNotIn('id', $enrolledStudentIds);
 

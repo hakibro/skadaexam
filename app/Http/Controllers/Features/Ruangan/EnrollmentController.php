@@ -49,9 +49,9 @@ class EnrollmentController extends Controller
         $sesiList = SesiRuangan::whereHas('beritaAcaraUjian', function ($query) use ($jadwalId) {
             $query->where('jadwal_ujian_id', $jadwalId);
         })
-        ->orderBy('tanggal')
-        ->orderBy('waktu_mulai')
-        ->get();
+            ->orderBy('tanggal')
+            ->orderBy('waktu_mulai')
+            ->get();
 
         $kelasList = Kelas::orderBy('tingkat')
             ->orderBy('nama')
@@ -133,7 +133,7 @@ class EnrollmentController extends Controller
             ->get()
             ->pluck('enrollment')
             ->filter(); // Menghilangkan nilai null
-            
+
         $generatedCount = 0;
         foreach ($enrollments as $enrollment) {
             if ($enrollment) {
