@@ -48,6 +48,17 @@ class SesiRuanganController extends Controller
      */
     public function store(Request $request, Ruangan $ruangan)
     {
+        // Format time fields if they're coming from a template
+        if ($request->filled('template_id') && $request->template_id) {
+            // Format waktu_mulai and waktu_selesai to ensure H:i format
+            if ($request->has('waktu_mulai')) {
+                $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
+            }
+            if ($request->has('waktu_selesai')) {
+                $request->merge(['waktu_selesai' => date('H:i', strtotime($request->waktu_selesai))]);
+            }
+        }
+
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'tanggal' => 'required|date|after_or_equal:today',
@@ -146,6 +157,14 @@ class SesiRuanganController extends Controller
      */
     public function update(Request $request, Ruangan $ruangan, SesiRuangan $sesi)
     {
+        // Format time fields to ensure they're in the correct format
+        if ($request->has('waktu_mulai')) {
+            $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
+        }
+        if ($request->has('waktu_selesai')) {
+            $request->merge(['waktu_selesai' => date('H:i', strtotime($request->waktu_selesai))]);
+        }
+
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'tanggal' => 'required|date',
@@ -232,6 +251,35 @@ class SesiRuanganController extends Controller
             Log::error('Error deleting sesi: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Gagal menghapus sesi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Force delete the session including all student enrollments
+     */
+    public function forceDelete(Ruangan $ruangan, SesiRuangan $sesi)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get count of student enrollments before deletion
+            $studentCount = $sesi->sesiRuanganSiswa()->count();
+
+            // Delete all student enrollments
+            $sesi->sesiRuanganSiswa()->delete();
+
+            // Delete the session
+            $sesi->delete();
+
+            DB::commit();
+
+            return redirect()->route('ruangan.sesi.index', $ruangan->id)
+                ->with('success', "Sesi berhasil dihapus paksa beserta $studentCount data siswa");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error force deleting sesi: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus paksa sesi: ' . $e->getMessage());
         }
     }
 

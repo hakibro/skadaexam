@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="container px-6 mx-auto grid">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
+        <h2 class="my-6 text-2xl font-semibold text-gray-700">
             Terapkan Template Sesi
         </h2>
 
@@ -20,10 +20,10 @@
         </div>
 
         <!-- Template Info -->
-        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Detail Template</h3>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Detail Template</h3>
                     <div class="space-y-2 text-sm">
                         <div class="flex">
                             <span class="w-32 font-medium">Nama Template:</span>
@@ -54,14 +54,14 @@
                         @endif
                     </div>
                 </div>
-                <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
-                    <h4 class="text-base font-medium text-blue-700 dark:text-blue-300 mb-2">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="text-base font-medium text-blue-700 mb-2">
                         <i class="fas fa-info-circle mr-1"></i> Informasi
                     </h4>
-                    <p class="text-sm text-blue-600 dark:text-blue-300 mb-2">
+                    <p class="text-sm text-blue-600 mb-2">
                         Template ini akan diterapkan ke ruangan yang Anda pilih pada tanggal yang ditentukan.
                     </p>
-                    <p class="text-sm text-blue-600 dark:text-blue-300">
+                    <p class="text-sm text-blue-600">
                         Jika sesi dengan template ini sudah ada pada ruangan dan tanggal yang sama, maka sesi tersebut akan
                         diperbarui.
                     </p>
@@ -73,18 +73,18 @@
         @include('components.alert')
 
         <!-- Form -->
-        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md">
             <form action="{{ route('ruangan.template.apply', $template->id) }}" method="POST">
                 @csrf
 
                 <!-- Date Selection -->
                 <div class="mb-6">
-                    <label for="date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    <label for="date" class="block mb-2 text-sm font-medium text-gray-900">
                         Tanggal <span class="text-red-500">*</span>
                     </label>
                     <input type="date" id="date" name="date" value="{{ old('date', date('Y-m-d')) }}" required
                         min="{{ date('Y-m-d') }}"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                     @error('date')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
@@ -95,8 +95,8 @@
                     <div class="flex items-center">
                         <input id="apply_all" name="apply_all" type="checkbox" value="1"
                             {{ old('apply_all') ? 'checked' : '' }}
-                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                        <label for="apply_all" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                        <label for="apply_all" class="ml-2 text-sm font-medium text-gray-900">
                             Terapkan ke semua ruangan aktif
                         </label>
                     </div>
@@ -107,19 +107,18 @@
 
                 <!-- Room Selection -->
                 <div id="room-selection" class="mb-6">
-                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">
                         Pilih Ruangan <span class="text-red-500">*</span>
                     </label>
-                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg max-h-60 overflow-y-auto">
+                    <div class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             @foreach ($rooms as $room)
                                 <div class="flex items-start">
                                     <input id="room-{{ $room->id }}" name="ruangan_ids[]" type="checkbox"
                                         value="{{ $room->id }}"
                                         {{ is_array(old('ruangan_ids')) && in_array($room->id, old('ruangan_ids')) ? 'checked' : '' }}
-                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 mt-1">
-                                    <label for="room-{{ $room->id }}"
-                                        class="ml-2 text-sm text-gray-900 dark:text-gray-300">
+                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 mt-1">
+                                    <label for="room-{{ $room->id }}" class="ml-2 text-sm text-gray-900">
                                         <span class="font-medium">{{ $room->nama_ruangan }}</span><br>
                                         <span class="text-xs text-gray-500">{{ $room->kode_ruangan }} (Kapasitas:
                                             {{ $room->kapasitas }})</span>

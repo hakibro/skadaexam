@@ -21,7 +21,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-blue-700">Tanggal: <span
-                                class="font-bold">{{ $jadwalUjian->tanggal_mulai->format('d M Y') }} -
+                                class="font-bold">{{ $jadwalUjian->tanggal->format('d M Y') }} -
                                 {{ $jadwalUjian->tanggal_selesai->format('d M Y') }}</span></p>
                         <p class="text-sm text-blue-700">Durasi: <span class="font-bold">{{ $jadwalUjian->durasi }}
                                 menit</span></p>

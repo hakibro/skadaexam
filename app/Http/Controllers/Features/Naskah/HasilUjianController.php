@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Features\Naskah;
 use App\Http\Controllers\Controller;
 use App\Models\HasilUjian;
 use App\Models\JadwalUjian;
-use App\Models\SesiUjian;
+use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Mapel;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ class HasilUjianController extends Controller
      */
     public function index(Request $request)
     {
-        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiUjian', 'siswa.kelas']);
+        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas']);
 
         // Filter by jadwal ujian
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
@@ -91,14 +91,14 @@ class HasilUjianController extends Controller
         $hasilUjians = $query->latest()->paginate(15);
 
         // Get unique values for filters
-        $jadwalUjians = JadwalUjian::orderBy('tanggal_ujian', 'desc')->get();
-        $sesiUjians = SesiUjian::orderBy('nama_sesi')->get();
+        $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
+        $sesiRuangans = SesiRuangan::orderBy('nama_sesi')->get();
         $kelasList = \App\Models\Kelas::orderBy('name', 'asc')->get();
 
         return view('features.naskah.hasil.index', compact(
             'hasilUjians',
             'jadwalUjians',
-            'sesiUjians',
+            'sesiRuangans',
             'kelasList',
             'totalHasil',
             'completedHasil',
@@ -114,7 +114,7 @@ class HasilUjianController extends Controller
      */
     public function show(HasilUjian $hasil)
     {
-        $hasil->load(['jadwalUjian.mapel', 'jadwalUjian.bankSoal', 'sesiUjian', 'siswa.kelas']);
+        $hasil->load(['jadwalUjian.mapel', 'jadwalUjian.bankSoal', 'sesiRuangan', 'siswa.kelas']);
 
         return view('features.naskah.hasil.show', compact('hasil'));
     }
@@ -124,9 +124,9 @@ class HasilUjianController extends Controller
      */
     public function byJadwal(JadwalUjian $jadwal)
     {
-        $jadwal->load(['mapel', 'bankSoal', 'creator', 'sesiUjians']);
+        $jadwal->load(['mapel', 'bankSoal', 'creator', 'sesiRuangan']);
 
-        $hasilUjians = HasilUjian::with(['sesiUjian', 'siswa.kelas'])
+        $hasilUjians = HasilUjian::with(['sesiRuangan', 'siswa.kelas'])
             ->where('jadwal_ujian_id', $jadwal->id)
             ->get();
 
@@ -174,7 +174,7 @@ class HasilUjianController extends Controller
     /**
      * Show results by sesi ujian.
      */
-    public function bySesi(JadwalUjian $jadwal, SesiUjian $sesi)
+    public function bySesi(JadwalUjian $jadwal, SesiRuangan $sesi)
     {
         $jadwal->load(['mapel', 'bankSoal']);
         $sesi->load('jadwalUjian');
@@ -238,7 +238,7 @@ class HasilUjianController extends Controller
      */
     public function analisis(Request $request)
     {
-        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiUjian', 'siswa.kelas']);
+        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas']);
 
         // Apply filters similar to index method
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
@@ -312,7 +312,7 @@ class HasilUjianController extends Controller
         }
 
         // Get filters for the view
-        $jadwalUjians = JadwalUjian::orderBy('tanggal_ujian', 'desc')->get();
+        $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
         $kelasList = \App\Models\Kelas::orderBy('name', 'asc')->get();
 
         return view('features.naskah.hasil.analisis', compact(

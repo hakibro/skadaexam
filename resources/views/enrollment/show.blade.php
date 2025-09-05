@@ -21,7 +21,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-blue-700">Tanggal: <span
-                                class="font-bold">{{ $jadwalUjian->tanggal_mulai->format('d M Y') }} -
+                                class="font-bold">{{ $jadwalUjian->tanggal->format('d M Y') }} -
                                 {{ $jadwalUjian->tanggal_selesai->format('d M Y') }}</span></p>
                         <p class="text-sm text-blue-700">Durasi: <span class="font-bold">{{ $jadwalUjian->durasi }}
                                 menit</span></p>
@@ -84,7 +84,7 @@
                                 <select id="sesi_ujian_id" name="sesi_ujian_id" required
                                     class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">-- Pilih Sesi --</option>
-                                    @foreach ($jadwalUjian->sesiUjian as $sesi)
+                                    @foreach ($jadwalUjian->sesiRuangan as $sesi)
                                         <option value="{{ $sesi->id }}">
                                             {{ $sesi->nama }} - {{ $sesi->tanggal->format('d M Y') }}
                                             ({{ $sesi->waktu_mulai }} - {{ $sesi->waktu_selesai }})
@@ -134,7 +134,7 @@
                                     <td class="py-3 px-4">{{ $enrollment->siswa->nis }}</td>
                                     <td class="py-3 px-4">{{ $enrollment->siswa->nama }}</td>
                                     <td class="py-3 px-4">{{ $enrollment->siswa->kelas->nama ?? '-' }}</td>
-                                    <td class="py-3 px-4">{{ $enrollment->sesiUjian->nama ?? '-' }}</td>
+                                    <td class="py-3 px-4">{{ $enrollment->sesiRuangan->nama ?? '-' }}</td>
                                     <td class="py-3 px-4">{{ $enrollment->ruangan->nama ?? '-' }}</td>
                                     <td class="py-3 px-4">
                                         @if ($enrollment->token && $enrollment->token_expires_at > now() && !$enrollment->token_used_at)

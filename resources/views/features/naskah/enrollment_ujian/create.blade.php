@@ -45,7 +45,7 @@
                                     <option value="">Pilih Sesi Ujian</option>
                                     @if (old('jadwal_ujian_id') && old('sesi_ujian_id'))
                                         <option value="{{ old('sesi_ujian_id') }}" selected>
-                                            {{ App\Models\SesiUjian::find(old('sesi_ujian_id'))->nama_sesi }}</option>
+                                            {{ App\Models\sesiRuangan::find(old('sesi_ujian_id'))->nama_sesi }}</option>
                                     @endif
                                 </select>
                                 @error('sesi_ujian_id')

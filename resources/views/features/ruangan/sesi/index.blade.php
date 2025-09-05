@@ -146,14 +146,29 @@
                                                 class="text-yellow-600 hover:text-yellow-900" title="Edit">
                                                 <i class="fa-solid fa-edit"></i>
                                             </a>
-                                            <button onclick="deleteSesi({{ $sesi->id }})"
+                                            <button onclick="deleteSesi({{ $sesi->id }}, false)"
                                                 class="text-red-600 hover:text-red-900" title="Hapus">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
+
+                                            <!-- Force Delete Button -->
+                                            @if ($sesi->sesi_ruangan_siswa_count > 0)
+                                                <button onclick="deleteSesi({{ $sesi->id }}, true)"
+                                                    class="text-red-600 hover:text-red-900" title="Hapus Paksa">
+                                                    <i class="fa-solid fa-radiation"></i>
+                                                </button>
+                                            @endif
                                         </div>
 
                                         <form id="delete-sesi-{{ $sesi->id }}"
                                             action="{{ route('ruangan.sesi.destroy', [$ruangan->id, $sesi->id]) }}"
+                                            method="POST" class="hidden">
+                                            @csrf
+                                            @method('DELETE')
+                                        </form>
+
+                                        <form id="force-delete-sesi-{{ $sesi->id }}"
+                                            action="{{ route('ruangan.sesi.force-delete', [$ruangan->id, $sesi->id]) }}"
                                             method="POST" class="hidden">
                                             @csrf
                                             @method('DELETE')
@@ -186,9 +201,19 @@
 
 @section('scripts')
     <script>
-        function deleteSesi(sesiId) {
-            if (confirm('Apakah Anda yakin ingin menghapus sesi ini? Sesi yang memiliki siswa tidak dapat dihapus.')) {
-                document.getElementById('delete-sesi-' + sesiId).submit();
+        function deleteSesi(sesiId, isForceDelete = false) {
+            let confirmMessage =
+            'Apakah Anda yakin ingin menghapus sesi ini? Sesi yang memiliki siswa tidak dapat dihapus.';
+            let formId = 'delete-sesi-' + sesiId;
+
+            if (isForceDelete) {
+                confirmMessage =
+                    'PERHATIAN: Anda akan menghapus sesi ini beserta semua data siswa yang terkait! Tindakan ini TIDAK DAPAT dibatalkan dan dapat menyebabkan kerusakan data. Lanjutkan?';
+                formId = 'force-delete-sesi-' + sesiId;
+            }
+
+            if (confirm(confirmMessage)) {
+                document.getElementById(formId).submit();
             }
         }
     </script>

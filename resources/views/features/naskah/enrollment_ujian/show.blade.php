@@ -44,27 +44,27 @@
                         <table class="table table-striped">
                             <tr>
                                 <th style="width: 30%">Jadwal</th>
-                                <td>{{ $enrollment->sesiUjian->jadwalUjian->judul }}</td>
+                                <td>{{ $enrollment->sesiRuangan->jadwalUjian->judul }}</td>
                             </tr>
                             <tr>
                                 <th>Mata Pelajaran</th>
-                                <td>{{ $enrollment->sesiUjian->jadwalUjian->mapel->nama ?? 'N/A' }}</td>
+                                <td>{{ $enrollment->sesiRuangan->jadwalUjian->mapel->nama ?? 'N/A' }}</td>
                             </tr>
                             <tr>
                                 <th>Sesi</th>
-                                <td>{{ $enrollment->sesiUjian->nama_sesi }}</td>
+                                <td>{{ $enrollment->sesiRuangan->nama_sesi }}</td>
                             </tr>
                             <tr>
                                 <th>Waktu Mulai</th>
-                                <td>{{ $enrollment->sesiUjian->waktu_mulai->format('d M Y H:i') }}</td>
+                                <td>{{ $enrollment->sesiRuangan->waktu_mulai->format('d M Y H:i') }}</td>
                             </tr>
                             <tr>
                                 <th>Waktu Selesai</th>
-                                <td>{{ $enrollment->sesiUjian->waktu_selesai->format('d M Y H:i') }}</td>
+                                <td>{{ $enrollment->sesiRuangan->waktu_selesai->format('d M Y H:i') }}</td>
                             </tr>
                             <tr>
                                 <th>Durasi</th>
-                                <td>{{ $enrollment->sesiUjian->durasi_ujian }} menit</td>
+                                <td>{{ $enrollment->sesiRuangan->durasi_ujian }} menit</td>
                             </tr>
                         </table>
                     </div>

@@ -23,7 +23,7 @@
                         <option value="">-- Semua Jadwal --</option>
                         @foreach ($jadwalUjians as $jadwal)
                             <option value="{{ $jadwal->id }}" {{ request('jadwal_id') == $jadwal->id ? 'selected' : '' }}>
-                                {{ $jadwal->judul }} ({{ $jadwal->tanggal_mulai->format('d/m/Y') }})
+                                {{ $jadwal->judul }} ({{ $jadwal->tanggal->format('d/m/Y') }})
                             </option>
                         @endforeach
                     </select>
@@ -268,7 +268,7 @@
                                     {{ $student->siswa->kelas->nama_kelas }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div
-                                        class="text-sm font-bold {{ $student->nilai >= ($student->jadwalUjian->sesiUjian->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                                        class="text-sm font-bold {{ $student->nilai >= ($student->jadwalUjian->sesiRuangan->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
                                         {{ number_format($student->nilai, 2) }}
                                     </div>
                                 </td>

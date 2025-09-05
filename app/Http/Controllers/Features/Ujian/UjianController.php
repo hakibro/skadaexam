@@ -27,9 +27,9 @@ class UjianController extends Controller
     {
         $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
         $jadwalUjian = $hasilUjian->jadwalUjian;
-        $sesiUjian = $hasilUjian->sesiUjian;
+        $sesiRuangan = $hasilUjian->sesiRuangan;
 
-        return view('ujian.start', compact('hasilUjian', 'jadwalUjian', 'sesiUjian'));
+        return view('ujian.start', compact('hasilUjian', 'jadwalUjian', 'sesiRuangan'));
     }
 
     /**

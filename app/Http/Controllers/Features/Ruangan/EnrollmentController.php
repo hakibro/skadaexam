@@ -26,7 +26,7 @@ class EnrollmentController extends Controller
     public function index()
     {
         $jadwalUjianList = JadwalUjian::where('status', 'open')
-            ->orderBy('tanggal_mulai')
+            ->orderBy('tanggal')
             ->get();
 
         return view('enrollment.index', compact('jadwalUjianList'));

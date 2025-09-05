@@ -3,10 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Guru\GuruLoginController;
-use App\Http\Controllers\PanduanController;
 use App\Http\Controllers\Siswa\SiswaLoginController;
 use App\Http\Controllers\ProfileController;
 
@@ -23,15 +24,12 @@ use App\Http\Controllers\Features\Naskah\SoalController;
 use App\Http\Controllers\Features\Naskah\MapelController;
 use App\Http\Controllers\Features\Naskah\JadwalUjianController;
 use App\Http\Controllers\Features\Naskah\HasilUjianController;
+use App\Http\Controllers\Features\Naskah\PanduanController;
 use App\Http\Controllers\Features\Pengawas\DashboardController as PengawasDashboard;
 use App\Http\Controllers\Features\Koordinator\DashboardController as KoordinatorDashboard;
 use App\Http\Controllers\Features\Koordinator\AssignmentController;
 use App\Http\Controllers\Features\Koordinator\MonitoringController;
 use App\Http\Controllers\Features\Koordinator\LaporanController;
-use App\Http\Controllers\Features\Ruangan\DashboardController as RuanganDashboard;
-use App\Http\Controllers\Features\Ruangan\RuanganController;
-use App\Http\Controllers\Features\Ruangan\SesiRuanganController;
-use App\Http\Controllers\Features\Ruangan\SesiTemplateController;
 use App\Http\Controllers\Guru\DashboardController as GuruDashboard;
 use App\Http\Controllers\Siswa\DashboardController as SiswaDashboard;
 
@@ -70,7 +68,7 @@ Route::get('/dashboard', function () {
     $user = auth()->user();
 
     // Debug log untuk melihat apa yang terjadi
-    \Log::info('Dashboard redirect attempt', [
+    Log::info('Dashboard redirect attempt', [
         'user_id' => $user->id ?? null,
         'user_role' => $user->role ?? null,
         'user_email' => $user->email ?? null
@@ -322,61 +320,11 @@ Route::middleware(['auth:web', 'role:admin,koordinator'])->prefix('koordinator')
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:web', 'role:admin,ruangan'])->prefix('ruangan')->name('ruangan.')->group(function () {
-    // Dashboard
-    Route::get('/', [RuanganDashboard::class, 'index'])->name('dashboard');
+// All ruangan management routes have been moved to routes/ruangan.php file
+require __DIR__ . '/ruangan.php';
 
-    // Ruangan CRUD routes
-    Route::get('/list', [RuanganController::class, 'index'])->name('index');
-    Route::get('/create', [RuanganController::class, 'create'])->name('create');
-    Route::post('/', [RuanganController::class, 'store'])->name('store');
-    Route::get('/{ruangan}', [RuanganController::class, 'show'])->name('show');
-    Route::get('/{ruangan}/edit', [RuanganController::class, 'edit'])->name('edit');
-    Route::put('/{ruangan}', [RuanganController::class, 'update'])->name('update');
-    Route::put('/{ruangan}/update-status', [RuanganController::class, 'updateStatus'])->name('update-status');
-    Route::delete('/{ruangan}', [RuanganController::class, 'destroy'])->name('destroy');
-
-    // Bulk operations
-    Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
-
-    // Import
-    Route::get('/import', [RuanganController::class, 'import'])->name('import');
-    Route::post('/import/process', [RuanganController::class, 'processImport'])->name('import.process');
-
-    // Session Template routes
-    Route::prefix('/template')->name('template.')->group(function () {
-        Route::get('/', [SesiTemplateController::class, 'index'])->name('index');
-        Route::get('/create', [SesiTemplateController::class, 'create'])->name('create');
-        Route::post('/', [SesiTemplateController::class, 'store'])->name('store');
-        Route::get('/{template}', [SesiTemplateController::class, 'show'])->name('show');
-        Route::get('/{template}/edit', [SesiTemplateController::class, 'edit'])->name('edit');
-        Route::put('/{template}', [SesiTemplateController::class, 'update'])->name('update');
-        Route::delete('/{template}', [SesiTemplateController::class, 'destroy'])->name('destroy');
-        Route::put('/{template}/toggle-active', [SesiTemplateController::class, 'toggleActive'])->name('toggle-active');
-        Route::get('/{template}/apply', [SesiTemplateController::class, 'showApplyForm'])->name('show-apply');
-        Route::post('/{template}/apply', [SesiTemplateController::class, 'applyTemplate'])->name('apply');
-    });
-
-    // Sesi Ruangan routes
-    Route::prefix('/{ruangan}/sesi')->name('sesi.')->group(function () {
-        Route::get('/', [SesiRuanganController::class, 'index'])->name('index');
-        Route::get('/create', [SesiRuanganController::class, 'create'])->name('create');
-        Route::post('/', [SesiRuanganController::class, 'store'])->name('store');
-        Route::get('/{sesi}', [SesiRuanganController::class, 'show'])->name('show');
-        Route::get('/{sesi}/edit', [SesiRuanganController::class, 'edit'])->name('edit');
-        Route::put('/{sesi}', [SesiRuanganController::class, 'update'])->name('update');
-        Route::delete('/{sesi}', [SesiRuanganController::class, 'destroy'])->name('destroy');
-        Route::post('/{sesi}/generate-token', [SesiRuanganController::class, 'generateToken'])->name('generate-token');
-
-        // Student management for sessions
-        Route::prefix('/{sesi}/siswa')->name('siswa.')->group(function () {
-            Route::get('/', [SesiRuanganController::class, 'siswaIndex'])->name('index');
-            Route::post('/', [SesiRuanganController::class, 'siswaStore'])->name('store');
-            Route::delete('/{siswa}', [SesiRuanganController::class, 'siswaDestroy'])->name('destroy');
-            Route::delete('/', [SesiRuanganController::class, 'siswaDestroyAll'])->name('destroy-all');
-        });
-    });
-});
+// Load fallback routes to handle route name mismatches
+require __DIR__ . '/fallback.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -419,6 +367,11 @@ Route::middleware('auth:web')->group(function () {
 */
 Route::middleware('auth:web')->prefix('panduan')->name('panduan.')->group(function () {
     Route::get('/format-docx', [PanduanController::class, 'formatDocx'])->name('format-docx');
+});
+
+// Test route for ruangan/template
+Route::get('/test-ruangan-template', function () {
+    return 'This is a test route for ruangan/template';
 });
 
 /*

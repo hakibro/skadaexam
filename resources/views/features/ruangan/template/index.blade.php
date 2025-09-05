@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="container px-6 mx-auto grid">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
+        <h2 class="my-6 text-2xl font-semibold text-gray-700">
             Manajemen Template Sesi
         </h2>
 
@@ -27,7 +27,7 @@
                 <table class="w-full whitespace-no-wrap">
                     <thead>
                         <tr
-                            class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
+                            class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b bg-gray-50">
                             <th class="px-4 py-3">Kode</th>
                             <th class="px-4 py-3">Nama Template</th>
                             <th class="px-4 py-3">Waktu</th>
@@ -36,9 +36,9 @@
                             <th class="px-4 py-3 text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
+                    <tbody class="bg-white divide-y">
                         @forelse($templates as $template)
-                            <tr class="text-gray-700 dark:text-gray-400">
+                            <tr class="text-gray-700">
                                 <td class="px-4 py-3">
                                     <div class="font-semibold">{{ $template->kode_sesi }}</div>
                                 </td>
@@ -113,6 +113,18 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                        @else
+                                            <!-- Force Delete (even if used) -->
+                                            <form method="POST"
+                                                action="{{ route('ruangan.template.force-delete', $template->id) }}"
+                                                class="inline-block force-delete-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900"
+                                                    title="Hapus Paksa">
+                                                    <i class="fas fa-radiation"></i>
+                                                </button>
+                                            </form>
                                         @endif
                                     </div>
                                 </td>
@@ -142,7 +154,20 @@
                     e.preventDefault();
                     if (confirm(
                             'Yakin ingin menghapus template ini? Tindakan ini tidak dapat dibatalkan.'
-                            )) {
+                        )) {
+                        this.submit();
+                    }
+                });
+            });
+
+            // Force Delete confirmation
+            const forceDeleteForms = document.querySelectorAll('.force-delete-form');
+            forceDeleteForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    if (confirm(
+                            'PERHATIAN: Anda akan menghapus template ini beserta semua sesi ruangan yang terkait! Tindakan ini TIDAK DAPAT dibatalkan dan dapat menyebabkan kerusakan data. Lanjutkan?'
+                        )) {
                         this.submit();
                     }
                 });

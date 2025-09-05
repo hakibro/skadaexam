@@ -49,7 +49,7 @@
                     </label>
                     <input type="date" name="tanggal" id="tanggal"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        value="{{ old('tanggal', $sesi->tanggal->format('Y-m-d')) }}" required>
+                        value="{{ old('tanggal', $sesi->tanggal ? $sesi->tanggal->format('Y-m-d') : '') }}" required>
                     @error('tanggal')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -63,7 +63,7 @@
                         </label>
                         <input type="time" name="waktu_mulai" id="waktu_mulai"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            value="{{ old('waktu_mulai', \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i')) }}"
+                            value="{{ old('waktu_mulai', $sesi->waktu_mulai ? \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') : '') }}"
                             required>
                         @error('waktu_mulai')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -77,7 +77,7 @@
                         </label>
                         <input type="time" name="waktu_selesai" id="waktu_selesai"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            value="{{ old('waktu_selesai', \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i')) }}"
+                            value="{{ old('waktu_selesai', $sesi->waktu_selesai ? \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') : '') }}"
                             required>
                         @error('waktu_selesai')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -147,9 +147,11 @@
                             <p><strong>Kapasitas:</strong> {{ $ruangan->kapasitas }} orang</p>
                         </div>
                         <div>
-                            <p><strong>Jumlah Siswa:</strong> {{ $sesi->siswa_count }}</p>
-                            <p><strong>Dibuat:</strong> {{ $sesi->created_at->format('d M Y H:i') }}</p>
-                            <p><strong>Diubah:</strong> {{ $sesi->updated_at->format('d M Y H:i') }}</p>
+                            <p><strong>Jumlah Siswa:</strong> {{ $sesi->sesi_ruangan_siswa_count ?? 0 }}</p>
+                            <p><strong>Dibuat:</strong>
+                                {{ $sesi->created_at ? $sesi->created_at->format('d M Y H:i') : 'N/A' }}</p>
+                            <p><strong>Diubah:</strong>
+                                {{ $sesi->updated_at ? $sesi->updated_at->format('d M Y H:i') : 'N/A' }}</p>
                         </div>
                     </div>
                 </div>

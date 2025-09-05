@@ -87,7 +87,7 @@
                     </div>
                     <div class="bg-gray-50 px-4 py-4 sm:px-6">
                         <div class="text-sm">
-                            <a href="{{ route('naskah.jadwalujian.index') }}"
+                            <a href="{{ route('naskah.jadwal.index') }}"
                                 class="font-medium text-blue-600 hover:text-blue-500">
                                 Lihat semua <span class="sr-only">Jadwal Ujian</span>
                             </a>
@@ -114,7 +114,7 @@
                     </div>
                     <div class="bg-gray-50 px-4 py-4 sm:px-6">
                         <div class="text-sm">
-                            <a href="{{ route('naskah.hasilujian.index') }}"
+                            <a href="{{ route('naskah.hasil.index') }}"
                                 class="font-medium text-blue-600 hover:text-blue-500">
                                 Lihat semua <span class="sr-only">Hasil Ujian</span>
                             </a>
@@ -141,7 +141,7 @@
                     </div>
                     <div class="bg-gray-50 px-4 py-4 sm:px-6">
                         <div class="text-sm">
-                            <a href="{{ route('naskah.hasilujian.index') }}"
+                            <a href="{{ route('naskah.hasil.index') }}"
                                 class="font-medium text-blue-600 hover:text-blue-500">
                                 Lihat statistik <span class="sr-only">Hasil Ujian</span>
                             </a>
@@ -161,11 +161,11 @@
                         <ul class="divide-y divide-gray-200">
                             @foreach ($upcomingExams as $exam)
                                 <li>
-                                    <a href="{{ route('naskah.jadwalujian.show', $exam) }}" class="block hover:bg-gray-50">
+                                    <a href="{{ route('naskah.jadwal.show', $exam) }}" class="block hover:bg-gray-50">
                                         <div class="px-4 py-4 sm:px-6">
                                             <div class="flex items-center justify-between">
                                                 <p class="text-sm font-medium text-blue-600 truncate">
-                                                    {{ $exam->nama_ujian }}
+                                                    {{ $exam->judul }}
                                                 </p>
                                                 <div class="ml-2 flex-shrink-0 flex">
                                                     <p
@@ -183,12 +183,13 @@
                                                     <p class="mt-2 sm:mt-0 sm:ml-6 flex items-center text-sm text-gray-500">
                                                         <i
                                                             class="fa-solid fa-calendar flex-shrink-0 mr-1.5 text-gray-400"></i>
-                                                        {{ $exam->tanggal_ujian->format('d M Y') }}
+                                                        {{ $exam->tanggal->format('d M Y') }}
                                                     </p>
                                                 </div>
                                                 <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
                                                     <i class="fa-solid fa-clock flex-shrink-0 mr-1.5 text-gray-400"></i>
-                                                    {{ $exam->waktu_mulai }} - {{ $exam->waktu_selesai }}
+                                                    {{ $exam->tanggal ? $exam->tanggal->format('H:i') : 'N/A' }} -
+                                                    {{ $exam->tanggal && $exam->durasi_menit ? $exam->tanggal->copy()->addMinutes($exam->durasi_menit)->format('H:i') : 'N/A' }}
                                                 </p>
                                             </div>
                                         </div>
@@ -204,7 +205,7 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-4 sm:px-6">
                     <div class="text-sm">
-                        <a href="{{ route('naskah.jadwalujian.index') }}"
+                        <a href="{{ route('naskah.jadwal.index') }}"
                             class="font-medium text-blue-600 hover:text-blue-500">
                             Lihat semua jadwal ujian
                         </a>

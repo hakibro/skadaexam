@@ -21,7 +21,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('mapel_id');
                 $table->unsignedBigInteger('bank_soal_id');
                 $table->string('jenis_ujian', 50); // ulangan, uts, uas, remedial, etc.
-                $table->date('tanggal_ujian');
+                $table->date('tanggal');
                 $table->time('waktu_mulai');
                 $table->time('waktu_selesai');
                 $table->integer('durasi_menit');
@@ -38,7 +38,7 @@ return new class extends Migration
                 $table->foreign('bank_soal_id')->references('id')->on('bank_soal');
                 $table->foreign('created_by')->references('id')->on('users');
 
-                $table->index(['tanggal_ujian', 'status']);
+                $table->index(['tanggal', 'status']);
             });
         } else {
             // If the table exists, ensure required columns are present and add missing ones
@@ -64,7 +64,7 @@ return new class extends Migration
             // Try to add the index if it doesn't exist (might fail silently if it already exists)
             try {
                 Schema::table('jadwal_ujian', function (Blueprint $table) {
-                    $table->index(['tanggal_ujian', 'status'], 'jadwal_ujian_tanggal_status_index');
+                    $table->index(['tanggal', 'status'], 'jadwal_ujian_tanggal_status_index');
                 });
             } catch (\Exception $e) {
                 // Index likely already exists

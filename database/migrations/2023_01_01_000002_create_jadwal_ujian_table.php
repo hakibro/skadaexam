@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('judul');
             $table->foreignId('mapel_id')->constrained('mapel');
-            $table->dateTime('tanggal_mulai');
+            $table->dateTime('tanggal');
             $table->integer('durasi_menit');
             $table->text('deskripsi')->nullable();
             $table->enum('status', ['draft', 'active', 'completed', 'cancelled'])->default('draft');

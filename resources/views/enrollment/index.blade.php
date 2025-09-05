@@ -67,7 +67,7 @@
                             <tr>
                                 <td class="py-3 px-4">{{ $jadwal->nama }}</td>
                                 <td class="py-3 px-4">{{ $jadwal->mapel->nama ?? '-' }}</td>
-                                <td class="py-3 px-4">{{ $jadwal->tanggal_mulai->format('d M Y') }} -
+                                <td class="py-3 px-4">{{ $jadwal->tanggal->format('d M Y') }} -
                                     {{ $jadwal->tanggal_selesai->format('d M Y') }}</td>
                                 <td class="py-3 px-4">
                                     <span

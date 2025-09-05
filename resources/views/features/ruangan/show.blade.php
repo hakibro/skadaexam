@@ -85,11 +85,7 @@
                                 <dt class="text-sm font-medium text-gray-500">Kapasitas</dt>
                                 <dd class="mt-1 text-sm text-gray-900">{{ $ruangan->kapasitas }} orang</dd>
                             </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Jenis Ruangan</dt>
-                                <dd class="mt-1 text-sm text-gray-900 capitalize">
-                                    {{ str_replace('_', ' ', $ruangan->jenis_ruangan) }}</dd>
-                            </div>
+
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Lokasi</dt>
                                 <dd class="mt-1 text-sm text-gray-900">{{ $ruangan->lokasi ?: 'Tidak ditentukan' }}</dd>
@@ -121,6 +117,34 @@
                                 <dd class="mt-2 text-sm text-gray-900">{{ $ruangan->keterangan }}</dd>
                             </div>
                         @endif
+
+                        <div class="mt-6 border-t border-gray-200 pt-6 p-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                                <i class="fa-solid fa-info-circle mr-2 text-blue-600"></i>
+                                Status Ruangan
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Status</span>
+                                    <span
+                                        class="text-sm font-medium capitalize {{ $ruangan->status == 'aktif' ? 'text-green-600' : ($ruangan->status == 'perbaikan' ? 'text-yellow-600' : 'text-red-600') }}">
+                                        {{ $ruangan->status }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Terakhir Digunakan</span>
+                                    <span class="text-sm text-gray-900">
+                                        {{ $lastUsedSession ? $lastUsedSession->tanggal->format('d M Y') : 'Belum pernah' }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Sesi Mendatang</span>
+                                    <span class="text-sm text-gray-900">
+                                        {{ $upcomingSessions }} sesi
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -191,33 +215,7 @@
                 </div>
 
                 <!-- Room Status -->
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">
-                        <i class="fa-solid fa-info-circle mr-2 text-blue-600"></i>
-                        Status Ruangan
-                    </h3>
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-600">Status</span>
-                            <span
-                                class="text-sm font-medium capitalize {{ $ruangan->status == 'aktif' ? 'text-green-600' : ($ruangan->status == 'perbaikan' ? 'text-yellow-600' : 'text-red-600') }}">
-                                {{ $ruangan->status }}
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-600">Terakhir Digunakan</span>
-                            <span class="text-sm text-gray-900">
-                                {{ $lastUsedSession ? $lastUsedSession->tanggal->format('d M Y') : 'Belum pernah' }}
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-600">Sesi Mendatang</span>
-                            <span class="text-sm text-gray-900">
-                                {{ $upcomingSessions }} sesi
-                            </span>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </div>
 

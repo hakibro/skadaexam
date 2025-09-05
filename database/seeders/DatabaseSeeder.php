@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             RuanganSeeder::class,         // Create exam rooms
             SesiTemplateSeeder::class,    // Create session templates
             SesiRuanganSeeder::class,     // Create session rooms (references ruangan, guru, jadwal_ujian)
-            // SesiRuanganSiswaSeeder::class, // Create attendance records for session rooms
             EnrollmentUjianSeeder::class, // Create student enrollments & attendance (references sesi_ruangan, siswa)
             HasilUjianSeeder::class,      // Create exam results (references enrollment, jadwal_ujian)
             BeritaAcaraUjianSeeder::class, // Create exam reports (references sesi_ruangan, guru)

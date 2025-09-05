@@ -156,17 +156,17 @@
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                                     {{ $hasilUjian->jadwalUjian->judul }}
                                     <div class="text-xs text-gray-500 mt-1">
-                                        {{ $hasilUjian->jadwalUjian->tanggal_mulai->format('d M Y') }} -
+                                        {{ $hasilUjian->jadwalUjian->tanggal->format('d M Y') }} -
                                         {{ $hasilUjian->jadwalUjian->tanggal_selesai->format('d M Y') }}</div>
                                 </dd>
                             </div>
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Sesi Ujian</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->jadwalUjian->sesiUjian->nama ?? 'Default' }}
-                                    @if ($hasilUjian->jadwalUjian->sesiUjian)
+                                    {{ $hasilUjian->jadwalUjian->sesiRuangan->nama ?? 'Default' }}
+                                    @if ($hasilUjian->jadwalUjian->sesiRuangan)
                                         <div class="text-xs text-gray-500 mt-1">
-                                            Durasi: {{ $hasilUjian->jadwalUjian->sesiUjian->durasi }} menit
+                                            Durasi: {{ $hasilUjian->jadwalUjian->sesiRuangan->durasi }} menit
                                         </div>
                                     @endif
                                 </dd>
@@ -178,7 +178,7 @@
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Bank Soal</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->jadwalUjian->sesiUjian->bankSoal->judul }}</dd>
+                                    {{ $hasilUjian->jadwalUjian->sesiRuangan->bankSoal->judul }}</dd>
                             </div>
                             <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Status</dt>
@@ -372,13 +372,14 @@
                                             class="flex items-center justify-between hover:bg-gray-50 p-2 rounded">
                                             <div>
                                                 <div class="text-sm font-medium text-gray-700">
-                                                    {{ $hasil->jadwalUjian->sesiUjian->bankSoal->mapel->nama_mapel }}</div>
+                                                    {{ $hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->nama_mapel }}
+                                                </div>
                                                 <div class="text-xs text-gray-500">
                                                     {{ $hasil->created_at->format('d M Y, H:i') }}</div>
                                             </div>
                                             @if ($hasil->status === 'selesai')
                                                 <div
-                                                    class="font-medium {{ $hasil->nilai_akhir >= ($hasil->jadwalUjian->sesiUjian->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                                                    class="font-medium {{ $hasil->nilai_akhir >= ($hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
                                                     {{ number_format($hasil->nilai_akhir, 2) }}
                                                 </div>
                                             @else

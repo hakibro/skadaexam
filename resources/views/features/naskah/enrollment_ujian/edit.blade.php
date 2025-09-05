@@ -22,7 +22,7 @@
                                 <label for="jadwal_ujian_id" class="form-label">Jadwal Ujian <span
                                         class="text-danger">*</span></label>
                                 <input type="text" class="form-control"
-                                    value="{{ $enrollment->sesiUjian->jadwalUjian->judul }}" readonly>
+                                    value="{{ $enrollment->sesiRuangan->jadwalUjian->judul }}" readonly>
                             </div>
                         </div>
 
@@ -33,7 +33,7 @@
                                 <select name="sesi_ujian_id" id="sesi_ujian_id"
                                     class="form-select @error('sesi_ujian_id') is-invalid @enderror" required>
                                     <option value="">Pilih Sesi Ujian</option>
-                                    @foreach ($sesiUjians as $sesi)
+                                    @foreach ($sesiRuangans as $sesi)
                                         <option value="{{ $sesi->id }}"
                                             {{ old('sesi_ujian_id', $enrollment->sesi_ujian_id) == $sesi->id ? 'selected' : '' }}>
                                             {{ $sesi->nama_sesi }} ({{ $sesi->waktu_mulai->format('d M Y H:i') }} -

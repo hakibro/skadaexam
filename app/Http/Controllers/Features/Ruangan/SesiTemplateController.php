@@ -40,6 +40,14 @@ class SesiTemplateController extends Controller
      */
     public function store(Request $request)
     {
+        // Format time fields to ensure they're in the correct format
+        if ($request->has('waktu_mulai')) {
+            $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
+        }
+        if ($request->has('waktu_selesai')) {
+            $request->merge(['waktu_selesai' => date('H:i', strtotime($request->waktu_selesai))]);
+        }
+
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
@@ -99,7 +107,18 @@ class SesiTemplateController extends Controller
                 ];
             });
 
-        return view('features.ruangan.template.show', compact('template', 'rooms'));
+        // Get active sessions using this template
+        $activeSessions = $template->sesiRuangan()
+            ->with('ruangan')
+            ->where(function ($query) {
+                $query->where('status', 'belum_mulai')
+                    ->orWhere('status', 'berlangsung');
+            })
+            ->orderBy('tanggal')
+            ->orderBy('waktu_mulai')
+            ->get();
+
+        return view('features.ruangan.template.show', compact('template', 'rooms', 'activeSessions'));
     }
 
     /**
@@ -115,6 +134,14 @@ class SesiTemplateController extends Controller
      */
     public function update(Request $request, SesiTemplate $template)
     {
+        // Format time fields to ensure they're in the correct format
+        if ($request->has('waktu_mulai')) {
+            $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
+        }
+        if ($request->has('waktu_selesai')) {
+            $request->merge(['waktu_selesai' => date('H:i', strtotime($request->waktu_selesai))]);
+        }
+
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
@@ -234,12 +261,41 @@ class SesiTemplateController extends Controller
     }
 
     /**
+     * Force delete the template and remove template references from all sessions
+     */
+    public function forceDelete(SesiTemplate $template)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get count of sessions using this template
+            $sessionCount = $template->sesiRuangan()->count();
+
+            // Remove template reference from all sessions
+            $template->sesiRuangan()->update(['template_id' => null]);
+
+            // Delete the template
+            $template->delete();
+
+            DB::commit();
+
+            return redirect()->route('ruangan.template.index')
+                ->with('success', "Template sesi berhasil dihapus paksa dan referensi dihapus dari $sessionCount sesi");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error force deleting sesi template: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus paksa template: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Show form to apply template to rooms
      */
     public function showApplyForm(SesiTemplate $template)
     {
         // Get all active rooms
-        $rooms = Ruangan::where('aktif', 1)->orderBy('nama_ruangan')->get();
+        $rooms = Ruangan::where('status', 'aktif')->orderBy('nama_ruangan')->get();
 
         return view('features.ruangan.template.apply', compact('template', 'rooms'));
     }

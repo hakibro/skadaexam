@@ -33,7 +33,7 @@ class SesiRuanganSeeder extends Seeder
 
         foreach ($jadwalUjianList as $jadwal) {
             $sessionCount = rand(2, 4); // 2-4 sesi ruangan per jadwal
-            $examDate = Carbon::parse($jadwal->tanggal_mulai);
+            $examDate = Carbon::parse($jadwal->tanggal);
 
             // Create multiple sessions for each exam schedule
             for ($i = 0; $i < $sessionCount; $i++) {

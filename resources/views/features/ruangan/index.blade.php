@@ -234,15 +234,30 @@
                                                 class="text-yellow-600 hover:text-yellow-900" title="Edit">
                                                 <i class="fa-solid fa-edit"></i>
                                             </a>
-                                            <button onclick="deleteRoom({{ $ruangan->id }})"
+                                            <button onclick="deleteRoom({{ $ruangan->id }}, false)"
                                                 class="text-red-600 hover:text-red-900" title="Hapus">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
+                                            <!-- Force Delete Button -->
+                                            @if ($ruangan->sesi_ruangan_count > 0)
+                                                <button onclick="deleteRoom({{ $ruangan->id }}, true)"
+                                                    class="text-red-600 hover:text-red-900" title="Hapus Paksa">
+                                                    <i class="fa-solid fa-radiation"></i>
+                                                </button>
+                                            @endif
                                         </div>
 
                                         <!-- Hidden delete form for each room -->
                                         <form id="delete-form-{{ $ruangan->id }}"
                                             action="{{ route('ruangan.destroy', $ruangan->id) }}" method="POST"
+                                            class="hidden">
+                                            @csrf
+                                            @method('DELETE')
+                                        </form>
+
+                                        <!-- Hidden force delete form for each room -->
+                                        <form id="force-delete-form-{{ $ruangan->id }}"
+                                            action="{{ route('ruangan.force-delete', $ruangan->id) }}" method="POST"
                                             class="hidden">
                                             @csrf
                                             @method('DELETE')
@@ -282,9 +297,19 @@
 @section('scripts')
     <script>
         // Function to handle room deletion
-        function deleteRoom(roomId) {
-            if (confirm('Apakah Anda yakin ingin menghapus ruangan ini? Ruangan yang memiliki sesi tidak dapat dihapus.')) {
-                document.getElementById('delete-form-' + roomId).submit();
+        function deleteRoom(roomId, isForceDelete = false) {
+            let confirmMessage =
+                'Apakah Anda yakin ingin menghapus ruangan ini? Ruangan yang memiliki sesi tidak dapat dihapus.';
+            let formId = 'delete-form-' + roomId;
+
+            if (isForceDelete) {
+                confirmMessage =
+                    'PERHATIAN: Anda akan menghapus ruangan ini beserta semua sesi yang terkait! Tindakan ini TIDAK DAPAT dibatalkan dan dapat menyebabkan kerusakan data. Lanjutkan?';
+                formId = 'force-delete-form-' + roomId;
+            }
+
+            if (confirm(confirmMessage)) {
+                document.getElementById(formId).submit();
             }
         }
 
@@ -355,7 +380,7 @@
                     const checkedCount = document.querySelectorAll('.room-checkbox:checked').length;
                     if (!confirm(
                             `Apakah Anda yakin ingin menghapus ${checkedCount} ruangan terpilih? Ruangan yang memiliki sesi tidak akan dihapus.`
-                            )) {
+                        )) {
                         e.preventDefault();
                     }
                 });

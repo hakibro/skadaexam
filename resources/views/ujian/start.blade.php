@@ -8,7 +8,7 @@
             <h1 class="text-2xl font-bold mb-6">{{ $jadwalUjian->nama }}</h1>
 
             <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <p class="text-blue-700">Sesi: {{ $sesiUjian->nama }} ({{ $sesiUjian->tanggal->format('d M Y') }})</p>
+                <p class="text-blue-700">Sesi: {{ $sesiRuangan->nama }} ({{ $sesiRuangan->tanggal->format('d M Y') }})</p>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6 mb-8">

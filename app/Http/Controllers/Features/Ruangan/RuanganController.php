@@ -85,7 +85,7 @@ class RuanganController extends Controller
                 'keterangan' => $request->keterangan,
             ]);
 
-            return redirect()->route('ruangan.index')
+            return redirect()->route('ruangan.show', $ruangan->id)
                 ->with('success', 'Ruangan berhasil ditambahkan');
         } catch (\Exception $e) {
             Log::error('Error creating ruangan: ' . $e->getMessage());
@@ -243,6 +243,40 @@ class RuanganController extends Controller
             Log::error('Error deleting ruangan: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Gagal menghapus ruangan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Force delete the room and all related sessions
+     */
+    public function forceDelete(Ruangan $ruangan)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Get count of sessions before deletion
+            $sesiCount = $ruangan->sesiRuangan()->count();
+
+            // Delete all sessions related to this room first
+            $ruangan->sesiRuangan()->each(function ($sesi) {
+                // Delete all student enrollments for this session
+                $sesi->sesiRuanganSiswa()->delete();
+                // Delete the session
+                $sesi->delete();
+            });
+
+            // Now delete the room
+            $ruangan->delete();
+
+            DB::commit();
+
+            return redirect()->route('ruangan.index')
+                ->with('success', "Ruangan berhasil dihapus paksa beserta $sesiCount sesi terkait");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error force deleting ruangan: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus paksa ruangan: ' . $e->getMessage());
         }
     }
 

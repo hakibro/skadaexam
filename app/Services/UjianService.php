@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\EnrollmentUjian;
 use App\Models\HasilUjian;
-use App\Models\SesiUjian;
+use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Soal;
 use Carbon\Carbon;
@@ -33,7 +33,7 @@ class UjianService
         }
 
         // Check if session is still active
-        if (!$enrollment->sesiUjian->isActive()) {
+        if (!$enrollment->sesiRuangan->isActive()) {
             return false;
         }
 

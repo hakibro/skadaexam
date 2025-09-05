@@ -23,8 +23,8 @@
                         <option value="">-- Semua Jadwal --</option>
                         @foreach ($jadwalUjians as $jadwal)
                             <option value="{{ $jadwal->id }}" {{ request('jadwal_id') == $jadwal->id ? 'selected' : '' }}>
-                                {{-- {{ $jadwal->judul }} ({{ $jadwal->tanggal_ujian->format('d/m/Y') }}) --}}
-                                {{ $jadwal->judul }} ({{ optional($jadwal->tanggal_ujian)->format('d/m/Y') }})
+                                {{-- {{ $jadwal->judul }} ({{ $jadwal->tanggal->format('d/m/Y') }}) --}}
+                                {{ $jadwal->judul }} ({{ optional($jadwal->tanggal)->format('d/m/Y') }})
                             </option>
                         @endforeach
                     </select>
@@ -166,12 +166,12 @@
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ $hasil->jadwalUjian->judul ?? 'N/A' }}</div>
                                         <div class="text-xs text-gray-500">
-                                            {{ $hasil->jadwalUjian ? $hasil->jadwalUjian->tanggal_ujian->format('d/m/Y') : 'N/A' }}
+                                            {{ $hasil->jadwalUjian ? $hasil->jadwalUjian->tanggal->format('d/m/Y') : 'N/A' }}
                                         </div>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $hasil->jadwalUjian->sesiUjian->bankSoal->mapel->nama_mapel ?? 'N/A' }}
+                                            {{ $hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->nama_mapel ?? 'N/A' }}
                                         </div>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
@@ -181,7 +181,7 @@
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         @if ($hasil->status === 'selesai')
                                             <div
-                                                class="text-sm font-bold {{ $hasil->nilai_akhir >= ($hasil->jadwalUjian->sesiUjian->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                                                class="text-sm font-bold {{ $hasil->nilai_akhir >= ($hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
                                                 {{ number_format($hasil->nilai_akhir, 2) }}
                                             </div>
                                         @else

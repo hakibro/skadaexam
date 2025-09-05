@@ -10,7 +10,7 @@ use App\Models\JadwalUjian;
 use App\Models\HasilUjian;
 use App\Models\User;
 use App\Models\Mapel;
-use App\Models\SesiUjian;
+use App\Models\SesiRuangan;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -27,7 +27,7 @@ class DashboardController extends Controller
             $jadwalUjianCount = JadwalUjian::count();
             $hasilUjianCount = HasilUjian::count();
             $mapelCount = Mapel::count();
-            $sesiCount = SesiUjian::count();
+            $sesiCount = SesiRuangan::count();
             $kelasCount = Kelas::count();
 
             // Get pass rate statistics
@@ -76,11 +76,11 @@ class DashboardController extends Controller
                 ->groupBy('mapel.id', 'mapel.nama_mapel')
                 ->get();
 
-            // Get upcoming exams - Fix, using tanggal_mulai
+            // Get upcoming exams - Fix, using tanggal
             $upcomingExams = JadwalUjian::with(['bankSoal', 'mapel'])
-                ->where('tanggal_mulai', '>=', Carbon::today())
-                ->where('status', 'active')
-                ->orderBy('tanggal_mulai', 'asc')
+                ->where('tanggal', '>=', Carbon::today())
+                ->where('status', 'aktif') // Changed from 'active' to 'aktif' to match status values
+                ->orderBy('tanggal', 'asc')
                 ->limit(3)
                 ->get();
 

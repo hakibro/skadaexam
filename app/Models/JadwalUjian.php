@@ -15,7 +15,7 @@ class JadwalUjian extends Model
     protected $fillable = [
         'judul',
         'mapel_id',
-        'tanggal_mulai',
+        'tanggal',
         'durasi_menit',
         'deskripsi',
         'status',
@@ -31,7 +31,7 @@ class JadwalUjian extends Model
     ];
 
     protected $casts = [
-        'tanggal_mulai' => 'datetime',
+        'tanggal' => 'datetime',
         'kelas_target' => 'array',
         'tampilkan_hasil' => 'boolean',
         'durasi_menit' => 'integer',
@@ -114,9 +114,9 @@ class JadwalUjian extends Model
 
     public function scopeUpcoming($query)
     {
-        return $query->where('tanggal_mulai', '>=', Carbon::today())
+        return $query->where('tanggal', '>=', Carbon::today())
             ->where('status', 'active')
-            ->orderBy('tanggal_mulai');
+            ->orderBy('tanggal');
     }
 
     // Methods
@@ -125,8 +125,8 @@ class JadwalUjian extends Model
      */
     public function getFullScheduleAttribute()
     {
-        return $this->tanggal_mulai->format('d M Y') . ' • ' .
-            $this->tanggal_mulai->format('H:i') . ' (' .
+        return $this->tanggal->format('d M Y') . ' • ' .
+            $this->tanggal->format('H:i') . ' (' .
             $this->durasi_menit . ' menit)';
     }
 
@@ -148,9 +148,9 @@ class JadwalUjian extends Model
     public function isSedangBerlangsung()
     {
         $now = Carbon::now();
-        $endTime = (clone $this->tanggal_mulai)->addMinutes($this->durasi_menit);
+        $endTime = (clone $this->tanggal)->addMinutes($this->durasi_menit);
 
-        return $now->gte($this->tanggal_mulai) &&
+        return $now->gte($this->tanggal) &&
             $now->lte($endTime) &&
             $this->isActive();
     }
@@ -163,7 +163,7 @@ class JadwalUjian extends Model
     public function canStart()
     {
         $now = Carbon::now();
-        return $now->gte($this->tanggal_mulai) && $this->isActive();
+        return $now->gte($this->tanggal) && $this->isActive();
     }
 
     /**
@@ -250,11 +250,11 @@ class JadwalUjian extends Model
      */
     public function getTimeUntilStart()
     {
-        if ($this->tanggal_mulai->isPast()) {
+        if ($this->tanggal->isPast()) {
             return null;
         }
 
-        $diff = now()->diff($this->tanggal_mulai);
+        $diff = now()->diff($this->tanggal);
 
         if ($diff->days > 0) {
             return $diff->days . ' hari';
@@ -271,11 +271,11 @@ class JadwalUjian extends Model
     public function getCurrentExamStatus()
     {
         $now = now();
-        $endTime = (clone $this->tanggal_mulai)->addMinutes($this->durasi_menit);
+        $endTime = (clone $this->tanggal)->addMinutes($this->durasi_menit);
 
-        if ($now->lt($this->tanggal_mulai)) {
+        if ($now->lt($this->tanggal)) {
             return 'belum_mulai';
-        } elseif ($now->between($this->tanggal_mulai, $endTime)) {
+        } elseif ($now->between($this->tanggal, $endTime)) {
             return 'sedang_berjalan';
         } else {
             return 'selesai';
@@ -293,5 +293,27 @@ class JadwalUjian extends Model
             ->count();
 
         return $unassignedSessions > 0;
+    }
+
+    /**
+     * Get the start time of the exam
+     * This is a computed property since there's no waktu_mulai column in the table
+     */
+    public function getWaktuMulaiAttribute()
+    {
+        return $this->tanggal;
+    }
+
+    /**
+     * Get the end time of the exam
+     * This is computed by adding the duration to the start time
+     */
+    public function getWaktuSelesaiAttribute()
+    {
+        if (!$this->tanggal) {
+            return null;
+        }
+        
+        return (clone $this->tanggal)->addMinutes($this->durasi_menit ?? 0);
     }
 }

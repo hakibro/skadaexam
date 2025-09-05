@@ -33,6 +33,7 @@ return new class extends Migration
                 ->references('id')
                 ->on('guru')
                 ->nullOnDelete();
+            $table->timestamps();
         });
     }
 

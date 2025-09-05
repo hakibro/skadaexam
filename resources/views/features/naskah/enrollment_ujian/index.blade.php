@@ -42,7 +42,7 @@
                                     <label class="form-label">Filter Sesi</label>
                                     <select id="sesiFilter" class="form-select form-select-sm">
                                         <option value="">Semua Sesi</option>
-                                        @foreach ($sesiUjians as $sesi)
+                                        @foreach ($sesiRuangans as $sesi)
                                             <option value="{{ $sesi->id }}"
                                                 {{ request('sesi_id') == $sesi->id ? 'selected' : '' }}>
                                                 {{ $sesi->nama_sesi }}
@@ -107,8 +107,8 @@
                                             <td>{{ $enrollment->siswa->nis ?? 'N/A' }}</td>
                                             <td>{{ $enrollment->siswa->nama ?? 'N/A' }}</td>
                                             <td>{{ $enrollment->siswa->kelas->nama ?? 'N/A' }}</td>
-                                            <td>{{ $enrollment->sesiUjian->jadwalUjian->judul ?? 'N/A' }}</td>
-                                            <td>{{ $enrollment->sesiUjian->nama_sesi ?? 'N/A' }}</td>
+                                            <td>{{ $enrollment->sesiRuangan->jadwalUjian->judul ?? 'N/A' }}</td>
+                                            <td>{{ $enrollment->sesiRuangan->nama_sesi ?? 'N/A' }}</td>
                                             <td>
                                                 @if (
                                                     $enrollment->token_login &&

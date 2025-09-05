@@ -34,7 +34,7 @@ class LaporanController extends Controller
             $query->where('status_pelaksanaan', $request->pelaksanaan_status);
         }
 
-        // Filter by date range (using created_at since tanggal_ujian doesn't exist)
+        // Filter by date range (using created_at since tanggal doesn't exist)
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -70,10 +70,10 @@ class LaporanController extends Controller
         $stats = [
             // Map to expected view keys
             'pending' => BeritaAcaraUjian::where('is_final', false)->count(),
-            'verified' => BeritaAcaraUjian::where('is_final', true)->count(), 
+            'verified' => BeritaAcaraUjian::where('is_final', true)->count(),
             'rejected' => 0, // No rejected status in current model
             'total' => BeritaAcaraUjian::count(),
-            
+
             // Keep existing stats for backward compatibility
             'draft' => BeritaAcaraUjian::where('is_final', false)->count(),
             'finalized' => BeritaAcaraUjian::where('is_final', true)->count(),
@@ -93,7 +93,7 @@ class LaporanController extends Controller
     public function show(BeritaAcaraUjian $laporan)
     {
         $laporan->load([
-            'sesiRuangan.ruangan', 
+            'sesiRuangan.ruangan',
             'sesiRuangan.jadwalUjian.mapel',
             'sesiRuangan.jadwalUjian.kelas',
             'sesiRuangan.sesiRuanganSiswa.siswa',
@@ -136,7 +136,7 @@ class LaporanController extends Controller
     public function edit(BeritaAcaraUjian $laporan)
     {
         $laporan->load([
-            'sesiRuangan.ruangan', 
+            'sesiRuangan.ruangan',
             'sesiRuangan.jadwalUjian.mapel',
             'sesiRuangan.jadwalUjian.kelas',
             'sesiRuangan.sesiRuanganSiswa.siswa',
@@ -161,7 +161,7 @@ class LaporanController extends Controller
         try {
             $laporan->update($request->only([
                 'catatan_pembukaan',
-                'catatan_pelaksanaan', 
+                'catatan_pelaksanaan',
                 'catatan_penutupan',
                 'status_pelaksanaan'
             ]));
@@ -171,7 +171,7 @@ class LaporanController extends Controller
                 ->with('success', 'Berita acara berhasil diperbarui');
         } catch (\Exception $e) {
             Log::error('Error updating berita acara: ' . $e->getMessage());
-            
+
             return redirect()
                 ->back()
                 ->with('error', 'Terjadi kesalahan saat memperbarui berita acara');
@@ -191,7 +191,7 @@ class LaporanController extends Controller
 
         try {
             $laporan = BeritaAcaraUjian::findOrFail($request->berita_acara_id);
-            
+
             if ($request->action === 'finalize' || $request->action === 'verify') {
                 $laporan->finalize();
                 $message = 'Berita acara berhasil diverifikasi.';
@@ -294,8 +294,8 @@ class LaporanController extends Controller
 
             // Get berita acara data
             $beritaAcaras = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'pengawas'])
-                ->whereBetween('tanggal_ujian', [$dateFrom, $dateTo])
-                ->orderBy('tanggal_ujian')
+                ->whereBetween('tanggal', [$dateFrom, $dateTo])
+                ->orderBy('tanggal')
                 ->get();
 
             // Get summary statistics

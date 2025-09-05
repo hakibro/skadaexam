@@ -42,10 +42,10 @@ class JadwalUjianSeeder extends Seeder
             $jadwalUjian = JadwalUjian::create([
                 'judul'           => $examType . ' ' . $bankSoal->mapel->nama . ' ' . $bankSoal->tingkat,
                 'mapel_id'        => $bankSoal->mapel_id,
-                'tanggal_mulai'   => $startDate,
+                'tanggal'   => $startDate,
                 'durasi_menit'    => rand(3, 12) * 15, // 45–180 menit
                 'deskripsi'       => 'Ujian ' . $examType . ' untuk mata pelajaran ' . $bankSoal->mapel->nama . ' kelas ' . $bankSoal->tingkat,
-                'status'          => ['draft', 'active'][array_rand(['draft', 'active'])],
+                'status'          => ['draft', 'aktif', 'selesai', 'dibatalkan'][array_rand(['draft', 'aktif', 'selesai', 'dibatalkan'])],
                 'tampilkan_hasil' => (bool)rand(0, 1),
                 'jumlah_soal'     => min(rand(10, 20), $bankSoal->soals->count()),
                 'bank_soal_id'    => $bankSoal->id,

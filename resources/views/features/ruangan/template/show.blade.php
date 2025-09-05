@@ -1,10 +1,10 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', 'Detail Template Sesi')
 
 @section('content')
     <div class="container px-6 mx-auto grid">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
+        <h2 class="my-6 text-2xl font-semibold text-gray-700 ">
             Detail Template Sesi
         </h2>
 
@@ -19,17 +19,17 @@
         @include('components.alert')
 
         <!-- Template Info Card -->
-        <div class="mb-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <div class="mb-6 bg-white rounded-lg shadow-md ">
             <div class="border-b p-5 flex justify-between items-start">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                    <h3 class="text-lg font-semibold text-gray-700 ">
                         {{ $template->nama_sesi }}
                         <span
                             class="px-2 py-1 text-xs font-medium leading-tight rounded-full {{ $template->activeStatusLabel['class'] }} ml-2">
                             {{ $template->activeStatusLabel['text'] }}
                         </span>
                     </h3>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $template->deskripsi ?? 'Tidak ada deskripsi' }}</p>
+                    <p class="text-gray-600  mt-1">{{ $template->deskripsi ?? 'Tidak ada deskripsi' }}</p>
                 </div>
                 <div class="flex space-x-2">
                     <a href="{{ route('ruangan.template.edit', $template->id) }}"
@@ -44,7 +44,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-5">
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">Detail Template</h4>
+                    <h4 class="text-sm font-semibold text-gray-600  mb-2">Detail Template</h4>
                     <div class="space-y-2 text-sm">
                         <div class="flex">
                             <span class="w-32 font-medium">Kode:</span>
@@ -70,7 +70,7 @@
                         @if ($template->keterangan)
                             <div>
                                 <span class="w-32 font-medium block">Keterangan:</span>
-                                <p class="mt-1 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <p class="mt-1 text-gray-600  bg-gray-50  p-2 rounded">
                                     {{ $template->keterangan }}
                                 </p>
                             </div>
@@ -78,7 +78,7 @@
                     </div>
                 </div>
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">Statistik Penggunaan</h4>
+                    <h4 class="text-sm font-semibold text-gray-600  mb-2">Statistik Penggunaan</h4>
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-sm">Total Sesi Terhubung:</span>
@@ -118,15 +118,15 @@
         <!-- Active Sessions using this template -->
         @if (count($activeSessions) > 0)
             <div class="mb-6">
-                <h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                <h4 class="text-lg font-semibold text-gray-700  mb-4">
                     Sesi Aktif Menggunakan Template Ini
                 </h4>
-                <div class="bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <div class="bg-white rounded-lg shadow-md ">
                     <div class="overflow-x-auto">
                         <table class="w-full whitespace-nowrap">
                             <thead>
                                 <tr
-                                    class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
+                                    class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b  bg-gray-50  ">
                                     <th class="px-4 py-3">Ruangan</th>
                                     <th class="px-4 py-3">Tanggal</th>
                                     <th class="px-4 py-3">Waktu</th>
@@ -134,9 +134,9 @@
                                     <th class="px-4 py-3">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
+                            <tbody class="bg-white divide-y  ">
                                 @foreach ($activeSessions as $sesi)
-                                    <tr class="text-gray-700 dark:text-gray-400">
+                                    <tr class="text-gray-700 ">
                                         <td class="px-4 py-3">
                                             <a href="{{ route('ruangan.show', $sesi->ruangan_id) }}"
                                                 class="text-blue-600 hover:underline">
@@ -170,8 +170,8 @@
                 </div>
             </div>
         @else
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                <p class="text-gray-600 dark:text-gray-400">
+            <div class="bg-gray-50  rounded-lg p-4 mb-6">
+                <p class="text-gray-600 ">
                     Belum ada sesi aktif yang menggunakan template ini.
                     <a href="{{ route('ruangan.template.show-apply', $template->id) }}"
                         class="text-blue-600 hover:underline">

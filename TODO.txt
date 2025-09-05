@@ -1,0 +1,18 @@
+TODO:
+
+Naskah Management:
+Jadwal Ujian -> create terapkan ke semua sesi di hari yang sama.
+
+
+Ruangan Management:
+- Sesi
+-- tampilkan kode sesi pada create dan edit
+-- otomatis ubah status = berlangsung/selesai jika tanggal dan waktu sesi = sekarang.
+
+
+- Import excel
+perbaiki impor data excel pada ruangan management. saya ingin impor data sekaligus (ruangan, sesi, assign siswa ke sesi) jadi satu. jadi nanti format impor data excel:
+idyayasan, nama_siswa, kode_ruangan, nama_ruangan, kapasitas_ruangan, lokasi_ruangan, status_ruangan, Nama_sesi, Kode_Sesi, tanggal, waktu_mulai_sesi, waktu_selesai_sesi, status_sesi.
+
+
+

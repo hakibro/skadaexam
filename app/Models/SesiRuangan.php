@@ -28,7 +28,8 @@ class SesiRuangan extends Model
         'pengaturan',
         'ruangan_id',
         'pengawas_id',
-        'template_id'
+        'template_id',
+        'jadwal_ujian_id'
     ];
 
     protected $casts = [
@@ -70,18 +71,10 @@ class SesiRuangan extends Model
         return $this->belongsTo(Guru::class, 'koordinator_id');
     }
 
-    // According to the database schema, jadwal_ujian_id doesn't exist in sesi_ruangan table
-    // But we'll leave it for compatibility
+    // Now we have a direct relationship with jadwal_ujian
     public function jadwalUjian()
     {
-        return $this->hasOneThrough(
-            JadwalUjian::class,
-            BeritaAcaraUjian::class,
-            'sesi_ruangan_id', // Foreign key on berita_acara_ujian table
-            'id', // Foreign key on jadwal_ujian table
-            'id', // Local key on sesi_ruangan table
-            'jadwal_ujian_id' // Local key on berita_acara_ujian table
-        );
+        return $this->belongsTo(JadwalUjian::class);
     }
 
     public function sesiRuanganSiswa()
