@@ -1,0 +1,236 @@
+{{-- filepath: c:\laragon\www\skadaexam\resources\views\features\ruangan\sesi\jadwal\index.blade.php --}}
+@extends('layouts.admin')
+
+@section('title', 'Kelola Jadwal Ujian - ' . $sesi->nama_sesi)
+@section('page-title', 'Kelola Jadwal Ujian')
+@section('page-description', $sesi->nama_sesi . ' - ' . $ruangan->nama_ruangan)
+
+@section('content')
+    <div class="py-4">
+        <!-- Flash Messages -->
+        @if (session('success'))
+            <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-check-circle text-green-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-times-circle text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Breadcrumb Navigation -->
+        <div class="mb-6">
+            <nav class="flex" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="{{ route('ruangan.index') }}" class="text-gray-700 hover:text-blue-600">
+                            <i class="fa-solid fa-door-open mr-2"></i>Ruangan
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right mx-2 text-gray-400"></i>
+                            <a href="{{ route('ruangan.sesi.index', $ruangan->id) }}"
+                                class="text-gray-700 hover:text-blue-600">
+                                {{ $ruangan->nama_ruangan }}
+                            </a>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right mx-2 text-gray-400"></i>
+                            <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $sesi->id]) }}"
+                                class="text-gray-700 hover:text-blue-600">
+                                {{ $sesi->nama_sesi }}
+                            </a>
+                        </div>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-chevron-right mx-2 text-gray-400"></i>
+                            <span class="text-gray-500">Jadwal Ujian</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Session Info Card -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ $sesi->nama_sesi }}</h2>
+                    <p class="text-sm text-gray-600 mt-1">{{ $sesi->kode_sesi }}</p>
+                    <div class="flex items-center space-x-4 mt-2">
+                        <span class="text-sm text-gray-500">
+                            <i class="fa-solid fa-door-open mr-1"></i>
+                            {{ $ruangan->nama_ruangan }}
+                        </span>
+                        <span class="text-sm text-gray-500">
+                            <i class="fa-solid fa-calendar-day mr-1"></i>
+                            {{ $sesi->tanggal ? $sesi->tanggal->format('d M Y') : 'Tanggal tidak tersedia' }}
+                        </span>
+                        <span class="text-sm text-gray-500">
+                            <i class="fa-solid fa-clock mr-1"></i>
+                            {{ $sesi->waktu_mulai ? \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') : '00:00' }} -
+                            {{ $sesi->waktu_selesai ? \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') : '00:00' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $sesi->id]) }}"
+                        class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">
+                        <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Assigned Jadwal Ujian -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+                    <h3 class="text-lg font-medium text-gray-900">Jadwal Ujian Terkait</h3>
+                    <p class="text-sm text-gray-500">{{ $sesi->jadwalUjians->count() }} jadwal ujian</p>
+                </div>
+
+                @if ($sesi->jadwalUjians->count() > 0)
+                    <div class="divide-y divide-gray-200">
+                        @foreach ($sesi->jadwalUjians as $jadwal)
+                            <div class="p-6">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h4 class="text-lg font-medium text-gray-900">{{ $jadwal->judul }}</h4>
+                                        <p class="text-sm text-gray-600 mt-1">{{ $jadwal->kode_ujian }}</p>
+                                        <div class="flex items-center space-x-4 mt-2">
+                                            <span class="text-sm text-gray-500">
+                                                <i class="fa-solid fa-book mr-1"></i>
+                                                {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
+                                            </span>
+                                            <span class="text-sm text-gray-500">
+                                                <i class="fa-solid fa-clipboard mr-1"></i>
+                                                {{ $jadwal->jenis_ujian }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span
+                                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                {{ $jadwal->status == 'aktif'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : ($jadwal->status == 'draft'
+                                                        ? 'bg-gray-100 text-gray-800'
+                                                        : ($jadwal->status == 'selesai'
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : 'bg-red-100 text-red-800')) }}">
+                                                {{ ucfirst($jadwal->status) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <form
+                                            action="{{ route('ruangan.sesi.jadwal.destroy', [$ruangan->id, $sesi->id, $jadwal->id]) }}"
+                                            method="POST"
+                                            onsubmit="return confirm('Apakah Anda yakin ingin melepas jadwal ujian ini dari sesi?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                                <i class="fa-solid fa-unlink"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-12 text-center">
+                        <i class="fa-solid fa-calendar-xmark text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada jadwal ujian</h3>
+                        <p class="mt-1 text-sm text-gray-500">Sesi ini belum memiliki jadwal ujian yang terkait.</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Available Jadwal Ujian -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+                    <h3 class="text-lg font-medium text-gray-900">Jadwal Ujian Tersedia</h3>
+                    <p class="text-sm text-gray-500">{{ $availableJadwals->count() }} jadwal tersedia</p>
+                </div>
+
+                @if ($availableJadwals->count() > 0)
+                    <form action="{{ route('ruangan.sesi.jadwal.store', [$ruangan->id, $sesi->id]) }}" method="POST">
+                        @csrf
+                        <div class="max-h-96 overflow-y-auto divide-y divide-gray-200">
+                            @foreach ($availableJadwals as $jadwal)
+                                <div class="p-4">
+                                    <label class="flex items-start cursor-pointer">
+                                        <input type="checkbox" name="jadwal_ids[]" value="{{ $jadwal->id }}"
+                                            class="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                        <div class="flex-1">
+                                            <h4 class="text-base font-medium text-gray-900">{{ $jadwal->judul }}</h4>
+                                            <p class="text-sm text-gray-600 mt-1">{{ $jadwal->kode_ujian }}</p>
+                                            <div class="flex items-center space-x-4 mt-2">
+                                                <span class="text-sm text-gray-500">
+                                                    <i class="fa-solid fa-book mr-1"></i>
+                                                    {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
+                                                </span>
+                                                <span class="text-sm text-gray-500">
+                                                    <i class="fa-solid fa-clipboard mr-1"></i>
+                                                    {{ $jadwal->jenis_ujian }}
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span
+                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                    {{ $jadwal->status == 'aktif'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : ($jadwal->status == 'draft'
+                                                            ? 'bg-gray-100 text-gray-800'
+                                                            : ($jadwal->status == 'selesai'
+                                                                ? 'bg-blue-100 text-blue-800'
+                                                                : 'bg-red-100 text-red-800')) }}">
+                                                    {{ ucfirst($jadwal->status) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 border-t">
+                            <button type="submit"
+                                class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                <i class="fa-solid fa-link mr-2"></i>
+                                Tambahkan Jadwal Terpilih
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="p-12 text-center">
+                        <i class="fa-solid fa-calendar-check text-gray-400 text-4xl mb-4"></i>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada jadwal tersedia</h3>
+                        <p class="mt-1 text-sm text-gray-500">Semua jadwal ujian sudah terkait dengan sesi ini atau tidak
+                            ada jadwal ujian yang tersedia.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+@endsection

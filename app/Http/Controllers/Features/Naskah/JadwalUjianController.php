@@ -8,6 +8,7 @@ use App\Models\SesiRuangan;
 use App\Models\BankSoal;
 use App\Models\Mapel;
 use App\Models\Kelas;
+use App\Services\SesiAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -20,7 +21,7 @@ class JadwalUjianController extends Controller
     public function index(Request $request)
     {
         $query = JadwalUjian::with(['mapel', 'bankSoal', 'creator'])
-            ->withCount('sesiRuangan');
+            ->withCount('sesiRuangans');
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
@@ -82,6 +83,8 @@ class JadwalUjianController extends Controller
             'jumlah_soal' => 'required|integer|min:1',
             'jenis_ujian' => 'required|string',
             'deskripsi' => 'nullable|string',
+            'scheduling_mode' => 'nullable|in:fixed,flexible',
+            'auto_assign_sesi' => 'nullable|boolean',
         ]);
 
         // Generate unique exam code
@@ -101,9 +104,21 @@ class JadwalUjianController extends Controller
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
+            'scheduling_mode' => $request->get('scheduling_mode', 'flexible'),
+            'auto_assign_sesi' => $request->get('auto_assign_sesi', true),
             'status' => 'draft',
             'created_by' => auth()->id(),
         ]);
+
+        // Auto assign sesi ruangan if flexible scheduling is enabled
+        if ($jadwalUjian->scheduling_mode === 'flexible' && $jadwalUjian->auto_assign_sesi) {
+            $sesiAssignmentService = new SesiAssignmentService();
+            $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwalUjian);
+
+            if ($assignedCount > 0) {
+                session()->flash('info', "Berhasil mengaitkan {$assignedCount} sesi ruangan secara otomatis berdasarkan tanggal yang sama.");
+            }
+        }
 
         return redirect()->route('naskah.jadwal.show', $jadwalUjian->id)
             ->with('success', 'Jadwal ujian berhasil dibuat');
@@ -131,29 +146,6 @@ class JadwalUjianController extends Controller
         file_put_contents($logFile, "User Agent: " . request()->userAgent() . "\n", FILE_APPEND);
 
         try {
-            // Return a super-simplified response first to test if the issue is in the controller or view
-            file_put_contents($logFile, "Testing response\n", FILE_APPEND);
-
-            // OPTION 1: Bare HTML response (uncomment to use)
-            /*
-            file_put_contents($logFile, "Using bare HTML response\n", FILE_APPEND);
-            return response()->make('
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Basic Response Test</title>
-                </head>
-                <body>
-                    <h1>Basic Response Test</h1>
-                    <p>This is a test to see if a simple response works.</p>
-                    <p>Jadwal ID: ' . $jadwal->id . '</p>
-                    <p>Jadwal Title: ' . $jadwal->judul . '</p>
-                    <p><a href="' . route('naskah.jadwal.index') . '">Back to List</a></p>
-                </body>
-                </html>
-            ');
-            */
-
             // Try loading each relationship separately for better error isolation
             try {
                 $jadwal->load('mapel');
@@ -177,11 +169,15 @@ class JadwalUjianController extends Controller
             }
 
             try {
-                $jadwal->load('sesiRuangan');
-                file_put_contents($logFile, "✓ Loaded sesiRuangan\n", FILE_APPEND);
+                $jadwal->load('sesiRuangans.ruangan', 'sesiRuangans.sesiRuanganSiswa');
+                file_put_contents($logFile, "✓ Loaded sesiRuangans\n", FILE_APPEND);
             } catch (\Exception $e) {
-                file_put_contents($logFile, "✗ Failed to load sesiRuangan: " . $e->getMessage() . "\n", FILE_APPEND);
+                file_put_contents($logFile, "✗ Failed to load sesiRuangans: " . $e->getMessage() . "\n", FILE_APPEND);
             }
+
+            // Get schedule information using SesiAssignmentService
+            $sesiAssignmentService = new SesiAssignmentService();
+            $scheduleInfo = $sesiAssignmentService->getConsolidatedSchedule($jadwal);
 
             // Log waktu_mulai and waktu_selesai to verify accessor methods
             file_put_contents($logFile, "Testing accessor methods\n", FILE_APPEND);
@@ -190,21 +186,13 @@ class JadwalUjianController extends Controller
 
             // Log data being passed to view
             file_put_contents($logFile, "Data ready for view\n", FILE_APPEND);
+            file_put_contents($logFile, "Schedule info: " . json_encode($scheduleInfo) . "\n", FILE_APPEND);
 
-            // OPTION 2: Ultra simple view (commented out now that it's working)
-            /*
-            file_put_contents($logFile, "Using ultra simple view\n", FILE_APPEND);
-            return view('features.naskah.jadwal.ultra_simple', [
-                'jadwal' => $jadwal, 
-                'timestamp' => $timestamp,
-                'uniqueId' => $uniqueId
-            ]);
-            */
-
-            // OPTION 3: Standard debug view (now active since ultra-simple view works)
+            // Standard debug view
             file_put_contents($logFile, "Using standard debug view\n", FILE_APPEND);
             return view('features.naskah.jadwal.show', [
                 'jadwal' => $jadwal,
+                'scheduleInfo' => $scheduleInfo,
                 'debug_timestamp' => $timestamp,
                 'debug_id' => $uniqueId
             ]);
@@ -312,14 +300,34 @@ class JadwalUjianController extends Controller
 
         $sesi = SesiRuangan::findOrFail($request->sesi_id);
 
-        // Update the sesi with the new jadwal
-        $sesi->update([
-            'jadwal_ujian_id' => $jadwal->id
-        ]);
+        // Attach the sesi to the jadwal using the many-to-many relationship
+        if (!$jadwal->sesiRuangans()->where('sesi_ruangan_id', $sesi->id)->exists()) {
+            $jadwal->sesiRuangans()->attach($sesi->id);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Sesi ujian berhasil ditambahkan ke jadwal'
+        ]);
+    }
+
+    /**
+     * Detach a sesi from this jadwal
+     */
+    public function detachSesi(Request $request, JadwalUjian $jadwal)
+    {
+        $request->validate([
+            'sesi_id' => 'required|exists:sesi_ruangan,id',
+        ]);
+
+        $sesi = SesiRuangan::findOrFail($request->sesi_id);
+
+        // Detach the sesi from the jadwal
+        $jadwal->sesiRuangans()->detach($sesi->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesi ujian berhasil dilepas dari jadwal'
         ]);
     }
 
@@ -329,7 +337,7 @@ class JadwalUjianController extends Controller
     public function destroy(JadwalUjian $jadwal)
     {
         // Check if there are any results associated with this exam
-        if ($jadwal->hasilUjians()->count() > 0) {
+        if ($jadwal->hasilUjian()->count() > 0) {
             return redirect()->route('naskah.jadwal.index')
                 ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian');
         }
@@ -338,5 +346,176 @@ class JadwalUjianController extends Controller
 
         return redirect()->route('naskah.jadwal.index')
             ->with('success', 'Jadwal ujian berhasil dihapus');
+    }
+
+    /**
+     * Bulk actions for jadwal ujian
+     */
+    public function bulkAction(Request $request)
+    {
+        $request->validate([
+            'action' => 'required|in:delete,status_change',
+            'jadwal_ids' => 'required|array|min:1',
+            'jadwal_ids.*' => 'exists:jadwal_ujian,id',
+            'new_status' => 'nullable|in:draft,aktif,nonaktif,selesai'
+        ]);
+
+        $jadwalIds = $request->jadwal_ids;
+        $action = $request->action;
+
+        try {
+            switch ($action) {
+                case 'delete':
+                    $count = $this->bulkDelete($jadwalIds);
+                    return redirect()->route('naskah.jadwal.index')
+                        ->with('success', "Berhasil menghapus {$count} jadwal ujian");
+                    break;
+
+                case 'status_change':
+                    $newStatus = $request->new_status;
+                    $count = $this->bulkStatusChange($jadwalIds, $newStatus);
+                    return redirect()->route('naskah.jadwal.index')
+                        ->with('success', "Berhasil mengubah status {$count} jadwal ujian menjadi {$newStatus}");
+                    break;
+
+                default:
+                    return redirect()->route('naskah.jadwal.index')
+                        ->with('error', 'Aksi tidak valid');
+            }
+        } catch (\Exception $e) {
+            return redirect()->route('naskah.jadwal.index')
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk delete jadwal ujian
+     */
+    private function bulkDelete($jadwalIds)
+    {
+        $count = 0;
+        $errors = [];
+
+        foreach ($jadwalIds as $id) {
+            $jadwal = JadwalUjian::find($id);
+            if ($jadwal) {
+                // Check if there are any results associated
+                if ($jadwal->hasilUjian()->count() > 0) {
+                    $errors[] = "Jadwal '{$jadwal->judul}' tidak dapat dihapus karena sudah memiliki hasil ujian";
+                    continue;
+                }
+
+                $jadwal->delete();
+                $count++;
+            }
+        }
+
+        if (!empty($errors)) {
+            session()->flash('warning', implode(', ', $errors));
+        }
+
+        return $count;
+    }
+
+    /**
+     * Bulk status change for jadwal ujian
+     */
+    private function bulkStatusChange($jadwalIds, $newStatus)
+    {
+        return JadwalUjian::whereIn('id', $jadwalIds)->update(['status' => $newStatus]);
+    }
+
+    /**
+     * Re-assign sesi ruangan untuk jadwal ujian
+     */
+    public function reassignSesi(Request $request, JadwalUjian $jadwal)
+    {
+        $sesiAssignmentService = new SesiAssignmentService();
+
+        // Clean up existing assignments first
+        $cleanedCount = $sesiAssignmentService->cleanupAssignments($jadwal);
+
+        // Re-assign based on current date
+        $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwal);
+
+        $message = "Berhasil memperbarui assignment sesi ruangan.";
+        if ($cleanedCount > 0) {
+            $message .= " {$cleanedCount} sesi tidak sesuai dihapus.";
+        }
+        if ($assignedCount > 0) {
+            $message .= " {$assignedCount} sesi baru ditambahkan.";
+        }
+
+        return redirect()->route('naskah.jadwal.show', $jadwal->id)
+            ->with('success', $message);
+    }
+
+    /**
+     * Toggle auto assignment untuk jadwal ujian
+     */
+    public function toggleAutoAssign(Request $request, JadwalUjian $jadwal)
+    {
+        $autoAssign = $request->get('auto_assign', false);
+
+        $jadwal->update([
+            'auto_assign_sesi' => $autoAssign
+        ]);
+
+        // If enabling auto assign, run assignment now
+        if ($autoAssign && $jadwal->scheduling_mode === 'flexible') {
+            $sesiAssignmentService = new SesiAssignmentService();
+            $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwal);
+
+            if ($assignedCount > 0) {
+                session()->flash('info', "Auto assignment diaktifkan dan {$assignedCount} sesi berhasil ditambahkan.");
+            }
+        }
+
+        $message = $autoAssign ? 'Auto assignment sesi diaktifkan' : 'Auto assignment sesi dinonaktifkan';
+
+        return redirect()->route('naskah.jadwal.show', $jadwal->id)
+            ->with('success', $message);
+    }
+
+    /**
+     * Switch scheduling mode untuk jadwal ujian
+     */
+    public function switchSchedulingMode(Request $request, JadwalUjian $jadwal)
+    {
+        $request->validate([
+            'scheduling_mode' => 'required|in:fixed,flexible'
+        ]);
+
+        $newMode = $request->scheduling_mode;
+        $oldMode = $jadwal->scheduling_mode;
+
+        $jadwal->update([
+            'scheduling_mode' => $newMode
+        ]);
+
+        // Handle mode switching logic
+        if ($newMode === 'flexible' && $oldMode === 'fixed') {
+            // Switching to flexible - enable auto assignment
+            $jadwal->update(['auto_assign_sesi' => true]);
+
+            $sesiAssignmentService = new SesiAssignmentService();
+            $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwal);
+
+            $message = "Mode penjadwalan diubah ke fleksibel.";
+            if ($assignedCount > 0) {
+                $message .= " {$assignedCount} sesi ruangan berhasil dikaitkan.";
+            }
+        } elseif ($newMode === 'fixed' && $oldMode === 'flexible') {
+            // Switching to fixed - clear sesi assignments
+            $jadwal->sesiRuangans()->detach();
+            $jadwal->update(['auto_assign_sesi' => false]);
+
+            $message = "Mode penjadwalan diubah ke tetap. Semua kaitan sesi ruangan telah dihapus.";
+        } else {
+            $message = "Mode penjadwalan berhasil diperbarui.";
+        }
+
+        return redirect()->route('naskah.jadwal.show', $jadwal->id)
+            ->with('success', $message);
     }
 }

@@ -225,7 +225,7 @@
                             <div class="pt-2">
                                 <p class="text-sm text-gray-500">Jumlah Sesi Ruangan</p>
                                 <p class="font-semibold text-2xl">
-                                    {{ isset($jadwal->sesiRuangan) && $jadwal->sesiRuangan instanceof \Illuminate\Support\Collection ? $jadwal->sesiRuangan->count() : '0' }}
+                                    {{ $jadwal->sesiRuangans->count() }}
                                 </p>
                             </div>
                         </div>
@@ -259,6 +259,13 @@
                                         </span>
                                     @break
 
+                                    @case('nonaktif')
+                                        <span
+                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            <i class="fa-solid fa-pause-circle mr-1"></i> Non-Aktif
+                                        </span>
+                                    @break
+
                                     @case('selesai')
                                         <span
                                             class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -266,17 +273,10 @@
                                         </span>
                                     @break
 
-                                    @case('dibatalkan')
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                            <i class="fa-solid fa-ban mr-1"></i> Dibatalkan
-                                        </span>
-                                    @break
-
                                     @default
                                         <span
                                             class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            {{ $jadwal->status }}
+                                            {{ ucfirst($jadwal->status) }}
                                         </span>
                                 @endswitch
                             </div>
@@ -293,10 +293,11 @@
                                         </option>
                                         <option value="aktif" {{ $jadwal->status == 'aktif' ? 'selected' : '' }}>Aktif
                                         </option>
+                                        <option value="nonaktif" {{ $jadwal->status == 'nonaktif' ? 'selected' : '' }}>
+                                            Non-Aktif
+                                        </option>
                                         <option value="selesai" {{ $jadwal->status == 'selesai' ? 'selected' : '' }}>
                                             Selesai</option>
-                                        <option value="dibatalkan"
-                                            {{ $jadwal->status == 'dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
                                     </select>
                                 </div>
                                 <button type="submit"
@@ -324,7 +325,7 @@
                 @endif
             </div>
             <div class="p-6">
-                @if (isset($jadwal->sesiRuangan) && $jadwal->sesiRuangan->count() > 0)
+                @if ($jadwal->sesiRuangans->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead>
@@ -353,7 +354,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach ($jadwal->sesiRuangan as $sesi)
+                                @foreach ($jadwal->sesiRuangans as $sesi)
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
@@ -377,8 +378,8 @@
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
                                                 @if ($sesi->waktu_mulai && $sesi->waktu_selesai)
-                                                    {{ $sesi->waktu_mulai->format('H:i') }} -
-                                                    {{ $sesi->waktu_selesai->format('H:i') }}
+                                                    {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
+                                                    {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
                                                 @else
                                                     Tidak tersedia
                                                 @endif
@@ -400,11 +401,20 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                                            <div class="text-sm font-medium">{{ $sesi->sesiSiswa->count() ?? '0' }}</div>
+                                            <div class="text-sm font-medium">{{ $sesi->sesiRuanganSiswa->count() ?? '0' }}
+                                            </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="{{ route('naskah.sesi.show', $sesi->id) }}"
-                                                class="text-blue-600 hover:text-blue-900">Detail</a>
+                                            <div class="flex space-x-2">
+                                                <a href="{{ route('ruangan.sesi.show', [$sesi->ruangan_id, $sesi->id]) }}"
+                                                    class="text-blue-600 hover:text-blue-900">Detail</a>
+                                                @if (auth()->user()->can('update', $jadwal))
+                                                    <button type="button" onclick="detachSesi({{ $sesi->id }})"
+                                                        class="text-red-600 hover:text-red-900">
+                                                        Lepas
+                                                    </button>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -497,12 +507,20 @@
                                 <select id="sesi_id" name="sesi_id"
                                     class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                                     <option value="">-- Pilih Sesi Ruangan --</option>
-                                    @foreach (\App\Models\SesiRuangan::whereNull('jadwal_ujian_id')->get() as $sesi)
+                                    @php
+                                        // Get all sesi ruangan that are not already attached to this jadwal
+                                        $attachedSesiIds = $jadwal->sesiRuangans->pluck('id')->toArray();
+                                        $availableSesi = \App\Models\SesiRuangan::whereNotIn(
+                                            'id',
+                                            $attachedSesiIds,
+                                        )->get();
+                                    @endphp
+                                    @foreach ($availableSesi as $sesi)
                                         <option value="{{ $sesi->id }}">
                                             {{ $sesi->ruangan->nama ?? 'Ruangan' }} -
+                                            {{ $sesi->nama_sesi }} -
                                             {{ $sesi->tanggal ? $sesi->tanggal->format('d/m/Y') : 'Tanggal tidak tersedia' }}
-                                            -
-                                            {{ $sesi->waktu_mulai ? $sesi->waktu_mulai->format('H:i') : '00:00' }}
+                                            {{ $sesi->waktu_mulai ? '(' . \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') . ')' : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -557,5 +575,32 @@
                 });
             }
         });
+
+        function detachSesi(sesiId) {
+            if (confirm('Apakah Anda yakin ingin melepas sesi ini dari jadwal ujian?')) {
+                fetch('{{ route('naskah.jadwal.detach-sesi', $jadwal) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            sesi_id: sesiId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Gagal melepas sesi: ' + (data.message || 'Error tidak diketahui'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Terjadi kesalahan saat melepas sesi');
+                    });
+            }
+        }
     </script>
 @endpush

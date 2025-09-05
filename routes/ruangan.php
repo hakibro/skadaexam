@@ -82,6 +82,13 @@ Route::middleware(['auth:web', 'role:admin'])
                     Route::delete('/{siswa}', [SesiRuanganController::class, 'siswaDestroy'])->name('destroy');
                     Route::delete('/', [SesiRuanganController::class, 'siswaDestroyAll'])->name('destroy-all');
                 });
+
+                // jadwal ujian dalam sesi
+                Route::prefix('{sesi}/jadwal')->name('jadwal.')->group(function () {
+                    Route::get('/', [SesiRuanganController::class, 'jadwalIndex'])->name('index');
+                    Route::post('/', [SesiRuanganController::class, 'jadwalStore'])->name('store');
+                    Route::delete('/{jadwal}', [SesiRuanganController::class, 'jadwalDestroy'])->name('destroy');
+                });
             });
         });
     });

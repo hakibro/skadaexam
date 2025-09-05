@@ -20,7 +20,7 @@ class SesiRuanganController extends Controller
     public function index(Ruangan $ruangan)
     {
         $sesiList = SesiRuangan::where('ruangan_id', $ruangan->id)
-            ->with(['pengawas', 'sesiRuanganSiswa'])
+            ->with(['pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->withCount(['sesiRuanganSiswa'])
             ->orderBy('tanggal', 'desc')
             ->orderBy('waktu_mulai', 'asc')
@@ -135,7 +135,7 @@ class SesiRuanganController extends Controller
      */
     public function show(Ruangan $ruangan, SesiRuangan $sesi)
     {
-        $sesi->load(['pengawas', 'sesiRuanganSiswa.siswa']);
+        $sesi->load(['pengawas', 'sesiRuanganSiswa.siswa', 'jadwalUjians']);
 
         return view('features.ruangan.sesi.show', compact('ruangan', 'sesi'));
     }
@@ -418,6 +418,62 @@ class SesiRuanganController extends Controller
                 'success' => false,
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Show jadwal ujian management for a session
+     */
+    public function jadwalIndex(Ruangan $ruangan, SesiRuangan $sesi)
+    {
+        $sesi->load('jadwalUjians');
+        $availableJadwals = \App\Models\JadwalUjian::whereDoesntHave('sesiRuangans', function ($query) use ($sesi) {
+            $query->where('sesi_ruangan_id', $sesi->id);
+        })->with('mapel')->get();
+
+        return view('features.ruangan.sesi.jadwal.index', compact('ruangan', 'sesi', 'availableJadwals'));
+    }
+
+    /**
+     * Attach jadwal ujian to session
+     */
+    public function jadwalStore(Request $request, Ruangan $ruangan, SesiRuangan $sesi)
+    {
+        $request->validate([
+            'jadwal_ids' => 'required|array',
+            'jadwal_ids.*' => 'exists:jadwal_ujian,id',
+        ]);
+
+        try {
+            foreach ($request->jadwal_ids as $jadwalId) {
+                $jadwal = \App\Models\JadwalUjian::findOrFail($jadwalId);
+                if (!$sesi->jadwalUjians()->where('jadwal_ujian_id', $jadwalId)->exists()) {
+                    $sesi->jadwalUjians()->attach($jadwalId);
+                }
+            }
+
+            return redirect()->route('ruangan.sesi.jadwal.index', [$ruangan->id, $sesi->id])
+                ->with('success', 'Jadwal ujian berhasil ditambahkan ke sesi');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal menambahkan jadwal ujian: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Detach jadwal ujian from session
+     */
+    public function jadwalDestroy(Request $request, Ruangan $ruangan, SesiRuangan $sesi, $jadwalId)
+    {
+        try {
+            $jadwal = \App\Models\JadwalUjian::findOrFail($jadwalId);
+            $sesi->jadwalUjians()->detach($jadwalId);
+
+            return redirect()->route('ruangan.sesi.jadwal.index', [$ruangan->id, $sesi->id])
+                ->with('success', 'Jadwal ujian berhasil dilepas dari sesi');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal melepas jadwal ujian: ' . $e->getMessage());
         }
     }
 }

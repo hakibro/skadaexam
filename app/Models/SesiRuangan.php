@@ -28,8 +28,7 @@ class SesiRuangan extends Model
         'pengaturan',
         'ruangan_id',
         'pengawas_id',
-        'template_id',
-        'jadwal_ujian_id'
+        'template_id'
     ];
 
     protected $casts = [
@@ -71,10 +70,17 @@ class SesiRuangan extends Model
         return $this->belongsTo(Guru::class, 'koordinator_id');
     }
 
-    // Now we have a direct relationship with jadwal_ujian
+    // Now we have a many-to-many relationship with jadwal_ujian
+    public function jadwalUjians()
+    {
+        return $this->belongsToMany(JadwalUjian::class, 'jadwal_ujian_sesi_ruangan')
+            ->withTimestamps();
+    }
+
+    // Keep the old method for backward compatibility but make it return the first jadwal
     public function jadwalUjian()
     {
-        return $this->belongsTo(JadwalUjian::class);
+        return $this->jadwalUjians()->first();
     }
 
     public function sesiRuanganSiswa()

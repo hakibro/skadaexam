@@ -27,7 +27,10 @@ class JadwalUjian extends Model
         'kode_ujian',
         'jenis_ujian',
         'acak_soal',
-        'acak_jawaban'
+        'acak_jawaban',
+        'auto_assign_sesi',
+        'scheduling_mode',
+        'timezone'
     ];
 
     protected $casts = [
@@ -38,6 +41,7 @@ class JadwalUjian extends Model
         'jumlah_soal' => 'integer',
         'acak_soal' => 'boolean',
         'acak_jawaban' => 'boolean',
+        'auto_assign_sesi' => 'boolean',
         'status' => 'string' // Enum: draft, active, completed, cancelled
     ];
 
@@ -75,11 +79,20 @@ class JadwalUjian extends Model
     }
 
     /**
-     * Get all sesi ruangan for this jadwal ujian.
+     * Get all sesi ruangan for this jadwal ujian (many-to-many).
+     */
+    public function sesiRuangans()
+    {
+        return $this->belongsToMany(SesiRuangan::class, 'jadwal_ujian_sesi_ruangan')
+            ->withTimestamps();
+    }
+
+    /**
+     * Keep old method for backward compatibility.
      */
     public function sesiRuangan()
     {
-        return $this->hasMany(SesiRuangan::class);
+        return $this->sesiRuangans();
     }
 
     /**
@@ -237,6 +250,10 @@ class JadwalUjian extends Model
     {
         $badges = [
             'draft' => ['text' => 'Draft', 'class' => 'bg-gray-100 text-gray-800'],
+            'aktif' => ['text' => 'Aktif', 'class' => 'bg-green-100 text-green-800'],
+            'nonaktif' => ['text' => 'Non-Aktif', 'class' => 'bg-yellow-100 text-yellow-800'],
+            'selesai' => ['text' => 'Selesai', 'class' => 'bg-blue-100 text-blue-800'],
+            // Legacy compatibility
             'active' => ['text' => 'Aktif', 'class' => 'bg-green-100 text-green-800'],
             'completed' => ['text' => 'Selesai', 'class' => 'bg-blue-100 text-blue-800'],
             'cancelled' => ['text' => 'Dibatalkan', 'class' => 'bg-red-100 text-red-800'],
@@ -297,23 +314,136 @@ class JadwalUjian extends Model
 
     /**
      * Get the start time of the exam
-     * This is a computed property since there's no waktu_mulai column in the table
+     * For flexible scheduling, get the earliest start time from sesi ruangan
      */
     public function getWaktuMulaiAttribute()
     {
+        if ($this->scheduling_mode === 'flexible') {
+            $earliestSesi = $this->sesiRuangans()
+                ->orderBy('waktu_mulai', 'asc')
+                ->first();
+
+            if ($earliestSesi) {
+                return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $earliestSesi->waktu_mulai);
+            }
+        }
+
         return $this->tanggal;
     }
 
     /**
      * Get the end time of the exam
-     * This is computed by adding the duration to the start time
+     * For flexible scheduling, get the latest end time from sesi ruangan
      */
     public function getWaktuSelesaiAttribute()
     {
         if (!$this->tanggal) {
             return null;
         }
-        
+
+        if ($this->scheduling_mode === 'flexible') {
+            $latestSesi = $this->sesiRuangans()
+                ->orderBy('waktu_selesai', 'desc')
+                ->first();
+
+            if ($latestSesi) {
+                return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $latestSesi->waktu_selesai);
+            }
+        }
+
         return (clone $this->tanggal)->addMinutes($this->durasi_menit ?? 0);
+    }
+
+    /**
+     * Get all possible time slots for this jadwal ujian
+     */
+    public function getTimeSlots()
+    {
+        if ($this->scheduling_mode === 'fixed') {
+            return [
+                [
+                    'waktu_mulai' => $this->tanggal,
+                    'waktu_selesai' => $this->waktu_selesai,
+                    'durasi_menit' => $this->durasi_menit,
+                    'source' => 'fixed'
+                ]
+            ];
+        }
+
+        $timeSlots = [];
+        foreach ($this->sesiRuangans as $sesi) {
+            $timeSlots[] = [
+                'sesi_id' => $sesi->id,
+                'sesi_nama' => $sesi->nama_sesi,
+                'ruangan' => $sesi->ruangan->nama_ruangan ?? 'Unknown',
+                'waktu_mulai' => Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $sesi->waktu_mulai),
+                'waktu_selesai' => Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $sesi->waktu_selesai),
+                'durasi_menit' => $sesi->durasi,
+                'source' => 'sesi'
+            ];
+        }
+
+        return $timeSlots;
+    }
+
+    /**
+     * Check if this jadwal uses flexible scheduling
+     */
+    public function isFlexibleScheduling()
+    {
+        return $this->scheduling_mode === 'flexible';
+    }
+
+    /**
+     * Get total capacity across all sesi ruangan
+     */
+    public function getTotalCapacity()
+    {
+        if ($this->scheduling_mode === 'fixed') {
+            return 0; // No specific capacity for fixed scheduling
+        }
+
+        return $this->sesiRuangans->sum(function ($sesi) {
+            return $sesi->ruangan->kapasitas ?? 0;
+        });
+    }
+
+    /**
+     * Get schedule summary for display
+     */
+    public function getScheduleSummary()
+    {
+        if ($this->scheduling_mode === 'fixed') {
+            return [
+                'mode' => 'fixed',
+                'tanggal' => $this->tanggal->format('d M Y'),
+                'waktu' => $this->tanggal->format('H:i') . ' - ' . $this->waktu_selesai->format('H:i'),
+                'durasi' => $this->durasi_menit . ' menit',
+                'sesi_count' => 0
+            ];
+        }
+
+        $sesiCount = $this->sesiRuangans->count();
+
+        if ($sesiCount === 0) {
+            return [
+                'mode' => 'flexible',
+                'tanggal' => $this->tanggal->format('d M Y'),
+                'waktu' => 'Belum ada sesi terkait',
+                'durasi' => $this->durasi_menit . ' menit (target)',
+                'sesi_count' => 0
+            ];
+        }
+
+        $earliestStart = $this->sesiRuangans->min('waktu_mulai');
+        $latestEnd = $this->sesiRuangans->max('waktu_selesai');
+
+        return [
+            'mode' => 'flexible',
+            'tanggal' => $this->tanggal->format('d M Y'),
+            'waktu' => $earliestStart . ' - ' . $latestEnd,
+            'durasi' => $this->durasi_menit . ' menit per sesi',
+            'sesi_count' => $sesiCount
+        ];
     }
 }

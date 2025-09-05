@@ -130,8 +130,8 @@
                             <i class="fa-solid fa-list-check text-sm"></i>
                             <span class="text-sm">Soal</span>
                         </a>
-                        <a href="{{ route('panduan.format-docx') }}"
-                            class="flex items-center space-x-2 px-10 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('panduan.format-docx') ? 'bg-green-600 text-white' : '' }}"
+                        <a href="{{ route('naskah.panduan.format-docx') }}"
+                            class="flex items-center space-x-2 px-10 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.panduan.format-docx') ? 'bg-green-600 text-white' : '' }}"
                             title="Panduan format file DOCX untuk impor soal">
                             <i class="fa-solid fa-circle-question text-sm"></i>
                             <span class="text-sm">Panduan DOCX</span>
@@ -216,18 +216,6 @@
                         </a>
                     </div>
                 @endif
-
-                <!-- Documentation & Help -->
-                <div class="px-4 py-2 text-gray-500 uppercase text-xs font-semibold tracking-wide mt-6">
-                    Documentation
-                </div>
-
-                <a href="{{ route('panduan.format-docx') }}"
-                    class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('panduan.format-docx') ? 'bg-indigo-600 text-white' : '' }}">
-                    <i class="fa-solid fa-file-word"></i>
-                    <span>Format DOCX Import</span>
-                </a>
-
                 <!-- Settings -->
                 <div class="px-4 py-2 text-gray-500 uppercase text-xs font-semibold tracking-wide mt-6">
                     Settings

@@ -227,7 +227,14 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::resource('jadwal', JadwalUjianController::class);
     Route::put('jadwal/{jadwal}/status', [JadwalUjianController::class, 'updateStatus'])->name('jadwal.status');
     Route::post('jadwal/{jadwal}/attach-sesi', [JadwalUjianController::class, 'attachSesi'])->name('jadwal.attach-sesi');
+    Route::post('jadwal/{jadwal}/detach-sesi', [JadwalUjianController::class, 'detachSesi'])->name('jadwal.detach-sesi');
+    Route::post('jadwal/bulk-action', [JadwalUjianController::class, 'bulkAction'])->name('jadwal.bulk-action');
+    Route::post('jadwal/{jadwal}/reassign-sesi', [JadwalUjianController::class, 'reassignSesi'])->name('jadwal.reassign-sesi');
+    Route::put('jadwal/{jadwal}/toggle-auto-assign', [JadwalUjianController::class, 'toggleAutoAssign'])->name('jadwal.toggle-auto-assign');
+    Route::put('jadwal/{jadwal}/switch-scheduling-mode', [JadwalUjianController::class, 'switchSchedulingMode'])->name('jadwal.switch-scheduling-mode');
 
+
+    Route::get('/panduan/format-docx', [PanduanController::class, 'formatDocx'])->name('panduan.format-docx');
 
     // Sesi Ujian routes have been removed as they're replaced by sesi ruangan
 
@@ -365,9 +372,7 @@ Route::middleware('auth:web')->group(function () {
 | DOCUMENTATION ROUTES
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:web')->prefix('panduan')->name('panduan.')->group(function () {
-    Route::get('/format-docx', [PanduanController::class, 'formatDocx'])->name('format-docx');
-});
+
 
 // Test route for ruangan/template
 Route::get('/test-ruangan-template', function () {

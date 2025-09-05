@@ -85,6 +85,8 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengawas</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jadwal Ujian
+                                </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
@@ -115,6 +117,20 @@
                                         <div class="text-sm text-gray-900">
                                             {{ $sesi->pengawas->nama ?? 'Belum ditentukan' }}
                                         </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if ($sesi->jadwalUjians->count() > 0)
+                                            @foreach ($sesi->jadwalUjians as $jadwal)
+                                                <div class="mb-1">
+                                                    <span
+                                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        {{ $jadwal->judul }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="text-sm text-gray-500">Tidak ada jadwal</div>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
@@ -181,7 +197,8 @@
                 </div>
             @else
                 <div class="p-12 text-center">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-4 0V3m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -203,7 +220,7 @@
     <script>
         function deleteSesi(sesiId, isForceDelete = false) {
             let confirmMessage =
-            'Apakah Anda yakin ingin menghapus sesi ini? Sesi yang memiliki siswa tidak dapat dihapus.';
+                'Apakah Anda yakin ingin menghapus sesi ini? Sesi yang memiliki siswa tidak dapat dihapus.';
             let formId = 'delete-sesi-' + sesiId;
 
             if (isForceDelete) {

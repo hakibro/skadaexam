@@ -265,7 +265,7 @@
                                 <i class="fa-solid fa-file-download mr-1"></i> Download Template Impor
                             </a>
 
-                            <a href="{{ route('panduan.format-docx') }}" target="_blank"
+                            <a href="{{ route('naskah.panduan.format-docx') }}" target="_blank"
                                 class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
                                 <i class="fa-solid fa-circle-info mr-1"></i> Tutorial Format Soal
                             </a>

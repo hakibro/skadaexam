@@ -126,6 +126,39 @@
                     </div>
 
                     <div>
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Jadwal Ujian</h3>
+                        <div class="mt-2">
+                            @if ($sesi->jadwalUjians->count() > 0)
+                                <div class="space-y-2">
+                                    @foreach ($sesi->jadwalUjians as $jadwal)
+                                        <div class="flex items-start">
+                                            <i class="fa-solid fa-calendar-check mr-3 text-blue-400 mt-1"></i>
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $jadwal->judul }}
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $jadwal->mapel->nama_mapel ?? 'N/A' }} •
+                                                    {{ $jadwal->jenis_ujian }}
+                                                </div>
+                                                <span
+                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-100 text-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-800 mt-1">
+                                                    {{ ucfirst($jadwal->status) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="flex items-center text-sm text-gray-500">
+                                    <i class="fa-solid fa-calendar-xmark mr-3 text-gray-400"></i>
+                                    Belum ada jadwal ujian
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div>
                         <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Peserta</h3>
                         <div class="mt-2">
                             <div class="flex items-center justify-between">
@@ -183,6 +216,11 @@
                     <i class="fa-solid fa-users mr-2"></i> Kelola Siswa
                 </a>
 
+                <a href="{{ route('ruangan.sesi.jadwal.index', [$ruangan->id, $sesi->id]) }}"
+                    class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                    <i class="fa-solid fa-calendar-plus mr-2"></i> Kelola Jadwal Ujian
+                </a>
+
                 @if (!$sesi->token_ujian)
                     <button onclick="generateToken()"
                         class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
@@ -211,7 +249,8 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Siswa</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kelas</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Kehadiran
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status
+                                    Kehadiran
                                 </th>
                             </tr>
                         </thead>

@@ -62,7 +62,7 @@
                                         Pembahasan: Jawaban A benar karena...)</li>
                                 </ul>
                                 <div class="mt-3">
-                                    <a href="{{ route('panduan.format-docx') }}"
+                                    <a href="{{ route('naskah.panduan.format-docx') }}"
                                         class="text-blue-600 hover:text-blue-800 font-medium flex items-center">
                                         <i class="fa-solid fa-file-word mr-1"></i>
                                         Lihat Panduan Lengkap Format DOCX

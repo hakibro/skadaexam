@@ -9,6 +9,6 @@ class PanduanController extends Controller
 {
     public function formatDocx()
     {
-        return view('features.naskah.panduan.format-docx');
+        return view('features.naskah.banksoal.panduan.format-docx');
     }
 }

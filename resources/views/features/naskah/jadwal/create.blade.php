@@ -134,12 +134,39 @@
                         </div>
 
                         <div>
-                            <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal & Waktu Ujian
+                            <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal Ujian
                                 <span class="text-red-500">*</span></label>
-                            <input type="datetime-local" name="tanggal" id="tanggal" required
-                                value="{{ old('tanggal') }}"
+                            <input type="date" name="tanggal" id="tanggal" required value="{{ old('tanggal') }}"
                                 class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('tanggal') border-red-500 @enderror">
+                            <p class="mt-1 text-xs text-gray-500">Untuk mode fleksibel, sistem akan otomatis mengaitkan sesi
+                                ruangan dengan tanggal yang sama.</p>
                             @error('tanggal')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="scheduling_mode" class="block text-sm font-medium text-gray-700">Mode
+                                Penjadwalan</label>
+                            <select name="scheduling_mode" id="scheduling_mode"
+                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('scheduling_mode') border-red-500 @enderror">
+                                <option value="flexible"
+                                    {{ old('scheduling_mode', 'flexible') == 'flexible' ? 'selected' : '' }}>
+                                    Fleksibel (Berdasarkan Sesi Ruangan)
+                                </option>
+                                <option value="fixed" {{ old('scheduling_mode') == 'fixed' ? 'selected' : '' }}>
+                                    Tetap (Waktu Spesifik)
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <span class="mode-description" id="flexible-desc">
+                                    Waktu ujian akan mengikuti jadwal sesi ruangan yang memiliki tanggal yang sama.
+                                </span>
+                                <span class="mode-description hidden" id="fixed-desc">
+                                    Waktu ujian akan tetap sesuai dengan tanggal dan durasi yang ditentukan.
+                                </span>
+                            </p>
+                            @error('scheduling_mode')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
                         </div>
@@ -158,7 +185,7 @@
                     <div class="bg-gray-50 p-4 rounded-md">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Pengaturan Ujian</h4>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="flex items-center">
                                 <input type="checkbox" name="acak_soal" id="acak_soal" value="1"
                                     {{ old('acak_soal') ? 'checked' : '' }}
@@ -182,7 +209,16 @@
                                     {{ old('tampilkan_hasil') ? 'checked' : '' }}
                                     class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="tampilkan_hasil" class="ml-2 block text-sm text-gray-700">
-                                    Tampilkan Hasil Setelah Selesai
+                                    Tampilkan Hasil
+                                </label>
+                            </div>
+
+                            <div class="flex items-center" id="auto-assign-container">
+                                <input type="checkbox" name="auto_assign_sesi" id="auto_assign_sesi" value="1"
+                                    {{ old('auto_assign_sesi', true) ? 'checked' : '' }}
+                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="auto_assign_sesi" class="ml-2 block text-sm text-gray-700">
+                                    Auto Assign Sesi
                                 </label>
                             </div>
                         </div>
@@ -213,8 +249,35 @@
                 const jadwalForm = document.getElementById('jadwalForm');
                 const submitButton = document.getElementById('submitButton');
 
+                // Scheduling mode elements
+                const schedulingModeSelect = document.getElementById('scheduling_mode');
+                const autoAssignContainer = document.getElementById('auto-assign-container');
+                const flexibleDesc = document.getElementById('flexible-desc');
+                const fixedDesc = document.getElementById('fixed-desc');
+
                 // Store original bank soal options
                 const originalOptions = Array.from(bankSoalSelect.options);
+
+                // Handle scheduling mode changes
+                function handleSchedulingModeChange() {
+                    const mode = schedulingModeSelect.value;
+
+                    if (mode === 'flexible') {
+                        autoAssignContainer.style.display = 'flex';
+                        flexibleDesc.classList.remove('hidden');
+                        fixedDesc.classList.add('hidden');
+                    } else {
+                        autoAssignContainer.style.display = 'none';
+                        flexibleDesc.classList.add('hidden');
+                        fixedDesc.classList.remove('hidden');
+                    }
+                }
+
+                // Initialize scheduling mode display
+                handleSchedulingModeChange();
+
+                // Add event listener for scheduling mode changes
+                schedulingModeSelect.addEventListener('change', handleSchedulingModeChange);
 
                 // Filter bank soal when mapel changes
                 mapelSelect.addEventListener('change', function() {

@@ -38,7 +38,7 @@
                         <option value="">Pilih Template (Opsional)</option>
                         @foreach ($templates as $template)
                             <option value="{{ $template->id }}" {{ old('template_id') == $template->id ? 'selected' : '' }}>
-                                {{ $template->nama }} - {{ $template->deskripsi }}
+                                {{ $template->nama_sesi }} - {{ $template->kode_sesi }}
                             </option>
                         @endforeach
                     </select>

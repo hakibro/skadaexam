@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\Features\Ruangan\EnrollmentController;
 use App\Http\Controllers\UjianController;
 use App\Http\Controllers\Auth\UjianLoginController;
 

@@ -154,11 +154,12 @@
                         </div>
 
                         <div>
-                            <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal & Waktu Ujian
+                            <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal Ujian (Default)
                                 <span class="text-red-500">*</span></label>
-                            <input type="datetime-local" name="tanggal" id="tanggal" required
-                                value="{{ old('tanggal', $jadwal->tanggal ? $jadwal->tanggal->format('Y-m-d\TH:i') : '') }}"
+                            <input type="date" name="tanggal" id="tanggal" required
+                                value="{{ old('tanggal', $jadwal->tanggal ? $jadwal->tanggal->format('Y-m-d') : '') }}"
                                 class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('tanggal') border-red-500 @enderror">
+                            <p class="mt-1 text-xs text-gray-500">Tanggal default ini dapat diubah per sesi ruangan</p>
                             @error('tanggal')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
