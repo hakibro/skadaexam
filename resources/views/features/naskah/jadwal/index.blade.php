@@ -45,10 +45,16 @@
                             </div>
                         </div>
                     </div>
-                    <a href="{{ route('naskah.jadwal.create') }}"
-                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-150">
-                        <i class="fa-solid fa-plus mr-2"></i> Tambah Jadwal
-                    </a>
+                    <div class="flex space-x-2">
+                        <a href="{{ route('naskah.jadwal.create') }}"
+                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-plus mr-2"></i> Tambah Jadwal
+                        </a>
+                        <a href="{{ route('naskah.jadwal.batch-update-kelas-target') }}"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-sync mr-2"></i> Update Kelas Target
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -266,7 +272,7 @@
     </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
     <script>
         function toggleAllCheckboxes(source) {
             const checkboxes = document.querySelectorAll('.jadwal-checkbox');
@@ -363,9 +369,9 @@
             }
         });
     </script>
-@endpush
+@endsection
 
-@push('scripts')
+@section('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Auto-submit filter form when selecting status, mapel, or date
@@ -378,4 +384,4 @@
             });
         });
     </script>
-@endpush
+@endsection

@@ -50,6 +50,8 @@ Route::middleware(['auth:web', 'role:admin'])
         Route::post('/', [RuanganController::class, 'store'])->name('store');
         Route::get('/import', [RuanganController::class, 'import'])->name('import');
         Route::post('/import/process', [RuanganController::class, 'processImport'])->name('import.process');
+        Route::get('/export', [RuanganController::class, 'export'])->name('export');
+        Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 
         // ===============================

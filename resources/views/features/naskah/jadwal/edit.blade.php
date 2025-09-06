@@ -176,6 +176,30 @@
                         </div>
                     </div>
 
+                    <!-- Kelas Target Section -->
+                    <div class="bg-white p-4 rounded-md border border-gray-200 mb-6">
+                        <h4 class="text-base font-medium text-gray-800 mb-3">Kelas Target</h4>
+                        <p class="text-sm text-gray-600 mb-4">Pilih kelas yang akan mengikuti ujian ini. Jika tidak ada
+                            kelas yang dipilih, sistem akan secara otomatis memilih kelas berdasarkan tingkat dan jurusan
+                            dari mata pelajaran.</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            @foreach ($kelasList as $kelas)
+                                <div class="flex items-start">
+                                    <input type="checkbox" name="kelas_target[]" id="kelas_{{ $kelas->id }}"
+                                        value="{{ $kelas->id }}"
+                                        {{ in_array($kelas->id, old('kelas_target', $jadwal->kelas_target ?? [])) ? 'checked' : '' }}
+                                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    <label for="kelas_{{ $kelas->id }}" class="ml-2 block text-sm text-gray-700">
+                                        {{ $kelas->nama_kelas }}
+                                        <span class="text-xs text-gray-500">({{ $kelas->tingkat }}
+                                            {{ $kelas->jurusan }})</span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
                     <div class="bg-gray-50 p-4 rounded-md">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Pengaturan Ujian</h4>
 

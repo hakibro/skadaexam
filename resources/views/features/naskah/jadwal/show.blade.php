@@ -9,14 +9,13 @@
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold">Detail Jadwal Ujian</h1>
 
-            @if (auth()->user()->can('update', $jadwal))
-                <div class="space-x-2">
-                    <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
-                        class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 flex items-center">
-                        <i class="fas fa-edit mr-2"></i> Edit Jadwal
-                    </a>
-                </div>
-            @endif
+
+            <div class="space-x-2">
+                <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
+                    class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 flex items-center">
+                    <i class="fas fa-edit mr-2"></i> Edit Jadwal
+                </a>
+            </div>
         </div>
 
         <!-- Hidden debug info (can be revealed with ?debug=1 parameter) -->
@@ -233,81 +232,79 @@
                 </div>
 
                 <!-- Actions Card -->
-                @if (auth()->user()->can('update', $jadwal))
-                    <div class="bg-white rounded-lg shadow mb-6">
-                        <div class="border-b px-6 py-3 bg-blue-50">
-                            <h2 class="font-medium text-lg flex items-center">
-                                <i class="fas fa-cog text-blue-600 mr-2"></i> Pengaturan Status
-                            </h2>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <!-- Current Status Display -->
-                            <div class="mb-4 flex items-center">
-                                <span class="text-sm font-medium text-gray-700 mr-3">Status Saat Ini:</span>
-                                @switch($jadwal->status)
-                                    @case('draft')
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            <i class="fa-solid fa-pencil mr-1"></i> Draft
-                                        </span>
-                                    @break
-
-                                    @case('aktif')
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            <i class="fa-solid fa-check-circle mr-1"></i> Aktif
-                                        </span>
-                                    @break
-
-                                    @case('nonaktif')
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            <i class="fa-solid fa-pause-circle mr-1"></i> Non-Aktif
-                                        </span>
-                                    @break
-
-                                    @case('selesai')
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                            <i class="fa-solid fa-flag-checkered mr-1"></i> Selesai
-                                        </span>
-                                    @break
-
-                                    @default
-                                        <span
-                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            {{ ucfirst($jadwal->status) }}
-                                        </span>
-                                @endswitch
-                            </div>
-
-                            <!-- Status Update Form -->
-                            <form action="{{ route('naskah.jadwal.status', $jadwal) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="mb-3">
-                                    <label class="block text-sm font-medium text-gray-700">Ubah Status Menjadi:</label>
-                                    <select name="status"
-                                        class="mt-1 block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <option value="draft" {{ $jadwal->status == 'draft' ? 'selected' : '' }}>Draft
-                                        </option>
-                                        <option value="aktif" {{ $jadwal->status == 'aktif' ? 'selected' : '' }}>Aktif
-                                        </option>
-                                        <option value="nonaktif" {{ $jadwal->status == 'nonaktif' ? 'selected' : '' }}>
-                                            Non-Aktif
-                                        </option>
-                                        <option value="selesai" {{ $jadwal->status == 'selesai' ? 'selected' : '' }}>
-                                            Selesai</option>
-                                    </select>
-                                </div>
-                                <button type="submit"
-                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex justify-center items-center">
-                                    <i class="fas fa-sync-alt mr-2"></i> Perbarui Status
-                                </button>
-                            </form>
-                        </div>
+                <div class="bg-white rounded-lg shadow mb-6">
+                    <div class="border-b px-6 py-3 bg-blue-50">
+                        <h2 class="font-medium text-lg flex items-center">
+                            <i class="fas fa-cog text-blue-600 mr-2"></i> Pengaturan Status
+                        </h2>
                     </div>
-                @endif
+                    <div class="p-6 space-y-4">
+                        <!-- Current Status Display -->
+                        <div class="mb-4 flex items-center">
+                            <span class="text-sm font-medium text-gray-700 mr-3">Status Saat Ini:</span>
+                            @switch($jadwal->status)
+                                @case('draft')
+                                    <span
+                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        <i class="fa-solid fa-pencil mr-1"></i> Draft
+                                    </span>
+                                @break
+
+                                @case('aktif')
+                                    <span
+                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fa-solid fa-check-circle mr-1"></i> Aktif
+                                    </span>
+                                @break
+
+                                @case('nonaktif')
+                                    <span
+                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        <i class="fa-solid fa-pause-circle mr-1"></i> Non-Aktif
+                                    </span>
+                                @break
+
+                                @case('selesai')
+                                    <span
+                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        <i class="fa-solid fa-flag-checkered mr-1"></i> Selesai
+                                    </span>
+                                @break
+
+                                @default
+                                    <span
+                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        {{ ucfirst($jadwal->status) }}
+                                    </span>
+                            @endswitch
+                        </div>
+
+                        <!-- Status Update Form -->
+                        <form action="{{ route('naskah.jadwal.status', $jadwal) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+                            <div class="mb-3">
+                                <label class="block text-sm font-medium text-gray-700">Ubah Status Menjadi:</label>
+                                <select name="status"
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    <option value="draft" {{ $jadwal->status == 'draft' ? 'selected' : '' }}>Draft
+                                    </option>
+                                    <option value="aktif" {{ $jadwal->status == 'aktif' ? 'selected' : '' }}>Aktif
+                                    </option>
+                                    <option value="nonaktif" {{ $jadwal->status == 'nonaktif' ? 'selected' : '' }}>
+                                        Non-Aktif
+                                    </option>
+                                    <option value="selesai" {{ $jadwal->status == 'selesai' ? 'selected' : '' }}>
+                                        Selesai</option>
+                                </select>
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex justify-center items-center">
+                                <i class="fas fa-sync-alt mr-2"></i> Perbarui Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -316,12 +313,13 @@
             <div class="border-b px-6 py-3 flex justify-between items-center">
                 <h2 class="font-medium text-lg">Sesi Ruangan</h2>
 
-                @if (auth()->user()->can('update', $jadwal) && $jadwal->status != 'selesai' && $jadwal->status != 'dibatalkan')
-                    <button type="button"
-                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        onclick="document.getElementById('tambahSesiModal').classList.remove('hidden')">
-                        <i class="fas fa-plus mr-2"></i> Tambah Sesi
-                    </button>
+                @if (auth()->user()->can('update', $jadwal))
+                    <div class="flex space-x-2">
+                        <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
+                            class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                            <i class="fas fa-edit mr-2"></i> Edit Jadwal
+                        </a>
+                    </div>
                 @endif
             </div>
             <div class="p-6">
@@ -372,7 +370,7 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
-                                                {{ $sesi->tanggal ? $sesi->tanggal->format('d M Y') : 'Tidak tersedia' }}
+                                                {{ $jadwal->tanggal ? $jadwal->tanggal->format('d M Y') : 'Tidak tersedia' }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -430,14 +428,6 @@
                             </path>
                         </svg>
                         <p class="mt-2 text-sm text-gray-500">Belum ada sesi ruangan yang ditambahkan ke jadwal ini.</p>
-
-                        @if (auth()->user()->can('update', $jadwal) && $jadwal->status != 'selesai' && $jadwal->status != 'dibatalkan')
-                            <button type="button"
-                                class="mt-3 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-                                onclick="document.getElementById('tambahSesiModal').classList.remove('hidden')">
-                                <i class="fas fa-plus mr-2"></i> Tambahkan Sesi Ruangan
-                            </button>
-                        @endif
                     </div>
                 @endif
             </div>
@@ -469,80 +459,7 @@
         </div>
     </div>
 
-    <!-- Modal: Tambah Sesi -->
-    <div id="tambahSesiModal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title"
-        role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div
-                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div
-                            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                        </div>
-                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Tambahkan Sesi Ruangan
-                            </h3>
-                            <div class="mt-2">
-                                <p class="text-sm text-gray-500">
-                                    Pilih sesi ruangan yang ingin ditambahkan ke jadwal ujian ini.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <form id="tambahSesiForm" action="{{ route('naskah.jadwal.attach-sesi', $jadwal->id) }}"
-                            method="POST">
-                            @csrf
-                            <div class="mb-3">
-                                <label for="sesi_id" class="block text-sm font-medium text-gray-700">Sesi Ruangan</label>
-                                <select id="sesi_id" name="sesi_id"
-                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                                    <option value="">-- Pilih Sesi Ruangan --</option>
-                                    @php
-                                        // Get all sesi ruangan that are not already attached to this jadwal
-                                        $attachedSesiIds = $jadwal->sesiRuangans->pluck('id')->toArray();
-                                        $availableSesi = \App\Models\SesiRuangan::whereNotIn(
-                                            'id',
-                                            $attachedSesiIds,
-                                        )->get();
-                                    @endphp
-                                    @foreach ($availableSesi as $sesi)
-                                        <option value="{{ $sesi->id }}">
-                                            {{ $sesi->ruangan->nama ?? 'Ruangan' }} -
-                                            {{ $sesi->nama_sesi }} -
-                                            {{ $sesi->tanggal ? $sesi->tanggal->format('d/m/Y') : 'Tanggal tidak tersedia' }}
-                                            {{ $sesi->waktu_mulai ? '(' . \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') . ')' : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button"
-                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                        onclick="document.getElementById('tambahSesiForm').submit()">
-                        Tambahkan
-                    </button>
-                    <button type="button"
-                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                        onclick="document.getElementById('tambahSesiModal').classList.add('hidden')">
-                        Batal
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Modal section removed -->
 
     <!-- Debug Data (Only visible with ?debug=1 parameter) -->
     @if (request()->has('debug'))

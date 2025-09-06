@@ -18,11 +18,10 @@ class SesiAssignmentService
             return false;
         }
 
-        // Cari sesi ruangan dengan tanggal yang sama
-        $availableSesi = SesiRuangan::whereDate('tanggal', $jadwalUjian->tanggal)
-            ->whereDoesntHave('jadwalUjians', function ($query) use ($jadwalUjian) {
-                $query->where('jadwal_ujian.id', $jadwalUjian->id);
-            })
+        // Cari sesi ruangan yang belum dikaitkan dengan jadwal ujian ini
+        $availableSesi = SesiRuangan::whereDoesntHave('jadwalUjians', function ($query) use ($jadwalUjian) {
+            $query->where('jadwal_ujian.id', $jadwalUjian->id);
+        })
             ->get();
 
         $assignedCount = 0;
@@ -53,12 +52,17 @@ class SesiAssignmentService
             return false;
         }
 
-        // Check if duration matches (allow some flexibility)
+        // We no longer strictly require the session duration to match the exam duration
+        // The jadwal ujian duration will be used for student work time
+
+        // However, we still check if the session has reasonable duration to accommodate the exam
         $sesiDuration = $sesi->durasi; // in minutes
         $jadwalDuration = $jadwalUjian->durasi_menit;
 
-        if ($sesiDuration && abs($sesiDuration - $jadwalDuration) > 15) {
-            // Allow max 15 minutes difference
+        // Session should be at least as long as the exam (with some flexibility)
+        // We don't check the upper limit since longer sessions can still accommodate the exam
+        if ($sesiDuration && $sesiDuration < ($jadwalDuration - 5)) {
+            // Session is too short for the exam (allowing 5 min tolerance)
             return false;
         }
 
@@ -85,7 +89,7 @@ class SesiAssignmentService
                 'ruangan' => $sesi->ruangan->nama_ruangan ?? 'Unknown',
                 'waktu_mulai' => $sesi->waktu_mulai,
                 'waktu_selesai' => $sesi->waktu_selesai,
-                'tanggal' => $sesi->tanggal,
+                'tanggal' => $jadwalUjian->tanggal->format('Y-m-d'), // Use jadwal's date instead of sesi's date
                 'status' => $sesi->status,
                 'kapasitas' => $sesi->ruangan->kapasitas ?? 0,
                 'terisi' => $sesi->sesiRuanganSiswa()->count(),
@@ -176,13 +180,7 @@ class SesiAssignmentService
         $removedCount = 0;
 
         foreach ($jadwalUjian->sesiRuangans as $sesi) {
-            // Remove if tanggal doesn't match
-            if ($sesi->tanggal->format('Y-m-d') !== $jadwalUjian->tanggal->format('Y-m-d')) {
-                $jadwalUjian->sesiRuangans()->detach($sesi->id);
-                $removedCount++;
-
-                Log::info("Removed sesi {$sesi->kode_sesi} from jadwal {$jadwalUjian->kode_ujian} due to date mismatch");
-            }
+            // We don't need to check tanggal anymore since it's now stored in jadwal_ujian
 
             // Remove if sesi is cancelled
             if ($sesi->status === 'dibatalkan') {

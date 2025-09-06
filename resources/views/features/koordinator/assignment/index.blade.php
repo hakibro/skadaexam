@@ -218,7 +218,9 @@
                                         <div class="text-xs text-gray-400">{{ $sesi->kode_sesi }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $sesi->tanggal->format('d M Y') }}</div>
+                                        <div class="text-sm text-gray-900">
+                                            {{ $sesi->jadwalUjians->first() ? $sesi->jadwalUjians->first()->tanggal->format('d M Y') : 'Tidak ada jadwal' }}
+                                        </div>
                                         <div class="text-sm text-gray-500">
                                             {{ $sesi->waktu_mulai }} - {{ $sesi->waktu_selesai }}
                                         </div>
@@ -267,7 +269,7 @@
                                             </button>
                                         @else
                                             <button
-                                                onclick="showPengawasSchedule({{ $sesi->pengawas_id }}, '{{ $sesi->tanggal }}')"
+                                                onclick="showPengawasSchedule({{ $sesi->pengawas_id }}, '{{ $sesi->jadwalUjians->first() ? $sesi->jadwalUjians->first()->tanggal->format('Y-m-d') : now()->format('Y-m-d') }}')"
                                                 class="text-green-600 hover:text-green-900" title="Lihat Jadwal Pengawas">
                                                 <i class="fa-solid fa-calendar-alt"></i>
                                             </button>

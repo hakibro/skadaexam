@@ -7,7 +7,9 @@ $today = '2025-09-05';
 echo "=== Checking Sesi Ruangan for Today ({$today}) ===\n\n";
 
 // Check sesi ruangan with today's date
-$todaySesi = SesiRuangan::whereDate('tanggal', $today)->get();
+$todaySesi = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($today) {
+$q->whereDate('tanggal', $today);
+})->get();
 echo "Sesi ruangan for today: " . $todaySesi->count() . "\n";
 
 foreach ($todaySesi as $sesi) {
@@ -34,7 +36,6 @@ if ($ruangan) {
 $testSesi = SesiRuangan::create([
 'kode_sesi' => 'TEST-' . strtoupper(Str::random(6)),
 'nama_sesi' => 'Test Sesi ' . date('H:i'),
-'tanggal' => $today,
 'waktu_mulai' => '08:00:00',
 'waktu_selesai' => '10:00:00',
 'status' => 'belum_mulai',

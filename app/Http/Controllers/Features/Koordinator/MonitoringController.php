@@ -51,38 +51,38 @@ class MonitoringController extends Controller
         $activeSessions = SesiRuangan::where('status', 'berlangsung')
             ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
             ->get()
-            ->map(function($session) {
+            ->map(function ($session) {
                 // Add computed properties for the view
-                $session->status_border_class = match($session->status) {
+                $session->status_border_class = match ($session->status) {
                     'berlangsung' => 'border-green-500',
                     'belum_mulai' => 'border-yellow-500',
                     'selesai' => 'border-gray-500',
                     'dibatalkan' => 'border-red-500',
                     default => 'border-gray-300'
                 };
-                
-                $session->status_badge_class = match($session->status) {
+
+                $session->status_badge_class = match ($session->status) {
                     'berlangsung' => 'bg-green-100 text-green-800',
                     'belum_mulai' => 'bg-yellow-100 text-yellow-800',
                     'selesai' => 'bg-gray-100 text-gray-800',
                     'dibatalkan' => 'bg-red-100 text-red-800',
                     default => 'bg-gray-100 text-gray-800'
                 };
-                
-                $session->status_label = match($session->status) {
+
+                $session->status_label = match ($session->status) {
                     'berlangsung' => 'Berlangsung',
                     'belum_mulai' => 'Belum Mulai',
                     'selesai' => 'Selesai',
                     'dibatalkan' => 'Dibatalkan',
                     default => 'Unknown'
                 };
-                
+
                 // Calculate progress if ongoing
                 if ($session->status === 'berlangsung') {
                     $startTime = Carbon::parse($session->tanggal->format('Y-m-d') . ' ' . $session->waktu_mulai);
                     $endTime = Carbon::parse($session->tanggal->format('Y-m-d') . ' ' . $session->waktu_selesai);
                     $now = Carbon::now();
-                    
+
                     if ($now->between($startTime, $endTime)) {
                         $totalDuration = $endTime->diffInMinutes($startTime);
                         $elapsedDuration = $now->diffInMinutes($startTime);
@@ -96,7 +96,7 @@ class MonitoringController extends Controller
                     $session->progress_percentage = 0;
                     $session->remaining_time = '';
                 }
-                
+
                 return $session;
             });
 
@@ -105,7 +105,7 @@ class MonitoringController extends Controller
 
         return view('features.koordinator.monitoring.index', compact(
             'sessions',
-            'stats', 
+            'stats',
             'availableRuangan',
             'activeSessions',
             'rooms',
@@ -273,30 +273,40 @@ class MonitoringController extends Controller
 
     private function getMonitoringStats($date)
     {
-        $sessionsToday = SesiRuangan::where('tanggal', $date);
+        $sessionsToday = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($date) {
+            $q->whereDate('tanggal', $date);
+        });
 
         $activeSessions = $sessionsToday->clone()->where('status', 'berlangsung')->count();
-        
+
         $activeStudents = SesiRuanganSiswa::where('status', 'hadir')
             ->whereHas('sesiRuangan', function ($query) use ($date) {
-                $query->where('tanggal', $date)->where('status', 'berlangsung');
+                $query->where('status', 'berlangsung')
+                    ->whereHas('jadwalUjians', function ($q) use ($date) {
+                        $q->whereDate('tanggal', $date);
+                    });
             })->count();
 
         $issues = SesiRuanganSiswa::where('status', 'logout')
             ->whereHas('sesiRuangan', function ($query) use ($date) {
-                $query->where('tanggal', $date);
+                $query->whereHas('jadwalUjians', function ($q) use ($date) {
+                    $q->whereDate('tanggal', $date);
+                });
             })->count();
 
         $onlineProctors = Guru::whereHas('sesiRuanganDiawasi', function ($query) use ($date) {
-            $query->where('tanggal', $date)->where('status', 'berlangsung');
+            $query->where('status', 'berlangsung')
+                ->whereHas('jadwalUjians', function ($q) use ($date) {
+                    $q->whereDate('tanggal', $date);
+                });
         })->count();
 
         return [
             'active_sessions' => $activeSessions,
-            'active_students' => $activeStudents, 
+            'active_students' => $activeStudents,
             'issues' => $issues,
             'online_proctors' => $onlineProctors,
-            
+
             // Keep the existing stats as well
             'total_sessions' => $sessionsToday->count(),
             'belum_mulai' => $sessionsToday->clone()->where('status', 'belum_mulai')->count(),
@@ -406,10 +416,10 @@ class MonitoringController extends Controller
         // Get sessions data
         $sessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
             ->where('tanggal', $date)
-            ->when($status !== 'all', function($query) use ($status) {
+            ->when($status !== 'all', function ($query) use ($status) {
                 return $query->where('status', $status);
             })
-            ->when($room !== 'all', function($query) use ($room) {
+            ->when($room !== 'all', function ($query) use ($room) {
                 return $query->where('ruangan_id', $room);
             })
             ->orderBy('waktu_mulai')
@@ -417,19 +427,19 @@ class MonitoringController extends Controller
 
         // For now, return a simple CSV
         $filename = 'monitoring-' . $date . '.csv';
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"'
         ];
 
-        $callback = function() use ($sessions) {
+        $callback = function () use ($sessions) {
             $file = fopen('php://output', 'w');
-            
+
             // CSV headers
             fputcsv($file, [
                 'Nama Sesi',
-                'Ruangan', 
+                'Ruangan',
                 'Pengawas',
                 'Status',
                 'Waktu',

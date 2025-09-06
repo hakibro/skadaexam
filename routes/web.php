@@ -19,12 +19,6 @@ use App\Http\Controllers\Features\Data\SiswaController;
 use App\Http\Controllers\Features\Data\GuruController;
 use App\Http\Controllers\Features\Data\KelasController;
 use App\Http\Controllers\Features\Naskah\DashboardController as NaskahDashboard;
-use App\Http\Controllers\Features\Naskah\BankSoalController;
-use App\Http\Controllers\Features\Naskah\SoalController;
-use App\Http\Controllers\Features\Naskah\MapelController;
-use App\Http\Controllers\Features\Naskah\JadwalUjianController;
-use App\Http\Controllers\Features\Naskah\HasilUjianController;
-use App\Http\Controllers\Features\Naskah\PanduanController;
 use App\Http\Controllers\Features\Pengawas\DashboardController as PengawasDashboard;
 use App\Http\Controllers\Features\Koordinator\DashboardController as KoordinatorDashboard;
 use App\Http\Controllers\Features\Koordinator\AssignmentController;
@@ -149,36 +143,7 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     Route::get('/', [DataDashboard::class, 'index'])->name('dashboard');
 
     // ===== SISWA MANAGEMENT =====
-    Route::resource('siswa', SiswaController::class);
-
-    // Search Routes
-    Route::match(['GET', 'POST'], 'siswa/search', [SiswaController::class, 'search'])->name('siswa.search');
-
-    // API Testing Routes - FIXED NAMING
-    Route::post('siswa/test-connection', [SiswaController::class, 'testApiConnection'])->name('siswa.test-connection');
-    Route::post('siswa/test-single-student', [SiswaController::class, 'testApiSingleStudent'])->name('siswa.test-single-student');
-
-    // Import Routes
-    Route::get('siswa/import', [SiswaController::class, 'import'])->name('siswa.import');
-    Route::post('siswa/import-from-api', [SiswaController::class, 'importFromApi'])->name('siswa.import-from-api');
-    Route::post('siswa/import-from-api-ajax', [SiswaController::class, 'importFromApiAjax'])->name('siswa.import-from-api-ajax');
-    Route::get('siswa/import-progress', [SiswaController::class, 'getImportProgress'])->name('siswa.import-progress');
-    Route::post('siswa/clear-import-progress', [SiswaController::class, 'clearImportProgress'])->name('siswa.clear-import-progress');
-
-    // Sync Routes  
-    Route::post('siswa/sync-from-api', [SiswaController::class, 'syncFromApi'])->name('siswa.sync-from-api');
-    Route::get('siswa/sync-progress', [SiswaController::class, 'getSyncProgress'])->name('siswa.sync-progress');
-    Route::post('siswa/clear-sync-progress', [SiswaController::class, 'clearSyncProgress'])->name('siswa.clear-sync-progress');
-
-    // Export & Stats
-    Route::get('siswa/export', [SiswaController::class, 'export'])->name('siswa.export');
-    Route::get('siswa/stats', [SiswaController::class, 'getStats'])->name('siswa.stats');
-    Route::post('siswa/filtered-stats', [SiswaController::class, 'getFilteredStats'])->name('siswa.filtered-stats');
-
-    // Bulk Operations
-    Route::post('siswa/bulk-delete', [SiswaController::class, 'bulkDelete'])->name('siswa.bulk-delete');
-    Route::post('siswa/bulk-update-rekomendasi', [SiswaController::class, 'bulkUpdateRekomendasi'])->name('siswa.bulk-update-rekomendasi');
-    Route::post('siswa/bulk-update-status', [SiswaController::class, 'bulkUpdateStatus'])->name('siswa.bulk-update-status');
+    // Moved to routes/siswa.php
 
     // ===== GURU MANAGEMENT =====
     // PENTING: Tempatkan custom routes SEBELUM resource route
@@ -208,67 +173,15 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
 */
 Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('naskah.')->group(function () {
     Route::get('/', [NaskahDashboard::class, 'index'])->name('dashboard');
-
-    // Bank Soal routes
-    Route::resource('banksoal', BankSoalController::class);
-
-    // Soal routes
-    Route::resource('soal', SoalController::class);
-    Route::post('soal/bulk-delete', [SoalController::class, 'bulkDelete'])->name('soal.bulk-delete');
-    Route::get('soal/{soal}/duplicate', [SoalController::class, 'duplicate'])->name('soal.duplicate');
-    Route::get('soal/import', [SoalController::class, 'import'])->name('soal.import');
-    Route::get('soal/{soal}/preview', [SoalController::class, 'preview'])->name('soal.preview');
-
-    // Mapel routes
-    Route::resource('mapel', MapelController::class);
-    Route::put('mapel/{mapel}/status', [MapelController::class, 'updateStatus'])->name('mapel.status');
-
-    // Jadwal Ujian routes
-    Route::resource('jadwal', JadwalUjianController::class);
-    Route::put('jadwal/{jadwal}/status', [JadwalUjianController::class, 'updateStatus'])->name('jadwal.status');
-    Route::post('jadwal/{jadwal}/attach-sesi', [JadwalUjianController::class, 'attachSesi'])->name('jadwal.attach-sesi');
-    Route::post('jadwal/{jadwal}/detach-sesi', [JadwalUjianController::class, 'detachSesi'])->name('jadwal.detach-sesi');
-    Route::post('jadwal/bulk-action', [JadwalUjianController::class, 'bulkAction'])->name('jadwal.bulk-action');
-    Route::post('jadwal/{jadwal}/reassign-sesi', [JadwalUjianController::class, 'reassignSesi'])->name('jadwal.reassign-sesi');
-    Route::put('jadwal/{jadwal}/toggle-auto-assign', [JadwalUjianController::class, 'toggleAutoAssign'])->name('jadwal.toggle-auto-assign');
-    Route::put('jadwal/{jadwal}/switch-scheduling-mode', [JadwalUjianController::class, 'switchSchedulingMode'])->name('jadwal.switch-scheduling-mode');
-
-
-    Route::get('/panduan/format-docx', [PanduanController::class, 'formatDocx'])->name('panduan.format-docx');
-
-    // Sesi Ujian routes have been removed as they're replaced by sesi ruangan
-
-    // Hasil Ujian routes
-    Route::get('hasil', [HasilUjianController::class, 'index'])->name('hasil.index');
-    Route::get('hasil/{hasil}', [HasilUjianController::class, 'show'])->name('hasil.show');
-    Route::get('hasil/jadwal/{jadwal}', [HasilUjianController::class, 'byJadwal'])->name('hasil.by-jadwal');
-    Route::get('hasil/jadwal/{jadwal}/sesi/{sesi}', [HasilUjianController::class, 'bySesi'])->name('hasil.by-sesi');
-    Route::get('hasil/analisis', [HasilUjianController::class, 'analisis'])->name('hasil.analisis');
-    Route::post('hasil/export', [HasilUjianController::class, 'export'])->name('hasil.export');
-    Route::delete('hasil/{hasil}', [HasilUjianController::class, 'destroy'])->name('hasil.destroy');
-
-    // Old Enrollment routes (if still needed)
-    Route::get('enrollment', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'index'])->name('enrollment.index');
-    Route::get('enrollment/{mapel}', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'show'])->name('enrollment.show');
-    Route::get('enrollment/{mapel}/create', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'create'])->name('enrollment.create');
-    Route::post('enrollment/{mapel}', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'store'])->name('enrollment.store');
-    Route::delete('enrollment/{mapel}/{siswa}', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'destroy'])->name('enrollment.destroy');
-    Route::put('enrollment/{mapel}/{siswa}/status', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'updateStatus'])->name('enrollment.update-status');
-    Route::get('enrollment/siswa', [\App\Http\Controllers\Features\Naskah\EnrollmentController::class, 'getSiswaByKelas'])->name('enrollment.get-siswa');
-
-    // New Enrollment Ujian routes
-    Route::get('enrollment-ujian/get-sesi-options', [App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class, 'getSesiOptions'])
-        ->name('enrollment-ujian.get-sesi-options');
-    Route::get('enrollment-ujian/get-siswa-options', [App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class, 'getSiswaOptions'])
-        ->name('enrollment-ujian.get-siswa-options');
-    Route::post('enrollment-ujian/bulk', [App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class, 'bulkEnrollment'])
-        ->name('enrollment-ujian.bulk');
-    Route::post('enrollment-ujian/{enrollmentUjian}/generate-token', [App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class, 'generateToken'])
-        ->name('enrollment-ujian.generate-token');
-    Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class, 'updateStatus'])
-        ->name('enrollment-ujian.update-status');
-    Route::resource('enrollment-ujian', App\Http\Controllers\Features\Ruangan\EnrollmentUjianController::class);
 });
+
+// Load feature-specific routes from separate files
+require __DIR__ . '/mapel.php';
+require __DIR__ . '/jadwal.php';
+require __DIR__ . '/banksoal.php';
+require __DIR__ . '/enrollment.php';
+require __DIR__ . '/panduan.php';
+require __DIR__ . '/siswa.php';
 
 /*
 |--------------------------------------------------------------------------

@@ -42,15 +42,16 @@
                     @enderror
                 </div>
 
-                <!-- Tanggal -->
+                <!-- Kode Sesi -->
                 <div>
-                    <label for="tanggal" class="block text-sm font-medium text-gray-700">
-                        Tanggal <span class="text-red-500">*</span>
+                    <label for="kode_sesi" class="block text-sm font-medium text-gray-700">
+                        Kode Sesi
                     </label>
-                    <input type="date" name="tanggal" id="tanggal"
+                    <input type="text" name="kode_sesi" id="kode_sesi"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        value="{{ old('tanggal', $sesi->tanggal ? $sesi->tanggal->format('Y-m-d') : '') }}" required>
-                    @error('tanggal')
+                        value="{{ old('kode_sesi', $sesi->kode_sesi) }}">
+                    <p class="mt-1 text-xs text-gray-500">Format: kode_ruangan-kode_sesi.</p>
+                    @error('kode_sesi')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -142,9 +143,11 @@
                     <h3 class="text-sm font-medium text-gray-900 mb-2">Informasi Tambahan</h3>
                     <div class="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <p><strong>Kode Sesi:</strong> {{ $sesi->kode_sesi }}</p>
                             <p><strong>Ruangan:</strong> {{ $ruangan->nama_ruangan }}</p>
                             <p><strong>Kapasitas:</strong> {{ $ruangan->kapasitas }} orang</p>
+                            <p><strong>Tanggal:</strong>
+                                {{ $sesi->jadwalUjians->first() ? $sesi->jadwalUjians->first()->tanggal->format('d M Y') : 'Belum diatur' }}
+                            </p>
                         </div>
                         <div>
                             <p><strong>Jumlah Siswa:</strong> {{ $sesi->sesi_ruangan_siswa_count ?? 0 }}</p>

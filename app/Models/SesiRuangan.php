@@ -19,7 +19,6 @@ class SesiRuangan extends Model
     protected $fillable = [
         'kode_sesi',
         'nama_sesi',
-        'tanggal',
         'waktu_mulai',
         'waktu_selesai',
         'token_ujian',
@@ -32,7 +31,6 @@ class SesiRuangan extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
         'token_expired_at' => 'datetime',
         'pengaturan' => 'array',
         'status' => 'string'
@@ -44,7 +42,15 @@ class SesiRuangan extends Model
 
         static::creating(function ($sesi) {
             if (empty($sesi->kode_sesi)) {
-                $sesi->kode_sesi = 'SESI-' . strtoupper(Str::random(6));
+                // Get the ruangan code
+                $ruangan = Ruangan::find($sesi->ruangan_id);
+                $kodeRuangan = $ruangan ? $ruangan->kode_ruangan : 'R';
+
+                // Generate a unique session code
+                $uniqueCode = strtoupper(Str::random(6));
+
+                // Format: kode_ruangan-kode_sesi
+                $sesi->kode_sesi = $kodeRuangan . '-' . $uniqueCode;
             }
         });
     }
@@ -175,8 +181,14 @@ class SesiRuangan extends Model
             return $this->status === 'selesai' ? 100 : 0;
         }
 
+        // Get the date from the first jadwal ujian attached to this session
+        $jadwalUjian = $this->jadwalUjians()->first();
+        if (!$jadwalUjian) {
+            return 0; // Can't calculate without a date
+        }
+
+        $tanggalStr = $jadwalUjian->tanggal->format('Y-m-d');
         $now = now();
-        $tanggalStr = $this->tanggal instanceof Carbon ? $this->tanggal->format('Y-m-d') : $this->tanggal;
         $start = Carbon::parse($tanggalStr . ' ' . $this->waktu_mulai);
         $end = Carbon::parse($tanggalStr . ' ' . $this->waktu_selesai);
 
@@ -200,8 +212,14 @@ class SesiRuangan extends Model
             return '00:00';
         }
 
+        // Get the date from the first jadwal ujian attached to this session
+        $jadwalUjian = $this->jadwalUjians()->first();
+        if (!$jadwalUjian) {
+            return '00:00'; // Can't calculate without a date
+        }
+
+        $tanggalStr = $jadwalUjian->tanggal->format('Y-m-d');
         $now = now();
-        $tanggalStr = $this->tanggal instanceof Carbon ? $this->tanggal->format('Y-m-d') : $this->tanggal;
         $start = Carbon::parse($tanggalStr . ' ' . $this->waktu_mulai);
 
         if ($now->lt($start)) {
@@ -221,8 +239,14 @@ class SesiRuangan extends Model
             return '00:00';
         }
 
+        // Get the date from the first jadwal ujian attached to this session
+        $jadwalUjian = $this->jadwalUjians()->first();
+        if (!$jadwalUjian) {
+            return '00:00'; // Can't calculate without a date
+        }
+
+        $tanggalStr = $jadwalUjian->tanggal->format('Y-m-d');
         $now = now();
-        $tanggalStr = $this->tanggal instanceof Carbon ? $this->tanggal->format('Y-m-d') : $this->tanggal;
         $end = Carbon::parse($tanggalStr . ' ' . $this->waktu_selesai);
 
         if ($now->gt($end)) {
@@ -262,7 +286,13 @@ class SesiRuangan extends Model
     // Auto start session based on time
     public function checkAutoStart()
     {
-        $tanggalStr = $this->tanggal instanceof Carbon ? $this->tanggal->toDateString() : $this->tanggal;
+        // Get the date from the first jadwal ujian attached to this session
+        $jadwalUjian = $this->jadwalUjians()->first();
+        if (!$jadwalUjian) {
+            return $this; // Can't check without a date
+        }
+
+        $tanggalStr = $jadwalUjian->tanggal->toDateString();
 
         if (
             $this->status === 'belum_mulai' &&
@@ -279,7 +309,13 @@ class SesiRuangan extends Model
     // Auto end session
     public function checkAutoEnd()
     {
-        $tanggalStr = $this->tanggal instanceof Carbon ? $this->tanggal->toDateString() : $this->tanggal;
+        // Get the date from the first jadwal ujian attached to this session
+        $jadwalUjian = $this->jadwalUjians()->first();
+        if (!$jadwalUjian) {
+            return $this; // Can't check without a date
+        }
+
+        $tanggalStr = $jadwalUjian->tanggal->toDateString();
 
         if (
             $this->status === 'berlangsung' &&

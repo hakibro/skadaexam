@@ -144,11 +144,18 @@
                 </div>
 
                 {{-- Import Button --}}
-                <button type="button" id="import-btn"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 inline-flex items-center">
-                    <i class="fa-solid fa-cloud-download-alt mr-3"></i>
-                    Import Students from SIKEU API
-                </button>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button type="button" id="import-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 inline-flex items-center">
+                        <i class="fa-solid fa-cloud-download-alt mr-3"></i>
+                        Quick Import
+                    </button>
+                    <button type="button" id="batch-import-btn"
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 inline-flex items-center">
+                        <i class="fa-solid fa-cloud-download-alt mr-3"></i>
+                        Batch Import
+                    </button>
+                </div>
 
                 <div class="mt-6 text-sm text-gray-500 max-w-md mx-auto">
                     <p>This will fetch all student data from SIKEU system including payment status and class information.
@@ -176,9 +183,13 @@
                         class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
                         <i class="fa-solid fa-user-check mr-1"></i>Test API
                     </button>
+                    <button type="button" id="batch-sync-btn"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
+                        <i class="fa-solid fa-sync mr-1"></i>Batch Sync
+                    </button>
                     <button type="button" id="sync-api-btn"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
-                        <i class="fa-solid fa-sync mr-1"></i>Sync Data
+                        <i class="fa-solid fa-sync mr-1"></i>Quick Sync
                     </button>
                 </div>
             </div>
@@ -193,7 +204,7 @@
                     <div id="api-status-content"></div>
                 </div>
 
-                {{-- Sync Progress --}}
+                {{-- Legacy Sync Progress --}}
                 <div id="sync-progress-section" class="hidden">
                     <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
                         <h4 class="text-lg font-medium text-purple-900 mb-4">
@@ -218,7 +229,7 @@
                     </div>
                 </div>
 
-                {{-- Sync Results --}}
+                {{-- Legacy Sync Results --}}
                 <div id="sync-results-section" class="hidden">
                     <div class="bg-green-50 border border-green-200 rounded-lg p-6">
                         <h4 class="text-lg font-medium text-green-900 mb-4">
@@ -231,6 +242,9 @@
                         </button>
                     </div>
                 </div>
+
+                {{-- Batch Processing Components --}}
+                @include('features.data.siswa.partials.batch-operations')
             </div>
 
             {{-- Search & Filters --}}
@@ -1303,5 +1317,7 @@
         });
     </script>
 
+    {{-- Include Batch Processing JavaScript --}}
+    <script src="{{ asset('js/batch-siswa.js') }}"></script>
 
 @endsection

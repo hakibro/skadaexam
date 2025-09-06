@@ -83,10 +83,10 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Sesi</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Sesi</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengawas</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jadwal Ujian
                                 </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengawas</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
@@ -103,19 +103,18 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $sesi->tanggal->format('d M Y') }}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
-                                            {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
-                                        </div>
-                                        <div class="text-xs text-gray-500">{{ $sesi->durasi }}</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            {{ $sesi->pengawas->nama ?? 'Belum ditentukan' }}
+                                            @if ($sesi->jadwalUjians->count() > 0)
+                                                @foreach ($sesi->jadwalUjians as $jadwal)
+                                                    <div class="mb-1">
+                                                        <span
+                                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                            {{ $jadwal->tanggal->format('d M Y') }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                            @else
+                                                <div class="text-sm text-gray-500">Tidak ada jadwal</div>
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -132,6 +131,19 @@
                                             <div class="text-sm text-gray-500">Tidak ada jadwal</div>
                                         @endif
                                     </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
+                                            {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
+                                        </div>
+                                        <div class="text-xs text-gray-500">{{ $sesi->durasi }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $sesi->pengawas->nama ?? 'Belum ditentukan' }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
                                             {{ $sesi->sesi_ruangan_siswa_count }} / {{ $ruangan->kapasitas }}
@@ -142,6 +154,8 @@
                                             </div>
                                         </div>
                                     </td>
+
+
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
                                             class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $sesi->status_label['class'] }}">

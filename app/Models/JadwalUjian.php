@@ -193,6 +193,25 @@ class JadwalUjian extends Model
     }
 
     /**
+     * Check if this jadwal applies to the given jurusan
+     * If mapel's jurusan is null, it applies to all jurusan
+     */
+    public function appliesToJurusan($jurusan)
+    {
+        if (!$this->mapel) {
+            return false;
+        }
+
+        // If mapel's jurusan is null, it applies to all jurusan
+        if ($this->mapel->jurusan === null) {
+            return true;
+        }
+
+        // Otherwise, check for exact match or 'UMUM'
+        return $this->mapel->jurusan === $jurusan || $this->mapel->jurusan === 'UMUM';
+    }
+
+    /**
      * Get exam progress statistics
      */
     public function getProgressStats()

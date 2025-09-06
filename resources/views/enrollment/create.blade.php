@@ -40,7 +40,8 @@
                         <option value="">-- Pilih Sesi (Opsional) --</option>
                         @foreach ($sesiList as $sesi)
                             <option value="{{ $sesi->id }}">
-                                {{ $sesi->nama }} - {{ $sesi->tanggal->format('d M Y') }} ({{ $sesi->waktu_mulai }} -
+                                {{ $sesi->nama }} - {{ $jadwalUjian->tanggal->format('d M Y') }}
+                                ({{ $sesi->waktu_mulai }} -
                                 {{ $sesi->waktu_selesai }})
                             </option>
                         @endforeach

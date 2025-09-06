@@ -215,7 +215,8 @@
                                             <i class="fa-solid fa-door-open mr-1"></i>
                                             {{ $beritaAcara->sesiRuangan->ruangan->nama ?? 'N/A' }}
                                         </div>
-                                        <div class="text-xs text-gray-400">{{ $beritaAcara->sesiRuangan->kode_sesi ?? 'N/A' }}
+                                        <div class="text-xs text-gray-400">
+                                            {{ $beritaAcara->sesiRuangan->kode_sesi ?? 'N/A' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -236,7 +237,8 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->tanggal ? $beritaAcara->sesiRuangan->tanggal->format('d M Y') : 'N/A' }}</div>
+                                            {{ $beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->jadwalUjians->first() ? $beritaAcara->sesiRuangan->jadwalUjians->first()->tanggal->format('d M Y') : 'N/A' }}
+                                        </div>
                                         <div class="text-sm text-gray-500">
                                             {{ $beritaAcara->sesiRuangan->waktu_mulai ?? 'N/A' }} -
                                             {{ $beritaAcara->sesiRuangan->waktu_selesai ?? 'N/A' }}

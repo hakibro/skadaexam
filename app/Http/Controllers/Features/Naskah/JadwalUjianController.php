@@ -63,10 +63,10 @@ class JadwalUjianController extends Controller
     public function create()
     {
         $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
-        // $bankSoals = BankSoal::orderBy('judul', 'asc')->get();
         $bankSoals = BankSoal::withCount('soals')->orderBy('judul', 'asc')->get();
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
 
-        return view('features.naskah.jadwal.create', compact('mapels', 'bankSoals'));
+        return view('features.naskah.jadwal.create', compact('mapels', 'bankSoals', 'kelasList'));
     }
 
     /**
@@ -85,10 +85,42 @@ class JadwalUjianController extends Controller
             'deskripsi' => 'nullable|string',
             'scheduling_mode' => 'nullable|in:fixed,flexible',
             'auto_assign_sesi' => 'nullable|boolean',
+            'kelas_target' => 'nullable|array',
+            'kelas_target.*' => 'exists:kelas,id',
         ]);
 
         // Generate unique exam code
         $kodeUjian = 'U' . date('Ymd') . strtoupper(Str::random(5));
+
+        // Get target classes based on mapel
+        $kelasTarget = [];
+
+        // If kelas_target is provided in the request, use it
+        if ($request->has('kelas_target')) {
+            $kelasTarget = $request->kelas_target;
+        } else {
+            // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
+            $mapel = Mapel::find($request->mapel_id);
+            if ($mapel) {
+                $query = Kelas::query();
+
+                // Filter by tingkat if mapel has it
+                if ($mapel->tingkat) {
+                    $query->where('tingkat', $mapel->tingkat);
+                }
+
+                // Filter by jurusan if mapel has it, or include UMUM jurusan
+                if ($mapel->jurusan) {
+                    $query->where(function ($q) use ($mapel) {
+                        $q->where('jurusan', $mapel->jurusan)
+                            ->orWhere('jurusan', 'UMUM');
+                    });
+                }
+
+                $matchingKelas = $query->get();
+                $kelasTarget = $matchingKelas->pluck('id')->toArray();
+            }
+        }
 
         // Create new jadwal ujian
         $jadwalUjian = JadwalUjian::create([
@@ -106,6 +138,7 @@ class JadwalUjianController extends Controller
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
             'scheduling_mode' => $request->get('scheduling_mode', 'flexible'),
             'auto_assign_sesi' => $request->get('auto_assign_sesi', true),
+            'kelas_target' => $kelasTarget, // Add the kelas_target field
             'status' => 'draft',
             'created_by' => auth()->id(),
         ]);
@@ -234,8 +267,9 @@ class JadwalUjianController extends Controller
     {
         $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
         $bankSoals = BankSoal::orderBy('judul', 'asc')->get();
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
 
-        return view('features.naskah.jadwal.edit', compact('jadwal', 'mapels', 'bankSoals'));
+        return view('features.naskah.jadwal.edit', compact('jadwal', 'mapels', 'bankSoals', 'kelasList'));
     }
 
     /**
@@ -252,7 +286,39 @@ class JadwalUjianController extends Controller
             'jumlah_soal' => 'required|integer|min:1',
             'jenis_ujian' => 'required|string',
             'deskripsi' => 'nullable|string',
+            'kelas_target' => 'nullable|array',
+            'kelas_target.*' => 'exists:kelas,id',
         ]);
+
+        // Get target classes based on mapel if not provided
+        $kelasTarget = [];
+
+        // If kelas_target is provided in the request, use it
+        if ($request->has('kelas_target')) {
+            $kelasTarget = $request->kelas_target;
+        } else {
+            // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
+            $mapel = Mapel::find($request->mapel_id);
+            if ($mapel) {
+                $query = Kelas::query();
+
+                // Filter by tingkat if mapel has it
+                if ($mapel->tingkat) {
+                    $query->where('tingkat', $mapel->tingkat);
+                }
+
+                // Filter by jurusan if mapel has it, or include UMUM jurusan
+                if ($mapel->jurusan) {
+                    $query->where(function ($q) use ($mapel) {
+                        $q->where('jurusan', $mapel->jurusan)
+                            ->orWhere('jurusan', 'UMUM');
+                    });
+                }
+
+                $matchingKelas = $query->get();
+                $kelasTarget = $matchingKelas->pluck('id')->toArray();
+            }
+        }
 
         $jadwal->update([
             'judul' => $request->judul,
@@ -266,6 +332,7 @@ class JadwalUjianController extends Controller
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
+            'kelas_target' => $kelasTarget, // Add the kelas_target field
         ]);
 
         return redirect()->route('naskah.jadwal.show', $jadwal->id)
@@ -517,5 +584,64 @@ class JadwalUjianController extends Controller
 
         return redirect()->route('naskah.jadwal.show', $jadwal->id)
             ->with('success', $message);
+    }
+
+    /**
+     * Apply exam schedule to all session rooms with the same date
+     */
+    public function applyToSessions(JadwalUjian $jadwal)
+    {
+        try {
+            $jadwalDate = $jadwal->tanggal->format('Y-m-d');
+
+            // Since sesi ruangan no longer has tanggal field, we'll match based on other criteria
+            $matchingSessions = \App\Models\SesiRuangan::whereDoesntHave('jadwalUjians', function ($query) use ($jadwal) {
+                $query->where('jadwal_ujian_id', $jadwal->id);
+            })
+                ->get();
+
+            if ($matchingSessions->isEmpty()) {
+                return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                    ->with('info', 'Tidak ditemukan sesi ruangan yang dapat dikaitkan dengan jadwal ini.');
+            }
+
+            $attachedCount = 0;
+
+            foreach ($matchingSessions as $sesi) {
+                // Check if this sesi is compatible with the jadwal's mapel and jurusan
+                // If the mapel's jurusan is null, it applies to all jurusan
+                $isCompatible = true;
+
+                // If the sesi has students, check their classes' jurusan against the jadwal's mapel jurusan
+                if ($sesi->sesiRuanganSiswa()->count() > 0) {
+                    $siswaList = $sesi->sesiRuanganSiswa()->with('siswa.kelas')->get();
+                    foreach ($siswaList as $sesiSiswa) {
+                        if ($sesiSiswa->siswa && $sesiSiswa->siswa->kelas) {
+                            $kelasJurusan = $sesiSiswa->siswa->kelas->jurusan;
+
+                            // Skip this sesi if the jadwal doesn't apply to the student's jurusan
+                            // unless the mapel's jurusan is null (applies to all)
+                            if (!$jadwal->appliesToJurusan($kelasJurusan)) {
+                                $isCompatible = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Only attach if compatible
+                if ($isCompatible) {
+                    // Add the relationship
+                    $jadwal->sesiRuangans()->attach($sesi->id);
+                    $attachedCount++;
+                }
+            }
+
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('success', "Berhasil menerapkan jadwal ujian ke {$attachedCount} sesi ruangan.");
+        } catch (\Exception $e) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Gagal menerapkan ke sesi: ' . $e->getMessage());
+        }
     }
 }

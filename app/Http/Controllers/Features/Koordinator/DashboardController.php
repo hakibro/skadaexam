@@ -90,10 +90,14 @@ class DashboardController extends Controller
                 $query->where('name', 'pengawas');
             })->count(),
 
-            'sessions_today' => SesiRuangan::where('tanggal', Carbon::today())->count(),
+            'sessions_today' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+                $q->whereDate('tanggal', Carbon::today());
+            })->count(),
 
             'unassigned_sessions' => SesiRuangan::whereNull('pengawas_id')
-                ->where('tanggal', '>=', Carbon::today())
+                ->whereHas('jadwalUjians', function ($q) {
+                    $q->whereDate('tanggal', '>=', Carbon::today());
+                })
                 ->count(),
 
             'draft_berita_acara' => BeritaAcaraUjian::where('is_final', false)->count(),
@@ -106,10 +110,12 @@ class DashboardController extends Controller
 
             'total_ruangan_aktif' => Ruangan::where('status', 'aktif')->count(),
 
-            'sessions_this_week' => SesiRuangan::whereBetween('tanggal', [
-                Carbon::now()->startOfWeek(),
-                Carbon::now()->endOfWeek()
-            ])->count(),
+            'sessions_this_week' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+                $q->whereBetween('tanggal', [
+                    Carbon::now()->startOfWeek(),
+                    Carbon::now()->endOfWeek()
+                ]);
+            })->count(),
         ];
     }
 

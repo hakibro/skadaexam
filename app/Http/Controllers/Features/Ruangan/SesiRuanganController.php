@@ -22,10 +22,8 @@ class SesiRuanganController extends Controller
         $sesiList = SesiRuangan::where('ruangan_id', $ruangan->id)
             ->with(['pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->withCount(['sesiRuanganSiswa'])
-            ->orderBy('tanggal', 'desc')
             ->orderBy('waktu_mulai', 'asc')
             ->get();
-
         return view('features.ruangan.sesi.index', compact('ruangan', 'sesiList'));
     }
 
@@ -61,18 +59,18 @@ class SesiRuanganController extends Controller
 
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
-            'tanggal' => 'required|date|after_or_equal:today',
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
             'pengawas_id' => 'nullable|exists:guru,id',
             'keterangan' => 'nullable|string',
             'template_id' => 'nullable|exists:sesi_templates,id',
+            'kode_sesi' => 'nullable|string|max:20',
         ]);
 
         try {
-            // Check for time conflicts
+            // Check for time conflicts - we now only check for time conflicts within the same room
+            // without considering date (since date comes from jadwal ujian now)
             $conflict = SesiRuangan::where('ruangan_id', $ruangan->id)
-                ->where('tanggal', $request->tanggal)
                 ->whereNotIn('status', ['selesai', 'dibatalkan'])
                 ->where(function ($query) use ($request) {
                     $query->where(function ($q) use ($request) {
@@ -102,12 +100,12 @@ class SesiRuanganController extends Controller
             $sesiData = [
                 'ruangan_id' => $ruangan->id,
                 'nama_sesi' => $request->nama_sesi,
-                'tanggal' => $request->tanggal,
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
                 'pengawas_id' => $request->pengawas_id,
                 'status' => 'belum_mulai',
                 'keterangan' => $request->keterangan,
+                'kode_sesi' => $request->kode_sesi,
             ];
 
             // If using template, store the reference
@@ -167,18 +165,18 @@ class SesiRuanganController extends Controller
 
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
-            'tanggal' => 'required|date',
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
             'pengawas_id' => 'nullable|exists:guru,id',
             'status' => 'required|in:belum_mulai,berlangsung,selesai,dibatalkan',
             'keterangan' => 'nullable|string',
+            'kode_sesi' => 'nullable|string|max:20',
         ]);
 
         try {
             // Check for time conflicts (excluding current session)
+            // Now we only check time conflicts within the same room
             $conflict = SesiRuangan::where('ruangan_id', $ruangan->id)
-                ->where('tanggal', $request->tanggal)
                 ->where('id', '!=', $sesi->id)
                 ->whereNotIn('status', ['selesai', 'dibatalkan'])
                 ->where(function ($query) use ($request) {
@@ -207,12 +205,12 @@ class SesiRuanganController extends Controller
 
             $sesi->update([
                 'nama_sesi' => $request->nama_sesi,
-                'tanggal' => $request->tanggal,
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
                 'pengawas_id' => $request->pengawas_id,
                 'status' => $request->status,
                 'keterangan' => $request->keterangan,
+                'kode_sesi' => $request->kode_sesi,
             ]);
 
             DB::commit();
@@ -327,6 +325,8 @@ class SesiRuanganController extends Controller
             }
 
             $added = 0;
+            $matchedJadwalIds = [];
+
             foreach ($request->siswa_ids as $siswaId) {
                 // Check if student is already assigned
                 $exists = $sesi->sesiRuanganSiswa()->where('siswa_id', $siswaId)->exists();
@@ -336,13 +336,51 @@ class SesiRuanganController extends Controller
                         'status' => 'tidak_hadir', // Default status
                     ]);
                     $added++;
+
+                    // Get student's class and jurusan
+                    $siswa = Siswa::with('kelas')->find($siswaId);
+                    if ($siswa && $siswa->kelas) {
+                        $kelasJurusan = $siswa->kelas->jurusan;
+
+                        // Find matching jadwal ujian based on jurusan compatibility
+                        $matchingJadwals = \App\Models\JadwalUjian::whereHas('mapel', function ($query) use ($kelasJurusan) {
+                            $query->where('jurusan', $kelasJurusan)
+                                ->orWhere('jurusan', 'UMUM')
+                                ->orWhereNull('jurusan'); // If jurusan is null, it applies to all
+                        })
+                            ->where('status', 'aktif')
+                            ->whereJsonContains('kelas_target', $siswa->kelas_id)
+                            ->get();
+
+                        foreach ($matchingJadwals as $jadwal) {
+                            $matchedJadwalIds[$jadwal->id] = $jadwal;
+                        }
+                    }
                 }
+            }
+
+            // Attach matched jadwal ujian to sesi ruangan
+            if (!empty($matchedJadwalIds)) {
+                foreach ($matchedJadwalIds as $jadwalId => $jadwal) {
+                    if (!$sesi->jadwalUjians()->where('jadwal_ujian_id', $jadwalId)->exists()) {
+                        $sesi->jadwalUjians()->attach($jadwalId);
+                        Log::info("Attached jadwal ujian {$jadwalId} to sesi ruangan {$sesi->id}");
+                    }
+                }
+            } else {
+                Log::info("No matching jadwal ujian found for students in sesi ruangan {$sesi->id}");
+            }
+
+            // If no jadwal ujian was matched, add a warning message
+            if (empty($matchedJadwalIds) && $added > 0) {
+                session()->flash('warning', 'Siswa ditambahkan, tetapi tidak ada jadwal ujian yang cocok. Harap tambahkan jadwal ujian secara manual.');
             }
 
             DB::commit();
 
+            $jadwalMsg = count($matchedJadwalIds) > 0 ? ' dan ' . count($matchedJadwalIds) . ' jadwal ujian yang sesuai otomatis ditambahkan' : '';
             return redirect()->route('ruangan.sesi.siswa.index', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
-                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi');
+                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi' . $jadwalMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error adding students to sesi: ' . $e->getMessage());

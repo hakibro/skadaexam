@@ -2,7 +2,8 @@
 
 @section('title', 'Detail Berita Acara')
 @section('page-title', 'Detail Berita Acara Ujian')
-@section('page-description', 'Detail berita acara untuk sesi: ' . ($beritaAcara->sesiRuangan ? $beritaAcara->sesiRuangan->nama_sesi : 'N/A'))
+@section('page-description', 'Detail berita acara untuk sesi: ' . ($beritaAcara->sesiRuangan ?
+    $beritaAcara->sesiRuangan->nama_sesi : 'N/A'))
 
 @section('content')
     <div class="space-y-6">
@@ -84,12 +85,14 @@
                         <div class="space-y-3">
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Tanggal</label>
-                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->tanggal ? $beritaAcara->sesiRuangan->tanggal->format('d F Y') : 'N/A' }}</p>
+                                <p class="text-gray-900">
+                                    {{ $beritaAcara->sesiRuangan->jadwalUjians->first() ? $beritaAcara->sesiRuangan->jadwalUjians->first()->tanggal->format('d F Y') : 'N/A' }}
+                                </p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Waktu</label>
-                                <p class="text-gray-900">{{ ($beritaAcara->sesiRuangan->waktu_mulai ?? 'N/A') }} -
-                                    {{ ($beritaAcara->sesiRuangan->waktu_selesai ?? 'N/A') }}</p>
+                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->waktu_mulai ?? 'N/A' }} -
+                                    {{ $beritaAcara->sesiRuangan->waktu_selesai ?? 'N/A' }}</p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Durasi</label>
@@ -97,7 +100,8 @@
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Total Siswa</label>
-                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->sesiRuanganSiswa->count() ?? 0 }} siswa
+                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->sesiRuanganSiswa->count() ?? 0 }}
+                                    siswa
                                 </p>
                             </div>
                         </div>
@@ -230,7 +234,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @if($beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->sesiRuanganSiswa)
+                                @if ($beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->sesiRuanganSiswa)
                                     @foreach ($beritaAcara->sesiRuangan->sesiRuanganSiswa as $index => $siswaSession)
                                         <tr class="{{ $index % 2 == 0 ? 'bg-white' : 'bg-gray-50' }}">
                                             <td class="px-4 py-3 text-sm text-gray-900">{{ $index + 1 }}</td>
@@ -347,7 +351,7 @@
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
                     <div class="space-y-2">
-                        @if($beritaAcara->sesiRuangan)
+                        @if ($beritaAcara->sesiRuangan)
                             <a href="{{ route('koordinator.monitoring.show', $beritaAcara->sesiRuangan->id) }}"
                                 class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                 <i class="fa-solid fa-eye mr-2"></i>

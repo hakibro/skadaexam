@@ -21,22 +21,27 @@ class DashboardController extends Controller
         $kapasitasTotal = Ruangan::sum('kapasitas');
 
         // Get ongoing sessions (sesi ruangan yang sedang berlangsung)
+        // We no longer use the tanggal column directly, instead we check the jadwal_ujians relationship
         $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
             ->orWhere(function ($query) {
                 $query->where('status', 'belum_mulai')
-                    ->where('tanggal', now()->toDateString())
                     ->where('waktu_mulai', '<=', now()->format('H:i:s'))
-                    ->where('waktu_selesai', '>=', now()->format('H:i:s'));
+                    ->where('waktu_selesai', '>=', now()->format('H:i:s'))
+                    ->whereHas('jadwalUjians', function ($q) {
+                        $q->whereDate('tanggal', now()->toDateString());
+                    });
             })
-            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
+            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->orderBy('waktu_mulai', 'asc')
             ->get();
 
         // Count ongoing sessions
         $sesiAktif = $ongoingSessions->count();
 
-        // Get today's sessions
-        $todaySessions = SesiRuangan::where('tanggal', now()->toDateString())
+        // Get today's sessions - using jadwalUjians relationship to get sessions for today
+        $todaySessions = SesiRuangan::whereHas('jadwalUjians', function ($query) {
+            $query->whereDate('tanggal', now()->toDateString());
+        })
             ->with(['ruangan', 'pengawas'])
             ->withCount('sesiRuanganSiswa')
             ->orderBy('waktu_mulai', 'asc')
@@ -58,20 +63,28 @@ class DashboardController extends Controller
 
         // Get session stats for today
         $sessionStats = [
-            'belum_mulai' => SesiRuangan::where('tanggal', now()->toDateString())->where('status', 'belum_mulai')->count(),
+            'belum_mulai' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+                $q->whereDate('tanggal', now()->toDateString());
+            })->where('status', 'belum_mulai')->count(),
             'berlangsung' => SesiRuangan::where('status', 'berlangsung')->count(),
-            'selesai' => SesiRuangan::where('tanggal', now()->toDateString())->where('status', 'selesai')->count(),
+            'selesai' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+                $q->whereDate('tanggal', now()->toDateString());
+            })->where('status', 'selesai')->count(),
         ];
 
         // Get capacity utilization
-        $totalKapasitasHariIni = SesiRuangan::where('tanggal', now()->toDateString())
+        $totalKapasitasHariIni = SesiRuangan::whereHas('jadwalUjians', function ($q) {
+            $q->whereDate('tanggal', now()->toDateString());
+        })
             ->with('ruangan')
             ->get()
             ->sum(function ($sesi) {
                 return $sesi->ruangan->kapasitas ?? 0;
             });
 
-        $totalSiswaHariIni = SesiRuangan::where('tanggal', now()->toDateString())
+        $totalSiswaHariIni = SesiRuangan::whereHas('jadwalUjians', function ($q) {
+            $q->whereDate('tanggal', now()->toDateString());
+        })
             ->withCount('sesiRuanganSiswa')
             ->get()
             ->sum('sesi_ruangan_siswa_count');

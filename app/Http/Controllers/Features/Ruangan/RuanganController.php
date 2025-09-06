@@ -48,7 +48,15 @@ class RuanganController extends Controller
 
         $ruangans = $query->paginate(10);
 
-        return view('features.ruangan.index', compact('ruangans'));
+        // Calculate statistics for the view
+        $statistics = [
+            'total' => Ruangan::count(),
+            'aktif' => Ruangan::where('status', 'aktif')->count(),
+            'nonaktif' => Ruangan::where('status', 'tidak_aktif')->count(),
+            'perbaikan' => Ruangan::where('status', 'perbaikan')->count(),
+        ];
+
+        return view('features.ruangan.index', compact('ruangans', 'statistics'));
     }
 
     /**
@@ -113,7 +121,9 @@ class RuanganController extends Controller
             ->where('status', 'berlangsung')
             ->orWhere(function ($query) {
                 $query->where('status', 'belum_mulai')
-                    ->where('tanggal', now()->toDateString())
+                    ->whereHas('jadwalUjians', function ($q) {
+                        $q->whereDate('tanggal', now()->toDateString());
+                    })
                     ->where('waktu_mulai', '<=', now()->format('H:i:s'))
                     ->where('waktu_selesai', '>=', now()->format('H:i:s'));
             })
@@ -127,9 +137,8 @@ class RuanganController extends Controller
 
         // Get recent sessions
         $recentSessions = $ruangan->sesiRuangan()
-            ->with(['pengawas'])
+            ->with(['pengawas', 'jadwalUjians'])
             ->withCount('sesiRuanganSiswa')
-            ->orderBy('tanggal', 'desc')
             ->orderBy('waktu_mulai', 'desc')
             ->take(5)
             ->get();
@@ -137,7 +146,7 @@ class RuanganController extends Controller
         // Get last used session
         $lastUsedSession = $ruangan->sesiRuangan()
             ->where('status', 'selesai')
-            ->orderBy('tanggal', 'desc')
+            ->orderBy('updated_at', 'desc')
             ->first();
 
         // Get upcoming sessions count

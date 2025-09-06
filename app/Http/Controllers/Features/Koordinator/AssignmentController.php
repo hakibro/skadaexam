@@ -18,12 +18,16 @@ class AssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
-            ->where('tanggal', '>=', Carbon::today()->subDays(7)); // Show sessions from last week
+        $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+            ->whereHas('jadwalUjians', function ($q) {
+                $q->where('tanggal', '>=', Carbon::today()->subDays(7)); // Show sessions from last week
+            });
 
         // Filter by tanggal
         if ($request->filled('tanggal')) {
-            $query->where('tanggal', $request->tanggal);
+            $query->whereHas('jadwalUjians', function ($q) use ($request) {
+                $q->whereDate('tanggal', $request->tanggal);
+            });
         }
 
         // Filter by status
@@ -56,8 +60,7 @@ class AssignmentController extends Controller
             $perPage = 15;
         }
 
-        $sesiRuangans = $query->orderBy('tanggal')
-            ->orderBy('waktu_mulai')
+        $sesiRuangans = $query->orderBy('waktu_mulai')
             ->paginate($perPage);
 
         // Get available pengawas
@@ -72,11 +75,17 @@ class AssignmentController extends Controller
 
         // Get statistics
         $stats = [
-            'total_sesi' => SesiRuangan::where('tanggal', '>=', Carbon::today())->count(),
+            'total_sesi' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+                $q->whereDate('tanggal', '>=', Carbon::today());
+            })->count(),
             'assigned' => SesiRuangan::whereNotNull('pengawas_id')
-                ->where('tanggal', '>=', Carbon::today())->count(),
+                ->whereHas('jadwalUjians', function ($q) {
+                    $q->whereDate('tanggal', '>=', Carbon::today());
+                })->count(),
             'unassigned' => SesiRuangan::whereNull('pengawas_id')
-                ->where('tanggal', '>=', Carbon::today())->count(),
+                ->whereHas('jadwalUjians', function ($q) {
+                    $q->whereDate('tanggal', '>=', Carbon::today());
+                })->count(),
             'berlangsung' => SesiRuangan::where('status', 'berlangsung')->count(),
             'total_pengawas' => $availablePengawas->count(),
         ];
@@ -129,8 +138,10 @@ class AssignmentController extends Controller
     {
         $pengawas = Guru::findOrFail($pengawasId);
         $sessions = SesiRuangan::where('pengawas_id', $pengawasId)
-            ->whereDate('tanggal', $tanggal)
-            ->with(['ruangan'])
+            ->whereHas('jadwalUjians', function ($q) use ($tanggal) {
+                $q->whereDate('tanggal', $tanggal);
+            })
+            ->with(['ruangan', 'jadwalUjians'])
             ->orderBy('waktu_mulai')
             ->get();
 
@@ -153,9 +164,22 @@ class AssignmentController extends Controller
             }
 
             // Check for conflicts (same pengawas at same time)
+            // First get the date from jadwalUjian
+            $jadwalUjian = $sesi->jadwalUjians->first();
+            if (!$jadwalUjian) {
+                return [
+                    'success' => false,
+                    'message' => 'Session has no associated exam schedule'
+                ];
+            }
+
+            $examDate = $jadwalUjian->tanggal->format('Y-m-d');
+
             $conflict = SesiRuangan::where('pengawas_id', $pengawasId)
-                ->where('tanggal', $sesi->tanggal)
                 ->where('id', '!=', $sesi->id)
+                ->whereHas('jadwalUjians', function ($q) use ($examDate) {
+                    $q->whereDate('tanggal', $examDate);
+                })
                 ->where(function ($query) use ($sesi) {
                     $query->where(function ($q) use ($sesi) {
                         $q->where('waktu_mulai', '<=', $sesi->waktu_mulai)
@@ -302,10 +326,21 @@ class AssignmentController extends Controller
             foreach ($request->session_ids as $sessionId) {
                 $sesi = SesiRuangan::findOrFail($sessionId);
 
+                // Get the date from jadwalUjian
+                $jadwalUjian = $sesi->jadwalUjians->first();
+                if (!$jadwalUjian) {
+                    $conflicts[] = $sesi->nama_sesi . ' (No scheduled exam)';
+                    continue;
+                }
+
+                $examDate = $jadwalUjian->tanggal->format('Y-m-d');
+
                 // Check for conflicts
                 $conflict = SesiRuangan::where('pengawas_id', $request->pengawas_id)
-                    ->where('tanggal', $sesi->tanggal)
                     ->where('id', '!=', $sesi->id)
+                    ->whereHas('jadwalUjians', function ($q) use ($examDate) {
+                        $q->whereDate('tanggal', $examDate);
+                    })
                     ->where(function ($query) use ($sesi) {
                         $query->where(function ($q) use ($sesi) {
                             $q->where('waktu_mulai', '<=', $sesi->waktu_mulai)
@@ -323,7 +358,7 @@ class AssignmentController extends Controller
                     $sesi->update(['pengawas_id' => $request->pengawas_id]);
                     $assigned++;
                 } else {
-                    $conflicts[] = $sesi->nama_sesi . ' (' . $sesi->tanggal->format('d/m/Y') . ')';
+                    $conflicts[] = $sesi->nama_sesi . ' (' . $jadwalUjian->tanggal->format('d/m/Y') . ')';
                 }
             }
 
@@ -384,7 +419,9 @@ class AssignmentController extends Controller
         foreach ($allPengawas as $pengawas) {
             // Check if pengawas is already assigned at this time
             $conflict = SesiRuangan::where('pengawas_id', $pengawas->id)
-                ->where('tanggal', $date)
+                ->whereHas('jadwalUjians', function ($q) use ($date) {
+                    $q->whereDate('tanggal', $date);
+                })
                 ->when($excludeSessionId, function ($query, $excludeSessionId) {
                     $query->where('id', '!=', $excludeSessionId);
                 })
@@ -437,23 +474,32 @@ class AssignmentController extends Controller
         ]);
 
         $schedule = SesiRuangan::where('pengawas_id', $request->pengawas_id)
-            ->whereBetween('tanggal', [$request->start_date, $request->end_date])
-            ->with(['ruangan'])
-            ->orderBy('tanggal')
+            ->whereHas('jadwalUjians', function ($q) use ($request) {
+                $q->whereBetween('tanggal', [$request->start_date, $request->end_date]);
+            })
+            ->with(['ruangan', 'jadwalUjians'])
             ->orderBy('waktu_mulai')
             ->get()
             ->map(function ($sesi) {
+                $jadwalUjian = $sesi->jadwalUjians->first();
+                if (!$jadwalUjian) {
+                    return null;
+                }
+
+                $examDate = $jadwalUjian->tanggal->format('Y-m-d');
+
                 return [
                     'id' => $sesi->id,
                     'title' => $sesi->nama_sesi,
-                    'start' => $sesi->tanggal->format('Y-m-d') . 'T' . $sesi->waktu_mulai,
-                    'end' => $sesi->tanggal->format('Y-m-d') . 'T' . $sesi->waktu_selesai,
-                    'ruangan' => $sesi->ruangan->nama_ruangan,
+                    'start' => $examDate . 'T' . $sesi->waktu_mulai,
+                    'end' => $examDate . 'T' . $sesi->waktu_selesai,
+                    'ruangan' => $sesi->ruangan->nama_ruangan ?? 'Unknown',
                     'status' => $sesi->status,
                     'backgroundColor' => $this->getStatusColor($sesi->status),
                     'borderColor' => $this->getStatusColor($sesi->status),
                 ];
-            });
+            })
+            ->filter();
 
         return response()->json($schedule);
     }

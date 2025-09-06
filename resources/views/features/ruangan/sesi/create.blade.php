@@ -58,15 +58,17 @@
                     @enderror
                 </div>
 
-                <!-- Tanggal -->
+                <!-- Kode Sesi -->
                 <div>
-                    <label for="tanggal" class="block text-sm font-medium text-gray-700">
-                        Tanggal <span class="text-red-500">*</span>
+                    <label for="kode_sesi" class="block text-sm font-medium text-gray-700">
+                        Kode Sesi
                     </label>
-                    <input type="date" name="tanggal" id="tanggal"
+                    <input type="text" name="kode_sesi" id="kode_sesi"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        value="{{ old('tanggal') }}" min="{{ date('Y-m-d') }}" required>
-                    @error('tanggal')
+                        value="{{ old('kode_sesi') }}" placeholder="{{ $ruangan->kode_ruangan ?? '' }}-">
+                    <p class="mt-1 text-xs text-gray-500">Format: kode_ruangan-kode_sesi. Jika dibiarkan kosong akan
+                        digenerate otomatis.</p>
+                    @error('kode_sesi')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

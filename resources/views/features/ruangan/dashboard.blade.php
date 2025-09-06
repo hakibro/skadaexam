@@ -69,6 +69,23 @@
             </div>
         </div>
 
+        <!-- Real-time Clock -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                        <i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>
+                        Tanggal & Waktu Saat Ini
+                    </h3>
+                    <p class="text-sm text-gray-600">Semua sesi ujian mengacu pada waktu server</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold text-gray-800 current-time">{{ now()->format('H:i:s') }}</div>
+                    <div class="text-gray-600">{{ now()->format('l, d F Y') }}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Capacity Utilization Today -->
         @if ($totalKapasitasHariIni > 0)
             <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -129,11 +146,11 @@
                         class="bg-green-100 text-green-600 p-3 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                         <i class="fa-solid fa-calendar-alt text-2xl"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Jadwal Sesi</h3>
-                    <p class="text-gray-600 text-sm mb-4">Kelola sesi ujian</p>
-                    <a href="{{ route('ruangan.index') }}"
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Template Sesi</h3>
+                    <p class="text-gray-600 text-sm mb-4">Kelola template sesi ujian</p>
+                    <a href="{{ route('ruangan.template.index') }}"
                         class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm font-medium">
-                        Lihat Jadwal
+                        Lihat Template
                     </a>
                 </div>
             </div>
@@ -154,7 +171,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <!-- Recent Rooms -->
             <div class="bg-white rounded-lg shadow-lg">
                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -190,17 +207,8 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center space-x-2">
-                                        @if ($ruangan->status == 'aktif')
-                                            <span
-                                                class="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">Aktif</span>
-                                        @elseif($ruangan->status == 'perbaikan')
-                                            <span
-                                                class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">Perbaikan</span>
-                                        @else
-                                            <span
-                                                class="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium">Tidak
-                                                Aktif</span>
-                                        @endif
+                                        <span
+                                            class="px-2 py-1 rounded-full {{ $ruangan->status_badge_class }} text-xs font-medium">{{ $ruangan->status_label['text'] }}</span>
                                         <div class="flex space-x-1">
                                             <a href="{{ route('ruangan.show', $ruangan->id) }}"
                                                 class="text-blue-600 hover:text-blue-800 p-1" title="Lihat Detail">
@@ -257,14 +265,21 @@
                                                     {{ $sesi->ruangan->nama_ruangan }} •
                                                     {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
                                                     {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
-                                                    • {{ $sesi->sesi_ruangan_siswa_count }} siswa
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    <span
+                                                        class="font-medium">{{ $sesi->sesiRuanganSiswa->count() ?? 0 }}</span>
+                                                    siswa •
+                                                    <span
+                                                        class="font-medium">{{ $sesi->jadwalUjians->count() ?? 0 }}</span>
+                                                    jadwal ujian
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="flex items-center space-x-2">
                                         <span
-                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $sesi->status_label['class'] }}">
+                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $sesi->status_badge_class }}">
                                             {{ $sesi->status_label['text'] }}
                                         </span>
                                         <a href="{{ route('ruangan.sesi.show', [$sesi->ruangan_id, $sesi->id]) }}"
@@ -282,9 +297,7 @@
                             <i class="fa-solid fa-calendar-day text-3xl"></i>
                         </div>
                         <p class="text-gray-500 mb-4">Tidak ada sesi ujian hari ini</p>
-                        <a href="{{ route('ruangan.index') }}" class="text-indigo-600 hover:text-indigo-800 font-medium">
-                            <i class="fa-solid fa-calendar-plus mr-1"></i> Buat sesi baru
-                        </a>
+                        <p class="text-sm text-gray-500">Buat sesi baru atau pilih ruangan untuk menambahkan sesi</p>
                     </div>
                 @endif
             </div>
@@ -292,91 +305,143 @@
 
         <!-- Ongoing Sessions Detail -->
         @if (count($ongoingSessions) > 0)
-            <div class="mt-8">
-                <div class="bg-white rounded-lg shadow-lg">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
-                        <h2 class="text-xl font-bold text-green-800">
-                            <i class="fa-solid fa-play-circle text-green-600 mr-2"></i>
-                            Sesi Yang Sedang Berlangsung
-                        </h2>
-                        <p class="text-sm text-green-600">{{ count($ongoingSessions) }} sesi aktif</p>
-                    </div>
+            <div class="bg-white rounded-lg shadow-lg mb-8">
+                <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+                    <h2 class="text-xl font-bold text-green-800">
+                        <i class="fa-solid fa-play-circle text-green-600 mr-2"></i>
+                        Sesi Yang Sedang Berlangsung
+                    </h2>
+                    <p class="text-sm text-green-600">{{ count($ongoingSessions) }} sesi aktif</p>
+                </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ruangan
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sesi</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengawas
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach ($ongoingSessions as $session)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                {{ $session->ruangan->nama_ruangan }}</div>
-                                            <div class="text-sm text-gray-500">{{ $session->ruangan->kode_ruangan }}</div>
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <div class="text-sm font-medium text-gray-900">{{ $session->nama_sesi }}</div>
-                                            <div class="text-sm text-gray-500">{{ $session->kode_sesi }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                {{ \Carbon\Carbon::parse($session->waktu_mulai)->format('H:i') }} -
-                                                {{ \Carbon\Carbon::parse($session->waktu_selesai)->format('H:i') }}
-                                            </div>
-                                            <div class="text-sm text-gray-500">{{ $session->tanggal->format('d M Y') }}
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                {{ $session->pengawas->nama ?? 'Belum ditentukan' }}
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                {{ $session->sesiRuanganSiswa->count() }} /
-                                                {{ $session->ruangan->kapasitas }}
-                                            </div>
-                                            <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ruangan
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sesi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pengawas
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jadwal Ujian
+                                </th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach ($ongoingSessions as $session)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ $session->ruangan->nama_ruangan }}</div>
+                                        <div class="text-sm text-gray-500">{{ $session->ruangan->kode_ruangan }}</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ $session->nama_sesi }}</div>
+                                        <div class="text-sm text-gray-500">{{ $session->kode_sesi }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ \Carbon\Carbon::parse($session->waktu_mulai)->format('H:i') }} -
+                                            {{ \Carbon\Carbon::parse($session->waktu_selesai)->format('H:i') }}
+                                        </div>
+                                        <div class="flex items-center text-xs text-gray-500 mt-1">
+                                            <div class="w-full bg-gray-200 rounded-full h-1 mr-1">
                                                 <div class="bg-green-600 h-1 rounded-full"
-                                                    style="width: {{ min(($session->sesiRuanganSiswa->count() / $session->ruangan->kapasitas) * 100, 100) }}%">
+                                                    style="width: {{ $session->progress_percentage }}%">
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Berlangsung
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                            <a href="{{ route('ruangan.sesi.show', [$session->ruangan_id, $session->id]) }}"
-                                                class="text-blue-600 hover:text-blue-900 mr-2" title="Lihat Detail">
-                                                <i class="fa-solid fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('ruangan.sesi.siswa.index', [$session->ruangan_id, $session->id]) }}"
-                                                class="text-green-600 hover:text-green-900" title="Kelola Siswa">
-                                                <i class="fa-solid fa-users"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                            <span>{{ $session->progress_percentage }}%</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $session->pengawas->nama ?? 'Belum ditentukan' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $session->sesiRuanganSiswa->count() }} /
+                                            {{ $session->ruangan->kapasitas }}
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                                            <div class="bg-blue-600 h-1 rounded-full"
+                                                style="width: {{ min(($session->sesiRuanganSiswa->count() / $session->ruangan->kapasitas) * 100, 100) }}%">
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm text-gray-900">
+                                            {{ $session->jadwalUjians->count() }} jadwal
+                                        </div>
+                                        @if ($session->jadwalUjians->count() > 0)
+                                            <div class="text-xs text-gray-500">
+                                                @foreach ($session->jadwalUjians->take(2) as $jadwal)
+                                                    <div class="truncate max-w-[150px]" title="{{ $jadwal->judul }}">
+                                                        {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
+                                                        @if ($jadwal->mapel && $jadwal->mapel->jurusan)
+                                                            <span class="text-xs">({{ $jadwal->mapel->jurusan }})</span>
+                                                        @elseif($jadwal->mapel)
+                                                            <span class="text-xs italic">(Semua Jurusan)</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                                @if ($session->jadwalUjians->count() > 2)
+                                                    <span
+                                                        class="text-xs text-gray-500">+{{ $session->jadwalUjians->count() - 2 }}
+                                                        lainnya</span>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <a href="{{ route('ruangan.sesi.show', [$session->ruangan_id, $session->id]) }}"
+                                            class="text-blue-600 hover:text-blue-900 mr-2" title="Lihat Detail">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                        <a href="{{ route('ruangan.sesi.siswa.index', [$session->ruangan_id, $session->id]) }}"
+                                            class="text-green-600 hover:text-green-900" title="Kelola Siswa">
+                                            <i class="fa-solid fa-users"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
         @endif
+
+        <!-- Department Distribution -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="fa-solid fa-info-circle text-blue-600 mr-2"></i>
+                Informasi Penting: Konsep Jurusan dalam Ujian
+            </h3>
+            <div class="prose max-w-none">
+                <ul class="space-y-2">
+                    <li class="text-sm text-gray-700">
+                        <span class="font-medium">Mapel dengan jurusan kosong:</span> Berlaku untuk semua jurusan. Siswa
+                        dari jurusan apapun dapat mengikuti ujian ini.
+                    </li>
+                    <li class="text-sm text-gray-700">
+                        <span class="font-medium">Mapel dengan jurusan spesifik:</span> Hanya berlaku untuk siswa dari
+                        jurusan tersebut.
+                    </li>
+                    <li class="text-sm text-gray-700">
+                        <span class="font-medium">Mapel dengan jurusan "UMUM":</span> Berlaku untuk semua jurusan seperti
+                        halnya mapel dengan jurusan kosong.
+                    </li>
+                </ul>
+                <div class="mt-4 p-2 bg-yellow-50 rounded-md text-sm text-yellow-800">
+                    <i class="fa-solid fa-lightbulb mr-1"></i>
+                    <strong>Tip:</strong> Saat menambahkan siswa ke sesi ujian, jadwal ujian yang sesuai dengan jurusan
+                    siswa akan otomatis ditambahkan ke sesi.
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 
