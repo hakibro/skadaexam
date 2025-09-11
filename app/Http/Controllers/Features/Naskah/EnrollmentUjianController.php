@@ -8,14 +8,22 @@ use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Kelas;
+use App\Services\EnrollmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class EnrollmentUjianController extends Controller
 {
+    protected $enrollmentService;
+
+    public function __construct(EnrollmentService $enrollmentService = null)
+    {
+        $this->enrollmentService = $enrollmentService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -53,8 +61,9 @@ class EnrollmentUjianController extends Controller
         $sesiRuangans = SesiRuangan::where('status', '!=', 'cancelled')
             ->orderBy('waktu_mulai', 'desc')
             ->get();
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
 
-        return view('features.naskah.enrollment_ujian.index', compact('enrollments', 'jadwalUjians', 'sesiRuangans'));
+        return view('features.naskah.enrollment_ujian.index', compact('enrollments', 'jadwalUjians', 'sesiRuangans', 'kelasList'));
     }
 
     /**
@@ -64,7 +73,7 @@ class EnrollmentUjianController extends Controller
     {
         $jadwalUjians = JadwalUjian::where('status', 'active')->orderBy('tanggal', 'desc')->get();
         $sesiRuangans = collect(); // Will be populated via AJAX
-        $kelasList = Kelas::orderBy('nama')->get();
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
 
         return view('features.naskah.enrollment_ujian.create', compact('jadwalUjians', 'sesiRuangans', 'kelasList'));
     }
@@ -391,6 +400,8 @@ class EnrollmentUjianController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+
             $sesiRuangan = SesiRuangan::findOrFail($request->sesi_id);
 
             // Check authorization
@@ -414,12 +425,20 @@ class EnrollmentUjianController extends Controller
             $generateCount = 0;
 
             foreach ($enrollments as $enrollment) {
-                $enrollment->generateToken();
+                $token = $this->generateUniqueToken();
+                $enrollment->update([
+                    'token_login' => $token,
+                    'token_dibuat_pada' => now(),
+                    'token_digunakan_pada' => null
+                ]);
                 $generateCount++;
             }
 
+            DB::commit();
+
             return redirect()->back()->with('success', "Token berhasil dibuat untuk {$generateCount} siswa.");
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error generating tokens', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -428,5 +447,152 @@ class EnrollmentUjianController extends Controller
             return redirect()->back()
                 ->with('error', 'Terjadi kesalahan saat generate token: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate a new token for a specific enrollment
+     */
+    public function generateToken(EnrollmentUjian $enrollmentUjian)
+    {
+        try {
+            $enrollmentUjian->update([
+                'token_login' => $this->generateUniqueToken(),
+                'token_dibuat_pada' => now(),
+                'token_digunakan_pada' => null
+            ]);
+
+            return redirect()
+                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
+                ->with('success', 'Token login baru berhasil dibuat');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
+                ->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update enrollment status
+     */
+    public function updateStatus(EnrollmentUjian $enrollmentUjian, $status)
+    {
+        $validStatuses = ['enrolled', 'completed', 'absent', 'cancelled'];
+
+        if (!in_array($status, $validStatuses)) {
+            return redirect()
+                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
+                ->with('error', 'Status tidak valid');
+        }
+
+        try {
+            $enrollmentUjian->update([
+                'status_enrollment' => $status,
+                'status_kehadiran' => $status == 'completed' ? 'hadir' : ($status == 'absent' ? 'tidak_hadir' : $enrollmentUjian->status_kehadiran)
+            ]);
+
+            $statusText = [
+                'enrolled' => 'Terdaftar',
+                'completed' => 'Selesai',
+                'absent' => 'Tidak Hadir',
+                'cancelled' => 'Dibatalkan'
+            ];
+
+            return redirect()
+                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
+                ->with('success', "Status berhasil diubah menjadi {$statusText[$status]}");
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
+                ->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Synchronize enrollments based on session room assignments
+     */
+    public function syncEnrollments($sesiId)
+    {
+        try {
+            $sesiRuangan = SesiRuangan::with(['jadwalUjian', 'sesiRuanganSiswa.siswa'])
+                ->findOrFail($sesiId);
+
+            $jadwalUjian = $sesiRuangan->jadwalUjian;
+
+            if (!$jadwalUjian) {
+                return redirect()->back()
+                    ->with('error', 'Sesi ruangan ini tidak terkait dengan jadwal ujian manapun.');
+            }
+
+            // Get all students assigned to this session room
+            $assignedStudents = $sesiRuangan->sesiRuanganSiswa;
+
+            DB::beginTransaction();
+
+            $enrolledCount = 0;
+            $skippedCount = 0;
+
+            foreach ($assignedStudents as $assignment) {
+                // Check if student is already enrolled
+                $existingEnrollment = EnrollmentUjian::where('siswa_id', $assignment->siswa_id)
+                    ->where('jadwal_ujian_id', $jadwalUjian->id)
+                    ->first();
+
+                if ($existingEnrollment) {
+                    // Update existing enrollment if needed
+                    if ($existingEnrollment->sesi_ruangan_id != $sesiRuangan->id) {
+                        $existingEnrollment->update([
+                            'sesi_ruangan_id' => $sesiRuangan->id
+                        ]);
+                        $enrolledCount++;
+                    } else {
+                        $skippedCount++;
+                    }
+                } else {
+                    // Create new enrollment
+                    EnrollmentUjian::create([
+                        'siswa_id' => $assignment->siswa_id,
+                        'jadwal_ujian_id' => $jadwalUjian->id,
+                        'sesi_ruangan_id' => $sesiRuangan->id,
+                        'status_enrollment' => 'enrolled',
+                        'status_kehadiran' => 'belum_hadir',
+                        'token_login' => $this->generateUniqueToken(),
+                        'token_dibuat_pada' => now(),
+                    ]);
+                    $enrolledCount++;
+                }
+            }
+
+            DB::commit();
+
+            $message = "Sinkronisasi berhasil: {$enrolledCount} siswa di-enroll atau diperbarui";
+            if ($skippedCount > 0) {
+                $message .= ", {$skippedCount} siswa dilewati (sudah terdaftar)";
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyinkronkan enrollment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate a unique 6-character token for login
+     */
+    protected function generateUniqueToken()
+    {
+        do {
+            $token = strtoupper(Str::random(6));
+        } while (EnrollmentUjian::where('token_login', $token)->exists());
+
+        return $token;
+    }
+
+    /**
+     * Print QR code for enrollment
+     */
+    public function printQR(EnrollmentUjian $enrollmentUjian)
+    {
+        return view('features.naskah.enrollment_ujian.print-qr', compact('enrollmentUjian'));
     }
 }

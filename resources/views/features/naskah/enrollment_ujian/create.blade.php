@@ -1,112 +1,126 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Tambah Enrollment Ujian')
+@section('page-title', 'Tambah Enrollment Ujian')
+@section('page-description', 'Mendaftarkan siswa pada ujian')
 
 @section('content')
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Tambah Enrollment Ujian</h1>
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-user-plus me-1"></i>
-                Form Tambah Enrollment Ujian
+    <div class="space-y-6">
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fa-solid fa-user-plus mr-2"></i>Form Tambah Enrollment Ujian
+                </h3>
             </div>
-            <div class="card-body">
+            <div class="p-6">
                 <form action="{{ route('naskah.enrollment-ujian.store') }}" method="POST">
                     @csrf
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="jadwal_ujian_id" class="form-label">Jadwal Ujian <span
-                                        class="text-danger">*</span></label>
-                                <select name="jadwal_ujian_id" id="jadwal_ujian_id"
-                                    class="form-select @error('jadwal_ujian_id') is-invalid @enderror" required>
-                                    <option value="">Pilih Jadwal Ujian</option>
-                                    @foreach ($jadwalUjians as $jadwal)
-                                        <option value="{{ $jadwal->id }}"
-                                            {{ old('jadwal_ujian_id') == $jadwal->id ? 'selected' : '' }}>
-                                            {{ $jadwal->judul }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('jadwal_ujian_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="jadwal_ujian_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                Jadwal Ujian <span class="text-red-500">*</span>
+                            </label>
+                            <select name="jadwal_ujian_id" id="jadwal_ujian_id"
+                                class="form-select w-full rounded-md shadow-sm @error('jadwal_ujian_id') border-red-500 @enderror"
+                                required>
+                                <option value="">Pilih Jadwal Ujian</option>
+                                @foreach ($jadwalUjians as $jadwal)
+                                    <option value="{{ $jadwal->id }}"
+                                        {{ old('jadwal_ujian_id') == $jadwal->id ? 'selected' : '' }}>
+                                        {{ $jadwal->judul }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('jadwal_ujian_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sesi_ujian_id" class="form-label">Sesi Ujian <span
-                                        class="text-danger">*</span></label>
-                                <select name="sesi_ujian_id" id="sesi_ujian_id"
-                                    class="form-select @error('sesi_ujian_id') is-invalid @enderror" required disabled>
-                                    <option value="">Pilih Sesi Ujian</option>
-                                    @if (old('jadwal_ujian_id') && old('sesi_ujian_id'))
-                                        <option value="{{ old('sesi_ujian_id') }}" selected>
-                                            {{ App\Models\sesiRuangan::find(old('sesi_ujian_id'))->nama_sesi }}</option>
-                                    @endif
-                                </select>
-                                @error('sesi_ujian_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="kelas_id" class="form-label">Kelas Siswa</label>
-                                <select name="kelas_id" id="kelas_id"
-                                    class="form-select @error('kelas_id') is-invalid @enderror">
-                                    <option value="">Pilih Kelas Siswa</option>
-                                    @foreach ($kelasList as $kelas)
-                                        <option value="{{ $kelas->id }}"
-                                            {{ old('kelas_id') == $kelas->id ? 'selected' : '' }}>
-                                            {{ $kelas->nama }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('kelas_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="text-muted">Pilih kelas untuk mempermudah pencarian siswa</small>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="siswa_id" class="form-label">Siswa <span class="text-danger">*</span></label>
-                                <select name="siswa_id" id="siswa_id"
-                                    class="form-select @error('siswa_id') is-invalid @enderror" required>
-                                    <option value="">Pilih Siswa</option>
-                                    @if (old('siswa_id'))
-                                        <option value="{{ old('siswa_id') }}" selected>
-                                            {{ App\Models\Siswa::find(old('siswa_id'))->nama }}
-                                            ({{ App\Models\Siswa::find(old('siswa_id'))->nis }})
-                                        </option>
-                                    @endif
-                                </select>
-                                @error('siswa_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                        <div>
+                            <label for="sesi_ruangan_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                Sesi Ujian <span class="text-red-500">*</span>
+                            </label>
+                            <select name="sesi_ruangan_id" id="sesi_ruangan_id"
+                                class="form-select w-full rounded-md shadow-sm @error('sesi_ruangan_id') border-red-500 @enderror"
+                                required disabled>
+                                <option value="">Pilih Sesi Ujian</option>
+                                @if (old('jadwal_ujian_id') && old('sesi_ruangan_id'))
+                                    <option value="{{ old('sesi_ruangan_id') }}" selected>
+                                        {{ App\Models\SesiRuangan::find(old('sesi_ruangan_id'))->nama_sesi }}</option>
+                                @endif
+                            </select>
+                            @error('sesi_ruangan_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="catatan" class="form-label">Catatan</label>
-                        <textarea name="catatan" id="catatan" class="form-control @error('catatan') is-invalid @enderror" rows="3">{{ old('catatan') }}</textarea>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="kelas_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                Kelas Siswa
+                            </label>
+                            <select name="kelas_id" id="kelas_id"
+                                class="form-select w-full rounded-md shadow-sm @error('kelas_id') border-red-500 @enderror">
+                                <option value="">Pilih Kelas Siswa</option>
+                                @foreach ($kelasList as $kelas)
+                                    <option value="{{ $kelas->id }}"
+                                        {{ old('kelas_id') == $kelas->id ? 'selected' : '' }}>
+                                        {{ $kelas->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('kelas_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            <p class="mt-1 text-sm text-gray-500">Pilih kelas untuk mempermudah pencarian siswa</p>
+                        </div>
+
+                        <div>
+                            <label for="siswa_ids" class="block text-sm font-medium text-gray-700 mb-1">
+                                Siswa <span class="text-red-500">*</span>
+                            </label>
+                            <select name="siswa_ids[]" id="siswa_ids" multiple
+                                class="form-select w-full rounded-md shadow-sm @error('siswa_ids') border-red-500 @enderror"
+                                required>
+                                <option value="">Pilih Siswa</option>
+                                @if (old('siswa_ids'))
+                                    @foreach (old('siswa_ids') as $siswaId)
+                                        @php $siswa = App\Models\Siswa::find($siswaId); @endphp
+                                        @if ($siswa)
+                                            <option value="{{ $siswa->id }}" selected>
+                                                {{ $siswa->nama }} ({{ $siswa->nis }})
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                @endif
+                            </select>
+                            @error('siswa_ids')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            <p class="mt-1 text-sm text-gray-500">Anda dapat memilih beberapa siswa sekaligus</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="catatan" class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                        <textarea name="catatan" id="catatan"
+                            class="form-textarea w-full rounded-md shadow-sm @error('catatan') border-red-500 @enderror" rows="3">{{ old('catatan') }}</textarea>
                         @error('catatan')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ route('naskah.enrollment-ujian.index') }}" class="btn btn-secondary">Kembali</a>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    <div class="flex justify-between items-center">
+                        <a href="{{ route('naskah.enrollment-ujian.index') }}"
+                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
+                        </a>
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-save mr-2"></i> Simpan
+                        </button>
                     </div>
                 </form>
             </div>
@@ -114,11 +128,12 @@
     </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        $(document).ready(function() {
+        document.addEventListener('DOMContentLoaded', function() {
             // Initialize select2
-            $('#siswa_id').select2({
+            $('#siswa_ids').select2({
                 placeholder: 'Cari siswa berdasarkan nama atau NIS',
                 allowClear: true,
                 ajax: {
@@ -142,46 +157,67 @@
             });
 
             // Jadwal and Sesi relationship
-            $('#jadwal_ujian_id').change(function() {
-                let jadwalId = $(this).val();
-                let sesiSelect = $('#sesi_ujian_id');
+            const jadwalSelect = document.getElementById('jadwal_ujian_id');
+            const sesiSelect = document.getElementById('sesi_ruangan_id');
 
-                sesiSelect.empty().prop('disabled', true);
-                sesiSelect.append('<option value="">Pilih Sesi Ujian</option>');
+            if (jadwalSelect && sesiSelect) {
+                jadwalSelect.addEventListener('change', function() {
+                    const jadwalId = this.value;
+                    sesiSelect.disabled = true;
+                    sesiSelect.innerHTML = '<option value="">Pilih Sesi Ujian</option>';
 
-                if (jadwalId) {
-                    $.ajax({
-                        url: '{{ route('naskah.enrollment-ujian.get-sesi-options') }}',
-                        type: 'GET',
-                        data: {
-                            jadwal_id: jadwalId
-                        },
-                        success: function(response) {
-                            if (response && response.length > 0) {
-                                $.each(response, function(index, item) {
-                                    sesiSelect.append('<option value="' + item.id +
-                                        '">' + item.text + '</option>');
-                                });
-                                sesiSelect.prop('disabled', false);
-                            }
-                        },
-                        error: function(xhr) {
-                            console.error('Error loading sesi options', xhr);
-                            toastr.error('Gagal memuat sesi ujian');
-                        }
-                    });
+                    if (jadwalId) {
+                        fetch(
+                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data && data.length > 0) {
+                                    data.forEach(item => {
+                                        const option = document.createElement('option');
+                                        option.value = item.id;
+                                        option.textContent = item.text;
+                                        sesiSelect.appendChild(option);
+                                    });
+                                    sesiSelect.disabled = false;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error loading sesi options', error);
+                                alert('Gagal memuat sesi ujian');
+                            });
+                    }
+                });
+
+                // Trigger change if value already selected (for edit form)
+                if (jadwalSelect.value) {
+                    const event = new Event('change');
+                    jadwalSelect.dispatchEvent(event);
                 }
-            });
-
-            // Trigger change if value already selected (for edit form)
-            if ($('#jadwal_ujian_id').val()) {
-                $('#jadwal_ujian_id').trigger('change');
             }
 
             // Kelas filtering for siswa
-            $('#kelas_id').change(function() {
-                $('#siswa_id').val(null).trigger('change');
-            });
+            const kelasSelect = document.getElementById('kelas_id');
+            if (kelasSelect) {
+                kelasSelect.addEventListener('change', function() {
+                    $('#siswa_ids').val(null).trigger('change');
+                });
+            }
         });
     </script>
+@endsection
+
+@push('meta')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .select2-container--default .select2-selection--multiple {
+            border-color: #d1d5db;
+            border-radius: 0.375rem;
+        }
+
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+    </style>
 @endpush

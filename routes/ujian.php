@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Features\Ruangan\EnrollmentController;
+
 use App\Http\Controllers\Features\Ujian\UjianController;
 use App\Http\Controllers\Auth\UjianLoginController;
 
@@ -21,14 +21,7 @@ Route::post('/ujian/login', [UjianLoginController::class, 'loginWithToken'])
 Route::post('/ujian/logout', [UjianLoginController::class, 'logout'])
     ->name('ujian.logout');
 
-// Enrollment management routes for admin/guru
-Route::middleware(['auth:web', 'role:admin,guru'])->prefix('enrollment')->name('enrollment.')->group(function () {
-    Route::get('/', [EnrollmentController::class, 'index'])->name('index');
-    Route::get('/create/{jadwal}', [EnrollmentController::class, 'create'])->name('create');
-    Route::post('/store', [EnrollmentController::class, 'store'])->name('store');
-    Route::get('/{jadwal}', [EnrollmentController::class, 'show'])->name('show');
-    Route::post('/generate-tokens', [EnrollmentController::class, 'generateTokens'])->name('generate-tokens');
-});
+// Enrollment management routes moved to routes/enrollment.php
 
 // Exam routes for students
 Route::middleware(['auth:siswa', 'ujian.active'])->prefix('ujian')->name('ujian.')->group(function () {

@@ -141,7 +141,23 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="text-sm text-gray-900">
-                                            {{ $sesi->pengawas->nama ?? 'Belum ditentukan' }}
+                                            @php
+                                                $hasPengawas = false;
+                                                $pengawasNames = [];
+                                                foreach ($sesi->jadwalUjians as $jadwal) {
+                                                    $pengawas = $sesi->getPengawasForJadwal($jadwal->id);
+                                                    if ($pengawas && !in_array($pengawas->nama, $pengawasNames)) {
+                                                        $pengawasNames[] = $pengawas->nama;
+                                                        $hasPengawas = true;
+                                                    }
+                                                }
+                                            @endphp
+
+                                            @if ($hasPengawas)
+                                                {{ implode(', ', $pengawasNames) }}
+                                            @else
+                                                Belum ditentukan
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">

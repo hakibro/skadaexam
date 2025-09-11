@@ -19,6 +19,11 @@
                     <i class="fa-solid fa-file-import"></i>
                     <span>Import Data</span>
                 </a>
+                <a href="{{ route('ruangan.import.comprehensive') }}"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>Import Komprehensif</span>
+                </a>
                 <a href="{{ route('ruangan.export') }}"
                     class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
                     <i class="fa-solid fa-file-export"></i>

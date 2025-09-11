@@ -1,39 +1,40 @@
 <?php
 
+use App\Http\Controllers\Features\Naskah\EnrollmentUjianController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Features\Naskah\EnrollmentController;
-use App\Http\Controllers\Features\Ruangan\EnrollmentUjianController;
 
 /*
 |--------------------------------------------------------------------------
-| Enrollment ROUTES
+| ENROLLMENT ROUTES - CONSOLIDATED
 |--------------------------------------------------------------------------
 |
-| Routes related to enrollments including old enrollment system and 
-| new enrollment ujian system.
+| This file contains all enrollment-related routes for both the Naskah and
+| Ruangan features. These routes handle student enrollment to exams, session
+| management, and token generation.
 |
 */
 
+// Enrollment Management Routes - Naskah Feature
 Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('naskah.')->group(function () {
-    // Old Enrollment routes (if still needed)
-    Route::get('enrollment', [EnrollmentController::class, 'index'])->name('enrollment.index');
-    Route::get('enrollment/{mapel}', [EnrollmentController::class, 'show'])->name('enrollment.show');
-    Route::get('enrollment/{mapel}/create', [EnrollmentController::class, 'create'])->name('enrollment.create');
-    Route::post('enrollment/{mapel}', [EnrollmentController::class, 'store'])->name('enrollment.store');
-    Route::delete('enrollment/{mapel}/{siswa}', [EnrollmentController::class, 'destroy'])->name('enrollment.destroy');
-    Route::put('enrollment/{mapel}/{siswa}/status', [EnrollmentController::class, 'updateStatus'])->name('enrollment.update-status');
-    Route::get('enrollment/siswa', [EnrollmentController::class, 'getSiswaByKelas'])->name('enrollment.get-siswa');
-
-    // New Enrollment Ujian routes
-    Route::get('enrollment-ujian/get-sesi-options', [EnrollmentUjianController::class, 'getSesiOptions'])
-        ->name('enrollment-ujian.get-sesi-options');
-    Route::get('enrollment-ujian/get-siswa-options', [EnrollmentUjianController::class, 'getSiswaOptions'])
-        ->name('enrollment-ujian.get-siswa-options');
-    Route::post('enrollment-ujian/bulk', [EnrollmentUjianController::class, 'bulkEnrollment'])
-        ->name('enrollment-ujian.bulk');
-    Route::post('enrollment-ujian/{enrollmentUjian}/generate-token', [EnrollmentUjianController::class, 'generateToken'])
-        ->name('enrollment-ujian.generate-token');
-    Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [EnrollmentUjianController::class, 'updateStatus'])
-        ->name('enrollment-ujian.update-status');
+    // Enrollment Ujian routes
+    Route::get('enrollment-ujian/get-sesi-options', [EnrollmentUjianController::class, 'getSesiOptions'])->name('enrollment-ujian.get-sesi-options');
+    Route::get('enrollment-ujian/get-siswa-options', [EnrollmentUjianController::class, 'getSiswaOptions'])->name('enrollment-ujian.get-siswa-options');
+    Route::get('enrollment-ujian/get-siswa-by-kelas', [EnrollmentUjianController::class, 'getSiswaByKelas'])->name('enrollment-ujian.get-siswa-by-kelas');
+    Route::post('enrollment-ujian/bulk', [EnrollmentUjianController::class, 'bulkEnrollment'])->name('enrollment-ujian.bulk');
+    Route::post('enrollment-ujian/generate-tokens', [EnrollmentUjianController::class, 'generateTokens'])->name('enrollment-ujian.generate-tokens');
+    Route::post('enrollment-ujian/{enrollmentUjian}/generate-token', [EnrollmentUjianController::class, 'generateToken'])->name('enrollment-ujian.generate-token');
+    Route::get('enrollment-ujian/{enrollmentUjian}/print-qr', [EnrollmentUjianController::class, 'printQR'])->name('enrollment-ujian.print-qr');
+    Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [EnrollmentUjianController::class, 'updateStatus'])->name('enrollment-ujian.update-status');
     Route::resource('enrollment-ujian', EnrollmentUjianController::class);
+});
+
+// Ruangan-based automatic enrollment routes - now using the same controller
+Route::middleware(['auth:web', 'role:admin,koordinator'])->prefix('ruangan')->name('ruangan.')->group(function () {
+    // Auto-enrollment through session room assignments
+    Route::prefix('enrollment')->name('enrollment.')->group(function () {
+        Route::get('/', [EnrollmentUjianController::class, 'index'])->name('index');
+        Route::post('/bulk', [EnrollmentUjianController::class, 'bulkEnrollment'])->name('bulk');
+        Route::post('/generate-tokens', [EnrollmentUjianController::class, 'generateTokens'])->name('generate-tokens');
+        Route::post('/{sesi}/sync', [EnrollmentUjianController::class, 'syncEnrollments'])->name('sync');
+    });
 });

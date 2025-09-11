@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('enrollment_ujian', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('siswa_id'); // Foreign key will be added in a later migration
-            $table->enum('status_enrollment', ['enrolled', 'completed', 'cancelled'])->default('enrolled');
+            $table->enum('status_enrollment', ['enrolled', 'active', 'completed', 'cancelled'])->default('enrolled');
             $table->string('token_login')->nullable(); // Token sekali pakai untuk login
             $table->timestamp('token_dibuat_pada')->nullable();
             $table->timestamp('token_digunakan_pada')->nullable();

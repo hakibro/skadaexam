@@ -1,0 +1,14 @@
+RINGKASAN KONSOLIDASI VIEW ENROLLMENT UJIAN
+---------------------------------------------
+View yang digunakan: resources/views/features/naskah/enrollment_ujian
+View yang dihapus: resources/views/enrollment
+---------------------------------------------
+Fitur/halaman yang tersedia:
+1. Index: Daftar semua enrollment ujian
+2. Create: Form tambah enrollment baru
+3. Edit: Form edit enrollment
+4. Show: Detail enrollment
+---------------------------------------------
+Controller: App\\Http\\Controllers\\Features\\Naskah\\EnrollmentUjianController
+Model: App\\Models\\EnrollmentUjian
+Routes: routes/enrollment.php (semua routes menggunakan controller yang sama)

@@ -27,7 +27,7 @@
             const roleLinks = [
                 ...document.querySelectorAll('a[href*="/data/"]'),
                 ...document.querySelectorAll('a[href*="/naskah/"]'),
-                ...document.querySelectorAll('a[href*="/pengawas/"]'),
+                ...document.querySelectorAll('a[href*="/features/pengawas/"]'),
                 ...document.querySelectorAll('a[href*="/koordinator/"]'),
                 ...document.querySelectorAll('a[href*="/ruangan/"]'),
                 ...document.querySelectorAll('a[href*="/admin/"]'),

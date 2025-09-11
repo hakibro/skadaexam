@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Guru;
 use App\Models\Ruangan;
 use App\Models\SesiRuangan;
+use App\Models\SesiRuanganSiswa;
 use App\Models\Siswa;
 use App\Models\Kelas;
+use App\Models\EnrollmentUjian;
+use App\Models\JadwalUjian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,8 +35,10 @@ class SesiRuanganController extends Controller
      */
     public function create(Ruangan $ruangan)
     {
-        $pengawasList = Guru::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['pengawas', 'koordinator']);
+        $pengawasList = Guru::whereHas('user', function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['pengawas', 'koordinator']);
+            });
         })->orderBy('nama')->get();
 
         $templates = \App\Models\SesiTemplate::where('is_active', true)->get();
@@ -61,7 +66,6 @@ class SesiRuanganController extends Controller
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
-            'pengawas_id' => 'nullable|exists:guru,id',
             'keterangan' => 'nullable|string',
             'template_id' => 'nullable|exists:sesi_templates,id',
             'kode_sesi' => 'nullable|string|max:20',
@@ -102,7 +106,6 @@ class SesiRuanganController extends Controller
                 'nama_sesi' => $request->nama_sesi,
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
-                'pengawas_id' => $request->pengawas_id,
                 'status' => 'belum_mulai',
                 'keterangan' => $request->keterangan,
                 'kode_sesi' => $request->kode_sesi,
@@ -143,8 +146,10 @@ class SesiRuanganController extends Controller
      */
     public function edit(Ruangan $ruangan, SesiRuangan $sesi)
     {
-        $pengawasList = Guru::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['pengawas', 'koordinator']);
+        $pengawasList = Guru::whereHas('user', function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['pengawas', 'koordinator']);
+            });
         })->orderBy('nama')->get();
 
         return view('features.ruangan.sesi.edit', compact('ruangan', 'sesi', 'pengawasList'));
@@ -167,7 +172,6 @@ class SesiRuanganController extends Controller
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
-            'pengawas_id' => 'nullable|exists:guru,id',
             'status' => 'required|in:belum_mulai,berlangsung,selesai,dibatalkan',
             'keterangan' => 'nullable|string',
             'kode_sesi' => 'nullable|string|max:20',
@@ -207,7 +211,6 @@ class SesiRuanganController extends Controller
                 'nama_sesi' => $request->nama_sesi,
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
-                'pengawas_id' => $request->pengawas_id,
                 'status' => $request->status,
                 'keterangan' => $request->keterangan,
                 'kode_sesi' => $request->kode_sesi,
@@ -293,7 +296,7 @@ class SesiRuanganController extends Controller
             $query->where('sesi_ruangan_id', $sesi->id);
         })
             ->with('kelas')
-            ->where('status_pembayaran', 'Lunas') // Only students who have paid
+            // ->where('status_pembayaran', 'Lunas') // Only students who have paid
             ->orderBy('nama')
             ->get();
 
@@ -331,7 +334,8 @@ class SesiRuanganController extends Controller
                 // Check if student is already assigned
                 $exists = $sesi->sesiRuanganSiswa()->where('siswa_id', $siswaId)->exists();
                 if (!$exists) {
-                    $sesi->sesiRuanganSiswa()->create([
+                    // Create sesi ruangan siswa record
+                    $sesiRuanganSiswa = $sesi->sesiRuanganSiswa()->create([
                         'siswa_id' => $siswaId,
                         'status' => 'tidak_hadir', // Default status
                     ]);
@@ -354,6 +358,26 @@ class SesiRuanganController extends Controller
 
                         foreach ($matchingJadwals as $jadwal) {
                             $matchedJadwalIds[$jadwal->id] = $jadwal;
+
+                            // Create automatic enrollment for this jadwal
+                            $existingEnrollment = \App\Models\EnrollmentUjian::where('jadwal_ujian_id', $jadwal->id)
+                                ->where('sesi_ruangan_id', $sesi->id)
+                                ->where('siswa_id', $siswaId)
+                                ->first();
+
+                            if (!$existingEnrollment) {
+                                // Create new enrollment record
+                                $enrollment = new \App\Models\EnrollmentUjian([
+                                    'sesi_ruangan_id' => $sesi->id,
+                                    'jadwal_ujian_id' => $jadwal->id,
+                                    'siswa_id' => $siswaId,
+                                    'status_enrollment' => 'enrolled',
+                                    'catatan' => 'Auto-enrolled when assigned to session'
+                                ]);
+                                $enrollment->save();
+
+                                Log::info("Auto-enrolled student {$siswaId} in jadwal {$jadwal->id} for sesi {$sesi->id}");
+                            }
                         }
                     }
                 }
@@ -378,9 +402,17 @@ class SesiRuanganController extends Controller
 
             DB::commit();
 
-            $jadwalMsg = count($matchedJadwalIds) > 0 ? ' dan ' . count($matchedJadwalIds) . ' jadwal ujian yang sesuai otomatis ditambahkan' : '';
+            $totalEnrollments = \App\Models\EnrollmentUjian::where('sesi_ruangan_id', $sesi->id)
+                ->whereIn('siswa_id', $request->siswa_ids)
+                ->count();
+
+            $jadwalMsg = count($matchedJadwalIds) > 0 ?
+                ' dan ' . count($matchedJadwalIds) . ' jadwal ujian yang sesuai otomatis ditambahkan' : '';
+            $enrollMsg = $totalEnrollments > 0 ?
+                ', ' . $totalEnrollments . ' enrollment ujian otomatis dibuat' : '';
+
             return redirect()->route('ruangan.sesi.siswa.index', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
-                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi' . $jadwalMsg);
+                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi' . $jadwalMsg . $enrollMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error adding students to sesi: ' . $e->getMessage());
@@ -397,15 +429,33 @@ class SesiRuanganController extends Controller
         try {
             DB::beginTransaction();
 
+            // Delete student assignment
             $sesiSiswa = $sesi->sesiRuanganSiswa()->where('siswa_id', $siswa->id)->first();
             if ($sesiSiswa) {
                 $sesiSiswa->delete();
             }
 
+            // Delete all enrollments associated with this student and session
+            $enrollments = \App\Models\EnrollmentUjian::where('sesi_ruangan_id', $sesi->id)
+                ->where('siswa_id', $siswa->id)
+                ->get();
+
+            $deletedEnrollments = 0;
+            foreach ($enrollments as $enrollment) {
+                // Only delete enrollments that don't have completed exams
+                if ($enrollment->status_enrollment !== 'completed' && !$enrollment->hasilUjian()->exists()) {
+                    $enrollment->delete();
+                    $deletedEnrollments++;
+                }
+            }
+
             DB::commit();
 
+            $enrollMsg = $deletedEnrollments > 0 ?
+                ' dan ' . $deletedEnrollments . ' enrollment ujian terkait' : '';
+
             return redirect()->back()
-                ->with('success', 'Siswa berhasil dihapus dari sesi');
+                ->with('success', 'Siswa berhasil dihapus dari sesi' . $enrollMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error removing student from sesi: ' . $e->getMessage());
@@ -422,13 +472,40 @@ class SesiRuanganController extends Controller
         try {
             DB::beginTransaction();
 
+            // Get count of students before deletion
             $count = $sesi->sesiRuanganSiswa()->count();
+
+            // Get student IDs to delete their enrollments later
+            $siswaIds = $sesi->sesiRuanganSiswa()->pluck('siswa_id')->toArray();
+
+            // Delete all student assignments
             $sesi->sesiRuanganSiswa()->delete();
+
+            // Delete associated enrollments that don't have completed exams
+            $deletedEnrollments = 0;
+            if (!empty($siswaIds)) {
+                $enrollments = \App\Models\EnrollmentUjian::where('sesi_ruangan_id', $sesi->id)
+                    ->whereIn('siswa_id', $siswaIds)
+                    ->where(function ($query) {
+                        $query->where('status_enrollment', '!=', 'completed')
+                            ->orWhereNull('status_enrollment');
+                    })
+                    ->whereDoesntHave('hasilUjian')
+                    ->get();
+
+                foreach ($enrollments as $enrollment) {
+                    $enrollment->delete();
+                    $deletedEnrollments++;
+                }
+            }
 
             DB::commit();
 
+            $enrollMsg = $deletedEnrollments > 0 ?
+                ' dan ' . $deletedEnrollments . ' enrollment ujian terkait' : '';
+
             return redirect()->back()
-                ->with('success', $count . ' siswa berhasil dihapus dari sesi');
+                ->with('success', $count . ' siswa berhasil dihapus dari sesi' . $enrollMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error removing all students from sesi: ' . $e->getMessage());

@@ -26,7 +26,6 @@ class SesiRuangan extends Model
         'status',
         'pengaturan',
         'ruangan_id',
-        'pengawas_id',
         'template_id'
     ];
 
@@ -61,9 +60,26 @@ class SesiRuangan extends Model
         return $this->belongsTo(Ruangan::class);
     }
 
+    /**
+     * @deprecated This method is kept for backward compatibility.
+     * Use getPengawasForJadwal() instead with a specific jadwal_ujian_id.
+     */
     public function pengawas()
     {
-        return $this->belongsTo(Guru::class, 'pengawas_id');
+        // This will always return null now that the column is removed
+        // For backward compatibility, kept as a method
+        return null;
+    }
+
+    /**
+     * @deprecated This method is kept for backward compatibility.
+     * Use getPengawasForJadwal() instead with a specific jadwal_ujian_id.
+     */
+    public function guru()
+    {
+        // This will always return null now that the column is removed
+        // For backward compatibility, kept as a method
+        return null;
     }
 
     public function template()
@@ -80,18 +96,51 @@ class SesiRuangan extends Model
     public function jadwalUjians()
     {
         return $this->belongsToMany(JadwalUjian::class, 'jadwal_ujian_sesi_ruangan')
+            ->withPivot('pengawas_id')
+            ->using(JadwalUjianSesiRuangan::class)
             ->withTimestamps();
     }
 
-    // Keep the old method for backward compatibility but make it return the first jadwal
+    // Keep the old method for backward compatibility
     public function jadwalUjian()
     {
-        return $this->jadwalUjians()->first();
+        // Return a HasMany relation for backward compatibility
+        return $this->belongsToMany(JadwalUjian::class, 'jadwal_ujian_sesi_ruangan')
+            ->withPivot('pengawas_id')
+            ->using(JadwalUjianSesiRuangan::class)
+            ->withTimestamps();
+    }
+
+    /**
+     * Get pengawas for a specific jadwal
+     * 
+     * @param int $jadwalUjianId The jadwal ujian ID
+     * @return Guru|null The assigned pengawas or null if not assigned
+     */
+    public function getPengawasForJadwal($jadwalUjianId)
+    {
+        $pivot = JadwalUjianSesiRuangan::where('jadwal_ujian_id', $jadwalUjianId)
+            ->where('sesi_ruangan_id', $this->id)
+            ->first();
+
+        if ($pivot && $pivot->pengawas_id) {
+            return Guru::find($pivot->pengawas_id);
+        }
+
+        return null;
     }
 
     public function sesiRuanganSiswa()
     {
         return $this->hasMany(SesiRuanganSiswa::class);
+    }
+
+    // Many-to-Many relationship with Siswa through SesiRuanganSiswa
+    public function siswa()
+    {
+        return $this->belongsToMany(Siswa::class, 'sesi_ruangan_siswa')
+            ->withPivot(['status', 'token', 'token_expired_at', 'status_kehadiran', 'keterangan'])
+            ->withTimestamps();
     }
 
     // With the new migration, there's a direct link from berita_acara_ujian to sesi_ruangan

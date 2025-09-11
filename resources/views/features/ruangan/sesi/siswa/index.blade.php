@@ -42,9 +42,11 @@
                     <p class="text-sm text-gray-600">{{ $ruangan->nama_ruangan }} - {{ $ruangan->kode_ruangan }}</p>
                     <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                         @if ($sesi->jadwalUjians->count() > 0)
-                            <span><i class="fa-solid fa-calendar mr-1"></i>{{ $sesi->jadwalUjians->first()->tanggal->format('d M Y') }}</span>
+                            <span><i
+                                    class="fa-solid fa-calendar mr-1"></i>{{ $sesi->jadwalUjians->first()->tanggal->format('d M Y') }}</span>
                         @endif
-                        <span><i class="fa-solid fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }}
+                        <span><i
+                                class="fa-solid fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }}
                             - {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}</span>
                         <span><i class="fa-solid fa-users mr-1"></i>{{ $assignedSiswa->count() }} /
                             {{ $ruangan->kapasitas }}</span>
@@ -53,13 +55,14 @@
                         <div class="mt-2">
                             <span class="text-sm text-gray-600 font-medium">Jadwal Ujian Terkait:</span>
                             <div class="flex flex-wrap gap-2 mt-1">
-                                @foreach($sesi->jadwalUjians as $jadwal)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
-                                        {{ $jadwal->judul }} 
-                                        <span class="ml-1 text-blue-400">•</span> 
+                                @foreach ($sesi->jadwalUjians as $jadwal)
+                                    <span
+                                        class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+                                        {{ $jadwal->judul }}
+                                        <span class="ml-1 text-blue-400">•</span>
                                         <span class="ml-1">
                                             {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
-                                            @if($jadwal->mapel && $jadwal->mapel->jurusan)
+                                            @if ($jadwal->mapel && $jadwal->mapel->jurusan)
                                                 ({{ $jadwal->mapel->jurusan }})
                                             @elseif($jadwal->mapel)
                                                 <span class="italic text-xs">(Semua Jurusan)</span>
@@ -106,8 +109,8 @@
                                 <option value="">Semua Kelas</option>
                                 @foreach ($kelasList as $kelas)
                                     <option value="{{ $kelas->id }}">
-                                        {{ $kelas->nama_kelas }} 
-                                        @if($kelas->jurusan)
+                                        {{ $kelas->nama_kelas }}
+                                        @if ($kelas->jurusan)
                                             ({{ $kelas->jurusan }})
                                         @endif
                                     </option>
@@ -145,9 +148,9 @@
                                                 <div class="text-sm font-medium text-gray-900 siswa-nama">
                                                     {{ $siswa->nama }}</div>
                                                 <div class="text-xs text-gray-500 siswa-info">
-                                                    NIS: <span class="siswa-nis">{{ $siswa->nis }}</span> -
+                                                    ID YYS: <span class="siswa-nis">{{ $siswa->idyayasan }}</span> -
                                                     Kelas: {{ $siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
-                                                    @if($siswa->kelas && $siswa->kelas->jurusan)
+                                                    @if ($siswa->kelas && $siswa->kelas->jurusan)
                                                         ({{ $siswa->kelas->jurusan }})
                                                     @endif
                                                 </div>
@@ -166,7 +169,7 @@
                                 <i class="fa-solid fa-plus mr-1"></i> Tambah ke Sesi
                             </button>
                         </div>
-                        
+
                         <div class="mt-3 text-xs text-gray-500 italic">
                             <i class="fa-solid fa-info-circle mr-1"></i>
                             Jadwal ujian yang sesuai dengan jurusan/kelas siswa akan otomatis ditambahkan ke sesi.
@@ -204,7 +207,7 @@
                                     <div class="text-xs text-gray-500">
                                         NIS: {{ $sesiSiswa->siswa->nis }} -
                                         Kelas: {{ $sesiSiswa->siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
-                                        @if($sesiSiswa->siswa->kelas && $sesiSiswa->siswa->kelas->jurusan)
+                                        @if ($sesiSiswa->siswa->kelas && $sesiSiswa->siswa->kelas->jurusan)
                                             ({{ $sesiSiswa->siswa->kelas->jurusan }})
                                         @endif
                                     </div>

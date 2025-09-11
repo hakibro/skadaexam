@@ -35,6 +35,7 @@
         @endif
 
         <!-- Import Instructions -->
+        <!-- Info Box -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
             <div class="flex items-start">
                 <div class="flex-shrink-0">
@@ -48,6 +49,27 @@
                         <p>• Kode ruangan harus unik dan belum ada di sistem</p>
                         <p>• Kapasitas ruangan harus berupa angka (1-1000)</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Options Box -->
+        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6 mb-8">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fa-solid fa-lightbulb text-indigo-400 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-indigo-900 mb-2">Opsi Import Lainnya</h3>
+                    <div class="text-sm text-indigo-700 mb-4">
+                        <p>Anda juga dapat menggunakan fitur <strong>Import Komprehensif</strong> untuk mengimpor ruangan,
+                            sesi, dan siswa sekaligus dalam satu file.</p>
+                    </div>
+                    <a href="{{ route('ruangan.import.comprehensive') }}"
+                        class="inline-flex items-center px-4 py-2 border border-indigo-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none">
+                        <i class="fa-solid fa-file-import mr-2"></i>
+                        Buka Import Komprehensif
+                    </a>
                 </div>
             </div>
         </div>
@@ -148,7 +170,7 @@
                     <div>
                         <h4 class="font-medium text-gray-900 mb-3">Download Template</h4>
                         <div class="space-y-2">
-                            <a href="#"
+                            <a href="{{ route('ruangan.import.template') }}"
                                 class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
                                 <div class="flex items-center">
                                     <i class="fa-solid fa-file-excel text-green-600 mr-3"></i>
@@ -160,13 +182,13 @@
                                 <i class="fa-solid fa-download text-gray-400"></i>
                             </a>
 
-                            <a href="#"
+                            <a href="{{ route('ruangan.import.comprehensive.template') }}"
                                 class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
                                 <div class="flex items-center">
-                                    <i class="fa-solid fa-file-csv text-blue-600 mr-3"></i>
+                                    <i class="fa-solid fa-file-excel text-blue-600 mr-3"></i>
                                     <div>
-                                        <div class="font-medium text-gray-900">Template CSV</div>
-                                        <div class="text-sm text-gray-500">Format .csv</div>
+                                        <div class="font-medium text-gray-900">Template Komprehensif</div>
+                                        <div class="text-sm text-gray-500">Ruangan, Sesi, & Siswa</div>
                                     </div>
                                 </div>
                                 <i class="fa-solid fa-download text-gray-400"></i>

@@ -62,8 +62,10 @@ class LaporanController extends Controller
         $beritaAcaras = $query->orderBy('created_at', 'desc')->paginate(15);
 
         // Get available pengawas for filter
-        $pengawasList = Guru::whereHas('roles', function ($query) {
-            $query->where('name', 'pengawas');
+        $pengawasList = Guru::whereHas('user', function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', 'pengawas');
+            });
         })->orderBy('nama')->get();
 
         // Get statistics

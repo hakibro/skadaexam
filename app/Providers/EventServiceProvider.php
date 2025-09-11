@@ -20,6 +20,7 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register observers
+        \App\Models\SesiRuanganSiswa::observe(\App\Observers\SesiRuanganSiswaObserver::class);
     }
 }

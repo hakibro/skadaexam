@@ -48,6 +48,24 @@ class Mapel extends Model
         return $this->hasMany(JadwalUjian::class);
     }
 
+    /**
+     * Get all siswa enrolled in this mapel.
+     */
+    public function siswa()
+    {
+        return $this->belongsToMany(Siswa::class, 'mapel_siswa')
+            ->withPivot('status_enrollment', 'tanggal_daftar', 'enrolled_by')
+            ->withTimestamps();
+    }
+    
+    /**
+     * Get all enrolled students.
+     */
+    public function enrolledStudents()
+    {
+        return $this->siswa();
+    }
+
     // Scopes
     public function scopeActive($query)
     {

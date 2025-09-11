@@ -3,110 +3,26 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Model;
 
-class Guru extends Authenticatable
+class Guru extends Model
 {
-    use HasFactory, HasRoles;
+    use HasFactory;
 
     protected $table = 'guru';
-
-    // IMPORTANT: Define guard untuk Spatie Permission
-    protected $guard_name = 'guru';
 
     protected $fillable = [
         'nama',
         'nip',
         'email',
+        'user_id',
         'password',
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    protected $casts = [
-        'password' => 'hashed',
-        'email_verified_at' => 'datetime',
-    ];
-
-    // Override guard name untuk Spatie Permission
-    public function getDefaultGuardName(): string
+    // Reference to User model
+    public function user()
     {
-        return 'guru';
-    }
-
-    // Available roles untuk guru
-    public static function getRoleOptions()
-    {
-        return [
-            'data' => 'Data Management',
-            'naskah' => 'Naskah Management',
-            'ruangan' => 'Ruangan Management',
-            'pengawas' => 'Pengawas',
-            'koordinator' => 'Koordinator',
-            'guru' => 'Guru (Default)'
-        ];
-    }
-
-    // Role checking methods - ONLY Spatie dengan guru guard
-    public function canManageData()
-    {
-        return $this->hasRole('data', 'guru');
-    }
-
-    public function canManageNaskah()
-    {
-        return $this->hasRole('naskah', 'guru');
-    }
-
-    public function canManageRuangan()
-    {
-        return $this->hasRole('ruangan', 'guru');
-    }
-
-    public function canSupervise()
-    {
-        return $this->hasRole('pengawas', 'guru');
-    }
-
-    public function canCoordinate()
-    {
-        return $this->hasRole('koordinator', 'guru');
-    }
-
-    public function isDefaultGuru()
-    {
-        return $this->hasRole('guru', 'guru');
-    }
-
-    // Get current role name for display
-    public function getCurrentRoleName()
-    {
-        $role = $this->roles->first();
-        return $role ? $role->name : 'No Role';
-    }
-
-    public function getRoleLabelAttribute()
-    {
-        $roles = self::getRoleOptions();
-        $currentRole = $this->getCurrentRoleName();
-        return $roles[$currentRole] ?? $currentRole;
-    }
-
-    // Scopes berdasarkan Spatie roles
-    public function scopeWithRole($query, $roleName)
-    {
-        return $query->whereHas('roles', function ($q) use ($roleName) {
-            $q->where('name', $roleName)->where('guard_name', 'guru');
-        });
-    }
-
-    public function scopeDataManagers($query)
-    {
-        return $query->withRole('data');
+        return $this->belongsTo(User::class);
     }
 
     // Relationships
@@ -195,5 +111,138 @@ class Guru extends Authenticatable
             ->where('waktu_selesai', '>=', $currentTime)
             ->where('status', 'berlangsung')
             ->first();
+    }
+
+    /**
+     * Get the user's roles through the user relationship
+     */
+    public function roles()
+    {
+        return $this->user ? $this->user->roles : collect();
+    }
+
+    /**
+     * Get current role name for display
+     */
+    public function getCurrentRoleName()
+    {
+        return $this->user ? $this->user->getCurrentRoleName() : 'No Role';
+    }
+
+    /**
+     * Get the redirect route based on the user's role
+     */
+    public function getRedirectRoute()
+    {
+        return $this->user ? $this->user->getRedirectRoute() : 'home';
+    }
+
+    /**
+     * Get role label for display
+     */
+    public function getRoleLabelAttribute()
+    {
+        $roles = self::getRoleOptions();
+        $currentRole = $this->getCurrentRoleName();
+        return $roles[$currentRole] ?? $currentRole;
+    }
+
+    /**
+     * Query scopes for filtering by roles
+     */
+    public function scopeWithRole($query, $roleName)
+    {
+        return $query->whereHas('user', function ($q) use ($roleName) {
+            $q->whereHas('roles', function ($q2) use ($roleName) {
+                $q2->where('name', $roleName);
+            });
+        });
+    }
+
+    public function scopeDataManagers($query)
+    {
+        return $this->scopeWithRole($query, 'data');
+    }
+
+    public function scopeNaskahManagers($query)
+    {
+        return $this->scopeWithRole($query, 'naskah');
+    }
+
+    public function scopeRuanganManagers($query)
+    {
+        return $this->scopeWithRole($query, 'ruangan');
+    }
+
+    public function scopeSupervisors($query)
+    {
+        return $this->scopeWithRole($query, 'pengawas');
+    }
+
+    public function scopeCoordinators($query)
+    {
+        return $this->scopeWithRole($query, 'koordinator');
+    }
+
+    public function scopeRegularGurus($query)
+    {
+        return $this->scopeWithRole($query, 'guru');
+    }
+
+    /**
+     * Forward role checks to the user model
+     */
+    public function hasRole($role)
+    {
+        return $this->user && $this->user->hasRole($role);
+    }
+
+    /**
+     * Role checking convenience methods that forward to the user
+     */
+    public function canManageData()
+    {
+        return $this->user && $this->user->canManageData();
+    }
+
+    public function canManageNaskah()
+    {
+        return $this->user && $this->user->canManageNaskah();
+    }
+
+    public function canManageRuangan()
+    {
+        return $this->user && $this->user->canManageRuangan();
+    }
+
+    public function canSupervise()
+    {
+        return $this->user && $this->user->canSupervise();
+    }
+
+    public function canCoordinate()
+    {
+        return $this->user && $this->user->canCoordinate();
+    }
+
+    public function isDefaultGuru()
+    {
+        return $this->user && $this->user->isGuru();
+    }
+
+    /**
+     * Available roles for guru
+     * @return array Role options with descriptions
+     */
+    public static function getRoleOptions()
+    {
+        return [
+            'data' => 'Data Management',
+            'naskah' => 'Naskah Management',
+            'ruangan' => 'Ruangan Management',
+            'pengawas' => 'Pengawas',
+            'koordinator' => 'Koordinator',
+            'guru' => 'Guru (Default)'
+        ];
     }
 }

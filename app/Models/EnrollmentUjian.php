@@ -210,6 +210,16 @@ class EnrollmentUjian extends Model
     }
 
     /**
+     * Get token value for this enrollment
+     *
+     * @return string|null
+     */
+    public function getToken()
+    {
+        return $this->token_login;
+    }
+
+    /**
      * Log student logout.
      *
      * @return void

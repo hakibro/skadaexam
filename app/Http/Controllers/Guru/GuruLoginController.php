@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Guru;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +15,7 @@ class GuruLoginController extends Controller
         return view('auth.login-guru'); // login-guru.blade.php
     }
 
-    // Proses login guru
+    // Proses login guru - now using web guard
     public function login(Request $request)
     {
         $request->validate([
@@ -24,28 +25,34 @@ class GuruLoginController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        // Login menggunakan guard guru
-        if (Auth::guard('guru')->attempt($credentials)) {
+        // Login menggunakan guard web
+        if (Auth::guard('web')->attempt($credentials)) {
             $request->session()->regenerate();
 
-            $guru = Auth::guard('guru')->user();
+            $user = Auth::guard('web')->user();
 
-            // Redirect berdasarkan role guru
-            switch ($guru->role) {
-                case 'data':
-                    return redirect()->intended('/guru/data/dashboard');
-                case 'ruangan':
-                    return redirect()->intended('/guru/ruangan/dashboard');
-                case 'pengawas':
-                    return redirect()->intended('/guru/pengawas/dashboard');
-                case 'koordinator':
-                    return redirect()->intended('/guru/koordinator/dashboard');
-                case 'naskah':
-                    return redirect()->intended('/guru/naskah/dashboard');
-                case 'guru':
-                default:
-                    return redirect()->intended('/guru/dashboard');
+            // Check if user is a guru (has guru role)
+            if (
+                $user->isGuru() ||
+                $user->canManageData() ||
+                $user->canManageNaskah() ||
+                $user->canManageRuangan() ||
+                $user->canSupervise() ||
+                $user->canCoordinate()
+            ) {
+
+                // Redirect based on user role
+                return redirect()->intended(route($user->getRedirectRoute()));
             }
+
+            // If not a guru, logout and show error
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'User tidak memiliki akses guru.',
+            ]);
         }
 
         return back()->withErrors([
@@ -53,10 +60,10 @@ class GuruLoginController extends Controller
         ]);
     }
 
-    // Logout guru
+    // Logout - now using web guard
     public function logout(Request $request)
     {
-        Auth::guard('guru')->logout();
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -16,6 +16,12 @@ class User extends Authenticatable
     // Default guard untuk Spatie
     protected $guard_name = 'web';
 
+    // Relationship with Guru model
+    public function guru()
+    {
+        return $this->hasOne(Guru::class, 'user_id');
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -65,17 +71,49 @@ class User extends Authenticatable
         ];
     }
 
-    // Role checking methods - ONLY Spatie
+    // Role checking methods
     public function isAdmin()
     {
-        return $this->hasRole('admin', 'web');
+        return $this->hasRole('admin');
     }
 
     public function isKoordinator()
     {
-        return $this->hasRole('koordinator', 'web');
+        return $this->hasRole('koordinator');
     }
 
+    // Guru role checking methods
+    public function isGuru()
+    {
+        return $this->hasRole('guru');
+    }
+
+    public function canManageData()
+    {
+        return $this->hasRole('data');
+    }
+
+    public function canManageNaskah()
+    {
+        return $this->hasRole('naskah');
+    }
+
+    public function canManageRuangan()
+    {
+        return $this->hasRole('ruangan');
+    }
+
+    public function canSupervise()
+    {
+        return $this->hasRole('pengawas');
+    }
+
+    public function canCoordinate()
+    {
+        return $this->hasRole('koordinator');
+    }
+
+    // Admin permissions
     public function canManageGuru()
     {
         return $this->isAdmin();
@@ -130,5 +168,40 @@ class User extends Authenticatable
     {
         // Implementation could check for active login sessions
         return false;
+    }
+
+    /**
+     * Get the redirect route based on the user's role
+     * @return string The route name to redirect to
+     */
+    public function getRedirectRoute()
+    {
+        if ($this->isAdmin()) {
+            return 'admin.dashboard';
+        } elseif ($this->canManageData()) {
+            return 'data.dashboard';
+        } elseif ($this->canManageRuangan()) {
+            return 'ruangan.dashboard';
+        } elseif ($this->canSupervise()) {
+            return 'pengawas.dashboard';
+        } elseif ($this->canCoordinate()) {
+            return 'koordinator.dashboard';
+        } elseif ($this->canManageNaskah()) {
+            return 'naskah.dashboard';
+        } elseif ($this->isGuru()) {
+            return 'guru.dashboard';
+        }
+
+        // Default route
+        return 'home';
+    }
+
+    /**
+     * Get current role name for display
+     */
+    public function getCurrentRoleName()
+    {
+        $role = $this->roles->first();
+        return $role ? $role->name : 'No Role';
     }
 }

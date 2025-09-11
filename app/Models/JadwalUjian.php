@@ -84,6 +84,8 @@ class JadwalUjian extends Model
     public function sesiRuangans()
     {
         return $this->belongsToMany(SesiRuangan::class, 'jadwal_ujian_sesi_ruangan')
+            ->withPivot('pengawas_id')
+            ->using(JadwalUjianSesiRuangan::class)
             ->withTimestamps();
     }
 
@@ -93,6 +95,53 @@ class JadwalUjian extends Model
     public function sesiRuangan()
     {
         return $this->sesiRuangans();
+    }
+
+    /**
+     * Get pengawas assignments for this jadwal ujian.
+     */
+    public function pengawasAssignments()
+    {
+        return JadwalUjianSesiRuangan::where('jadwal_ujian_id', $this->id)
+            ->whereNotNull('pengawas_id')
+            ->get();
+    }
+
+    /**
+     * Get all unique pengawas assigned to this jadwal ujian.
+     */
+    public function pengawas()
+    {
+        $pengawasIds = JadwalUjianSesiRuangan::where('jadwal_ujian_id', $this->id)
+            ->whereNotNull('pengawas_id')
+            ->pluck('pengawas_id')
+            ->unique();
+
+        return Guru::whereIn('id', $pengawasIds)->get();
+    }
+
+    /**
+     * Assign a pengawas to a specific sesi ruangan for this jadwal ujian.
+     */
+    public function assignPengawas($sesiRuanganId, $pengawasId)
+    {
+        return JadwalUjianSesiRuangan::updateOrCreate(
+            [
+                'jadwal_ujian_id' => $this->id,
+                'sesi_ruangan_id' => $sesiRuanganId
+            ],
+            ['pengawas_id' => $pengawasId]
+        );
+    }
+
+    /**
+     * Remove a pengawas assignment from a specific sesi ruangan for this jadwal ujian.
+     */
+    public function removePengawas($sesiRuanganId)
+    {
+        return JadwalUjianSesiRuangan::where('jadwal_ujian_id', $this->id)
+            ->where('sesi_ruangan_id', $sesiRuanganId)
+            ->update(['pengawas_id' => null]);
     }
 
     /**

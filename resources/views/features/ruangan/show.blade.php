@@ -356,11 +356,7 @@
                                                             @endif
                                                         </div>
                                                     @endif
-                                                    <div class="text-xs text-gray-600">
-                                                        @if ($sesi->updated_at)
-                                                            Diperbarui: {{ $sesi->updated_at->diffForHumans() }}
-                                                        @endif
-                                                    </div>
+
                                                 </div>
                                                 <div class="flex space-x-2">
                                                     <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $sesi->id]) }}"

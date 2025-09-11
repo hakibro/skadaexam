@@ -24,9 +24,9 @@
                 </div>
                 <div class="bg-gray-50 px-5 py-3">
                     <div class="text-sm">
-                        <a href="{{ route('koordinator.assignment.index') }}"
+                        <a href="{{ route('koordinator.pengawas-assignment.index') }}"
                             class="font-medium text-purple-700 hover:text-purple-900">
-                            Kelola Penugasan
+                            Kelola Penugasan Baru
                         </a>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                 </div>
                 <div class="bg-gray-50 px-5 py-3">
                     <div class="text-sm">
-                        <a href="{{ route('koordinator.assignment.index', ['status' => 'unassigned']) }}"
+                        <a href="{{ route('koordinator.pengawas-assignment.index') }}"
                             class="font-medium text-yellow-700 hover:text-yellow-900">
                             Tugaskan Pengawas
                         </a>
@@ -115,11 +115,13 @@
                     <h3 class="ml-3 text-lg font-medium text-gray-900">Penugasan Pengawas</h3>
                 </div>
                 <p class="text-sm text-gray-600 mb-4">Tugaskan pengawas ke sesi ruangan ujian</p>
-                <a href="{{ route('koordinator.assignment.index') }}"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700">
-                    <i class="fa-solid fa-cog mr-2"></i>
-                    Kelola Penugasan
-                </a>
+                <div class="flex flex-col space-y-2">
+                    <a href="{{ route('koordinator.pengawas-assignment.index') }}"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700">
+                        <i class="fa-solid fa-user-check mr-2"></i>
+                        Penugasan Pengawas
+                    </a>
+                </div>
             </div>
 
             <div class="bg-white rounded-lg shadow p-6">
@@ -194,7 +196,7 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Penugasan Menunggu</h3>
-                    <a href="{{ route('koordinator.assignment.index', ['status' => 'unassigned']) }}"
+                    <a href="{{ route('koordinator.pengawas-assignment.index') }}"
                         class="text-sm text-purple-600 hover:text-purple-800">
                         Kelola
                     </a>

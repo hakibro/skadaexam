@@ -143,25 +143,12 @@ class RuanganController extends Controller
             ->take(5)
             ->get();
 
-        // Get last used session
-        $lastUsedSession = $ruangan->sesiRuangan()
-            ->where('status', 'selesai')
-            ->orderBy('updated_at', 'desc')
-            ->first();
-
-        // Get upcoming sessions count
-        $upcomingSessions = $ruangan->sesiRuangan()
-            ->where('status', 'belum_mulai')
-            ->where('tanggal', '>=', now()->toDateString())
-            ->count();
 
         return view('features.ruangan.show', compact(
             'ruangan',
             'activeSessions',
             'totalParticipants',
             'recentSessions',
-            'lastUsedSession',
-            'upcomingSessions'
         ));
     }
 
@@ -385,5 +372,86 @@ class RuanganController extends Controller
             return redirect()->back()
                 ->with('error', 'Gagal menghapus ruangan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Show comprehensive import page for rooms, sessions and students
+     */
+    public function importComprehensive()
+    {
+        return view('features.ruangan.import-comprehensive');
+    }
+
+    /**
+     * Process comprehensive import for rooms, sessions and students
+     */
+    public function processComprehensiveImport(Request $request)
+    {
+        $request->validate([
+            'import_file' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $file = $request->file('import_file');
+            $import = new \App\Imports\ComprehensiveRuanganImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $file);
+
+            $results = $import->getImportResults();
+
+            DB::commit();
+
+            return redirect()->route('ruangan.import.comprehensive')
+                ->with('success', "Import selesai: {$results['ruangan_created']} ruangan baru, " .
+                    "{$results['ruangan_updated']} ruangan diupdate, " .
+                    "{$results['sesi_created']} sesi baru, " .
+                    "{$results['sesi_updated']} sesi diupdate, " .
+                    "{$results['siswa_assigned']} siswa ditambahkan ke sesi");
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            DB::rollBack();
+
+            $failures = $e->failures();
+            $error = 'Error validasi pada baris: ';
+            $error .= implode(', ', array_map(function ($failure) {
+                return $failure->row() . ' (' . $failure->errors()[0] . ')';
+            }, $failures));
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $error);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Comprehensive import failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Import gagal: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Download comprehensive import template
+     */
+    public function downloadComprehensiveTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\ComprehensiveRuanganTemplateExport(),
+            'template_import_ruangan_sesi_siswa.xlsx'
+        );
+    }
+
+    /**
+     * Download basic ruangan import template
+     */
+    public function downloadRuanganTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\RuanganTemplateExport(),
+            'template_import_ruangan.xlsx'
+        );
     }
 }

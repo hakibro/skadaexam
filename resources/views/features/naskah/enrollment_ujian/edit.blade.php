@@ -1,165 +1,180 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Edit Enrollment Ujian')
+@section('page-title', 'Edit Enrollment Ujian')
+@section('page-description', 'Ubah data pendaftaran siswa pada ujian')
 
 @section('content')
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Edit Enrollment Ujian</h1>
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-edit me-1"></i>
-                Form Edit Enrollment Ujian
+    <div class="space-y-6">
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fa-solid fa-edit mr-2"></i>Form Edit Enrollment Ujian
+                </h3>
             </div>
-            <div class="card-body">
+            <div class="p-6">
                 <form action="{{ route('naskah.enrollment-ujian.update', $enrollment->id) }}" method="POST">
                     @csrf
                     @method('PUT')
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="jadwal_ujian_id" class="form-label">Jadwal Ujian <span
-                                        class="text-danger">*</span></label>
-                                <input type="text" class="form-control"
-                                    value="{{ $enrollment->sesiRuangan->jadwalUjian->judul }}" readonly>
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="jadwal_ujian_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                Jadwal Ujian <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" class="form-input w-full rounded-md shadow-sm bg-gray-50"
+                                value="{{ $enrollment->jadwalUjian->judul ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->judul ?? 'N/A') }}"
+                                readonly>
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sesi_ujian_id" class="form-label">Sesi Ujian <span
-                                        class="text-danger">*</span></label>
-                                <select name="sesi_ujian_id" id="sesi_ujian_id"
-                                    class="form-select @error('sesi_ujian_id') is-invalid @enderror" required>
-                                    <option value="">Pilih Sesi Ujian</option>
-                                    @foreach ($sesiRuangans as $sesi)
-                                        <option value="{{ $sesi->id }}"
-                                            {{ old('sesi_ujian_id', $enrollment->sesi_ujian_id) == $sesi->id ? 'selected' : '' }}>
-                                            {{ $sesi->nama_sesi }} ({{ $sesi->waktu_mulai->format('d M Y H:i') }} -
-                                            {{ $sesi->waktu_selesai->format('d M Y H:i') }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('sesi_ujian_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">NIS</label>
-                                <input type="text" class="form-control" value="{{ $enrollment->siswa->nis }}" readonly>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Nama Siswa</label>
-                                <input type="text" class="form-control" value="{{ $enrollment->siswa->nama }}" readonly>
-                            </div>
+                        <div>
+                            <label for="sesi_ruangan_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                Sesi Ujian <span class="text-red-500">*</span>
+                            </label>
+                            <select name="sesi_ruangan_id" id="sesi_ruangan_id"
+                                class="form-select w-full rounded-md shadow-sm @error('sesi_ruangan_id') border-red-500 @enderror"
+                                required>
+                                <option value="">Pilih Sesi Ujian</option>
+                                @foreach ($sesiRuangans as $sesi)
+                                    <option value="{{ $sesi->id }}"
+                                        {{ old('sesi_ruangan_id', $enrollment->sesi_ruangan_id) == $sesi->id ? 'selected' : '' }}>
+                                        {{ $sesi->nama_sesi }} ({{ $sesi->waktu_mulai->format('d M Y H:i') }} -
+                                        {{ $sesi->waktu_selesai->format('d M Y H:i') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('sesi_ruangan_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="status_enrollment" class="form-label">Status Enrollment <span
-                                        class="text-danger">*</span></label>
-                                <select name="status_enrollment" id="status_enrollment"
-                                    class="form-select @error('status_enrollment') is-invalid @enderror" required>
-                                    <option value="enrolled"
-                                        {{ old('status_enrollment', $enrollment->status_enrollment) == 'enrolled' ? 'selected' : '' }}>
-                                        Terdaftar</option>
-                                    <option value="completed"
-                                        {{ old('status_enrollment', $enrollment->status_enrollment) == 'completed' ? 'selected' : '' }}>
-                                        Selesai</option>
-                                    <option value="absent"
-                                        {{ old('status_enrollment', $enrollment->status_enrollment) == 'absent' ? 'selected' : '' }}>
-                                        Tidak Hadir</option>
-                                    <option value="cancelled"
-                                        {{ old('status_enrollment', $enrollment->status_enrollment) == 'cancelled' ? 'selected' : '' }}>
-                                        Dibatalkan</option>
-                                </select>
-                                @error('status_enrollment')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">NIS</label>
+                            <input type="text" class="form-input w-full rounded-md shadow-sm bg-gray-50"
+                                value="{{ $enrollment->siswa->nis }}" readonly>
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="status_kehadiran" class="form-label">Status Kehadiran <span
-                                        class="text-danger">*</span></label>
-                                <select name="status_kehadiran" id="status_kehadiran"
-                                    class="form-select @error('status_kehadiran') is-invalid @enderror" required>
-                                    <option value="belum_hadir"
-                                        {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'belum_hadir' ? 'selected' : '' }}>
-                                        Belum Hadir</option>
-                                    <option value="hadir"
-                                        {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'hadir' ? 'selected' : '' }}>
-                                        Hadir</option>
-                                    <option value="tidak_hadir"
-                                        {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'tidak_hadir' ? 'selected' : '' }}>
-                                        Tidak Hadir</option>
-                                </select>
-                                @error('status_kehadiran')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa</label>
+                            <input type="text" class="form-input w-full rounded-md shadow-sm bg-gray-50"
+                                value="{{ $enrollment->siswa->nama }}" readonly>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="catatan" class="form-label">Catatan</label>
-                        <textarea name="catatan" id="catatan" class="form-control @error('catatan') is-invalid @enderror" rows="3">{{ old('catatan', $enrollment->catatan) }}</textarea>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="status_enrollment" class="block text-sm font-medium text-gray-700 mb-1">
+                                Status Enrollment <span class="text-red-500">*</span>
+                            </label>
+                            <select name="status_enrollment" id="status_enrollment"
+                                class="form-select w-full rounded-md shadow-sm @error('status_enrollment') border-red-500 @enderror"
+                                required>
+                                <option value="enrolled"
+                                    {{ old('status_enrollment', $enrollment->status_enrollment) == 'enrolled' ? 'selected' : '' }}>
+                                    Terdaftar</option>
+                                <option value="active"
+                                    {{ old('status_enrollment', $enrollment->status_enrollment) == 'active' ? 'selected' : '' }}>
+                                    Aktif</option>
+                                <option value="completed"
+                                    {{ old('status_enrollment', $enrollment->status_enrollment) == 'completed' ? 'selected' : '' }}>
+                                    Selesai</option>
+                                <option value="absent"
+                                    {{ old('status_enrollment', $enrollment->status_enrollment) == 'absent' ? 'selected' : '' }}>
+                                    Tidak Hadir</option>
+                                <option value="cancelled"
+                                    {{ old('status_enrollment', $enrollment->status_enrollment) == 'cancelled' ? 'selected' : '' }}>
+                                    Dibatalkan</option>
+                            </select>
+                            @error('status_enrollment')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="status_kehadiran" class="block text-sm font-medium text-gray-700 mb-1">
+                                Status Kehadiran <span class="text-red-500">*</span>
+                            </label>
+                            <select name="status_kehadiran" id="status_kehadiran"
+                                class="form-select w-full rounded-md shadow-sm @error('status_kehadiran') border-red-500 @enderror"
+                                required>
+                                <option value="belum_hadir"
+                                    {{ old('status_kehadiran', $enrollment->status_kehadiran ?? 'belum_hadir') == 'belum_hadir' ? 'selected' : '' }}>
+                                    Belum Hadir</option>
+                                <option value="hadir"
+                                    {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'hadir' ? 'selected' : '' }}>
+                                    Hadir</option>
+                                <option value="tidak_hadir"
+                                    {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'tidak_hadir' ? 'selected' : '' }}>
+                                    Tidak Hadir</option>
+                            </select>
+                            @error('status_kehadiran')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="catatan" class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                        <textarea name="catatan" id="catatan"
+                            class="form-textarea w-full rounded-md shadow-sm @error('catatan') border-red-500 @enderror" rows="3">{{ old('catatan', $enrollment->catatan) }}</textarea>
                         @error('catatan')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="flex justify-between items-center">
                         <a href="{{ route('naskah.enrollment-ujian.show', $enrollment->id) }}"
-                            class="btn btn-secondary">Kembali</a>
-                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
+                        </a>
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
+                            <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header bg-danger text-white">
-                <i class="fas fa-exclamation-triangle me-1"></i>
-                Zona Berbahaya
+        <div class="bg-white shadow-md rounded-lg overflow-hidden mt-6">
+            <div class="bg-red-600 text-white p-4 border-b">
+                <h3 class="text-lg font-medium">
+                    <i class="fa-solid fa-exclamation-triangle mr-2"></i>Zona Berbahaya
+                </h3>
             </div>
-            <div class="card-body">
-                <h5>Reset Token Login</h5>
-                <p>Gunakan tombol di bawah untuk mereset token login siswa. Token baru akan dibuat dan token lama akan tidak
-                    berlaku.</p>
-                <form action="{{ route('naskah.enrollment-ujian.generate-token', $enrollment->id) }}" method="POST"
-                    class="mb-3">
-                    @csrf
-                    <button type="submit" class="btn btn-outline-danger"
-                        onclick="return confirm('Apakah Anda yakin ingin mereset token login?')">
-                        <i class="fas fa-sync-alt me-1"></i> Reset Token Login
-                    </button>
-                </form>
+            <div class="p-6">
+                <div class="mb-6">
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">Reset Token Login</h4>
+                    <p class="text-gray-600 mb-3">Gunakan tombol di bawah untuk mereset token login siswa. Token baru akan
+                        dibuat dan token lama akan tidak
+                        berlaku.</p>
+                    <form action="{{ route('naskah.enrollment-ujian.generate-token', $enrollment->id) }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-white border border-red-600 text-red-600 hover:bg-red-50 rounded-md transition duration-150"
+                            onclick="return confirm('Apakah Anda yakin ingin mereset token login?')">
+                            <i class="fa-solid fa-sync-alt mr-2"></i> Reset Token Login
+                        </button>
+                    </form>
+                </div>
 
-                <hr>
+                <hr class="my-6 border-gray-200">
 
-                <h5>Hapus Enrollment</h5>
-                <p>Hapus enrollment ini dari sistem. Tindakan ini tidak dapat dibatalkan!</p>
-                <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger"
-                        onclick="return confirm('PERINGATAN: Semua data enrollment akan dihapus dan tidak dapat dipulihkan. Lanjutkan?')">
-                        <i class="fas fa-trash me-1"></i> Hapus Enrollment
-                    </button>
-                </form>
+                <div>
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">Hapus Enrollment</h4>
+                    <p class="text-gray-600 mb-3">Hapus enrollment ini dari sistem. Tindakan ini tidak dapat dibatalkan!</p>
+                    <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-150"
+                            onclick="return confirm('PERINGATAN: Semua data enrollment akan dihapus dan tidak dapat dipulihkan. Lanjutkan?')">
+                            <i class="fa-solid fa-trash mr-2"></i> Hapus Enrollment
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

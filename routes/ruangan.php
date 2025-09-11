@@ -50,7 +50,13 @@ Route::middleware(['auth:web', 'role:admin'])
         Route::post('/', [RuanganController::class, 'store'])->name('store');
         Route::get('/import', [RuanganController::class, 'import'])->name('import');
         Route::post('/import/process', [RuanganController::class, 'processImport'])->name('import.process');
+        Route::get('/import/template', [RuanganController::class, 'downloadRuanganTemplate'])->name('import.template');
         Route::get('/export', [RuanganController::class, 'export'])->name('export');
+
+        // Comprehensive import for rooms, sessions, and students
+        Route::get('/import-comprehensive', [RuanganController::class, 'importComprehensive'])->name('import.comprehensive');
+        Route::post('/import-comprehensive/process', [RuanganController::class, 'processComprehensiveImport'])->name('import.comprehensive.process');
+        Route::get('/import-comprehensive/template', [RuanganController::class, 'downloadComprehensiveTemplate'])->name('import.comprehensive.template');
         Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 

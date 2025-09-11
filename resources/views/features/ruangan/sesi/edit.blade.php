@@ -86,24 +86,22 @@
                     </div>
                 </div>
 
-                <!-- Pengawas -->
+                <!-- Note about pengawas assignment -->
                 <div>
-                    <label for="pengawas_id" class="block text-sm font-medium text-gray-700">
-                        Pengawas
-                    </label>
-                    <select name="pengawas_id" id="pengawas_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Pilih Pengawas (Opsional)</option>
-                        @foreach ($pengawasList as $pengawas)
-                            <option value="{{ $pengawas->id }}"
-                                {{ old('pengawas_id', $sesi->pengawas_id) == $pengawas->id ? 'selected' : '' }}>
-                                {{ $pengawas->nama }} - {{ $pengawas->nip }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('pengawas_id')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+                    <div class="rounded-md bg-blue-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fa-solid fa-info-circle text-blue-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-blue-800">Informasi</h3>
+                                <div class="mt-2 text-sm text-blue-700">
+                                    <p>Pengawas sekarang ditugaskan per jadwal ujian melalui menu Koordinator > Penugasan
+                                        Pengawas.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Status -->

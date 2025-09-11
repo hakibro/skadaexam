@@ -15,6 +15,7 @@
 
     <!-- Your existing CSS and JS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @yield('styles')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 
     <!-- Navigation Fixes -->
@@ -147,7 +148,7 @@
                             <i class="fa-solid fa-chart-bar text-sm"></i>
                             <span class="text-sm">Hasil Ujian</span>
                         </a>
-                        <a href="{{ route('naskah.enrollment.index') }}"
+                        <a href="{{ route('naskah.enrollment-ujian.index') }}"
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.enrollment.*') ? 'bg-green-600 text-white' : '' }}">
                             <i class="fa-solid fa-user-plus text-sm"></i>
                             <span class="text-sm">Enrollment</span>
@@ -166,11 +167,37 @@
 
                 <!-- Koordinator Panel -->
                 @if ($hasKoordinatorAccess)
-                    <a href="{{ route('koordinator.dashboard') }}"
-                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.*') ? 'bg-yellow-600 text-white' : '' }}">
-                        <i class="fa-solid fa-bullseye"></i>
-                        <span>Koordinator Panel</span>
-                    </a>
+                    <div class="space-y-1">
+                        <a href="{{ route('koordinator.dashboard') }}"
+                            class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.dashboard') ? 'bg-yellow-600 text-white' : '' }}">
+                            <i class="fa-solid fa-bullseye"></i>
+                            <span>Koordinator Panel</span>
+                        </a>
+
+                        <a href="{{ route('koordinator.pengawas-assignment.index') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.pengawas-assignment.*') ? 'bg-yellow-600 text-white' : '' }}">
+                            <i class="fa-solid fa-user-check text-sm"></i>
+                            <span class="text-sm">Penugasan Pengawas</span>
+                        </a>
+
+                        <a href="{{ route('koordinator.pengawas-assignment.calendar') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.pengawas-assignment.calendar') ? 'bg-yellow-600 text-white' : '' }}">
+                            <i class="fa-solid fa-calendar-alt text-sm"></i>
+                            <span class="text-sm">Kalender Penugasan</span>
+                        </a>
+
+                        <a href="{{ route('koordinator.monitoring.index') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.monitoring.*') ? 'bg-yellow-600 text-white' : '' }}">
+                            <i class="fa-solid fa-desktop text-sm"></i>
+                            <span class="text-sm">Monitoring Ujian</span>
+                        </a>
+
+                        <a href="{{ route('koordinator.laporan.index') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.laporan.*') ? 'bg-yellow-600 text-white' : '' }}">
+                            <i class="fa-solid fa-file-export text-sm"></i>
+                            <span class="text-sm">Laporan Koordinasi</span>
+                        </a>
+                    </div>
                 @endif
 
                 <!-- Ruangan Management -->

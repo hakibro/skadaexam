@@ -37,24 +37,33 @@ class GuruController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
-            'nip' => 'nullable|string|unique:guru,nip',
-            'email' => 'required|email|unique:guru,email',
+            'nip' => 'required|string|max:255|unique:guru,nip',
+            'email' => 'required|email|max:255|unique:guru,email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:guru,data,naskah,pengawas,koordinator,ruangan',
+            'role' => 'required|string|in:' . implode(',', array_keys(Guru::getRoleOptions())),
         ]);
 
-        $guru = Guru::create([
-            'nama' => $validated['nama'],
-            'nip' => $validated['nip'] ?? null,
+        // First create a user
+        $user = \App\Models\User::create([
+            'name' => $validated['nama'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
 
-        // Assign role ke guru (Spatie)
-        $guru->assignRole($validated['role']);
+        // Assign role to user
+        $user->assignRole($validated['role']);
+
+        // Create guru linked to the user
+        $guru = Guru::create([
+            'nama' => $validated['nama'],
+            'nip' => $validated['nip'],
+            'email' => $validated['email'],
+            'user_id' => $user->id,
+            'password' => null, // Set to null since we're storing the password in the users table
+        ]);
 
         return redirect()->route('data.guru.index')
-            ->with('success', 'Guru berhasil ditambahkan!');
+            ->with('success', 'Data guru berhasil ditambahkan.');
     }
 
     /**
@@ -79,28 +88,63 @@ class GuruController extends Controller
      */
     public function update(Request $request, Guru $guru)
     {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'nip' => 'nullable|string|unique:guru,nip,' . $guru->id,
-            'email' => 'required|email|unique:guru,email,' . $guru->id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'required|in:guru,data,naskah,pengawas,koordinator,ruangan',
-        ]);
+        // Get user from guru if exists
+        $user = $guru->user;
 
-        // Jika password diisi, hash password baru
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+        // Email validation rules
+        $emailRules = 'required|email|max:255|unique:guru,email,' . $guru->id;
+        if ($user) {
+            $emailRules .= '|unique:users,email,' . $user->id;
         } else {
-            // Jika password kosong, jangan update password
-            unset($validated['password']);
+            $emailRules .= '|unique:users,email';
         }
 
-        $guru->update($validated);
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'nip' => 'required|string|max:255|unique:guru,nip,' . $guru->id,
+            'email' => $emailRules,
+            'password' => 'nullable|string|min:8|confirmed',
+            'role' => 'required|string|in:' . implode(',', array_keys(Guru::getRoleOptions())),
+        ]);
 
-        $guru->syncRoles([$validated['role']]);
+        // Update guru info
+        $guru->update([
+            'nama' => $validated['nama'],
+            'nip' => $validated['nip'],
+            'email' => $validated['email'],
+        ]);
+
+        // Update or create associated user
+        if ($user) {
+            $user->update([
+                'name' => $validated['nama'],
+                'email' => $validated['email'],
+            ]);
+
+            if (!empty($validated['password'])) {
+                $user->update([
+                    'password' => Hash::make($validated['password']),
+                ]);
+            }
+
+            // Update role
+            $user->syncRoles([$validated['role']]);
+        } else {
+            // Create new user if doesn't exist
+            $user = \App\Models\User::create([
+                'name' => $validated['nama'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password'] ?? \Illuminate\Support\Str::random(16)),
+            ]);
+
+            $user->assignRole($validated['role']);
+
+            // Link user to guru
+            $guru->update(['user_id' => $user->id]);
+        }
 
         return redirect()->route('data.guru.index')
-            ->with('success', 'Guru "' . $guru->nama . '" berhasil diupdate!');
+            ->with('success', 'Data guru berhasil diperbarui.');
     }
 
     /**
@@ -108,7 +152,19 @@ class GuruController extends Controller
      */
     public function destroy(Guru $guru)
     {
+        // Backup user ID before deleting guru
+        $userId = $guru->user_id;
+
+        // Delete the guru record
         $guru->delete();
+
+        // Delete the associated user if it exists
+        if ($userId) {
+            $user = \App\Models\User::find($userId);
+            if ($user) {
+                $user->delete();
+            }
+        }
 
         return redirect()->route('data.guru.index')
             ->with('success', 'Guru berhasil dihapus!');

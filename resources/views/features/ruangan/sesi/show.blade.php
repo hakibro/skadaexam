@@ -111,15 +111,24 @@
                     <div>
                         <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pengawas</h3>
                         <div class="mt-2">
-                            @if ($sesi->pengawas)
-                                <div class="flex items-center text-sm text-gray-900">
-                                    <i class="fa-solid fa-user-tie mr-3 text-gray-400"></i>
-                                    {{ $sesi->pengawas->nama }}
-                                </div>
-                                <div class="flex items-center text-sm text-gray-500 mt-1">
-                                    <i class="fa-solid fa-id-card mr-3 text-gray-400"></i>
-                                    {{ $sesi->pengawas->nip }}
-                                </div>
+                            @php
+                                $pengawasInfo = [];
+                                foreach ($sesi->jadwalUjians as $jadwal) {
+                                    $pengawas = $sesi->getPengawasForJadwal($jadwal->id);
+                                    if ($pengawas) {
+                                        $pengawasInfo[$pengawas->id] = $pengawas;
+                                    }
+                                }
+                            @endphp
+
+                            @if (count($pengawasInfo) > 0)
+                                @foreach ($pengawasInfo as $pengawas)
+                                    <div class="flex items-center text-sm text-gray-900 mb-2">
+                                        <i class="fa-solid fa-user-tie mr-3 text-gray-400"></i>
+                                        {{ $pengawas->nama }}
+                                        <span class="ml-2 text-xs text-gray-500">({{ $pengawas->nip }})</span>
+                                    </div>
+                                @endforeach
                             @else
                                 <div class="flex items-center text-sm text-gray-500">
                                     <i class="fa-solid fa-user-slash mr-3 text-gray-400"></i>
@@ -142,8 +151,8 @@
                                                     {{ $jadwal->judul }}
                                                 </div>
                                                 <div class="text-xs text-gray-500">
-                                                    {{ $jadwal->mapel->nama_mapel ?? 'N/A' }} 
-                                                    @if($jadwal->mapel && $jadwal->mapel->jurusan)
+                                                    {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
+                                                    @if ($jadwal->mapel && $jadwal->mapel->jurusan)
                                                         <span class="font-medium">({{ $jadwal->mapel->jurusan }})</span>
                                                     @elseif($jadwal->mapel)
                                                         <span class="italic">(Semua Jurusan)</span>
@@ -183,7 +192,8 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
                                 <div class="bg-blue-600 h-2 rounded-full"
-                                    style="width: {{ ($sesi->sesiRuanganSiswa->count() / $ruangan->kapasitas) * 100 }}%"></div>
+                                    style="width: {{ ($sesi->sesiRuanganSiswa->count() / $ruangan->kapasitas) * 100 }}%">
+                                </div>
                             </div>
                             <div class="mt-2 text-sm text-gray-500">
                                 Hadir: {{ $sesi->siswaHadir()->count() }} siswa
@@ -329,27 +339,27 @@
 
         function generateToken() {
             if (confirm('Generate token ujian untuk sesi ini?')) {
-                fetch('{{ route("ruangan.sesi.generate-token", [$ruangan->id, $sesi->id]) }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Token berhasil di-generate: ' + data.token);
-                        location.reload();
-                    } else {
-                        alert('Gagal generate token: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat generate token');
-                });
+                fetch('{{ route('ruangan.sesi.generate-token', [$ruangan->id, $sesi->id]) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Token berhasil di-generate: ' + data.token);
+                            location.reload();
+                        } else {
+                            alert('Gagal generate token: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Terjadi kesalahan saat generate token');
+                    });
             }
         }
 

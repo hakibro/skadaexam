@@ -1,0 +1,130 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Guru extends Model
+{
+    use HasFactory;
+
+    protected $table = 'guru';
+
+    protected $fillable = [
+        'nama',
+        'nip',
+        'email',
+        'user_id',
+    ];
+    
+    // Reference to User model
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+    
+    // Relationships
+    /**
+     * Get all berita acara ujian where this guru is the pengawas.
+     */
+    public function beritaAcaraUjians()
+    {
+        return $this->hasMany(BeritaAcaraUjian::class, 'pengawas_id');
+    }
+
+    /**
+     * Get all berita acara ujian that this guru has verified (as koordinator).
+     */
+    public function beritaAcaraVerified()
+    {
+        return $this->hasMany(BeritaAcaraUjian::class, 'koordinator_id');
+    }
+
+    /**
+     * Get all sesi ruangan where this guru is the pengawas.
+     */
+    public function sesiRuanganPengawas()
+    {
+        return $this->hasMany(SesiRuangan::class, 'pengawas_id');
+    }
+
+    /**
+     * Get all sesi ruangan where this guru is the koordinator.
+     */
+    public function sesiRuanganKoordinator()
+    {
+        return $this->hasMany(SesiRuangan::class, 'koordinator_id');
+    }
+
+    /**
+     * Legacy alias for backward compatibility
+     */
+    public function sesiRuanganDiawasi()
+    {
+        return $this->sesiRuanganPengawas();
+    }
+
+    /**
+     * Check if guru is available for assignment at a given time
+     */
+    public function isAvailableAt($tanggal, $waktuMulai, $waktuSelesai)
+    {
+        return !$this->sesiRuanganPengawas()
+            ->where('tanggal', $tanggal)
+            ->where(function ($query) use ($waktuMulai, $waktuSelesai) {
+                $query->whereBetween('waktu_mulai', [$waktuMulai, $waktuSelesai])
+                    ->orWhereBetween('waktu_selesai', [$waktuMulai, $waktuSelesai])
+                    ->orWhere(function ($q) use ($waktuMulai, $waktuSelesai) {
+                        $q->where('waktu_mulai', '<=', $waktuMulai)
+                            ->where('waktu_selesai', '>=', $waktuSelesai);
+                    });
+            })
+            ->exists();
+    }
+
+    /**
+     * Get schedule for a specific date
+     */
+    public function getScheduleForDate($tanggal)
+    {
+        return $this->sesiRuanganPengawas()
+            ->with(['ruangan', 'jadwalUjian.mapel', 'jadwalUjian.kelas'])
+            ->where('tanggal', $tanggal)
+            ->orderBy('waktu_mulai')
+            ->get();
+    }
+
+    /**
+     * Get current active session (if any)
+     */
+    public function getCurrentActiveSession()
+    {
+        $now = now();
+        $today = $now->toDateString();
+        $currentTime = $now->format('H:i:s');
+
+        return $this->sesiRuanganPengawas()
+            ->where('tanggal', $today)
+            ->where('waktu_mulai', '<=', $currentTime)
+            ->where('waktu_selesai', '>=', $currentTime)
+            ->where('status', 'berlangsung')
+            ->first();
+    }
+    
+    /**
+     * Get the user's roles through the user relationship
+     */
+    public function roles()
+    {
+        return $this->user ? $this->user->roles : collect();
+    }
+    
+    /**
+     * Forward role checks to the user model
+     */
+    public function hasRole($role)
+    {
+        return $this->user && $this->user->hasRole($role);
+    }
+}

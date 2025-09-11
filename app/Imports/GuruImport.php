@@ -31,20 +31,28 @@ class GuruImport implements
 
         foreach ($rows as $index => $row) {
             try {
-                // Create guru
-                $guru = Guru::create([
-                    'nama' => $row['nama'],
-                    'nip' => $row['nip'] ?? null,
+                // Create user first
+                $user = \App\Models\User::create([
+                    'name' => $row['nama'],
                     'email' => $row['email'],
                     'password' => Hash::make($row['password']),
                 ]);
 
-                // Assign role
+                // Create guru linked to user
+                $guru = Guru::create([
+                    'nama' => $row['nama'],
+                    'nip' => $row['nip'] ?? null,
+                    'email' => $row['email'],
+                    'user_id' => $user->id,
+                    'password' => null, // Set to null since we store passwords in the users table
+                ]);
+
+                // Assign role to user
                 $role = $row['role'];
                 if (in_array($role, $validRoles)) {
-                    $guru->assignRole($role);
+                    $user->assignRole($role);
                 } else {
-                    $guru->assignRole('guru'); // Default role
+                    $user->assignRole('guru'); // Default role
                 }
 
                 $this->successCount++;
@@ -62,7 +70,7 @@ class GuruImport implements
     {
         return [
             'nama' => 'required|string|max:255',
-            'email' => 'required|email|unique:guru,email',
+            'email' => 'required|email|unique:guru,email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|string',
         ];

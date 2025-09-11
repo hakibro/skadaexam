@@ -22,17 +22,12 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
-            'provider' => 'users', // Admin menggunakan tabel users
-        ],
-
-        'guru' => [
-            'driver' => 'session',
-            'provider' => 'guru', // Guru menggunakan tabel guru
+            'provider' => 'users', // All users (including guru) use the users table
         ],
 
         'siswa' => [
             'driver' => 'session',
-            'provider' => 'siswa', // Siswa menggunakan tabel siswa
+            'provider' => 'siswa', // Siswa still uses the siswa table
         ],
     ],
 
@@ -46,11 +41,6 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
-        ],
-
-        'guru' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Guru::class,
         ],
 
         'siswa' => [

@@ -26,8 +26,10 @@ class MonitoringController extends Controller
         $selectedRuangan = $request->get('ruangan_id', 'all');
 
         // Build query for sessions
-        $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa'])
-            ->where('tanggal', $selectedDate);
+        $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa', 'jadwalUjians'])
+            ->whereHas('jadwalUjians', function ($q) use ($selectedDate) {
+                $q->whereDate('tanggal', $selectedDate);
+            });
 
         if ($selectedStatus !== 'all') {
             $query->where('status', $selectedStatus);
@@ -313,8 +315,8 @@ class MonitoringController extends Controller
             'berlangsung' => $activeSessions,
             'selesai' => $sessionsToday->clone()->where('status', 'selesai')->count(),
             'dibatalkan' => $sessionsToday->clone()->where('status', 'dibatalkan')->count(),
-            'total_students' => SesiRuanganSiswa::whereHas('sesiRuangan', function ($query) use ($date) {
-                $query->where('tanggal', $date);
+            'total_students' => SesiRuanganSiswa::whereHas('sesiRuangan.jadwalUjians', function ($query) use ($date) {
+                $query->whereDate('tanggal', $date);
             })->count(),
             'students_present' => SesiRuanganSiswa::where('status', 'hadir')
                 ->whereHas('sesiRuangan', function ($query) use ($date) {
@@ -414,8 +416,10 @@ class MonitoringController extends Controller
         $room = $request->get('room', 'all');
 
         // Get sessions data
-        $sessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
-            ->where('tanggal', $date)
+        $sessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+            ->whereHas('jadwalUjians', function ($q) use ($date) {
+                $q->whereDate('tanggal', $date);
+            })
             ->when($status !== 'all', function ($query) use ($status) {
                 return $query->where('status', $status);
             })
