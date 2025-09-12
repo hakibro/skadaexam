@@ -377,6 +377,28 @@
             }
         }
 
+        function restoreSelectedAnswer() {
+            // Clear all option selections first
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('option-selected', 'border-indigo-500');
+                card.classList.add('border-gray-200');
+            });
+
+            // If there's a saved answer for current question, highlight it
+            if (questions[currentQuestionIndex]) {
+                const currentQuestion = questions[currentQuestionIndex];
+                const savedAnswer = answers[currentQuestion.id];
+
+                if (savedAnswer) {
+                    const selectedOption = document.querySelector(`[onclick*="'${savedAnswer}'"]`);
+                    if (selectedOption) {
+                        selectedOption.classList.add('option-selected', 'border-indigo-500');
+                        selectedOption.classList.remove('border-gray-200');
+                    }
+                }
+            }
+        }
+
         function navigateQuestion(direction) {
             const currentIndex = currentQuestionIndex;
             let newIndex = currentIndex;
@@ -393,16 +415,20 @@
         }
 
         function selectAnswer(questionId, option) {
-            // Update UI
+            // Update UI - remove selection from all options
             document.querySelectorAll('.option-card').forEach(card => {
-                card.classList.remove('option-selected');
+                card.classList.remove('option-selected', 'border-indigo-500');
+                card.classList.add('border-gray-200');
             });
-            event.currentTarget.classList.add('option-selected');
+
+            // Add selection to clicked option
+            event.currentTarget.classList.add('option-selected', 'border-indigo-500');
+            event.currentTarget.classList.remove('border-gray-200');
 
             // Update answers object
             answers[questionId] = option;
 
-            // Update progress
+            // Update progress and navigation
             updateProgress();
 
             // Auto-save after short delay
@@ -428,13 +454,14 @@
                     body: JSON.stringify({
                         hasil_ujian_id: hasilUjianId,
                         soal_ujian_id: currentQuestion.id,
-                        jawaban_siswa: selectedAnswer
+                        jawaban: selectedAnswer
                     })
                 });
 
                 if (!response.ok) throw new Error('Failed to save answer');
 
-                return response.json();
+                const result = await response.json();
+                return result;
             } catch (error) {
                 console.error('Error saving answer:', error);
                 return Promise.reject(error);
@@ -474,11 +501,20 @@
         }
 
         function saveAndNext() {
+            // Always try to save current answer (if any)
             saveCurrentAnswer().then(() => {
                 if (currentQuestionIndex < questions.length - 1) {
                     navigateQuestion('next');
                 } else {
                     // Last question, could show submit confirmation
+                    alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
+                }
+            }).catch((error) => {
+                console.error('Save failed:', error);
+                // Even if save fails, still proceed to next question
+                if (currentQuestionIndex < questions.length - 1) {
+                    navigateQuestion('next');
+                } else {
                     alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
                 }
             });
@@ -499,11 +535,45 @@
             if (countElement) {
                 countElement.textContent = `${answeredCount}/${totalQuestions}`;
             }
+
+            // Update navigation button colors
+            updateNavigationButtons();
+        }
+
+        function updateNavigationButtons() {
+            // Update each navigation button based on answer status
+            questions.forEach((question, index) => {
+                const btn = document.querySelector(`[data-question-index="${index}"]`);
+                if (!btn) return;
+
+                // Remove all answer-related classes
+                btn.classList.remove('bg-green-500', 'text-white', 'border-green-500', 'bg-gray-100',
+                    'text-gray-700', 'border-gray-300');
+
+                if (index === currentQuestionIndex) {
+                    // Current question - keep current styling (blue)
+                    btn.className =
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-indigo-500 text-white border-indigo-500';
+                } else if (answers[question.id]) {
+                    // Answered question - green
+                    btn.className =
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-green-500 text-white border-green-500';
+                } else if (flaggedQuestions.includes(question.id)) {
+                    // Flagged question - yellow  
+                    btn.className =
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-yellow-500 text-white border-yellow-500';
+                } else {
+                    // Unanswered question - gray
+                    btn.className =
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200';
+                }
+            });
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             updateProgress();
+            restoreSelectedAnswer(); // Restore the selected answer for current question
 
             // Start timer if time limit is set
             if (timeLimit > 0 && remainingTime > 0) {
@@ -642,7 +712,7 @@
         // Submit exam
         function submitExam() {
             if (confirm(
-                'Apakah Anda yakin ingin mengumpulkan ujian? Ujian yang sudah dikumpulkan tidak dapat diubah lagi.')) {
+                    'Apakah Anda yakin ingin mengumpulkan ujian? Ujian yang sudah dikumpulkan tidak dapat diubah lagi.')) {
                 // Save current answer first
                 saveCurrentAnswer().then(() => {
                     // Submit exam

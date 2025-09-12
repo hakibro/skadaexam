@@ -111,6 +111,15 @@ class SiswaDashboardController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Waktu ujian telah berakhir.');
         }
 
+        // Debug info for randomization settings
+        Log::info('Jadwal Ujian Settings', [
+            'jadwal_ujian_id' => $jadwalUjian->id,
+            'acak_soal' => $jadwalUjian->acak_soal ? 'true' : 'false',
+            'acak_jawaban' => $jadwalUjian->acak_jawaban ? 'true' : 'false',
+            'tampilkan_hasil' => $jadwalUjian->tampilkan_hasil ? 'true' : 'false',
+            'durasi_menit' => $jadwalUjian->durasi_menit
+        ]);
+
         // Get exam settings
         $examSettings = [
             'acak_soal' => $jadwalUjian->acak_soal ?? false,
@@ -136,7 +145,7 @@ class SiswaDashboardController extends Controller
             ->get();
 
         // Transform questions to match view expectations
-        $questions = $soals->map(function ($soal, $index) use ($jadwalUjian) {
+        $questions = $soals->map(function ($soal, $index) use ($jadwalUjian, $siswa) {
             $options = [];
 
             // Build options array from database columns
@@ -146,8 +155,12 @@ class SiswaDashboardController extends Controller
             if ($soal->pilihan_d_teks) $options['D'] = $soal->pilihan_d_teks;
             if ($soal->pilihan_e_teks) $options['E'] = $soal->pilihan_e_teks;
 
-            // Handle option randomization
+            // Handle option randomization with consistent seed per student-question
             if ($jadwalUjian->acak_jawaban) {
+                // Use consistent seed based on siswa_id and soal_id for reproducible randomization
+                $seed = $siswa->id * 1000 + $soal->id;
+                mt_srand($seed);
+
                 $keys = array_keys($options);
                 shuffle($keys);
                 $shuffledOptions = [];
@@ -155,6 +168,9 @@ class SiswaDashboardController extends Controller
                     $shuffledOptions[chr(65 + $i)] = $options[$key];
                 }
                 $options = $shuffledOptions;
+
+                // Reset random seed
+                mt_srand();
             }
 
             return [
