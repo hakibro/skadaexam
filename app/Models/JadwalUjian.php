@@ -297,11 +297,11 @@ class JadwalUjian extends Model
         $totalParticipants = $this->getTotalParticipants();
         $hadirCount = SesiRuanganSiswa::whereHas('sesiRuangan', function ($query) {
             $query->where('jadwal_ujian_id', $this->id);
-        })->where('status', 'hadir')->count();
+        })->where('status_kehadiran', 'hadir')->count();
 
         $tidakHadirCount = SesiRuanganSiswa::whereHas('sesiRuangan', function ($query) {
             $query->where('jadwal_ujian_id', $this->id);
-        })->where('status', 'tidak_hadir')->count();
+        })->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])->count();
 
         return [
             'total_participants' => $totalParticipants,
@@ -513,5 +513,13 @@ class JadwalUjian extends Model
             'durasi' => $this->durasi_menit . ' menit per sesi',
             'sesi_count' => $sesiCount
         ];
+    }
+
+    /**
+     * Get questions/soal for this jadwal ujian
+     */
+    public function soals()
+    {
+        return $this->hasMany(SoalUjian::class);
     }
 }

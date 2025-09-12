@@ -14,12 +14,24 @@ class SesiRuanganSiswa extends Model
     protected $fillable = [
         'sesi_ruangan_id',
         'siswa_id',
-        'status'
+        'status_kehadiran',
+        'token',
+        'token_expired_at',
+        'keterangan'
     ];
 
     protected $casts = [
-        'status' => 'string'
+        'token_expired_at' => 'datetime',
+        'status_kehadiran' => 'string'
     ];
+
+    /**
+     * Backward compatibility accessor for status
+     */
+    public function getStatusAttribute()
+    {
+        return $this->status_kehadiran;
+    }
 
     /**
      * Get the sesi ruangan that this entry belongs to.
@@ -42,7 +54,7 @@ class SesiRuanganSiswa extends Model
      */
     public function scopeHadir($query)
     {
-        return $query->where('status', 'hadir');
+        return $query->where('status_kehadiran', 'hadir');
     }
 
     /**
@@ -50,15 +62,16 @@ class SesiRuanganSiswa extends Model
      */
     public function scopeTidakHadir($query)
     {
-        return $query->where('status', 'tidak_hadir');
+        return $query->where('status_kehadiran', 'tidak_hadir');
     }
 
     /**
-     * Scope to get logged out students.
+     * Scope to get students who logged out (deprecated functionality)
      */
     public function scopeLogout($query)
     {
-        return $query->where('status', 'logout');
+        // Logout functionality no longer exists, return empty query
+        return $query->whereRaw('0 = 1');
     }
 
     /**
@@ -66,10 +79,11 @@ class SesiRuanganSiswa extends Model
      */
     public function getStatusBadgeClassAttribute()
     {
-        return match ($this->status) {
+        return match ($this->status_kehadiran) {
             'hadir' => 'bg-green-100 text-green-800',
             'tidak_hadir' => 'bg-red-100 text-red-800',
-            'logout' => 'bg-yellow-100 text-yellow-800',
+            'sakit' => 'bg-yellow-100 text-yellow-800',
+            'izin' => 'bg-blue-100 text-blue-800',
             default => 'bg-gray-100 text-gray-800'
         };
     }
@@ -79,10 +93,11 @@ class SesiRuanganSiswa extends Model
      */
     public function getStatusDotClassAttribute()
     {
-        return match ($this->status) {
+        return match ($this->status_kehadiran) {
             'hadir' => 'bg-green-400',
             'tidak_hadir' => 'bg-red-400',
-            'logout' => 'bg-yellow-400',
+            'sakit' => 'bg-yellow-400',
+            'izin' => 'bg-blue-400',
             default => 'bg-gray-400'
         };
     }
@@ -92,10 +107,11 @@ class SesiRuanganSiswa extends Model
      */
     public function getStatusBorderClassAttribute()
     {
-        return match ($this->status) {
+        return match ($this->status_kehadiran) {
             'hadir' => 'border-green-200 bg-green-50',
             'tidak_hadir' => 'border-red-200 bg-red-50',
-            'logout' => 'border-yellow-200 bg-yellow-50',
+            'sakit' => 'border-yellow-200 bg-yellow-50',
+            'izin' => 'border-blue-200 bg-blue-50',
             default => 'border-gray-200 bg-gray-50'
         };
     }
@@ -105,10 +121,11 @@ class SesiRuanganSiswa extends Model
      */
     public function getStatusLabelAttribute()
     {
-        return match ($this->status) {
+        return match ($this->status_kehadiran) {
             'hadir' => 'Hadir',
             'tidak_hadir' => 'Tidak Hadir',
-            'logout' => 'Logout',
+            'sakit' => 'Sakit',
+            'izin' => 'Izin',
             default => 'Unknown'
         };
     }
@@ -119,17 +136,18 @@ class SesiRuanganSiswa extends Model
     public function markPresent()
     {
         $this->update([
-            'status' => 'hadir'
+            'status_kehadiran' => 'hadir'
         ]);
     }
 
     /**
-     * Mark student as logged out
+     * Mark student as logged out (deprecated - functionality removed)
      */
     public function markLoggedOut()
     {
+        // Logout functionality removed, mark as tidak_hadir instead
         $this->update([
-            'status' => 'logout'
+            'status_kehadiran' => 'tidak_hadir'
         ]);
     }
 
@@ -139,7 +157,7 @@ class SesiRuanganSiswa extends Model
     public function markNotPresent()
     {
         $this->update([
-            'status' => 'tidak_hadir'
+            'status_kehadiran' => 'tidak_hadir'
         ]);
     }
 }

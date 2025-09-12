@@ -76,6 +76,15 @@ class Kelas extends Model
     }
 
     /**
+     * Accessor for 'nama' attribute to provide compatibility.
+     * Maps to nama_kelas for backward compatibility.
+     */
+    public function getNamaAttribute()
+    {
+        return $this->nama_kelas;
+    }
+
+    /**
      * Format the class name for display.
      */
     public function getFormattedNameAttribute()

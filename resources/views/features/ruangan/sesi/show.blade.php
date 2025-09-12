@@ -268,7 +268,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Siswa</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Yayasan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kelas</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jurusan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status
@@ -286,7 +286,7 @@
                                         <div class="text-sm font-medium text-gray-900">{{ $sesiSiswa->siswa->nama }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $sesiSiswa->siswa->nis }}
+                                        {{ $sesiSiswa->siswa->idyayasan }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $sesiSiswa->siswa->kelas->nama_kelas ?? '-' }}

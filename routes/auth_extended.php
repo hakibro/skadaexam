@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Guru\GuruLoginController;
 use App\Http\Controllers\Siswa\SiswaLoginController;
+use App\Http\Controllers\Siswa\SiswaDashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,4 +23,18 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Student routes with siswa guard
+Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(function () {
+    Route::get('/dashboard', [SiswaDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/exam', [SiswaDashboardController::class, 'exam'])->name('exam');
+
+    // Exam API routes
+    Route::post('/exam/save-answer', [SiswaDashboardController::class, 'saveAnswer'])->name('exam.save-answer');
+    Route::post('/exam/flag-question', [SiswaDashboardController::class, 'flagQuestion'])->name('exam.flag-question');
+    Route::post('/exam/submit', [SiswaDashboardController::class, 'submitExam'])->name('exam.submit');
+    Route::get('/exam/result', [SiswaDashboardController::class, 'examResult'])->name('exam.result');
+
+    Route::post('/logout', [SiswaLoginController::class, 'logout'])->name('logout');
 });

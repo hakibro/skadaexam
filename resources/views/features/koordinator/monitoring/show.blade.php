@@ -71,7 +71,7 @@
                     </div>
                     <div>
                         <div class="text-3xl font-bold text-gray-800" id="present-students">
-                            {{ $sesiRuangan->sesiRuanganSiswa->where('status', 'hadir')->count() }}
+                            {{ $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count() }}
                         </div>
                         <div class="text-gray-600 font-medium">Hadir</div>
                     </div>
@@ -85,7 +85,7 @@
                     </div>
                     <div>
                         <div class="text-3xl font-bold text-gray-800" id="logout-students">
-                            {{ $sesiRuangan->sesiRuanganSiswa->where('status', 'logout')->count() }}
+                            0{{-- Logout functionality removed --}}
                         </div>
                         <div class="text-gray-600 font-medium">Logout</div>
                     </div>
@@ -99,7 +99,7 @@
                     </div>
                     <div>
                         <div class="text-3xl font-bold text-gray-800" id="absent-students">
-                            {{ $sesiRuangan->sesiRuanganSiswa->where('status', 'tidak_hadir')->count() }}
+                            {{ $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'tidak_hadir')->count() }}
                         </div>
                         <div class="text-gray-600 font-medium">Tidak Hadir</div>
                     </div>
@@ -241,7 +241,9 @@
                             <!-- Student Actions -->
                             <div class="mt-3 pt-3 border-t border-gray-200">
                                 <div class="flex justify-end space-x-2">
-                                    @if ($siswaSession->status === 'logout')
+                                    {{-- Logout functionality removed from current design --}}
+                                    @if (false)
+                                        {{-- $siswaSession->status === 'logout' --}}
                                         <button onclick="allowReentry({{ $siswaSession->id }})"
                                             class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
                                             <i class="fa-solid fa-sign-in-alt mr-1"></i>

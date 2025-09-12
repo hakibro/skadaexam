@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $stats = $this->getKoordinatorStats();
 
         // Get today's sessions using jadwal_ujian's tanggal
-        $todaySessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+        $todaySessions = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
             ->whereHas('jadwalUjians', function ($query) {
                 $query->whereDate('tanggal', Carbon::today());
             })
@@ -61,7 +61,7 @@ class DashboardController extends Controller
 
         // Get ongoing sessions that need monitoring
         $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
-            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+            ->with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
             ->get();
 
         // Get recent activities
@@ -88,7 +88,7 @@ class DashboardController extends Controller
                     'id' => $session->id,
                     'name' => $session->nama_sesi ?? 'Sesi Ujian',
                     'room' => $session->ruangan->nama_ruangan ?? 'N/A',
-                    'students_present' => $session->sesiRuanganSiswa->where('status', 'hadir')->count(),
+                    'students_present' => $session->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
                     'progress' => $session->progress ?? 0,
                     'supervisor' => $session->pengawas->nama ?? 'N/A',
                 ];

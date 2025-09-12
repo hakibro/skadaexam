@@ -318,8 +318,8 @@ class Siswa extends Authenticatable
     public function getAttendanceStats()
     {
         $total = $this->sesiRuanganSiswa()->count();
-        $hadir = $this->sesiRuanganSiswa()->where('status', 'hadir')->count();
-        $tidak_hadir = $this->sesiRuanganSiswa()->where('status', 'tidak_hadir')->count();
+        $hadir = $this->sesiRuanganSiswa()->where('status_kehadiran', 'hadir')->count();
+        $tidak_hadir = $this->sesiRuanganSiswa()->where('status_kehadiran', 'tidak_hadir')->count();
 
         return [
             'total' => $total,

@@ -23,7 +23,7 @@ class SesiRuanganController extends Controller
     public function index(Ruangan $ruangan)
     {
         $sesiList = SesiRuangan::where('ruangan_id', $ruangan->id)
-            ->with(['pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+            ->with(['sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
             ->withCount(['sesiRuanganSiswa'])
             ->orderBy('waktu_mulai', 'asc')
             ->get();
@@ -136,7 +136,7 @@ class SesiRuanganController extends Controller
      */
     public function show(Ruangan $ruangan, SesiRuangan $sesi)
     {
-        $sesi->load(['pengawas', 'sesiRuanganSiswa.siswa', 'jadwalUjians']);
+        $sesi->load(['sesiRuanganSiswa.siswa', 'jadwalUjians', 'jadwalUjians.mapel']);
 
         return view('features.ruangan.sesi.show', compact('ruangan', 'sesi'));
     }
@@ -337,7 +337,7 @@ class SesiRuanganController extends Controller
                     // Create sesi ruangan siswa record
                     $sesiRuanganSiswa = $sesi->sesiRuanganSiswa()->create([
                         'siswa_id' => $siswaId,
-                        'status' => 'tidak_hadir', // Default status
+                        'status_kehadiran' => 'tidak_hadir', // Default status
                     ]);
                     $added++;
 

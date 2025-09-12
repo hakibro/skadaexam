@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Siswa - {{ config('app.name') }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-blue-600 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <h1 class="text-2xl font-bold text-white">
+                                <i class="fas fa-graduation-cap mr-2"></i>
+                                {{ config('app.name') }}
+                            </h1>
+                        </div>
+                        <div class="ml-6 text-white">
+                            <span class="text-sm opacity-75">Dashboard Siswa</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <!-- Current Time -->
+                        <div class="text-white text-sm">
+                            <i class="fas fa-clock mr-1"></i>
+                            <span id="current-time">{{ now()->format('H:i:s') }}</span>
+                        </div>
+
+                        <!-- User Info -->
+                        <div class="flex items-center text-white">
+                            <div class="mr-3 text-right">
+                                <div class="text-sm font-medium">{{ $siswa->nama }}</div>
+                                <div class="text-xs opacity-75">{{ $siswa->idyayasan }}</div>
+                            </div>
+                            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- Logout Button -->
+                        <form method="POST" action="{{ route('siswa.logout') }}" class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                onclick="return confirm('Yakin ingin logout dari sistem ujian?')">
+                                <i class="fas fa-sign-out-alt mr-1"></i>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Status Messages -->
+            @if (session('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
+                    role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                    role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
+            <div class="px-4 py-6 sm:px-0">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Student Info Card -->
+                    <div class="bg-white overflow-hidden shadow-lg rounded-lg">
+                        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600">
+                            <h2 class="text-lg font-semibold text-white">
+                                <i class="fas fa-id-card mr-2"></i>
+                                Informasi Siswa
+                            </h2>
+                        </div>
+                        <div class="px-6 py-4">
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Nama:</span>
+                                    <span class="font-medium">{{ $siswa->nama }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">ID Yayasan:</span>
+                                    <span class="font-medium">{{ $siswa->idyayasan }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">NIS:</span>
+                                    <span class="font-medium">{{ $siswa->nis ?? '-' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Kelas:</span>
+                                    <span class="font-medium">{{ $siswa->kelas->nama ?? '-' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Status Pembayaran:</span>
+                                    <span
+                                        class="px-2 py-1 text-xs font-semibold rounded-full {{ $siswa->status_badge['class'] ?? 'bg-gray-100 text-gray-800' }}">
+                                        {{ $siswa->status_pembayaran }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Session Card -->
+                    <div class="bg-white overflow-hidden shadow-lg rounded-lg">
+                        <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
+                            <h2 class="text-lg font-semibold text-white">
+                                <i class="fas fa-clipboard-check mr-2"></i>
+                                Sesi Ujian Aktif
+                            </h2>
+                        </div>
+                        <div class="px-6 py-4">
+                            @if ($currentEnrollment && $currentEnrollment->sesiRuangan)
+                                @php
+                                    $sesi = $currentEnrollment->sesiRuangan;
+                                    $jadwals = $sesi->jadwalUjians;
+                                @endphp
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Sesi:</span>
+                                        <span class="font-medium">{{ $sesi->nama_sesi }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Ruangan:</span>
+                                        <span class="font-medium">{{ $sesi->ruangan->nama_ruangan ?? 'N/A' }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Tanggal:</span>
+                                        <span
+                                            class="font-medium">{{ \Carbon\Carbon::parse($sesi->tanggal)->format('d M Y') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Waktu:</span>
+                                        <span class="font-medium">{{ $sesi->waktu_mulai }} -
+                                            {{ $sesi->waktu_selesai }}</span>
+                                    </div>
+                                    @if ($jadwals->count() > 0)
+                                        <div class="border-t pt-3">
+                                            <span class="text-gray-600 text-sm">Mata Pelajaran:</span>
+                                            @foreach ($jadwals as $jadwal)
+                                                <div class="mt-1 px-2 py-1 bg-blue-50 rounded text-sm">
+                                                    <span class="font-medium text-blue-800">
+                                                        {{ $jadwal->mapel->nama_mapel ?? 'Mapel tidak tersedia' }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    <!-- Action Buttons -->
+                                    <div class="border-t pt-4">
+                                        @if ($currentEnrollment->status_enrollment === 'enrolled' || $currentEnrollment->status_enrollment === 'active')
+                                            @if (now()->between(
+                                                    \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai),
+                                                    \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_selesai)))
+                                                <a href="{{ route('siswa.exam') }}"
+                                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-center block transition-colors">
+                                                    <i class="fas fa-play mr-2"></i>
+                                                    Mulai Ujian
+                                                </a>
+                                            @elseif(now()->lt(\Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)))
+                                                <div class="text-center text-gray-600">
+                                                    <i class="fas fa-clock mr-2"></i>
+                                                    Ujian belum dimulai
+                                                    <div class="text-sm mt-1">
+                                                        Mulai:
+                                                        {{ \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)->format('d M Y H:i') }}
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="text-center text-red-600">
+                                                    <i class="fas fa-times-circle mr-2"></i>
+                                                    Waktu ujian telah berakhir
+                                                </div>
+                                            @endif
+                                        @else
+                                            <div class="text-center text-blue-600">
+                                                <i class="fas fa-check-circle mr-2"></i>
+                                                Ujian selesai
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @else
+                                <div class="text-center text-gray-500 py-4">
+                                    <i class="fas fa-exclamation-circle text-4xl mb-3 text-gray-300"></i>
+                                    <p>Tidak ada sesi ujian aktif</p>
+                                    <p class="text-sm">Silahkan hubungi pengawas jika ada masalah</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions Card -->
+                <div class="mt-6 bg-white overflow-hidden shadow-lg rounded-lg">
+                    <div class="px-6 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600">
+                        <h2 class="text-lg font-semibold text-white">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Petunjuk Ujian
+                        </h2>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                            <div>
+                                <h4 class="font-semibold text-gray-800 mb-2">Sebelum Ujian:</h4>
+                                <ul class="space-y-1">
+                                    <li><i class="fas fa-check text-green-500 mr-2"></i>Pastikan koneksi internet
+                                        stabil</li>
+                                    <li><i class="fas fa-check text-green-500 mr-2"></i>Siapkan alat tulis jika
+                                        diperlukan</li>
+                                    <li><i class="fas fa-check text-green-500 mr-2"></i>Pastikan token login sudah
+                                        benar</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 mb-2">Selama Ujian:</h4>
+                                <ul class="space-y-1">
+                                    <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Jangan menutup
+                                        browser/tab</li>
+                                    <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Jangan refresh
+                                        halaman</li>
+                                    <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Simpan jawaban
+                                        secara berkala</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Update current time every second
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('id-ID', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+
+        // Update time immediately and then every second
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+
+</html>

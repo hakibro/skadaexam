@@ -48,15 +48,44 @@
                         <tr>
                             <td class="py-1 text-gray-600 font-medium">Mata Pelajaran</td>
                             <td class="py-1 font-bold">
-                                @php
-                                    $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                                    $mapel = $jadwalUjian
-                                        ? ($jadwalUjian->mapel
-                                            ? $jadwalUjian->mapel->nama
-                                            : 'Tidak ada mapel')
-                                        : 'Tidak ada jadwal';
-                                @endphp
-                                {{ $mapel }}
+                                @if ($sesiRuangan->jadwalUjians->count() > 1)
+                                    @php
+                                        $mapelNames = $sesiRuangan->jadwalUjians
+                                            ->filter(function ($jadwal) {
+                                                return $jadwal->mapel !== null;
+                                            })
+                                            ->map(function ($jadwal) {
+                                                return $jadwal->mapel->nama_mapel;
+                                            })
+                                            ->unique();
+                                    @endphp
+                                    @if ($mapelNames->count() > 0)
+                                        {{ $mapelNames->implode(' + ') }}
+                                        @if ($mapelNames->count() != $sesiRuangan->jadwalUjians->count())
+                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} dari
+                                                {{ $sesiRuangan->jadwalUjians->count() }} mapel)</span>
+                                        @else
+                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} mapel)</span>
+                                        @endif
+                                    @else
+                                        <span class="text-red-500">Tidak ada mapel tersedia</span>
+                                        <span class="text-sm text-gray-500">({{ $sesiRuangan->jadwalUjians->count() }}
+                                            jadwal)</span>
+                                    @endif
+                                @elseif($sesiRuangan->jadwalUjians->count() == 1)
+                                    @php
+                                        $jadwal = $sesiRuangan->jadwalUjians->first();
+                                    @endphp
+                                    @if ($jadwal->mapel)
+                                        {{ $jadwal->mapel->nama_mapel }}
+                                    @else
+                                        <span class="text-red-500">Mapel tidak tersedia</span>
+                                        <span class="text-sm text-gray-500">(ID: {{ $jadwal->id }}, Mapel ID:
+                                            {{ $jadwal->mapel_id ?? 'NULL' }})</span>
+                                    @endif
+                                @else
+                                    <span class="text-red-500">Tidak ada jadwal</span>
+                                @endif
                             </td>
                         </tr>
                         <tr>
@@ -98,14 +127,14 @@
 
                         <div class="bg-green-50 p-4 rounded-lg text-center">
                             <div class="text-2xl font-bold text-green-700">
-                                {{ $sesiRuangan->sesiRuanganSiswa->where('status', 'hadir')->count() }}
+                                {{ $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count() }}
                             </div>
                             <div class="text-sm text-green-600">Siswa Hadir</div>
                         </div>
 
                         <div class="bg-red-50 p-4 rounded-lg text-center">
                             <div class="text-2xl font-bold text-red-700">
-                                {{ $sesiRuangan->sesiRuanganSiswa->whereIn('status', ['tidak_hadir', 'sakit', 'izin'])->count() }}
+                                {{ $sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])->count() }}
                             </div>
                             <div class="text-sm text-red-600">Tidak Hadir</div>
                         </div>
@@ -308,7 +337,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
-                                            $statusClass = match ($sesiSiswa->status) {
+                                            $statusClass = match ($sesiSiswa->status_kehadiran) {
                                                 'hadir' => 'bg-green-100 text-green-800',
                                                 'tidak_hadir' => 'bg-red-100 text-red-800',
                                                 'sakit' => 'bg-yellow-100 text-yellow-800',
@@ -316,7 +345,7 @@
                                                 default => 'bg-gray-100 text-gray-800',
                                             };
 
-                                            $statusText = match ($sesiSiswa->status) {
+                                            $statusText = match ($sesiSiswa->status_kehadiran) {
                                                 'hadir' => 'Hadir',
                                                 'tidak_hadir' => 'Tidak Hadir',
                                                 'sakit' => 'Sakit',

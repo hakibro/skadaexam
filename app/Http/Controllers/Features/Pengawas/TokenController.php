@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Features\Pengawas;
 
 use App\Http\Controllers\Controller;
 use App\Models\SesiRuangan;
+use App\Models\JadwalUjianSesiRuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -16,19 +17,49 @@ class TokenController extends Controller
      */
     public function showTokenForm($id)
     {
-        $sesiRuangan = SesiRuangan::with(['ruangan', 'jadwalUjians', 'jadwalUjians.mapel', 'sesiRuanganSiswa'])
-            ->findOrFail($id);
+        try {
+            $sesiRuangan = SesiRuangan::with(['ruangan', 'jadwalUjians', 'jadwalUjians.mapel', 'sesiRuanganSiswa'])
+                ->findOrFail($id);
 
-        // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
+            // Filter jadwal ujians to only show current/future exams (not past ones)
+            $today = Carbon::today();
+            $sesiRuangan->setRelation('jadwalUjians', $sesiRuangan->jadwalUjians->filter(function ($jadwal) use ($today) {
+                $jadwalDate = Carbon::parse($jadwal->tanggal);
+                // Include today's exams and future exams, exclude past exams
+                return $jadwalDate->isToday() || $jadwalDate->isFuture();
+            }));
 
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+            // Check if current guru is assigned to this sesi ruangan
+            $user = Auth::user();
+            $guru = $user->guru;
+
+            if (!$guru) {
+                return redirect()->route('pengawas.dashboard')
+                    ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+            }
+
+            // Check if the guru is assigned as pengawas in any of the associated jadwal ujian
+            $isAuthorized = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+                ->where('pengawas_id', $guru->id)
+                ->exists();
+
+            if (!$isAuthorized) {
+                return redirect()->route('pengawas.dashboard')
+                    ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+            }
+
+            return view('features.pengawas.token', compact('sesiRuangan'));
+        } catch (\Exception $e) {
+            Log::error('Error in showTokenForm: ' . $e->getMessage(), [
+                'sesi_id' => $id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->route('pengawas.dashboard')
-                ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
-
-        return view('features.pengawas.token', compact('sesiRuangan'));
     }
 
     /**
@@ -36,19 +67,38 @@ class TokenController extends Controller
      */
     public function generateToken(Request $request, $id)
     {
-        $sesiRuangan = SesiRuangan::findOrFail($id);
+        $sesiRuangan = SesiRuangan::with(['jadwalUjians', 'jadwalUjians.mapel'])
+            ->findOrFail($id);
+
+        // Filter jadwal ujians to only show current/future exams (not past ones)
+        $today = Carbon::today();
+        $sesiRuangan->setRelation('jadwalUjians', $sesiRuangan->jadwalUjians->filter(function ($jadwal) use ($today) {
+            $jadwalDate = Carbon::parse($jadwal->tanggal);
+            // Include today's exams and future exams, exclude past exams
+            return $jadwalDate->isToday() || $jadwalDate->isFuture();
+        }));
 
         // Check if current guru is assigned to this sesi ruangan
         $user = Auth::user();
         $guru = $user->guru;
 
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$guru) {
+            return redirect()->route('pengawas.dashboard')
+                ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+        }
+
+        // Check if the guru is assigned as pengawas in any of the associated jadwal ujian
+        $isAuthorized = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+            ->where('pengawas_id', $guru->id)
+            ->exists();
+
+        if (!$isAuthorized) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
 
         // Set expiry time from the request or use default (4 hours)
-        $expiryHours = $request->input('expiry_hours', 4);
+        $expiryHours = (int) $request->input('expiry_hours', 4);
 
         try {
             // Generate token

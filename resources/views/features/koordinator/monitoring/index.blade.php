@@ -175,13 +175,13 @@
                             </div>
                             <div class="text-center p-3 bg-green-50 rounded-lg">
                                 <div class="text-2xl font-bold text-green-600" id="session-{{ $session->id }}-active">
-                                    {{ $session->sesiRuanganSiswa->where('status', 'hadir')->count() }}
+                                    {{ $session->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count() }}
                                 </div>
                                 <div class="text-xs text-gray-600">Hadir</div>
                             </div>
                             <div class="text-center p-3 bg-red-50 rounded-lg">
                                 <div class="text-2xl font-bold text-red-600" id="session-{{ $session->id }}-issues">
-                                    {{ $session->sesiRuanganSiswa->where('status', 'logout')->count() }}
+                                    0{{-- Logout functionality removed --}}
                                 </div>
                                 <div class="text-xs text-gray-600">Logout</div>
                             </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Features\Pengawas;
 use App\Http\Controllers\Controller;
 use App\Models\SesiRuangan;
 use App\Models\BeritaAcaraUjian;
+use App\Models\JadwalUjianSesiRuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,24 @@ use Illuminate\Support\Facades\Log;
 
 class BeritaAcaraController extends Controller
 {
+    /**
+     * Check if current pengawas has access to the given sesi ruangan
+     */
+    private function checkPengawasAccess(SesiRuangan $sesiRuangan)
+    {
+        $user = Auth::user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return false;
+        }
+
+        // Check if the guru is assigned as pengawas in any of the associated jadwal ujian
+        return JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+            ->where('pengawas_id', $guru->id)
+            ->exists();
+    }
+
     /**
      * Display the berita acara for a session
      */
@@ -26,15 +45,21 @@ class BeritaAcaraController extends Controller
             'sesiRuanganSiswa.siswa',
             'beritaAcaraUjian'
         ])->findOrFail($id);
+        $today = Carbon::today();
+        $sesiRuangan->setRelation('jadwalUjians', $sesiRuangan->jadwalUjians->filter(function ($jadwal) use ($today) {
+            $jadwalDate = Carbon::parse($jadwal->tanggal);
+            // Include today's exams and future exams, exclude past exams
+            return $jadwalDate->isToday() || $jadwalDate->isFuture();
+        }));
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
+
+        // Filter jadwal ujians to only show current/future exams (not past ones)
+
 
         // Get the berita acara if it exists, or prepare to create a new one
         $beritaAcara = $sesiRuangan->beritaAcaraUjian;
@@ -56,10 +81,7 @@ class BeritaAcaraController extends Controller
         ])->findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
@@ -72,8 +94,8 @@ class BeritaAcaraController extends Controller
 
         // Calculate attendance statistics
         $totalStudents = $sesiRuangan->sesiRuanganSiswa->count();
-        $presentStudents = $sesiRuangan->sesiRuanganSiswa->where('status', 'hadir')->count();
-        $absentStudents = $sesiRuangan->sesiRuanganSiswa->whereIn('status', ['tidak_hadir', 'sakit', 'izin'])->count();
+        $presentStudents = $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count();
+        $absentStudents = $sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])->count();
 
         return view('features.pengawas.berita_acara.create', compact(
             'sesiRuangan',
@@ -91,13 +113,14 @@ class BeritaAcaraController extends Controller
         $sesiRuangan = SesiRuangan::findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
+
+        // Get the guru for later use
+        $user = Auth::user();
+        $guru = $user->guru;
 
         // Validate request
         $request->validate([
@@ -172,10 +195,7 @@ class BeritaAcaraController extends Controller
         ])->findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
@@ -205,10 +225,7 @@ class BeritaAcaraController extends Controller
         $sesiRuangan = SesiRuangan::findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
@@ -274,10 +291,7 @@ class BeritaAcaraController extends Controller
         $sesiRuangan = SesiRuangan::findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
-        $user = Auth::user();
-        $guru = $user->guru;
-
-        if (!$guru || $sesiRuangan->pengawas_id !== $guru->id) {
+        if (!$this->checkPengawasAccess($sesiRuangan)) {
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }

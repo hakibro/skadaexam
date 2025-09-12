@@ -333,7 +333,7 @@
                                         Ruangan</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Kelas</th>
+                                        Sesi</th>
                                     <th scope="col"
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Tanggal</th>
@@ -356,14 +356,14 @@
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
-                                                {{ $sesi->ruangan->nama ?? 'Tidak tersedia' }}</div>
+                                                {{ $sesi->ruangan->nama_ruangan ?? 'Tidak tersedia' }}</div>
                                             <div class="text-sm text-gray-500">Kapasitas:
                                                 {{ $sesi->ruangan->kapasitas ?? '0' }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            @if ($sesi->kelas)
+                                            @if ($sesi->nama_sesi)
                                                 <div class="text-sm font-medium text-gray-900">
-                                                    {{ $sesi->kelas->nama ?? 'Tidak tersedia' }}</div>
+                                                    {{ $sesi->nama_sesi ?? 'Tidak tersedia' }}</div>
                                             @else
                                                 <div class="text-sm text-gray-500">Tidak terkait dengan kelas</div>
                                             @endif

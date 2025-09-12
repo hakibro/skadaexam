@@ -93,25 +93,18 @@
                         </div>
 
                         <div>
-                            <label for="status_kehadiran" class="block text-sm font-medium text-gray-700 mb-1">
-                                Status Kehadiran <span class="text-red-500">*</span>
-                            </label>
-                            <select name="status_kehadiran" id="status_kehadiran"
-                                class="form-select w-full rounded-md shadow-sm @error('status_kehadiran') border-red-500 @enderror"
-                                required>
-                                <option value="belum_hadir"
-                                    {{ old('status_kehadiran', $enrollment->status_kehadiran ?? 'belum_hadir') == 'belum_hadir' ? 'selected' : '' }}>
-                                    Belum Hadir</option>
-                                <option value="hadir"
-                                    {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'hadir' ? 'selected' : '' }}>
-                                    Hadir</option>
-                                <option value="tidak_hadir"
-                                    {{ old('status_kehadiran', $enrollment->status_kehadiran) == 'tidak_hadir' ? 'selected' : '' }}>
-                                    Tidak Hadir</option>
-                            </select>
-                            @error('status_kehadiran')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran (Read Only)</label>
+                            <input type="text" class="form-input w-full rounded-md shadow-sm bg-gray-50"
+                                value="{{ match ($enrollment->sesiRuanganSiswa?->status_kehadiran ?? 'belum_hadir') {
+                                    'belum_hadir' => 'Belum Hadir',
+                                    'hadir' => 'Hadir',
+                                    'tidak_hadir' => 'Tidak Hadir',
+                                    'sakit' => 'Sakit',
+                                    'izin' => 'Izin',
+                                    default => 'Tidak Diketahui',
+                                } }}"
+                                readonly>
+                            <p class="mt-1 text-sm text-gray-500">Status kehadiran dikelola melalui sistem sesi ruangan</p>
                         </div>
                     </div>
 

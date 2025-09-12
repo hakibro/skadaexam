@@ -258,7 +258,8 @@
                                 @foreach ($sesiRuangan as $sesi)
                                     <div class="sesi-item border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                                         data-status="{{ $sesi->status }}" data-name="{{ strtolower($sesi->nama_sesi) }}"
-                                        data-date="{{ $sesi->jadwalUjians->first() ? \Carbon\Carbon::parse($sesi->jadwalUjians->first()->tanggal)->format('Y-m-d') : now()->format('Y-m-d') }}">
+                                        data-date="{{ $sesi->jadwalUjians->first() ? \Carbon\Carbon::parse($sesi->jadwalUjians->first()->tanggal)->format('Y-m-d') : now()->format('Y-m-d') }}"
+                                        data-pengawas="{{ $sesi->pengawas_names }}">>
                                         <div
                                             class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                                             <div class="flex items-center">
@@ -298,7 +299,7 @@
                                                     <span class="text-xs text-gray-500">Pengawas</span>
                                                     <div class="text-gray-900">
                                                         <i class="fa-solid fa-user mr-1 text-gray-400"></i>
-                                                        {{ $sesi->pengawas->nama ?? 'Belum ditentukan' }}
+                                                        {{ $sesi->pengawas_names }}
                                                     </div>
                                                 </div>
                                             </div>
@@ -571,7 +572,7 @@
                                         <span class="text-xs text-gray-500">Pengawas</span>
                                         <div class="text-gray-900">
                                             <i class="fa-solid fa-user mr-1 text-gray-400"></i>
-                                            ${session.pengawas || 'Belum ditentukan'}
+                                            ${session.dataset.pengawas || 'Belum ditentukan'}
                                         </div>
                                     </div>
                                 </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Features\Pengawas;
 use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
+use App\Models\SesiRuanganSiswa;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -128,32 +129,41 @@ class DashboardController extends Controller
     public function showAssignment($id)
     {
         $sesiRuangan = SesiRuangan::with([
-            'jadwalUjians',
             'ruangan',
-            'jadwalUjians.mapel',
-            'siswa'
+            'sesiRuanganSiswa',
+            'sesiRuanganSiswa.siswa',
+            'sesiRuanganSiswa.siswa.kelas'
         ])->findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
         $user = Auth::user();
+        $guru = null;
 
         // Skip the check for admin users
         if ($user->isAdmin()) {
-            // Admin can view all assignments
+            // Admin can view all assignments - load all jadwal ujians
+            $sesiRuangan->load(['jadwalUjians', 'jadwalUjians.mapel']);
         } else {
             $guru = $user->guru;
             if (!$guru) {
                 return redirect()->back()->with('error', 'User tidak memiliki profil guru');
             }
 
-            // Check if assigned through pivot table
-            $pivotAssignment = \App\Models\JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+            // Check if assigned through pivot table and load only relevant jadwal ujians
+            $assignedJadwalIds = \App\Models\JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
                 ->where('pengawas_id', $guru->id)
-                ->exists();
+                ->pluck('jadwal_ujian_id');
 
-            if (!$pivotAssignment) {
+            if ($assignedJadwalIds->isEmpty()) {
                 return redirect()->back()->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
             }
+
+            // Load only the jadwal ujians that this pengawas is assigned to
+            $assignedJadwals = \App\Models\JadwalUjian::with('mapel')
+                ->whereIn('id', $assignedJadwalIds)
+                ->get();
+
+            $sesiRuangan->setRelation('jadwalUjians', $assignedJadwals);
         }
 
         return view('features.pengawas.assignment_detail', compact('sesiRuangan'));
@@ -191,9 +201,9 @@ class DashboardController extends Controller
         // Update attendance for each student
         if ($request->has('attendance')) {
             foreach ($request->attendance as $siswaId => $status) {
-                $sesiRuangan->siswa()->updateExistingPivot($siswaId, [
-                    'status_kehadiran' => $status
-                ]);
+                SesiRuanganSiswa::where('sesi_ruangan_id', $sesiRuangan->id)
+                    ->where('siswa_id', $siswaId)
+                    ->update(['status_kehadiran' => $status]);
             }
         }
 

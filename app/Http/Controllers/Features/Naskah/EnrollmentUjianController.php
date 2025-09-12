@@ -29,12 +29,12 @@ class EnrollmentUjianController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian']);
+        $query = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian', 'sesiRuanganSiswa']);
 
         // Apply filters
         if ($request->filled('jadwal_id')) {
-            $query->whereHas('sesiRuangan', function ($q) use ($request) {
-                $q->where('jadwal_ujian_id', $request->jadwal_id);
+            $query->whereHas('sesiRuangan.jadwalUjians', function ($q) use ($request) {
+                $q->where('jadwal_ujian.id', $request->jadwal_id);
             });
         }
 
@@ -47,18 +47,20 @@ class EnrollmentUjianController extends Controller
         }
 
         if ($request->filled('kehadiran')) {
-            $query->where('status_kehadiran', $request->kehadiran);
+            $query->whereHas('sesiRuanganSiswa', function ($q) use ($request) {
+                $q->where('status_kehadiran', $request->kehadiran);
+            });
         }
 
         $perPage = $request->get('per_page', 15);
         $enrollments = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         // Data untuk filter dropdown
-        $jadwalUjians = JadwalUjian::where('status', 'active')
+        $jadwalUjians = JadwalUjian::where('status', 'aktif')
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        $sesiRuangans = SesiRuangan::where('status', '!=', 'cancelled')
+        $sesiRuangans = SesiRuangan::whereIn('status', ['belum_mulai', 'berlangsung'])
             ->orderBy('waktu_mulai', 'desc')
             ->get();
         $kelasList = Kelas::orderBy('nama_kelas')->get();
@@ -71,7 +73,7 @@ class EnrollmentUjianController extends Controller
      */
     public function create()
     {
-        $jadwalUjians = JadwalUjian::where('status', 'active')->orderBy('tanggal', 'desc')->get();
+        $jadwalUjians = JadwalUjian::where('status', 'aktif')->orderBy('tanggal', 'desc')->get();
         $sesiRuangans = collect(); // Will be populated via AJAX
         $kelasList = Kelas::orderBy('nama_kelas')->get();
 
@@ -92,7 +94,7 @@ class EnrollmentUjianController extends Controller
         try {
             DB::beginTransaction();
 
-            $sesiRuangan = SesiRuangan::with('jadwalUjian')->findOrFail($request->sesi_ruangan_id);
+            $sesiRuangan = SesiRuangan::with('jadwalUjians')->findOrFail($request->sesi_ruangan_id);
 
             $enrolled = 0;
             $skipped = 0;
@@ -108,13 +110,15 @@ class EnrollmentUjianController extends Controller
                     continue;
                 }
 
+                // Get the first jadwal ujian from the sesi ruangan relationship
+                $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
+
                 // Create new enrollment
                 EnrollmentUjian::create([
                     'siswa_id' => $siswaId,
                     'sesi_ruangan_id' => $sesiRuangan->id,
-                    'jadwal_ujian_id' => $sesiRuangan->jadwal_ujian_id,
+                    'jadwal_ujian_id' => $jadwalUjian ? $jadwalUjian->id : null,
                     'status_enrollment' => 'enrolled',
-                    'status_kehadiran' => 'belum_hadir',
                 ]);
 
                 $enrolled++;
@@ -147,7 +151,7 @@ class EnrollmentUjianController extends Controller
      */
     public function show($id)
     {
-        $enrollment = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian', 'hasilUjian'])
+        $enrollment = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian', 'hasilUjian', 'sesiRuanganSiswa'])
             ->findOrFail($id);
 
         return view('features.naskah.enrollment_ujian.show', compact('enrollment'));
@@ -158,13 +162,22 @@ class EnrollmentUjianController extends Controller
      */
     public function edit($id)
     {
-        $enrollment = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian'])
+        $enrollment = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjians'])
             ->findOrFail($id);
 
-        $jadwalUjian = $enrollment->sesiRuangan->jadwalUjian;
-        $sesiRuangans = SesiRuangan::where('jadwal_ujian_id', $jadwalUjian->id)
-            ->where('status', '!=', 'cancelled')
-            ->get();
+        // Get the first jadwal ujian from the sesi ruangan
+        $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians->first();
+
+        if ($jadwalUjian) {
+            // Find sesi ruangans that are associated with this jadwal ujian
+            $sesiRuangans = SesiRuangan::whereHas('jadwalUjians', function ($query) use ($jadwalUjian) {
+                $query->where('jadwal_ujian.id', $jadwalUjian->id);
+            })
+                ->whereIn('status', ['belum_mulai', 'berlangsung'])
+                ->get();
+        } else {
+            $sesiRuangans = collect(); // Empty collection if no jadwal ujian
+        }
 
         return view('features.naskah.enrollment_ujian.edit', compact('enrollment', 'sesiRuangans'));
     }
@@ -177,18 +190,21 @@ class EnrollmentUjianController extends Controller
         $request->validate([
             'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
             'status_enrollment' => 'required|in:enrolled,completed,absent,cancelled',
-            'status_kehadiran' => 'required|in:belum_hadir,hadir,tidak_hadir',
             'catatan' => 'nullable|string'
         ]);
 
         try {
             $enrollment = EnrollmentUjian::findOrFail($id);
 
-            $sesiRuangan = SesiRuangan::findOrFail($request->sesi_ruangan_id);
-            $oldSesiRuangan = SesiRuangan::findOrFail($enrollment->sesi_ruangan_id);
+            $sesiRuangan = SesiRuangan::with('jadwalUjians')->findOrFail($request->sesi_ruangan_id);
+            $oldSesiRuangan = SesiRuangan::with('jadwalUjians')->findOrFail($enrollment->sesi_ruangan_id);
 
-            // Check if sesi belongs to same jadwal
-            if ($sesiRuangan->jadwal_ujian_id != $oldSesiRuangan->jadwal_ujian_id) {
+            // Check if both sesi belong to same jadwal ujians
+            $newJadwalIds = $sesiRuangan->jadwalUjians->pluck('id')->toArray();
+            $oldJadwalIds = $oldSesiRuangan->jadwalUjians->pluck('id')->toArray();
+
+            // Check if there's any common jadwal ujian between the two sesi
+            if (empty(array_intersect($newJadwalIds, $oldJadwalIds))) {
                 return redirect()->back()->withInput()
                     ->with('error', 'Sesi ruangan harus berasal dari jadwal ujian yang sama.');
             }
@@ -196,15 +212,6 @@ class EnrollmentUjianController extends Controller
             $enrollment->update([
                 'sesi_ruangan_id' => $request->sesi_ruangan_id,
                 'status_enrollment' => $request->status_enrollment,
-                'status_kehadiran' => $request->status_kehadiran,
-                // Jika siswa hadir, dan belum ada token, atau token sudah digunakan, generate token baru
-                'token_login' => ($request->status_kehadiran == 'hadir' &&
-                    (!$enrollment->token_login || $enrollment->token_digunakan_pada)) ?
-                    strtoupper(substr(md5(time() . $enrollment->siswa_id . rand(1000, 9999)), 0, 8)) :
-                    $enrollment->token_login,
-                'token_dibuat_pada' => ($request->status_kehadiran == 'hadir' &&
-                    (!$enrollment->token_login || $enrollment->token_digunakan_pada)) ?
-                    Carbon::now() : $enrollment->token_dibuat_pada,
             ]);
 
             return redirect()->route('naskah.enrollment-ujian.show', $enrollment->id)
@@ -256,13 +263,26 @@ class EnrollmentUjianController extends Controller
     {
         $jadwalId = $request->jadwal_id;
 
-        $sesiList = SesiRuangan::where('jadwal_ujian_id', $jadwalId)
-            ->where('status', '!=', 'cancelled')
-            ->get(['id', 'nama', 'waktu_mulai', 'status'])
+        if (!$jadwalId) {
+            return response()->json([]);
+        }
+
+        // Use the many-to-many relationship through jadwal_ujian_sesi_ruangan pivot table
+        $sesiList = SesiRuangan::whereHas('jadwalUjians', function ($query) use ($jadwalId) {
+            $query->where('jadwal_ujian.id', $jadwalId);
+        })
+            ->whereIn('status', ['belum_mulai', 'berlangsung'])
+            ->with(['jadwalUjians' => function ($query) use ($jadwalId) {
+                $query->where('jadwal_ujian.id', $jadwalId);
+            }])
+            ->get(['id', 'nama_sesi', 'waktu_mulai', 'waktu_selesai', 'status'])
             ->map(function ($sesi) {
+                $jadwalUjian = $sesi->jadwalUjians->first();
+                $tanggal = $jadwalUjian ? $jadwalUjian->tanggal->format('d M Y') : 'N/A';
+
                 return [
                     'id' => $sesi->id,
-                    'text' => $sesi->nama . ' - ' . $sesi->waktu_mulai->format('d M Y H:i') . ' (' . $sesi->status . ')'
+                    'text' => $sesi->nama_sesi . ' - ' . $tanggal . ' ' . $sesi->waktu_mulai . ' (' . ucfirst($sesi->status) . ')'
                 ];
             });
 
@@ -321,6 +341,36 @@ class EnrollmentUjianController extends Controller
     }
 
     /**
+     * Get students for Select2 AJAX (for create form)
+     */
+    public function getSiswaOptions(Request $request)
+    {
+        $search = $request->get('search', '');
+        $kelasId = $request->get('kelas_id');
+
+        $query = Siswa::with('kelas')
+            ->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhere('idyayasan', 'like', "%{$search}%");
+            });
+
+        if ($kelasId) {
+            $query->where('kelas_id', $kelasId);
+        }
+
+        $siswaList = $query->limit(50)->get()
+            ->map(function ($siswa) {
+                return [
+                    'id' => $siswa->id,
+                    'text' => $siswa->nama . ' (' . ($siswa->nis ?? $siswa->idyayasan) . ') - ' . ($siswa->kelas->nama ?? 'No Class')
+                ];
+            });
+
+        return response()->json($siswaList);
+    }
+
+    /**
      * Bulk assign students to an exam and session.
      */
     public function bulkEnrollment(Request $request)
@@ -338,7 +388,6 @@ class EnrollmentUjianController extends Controller
 
             // Get all students from selected kelas
             $siswaList = Siswa::whereIn('kelas_id', $request->kelas_ids)
-                ->where('status', 'active')
                 ->get();
 
             // Get already enrolled students
@@ -357,12 +406,14 @@ class EnrollmentUjianController extends Controller
                 }
 
                 // Create new enrollment
+                // Get the first jadwal ujian from the sesi ruangan relationship
+                $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
+
                 EnrollmentUjian::create([
                     'siswa_id' => $siswa->id,
                     'sesi_ruangan_id' => $sesiRuangan->id,
-                    'jadwal_ujian_id' => $sesiRuangan->jadwal_ujian_id,
+                    'jadwal_ujian_id' => $jadwalUjian ? $jadwalUjian->id : null,
                     'status_enrollment' => 'enrolled',
-                    'status_kehadiran' => 'belum_hadir',
                 ]);
 
                 $enrollmentCount++;
@@ -391,87 +442,6 @@ class EnrollmentUjianController extends Controller
     }
 
     /**
-     * Generate tokens for all students in a session
-     */
-    public function generateTokens(Request $request)
-    {
-        $request->validate([
-            'sesi_id' => 'required|exists:sesi_ruangan,id'
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $sesiRuangan = SesiRuangan::findOrFail($request->sesi_id);
-
-            // Check authorization
-            if (
-                !Auth::user()->hasRole(['admin', 'naskah']) &&
-                $sesiRuangan->guru_id != Auth::id()
-            ) {
-                return redirect()->back()
-                    ->with('error', 'Anda tidak memiliki izin untuk generate token pada sesi ini.');
-            }
-
-            // Get enrollments that need tokens
-            $enrollments = EnrollmentUjian::where('sesi_ruangan_id', $sesiRuangan->id)
-                ->where(function ($query) {
-                    $query->whereNull('token_login')
-                        ->orWhereNull('token_dibuat_pada')
-                        ->orWhere('token_dibuat_pada', '<', Carbon::now()->subHours(2));
-                })
-                ->get();
-
-            $generateCount = 0;
-
-            foreach ($enrollments as $enrollment) {
-                $token = $this->generateUniqueToken();
-                $enrollment->update([
-                    'token_login' => $token,
-                    'token_dibuat_pada' => now(),
-                    'token_digunakan_pada' => null
-                ]);
-                $generateCount++;
-            }
-
-            DB::commit();
-
-            return redirect()->back()->with('success', "Token berhasil dibuat untuk {$generateCount} siswa.");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error generating tokens', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()->back()
-                ->with('error', 'Terjadi kesalahan saat generate token: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Generate a new token for a specific enrollment
-     */
-    public function generateToken(EnrollmentUjian $enrollmentUjian)
-    {
-        try {
-            $enrollmentUjian->update([
-                'token_login' => $this->generateUniqueToken(),
-                'token_dibuat_pada' => now(),
-                'token_digunakan_pada' => null
-            ]);
-
-            return redirect()
-                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
-                ->with('success', 'Token login baru berhasil dibuat');
-        } catch (\Exception $e) {
-            return redirect()
-                ->route('naskah.enrollment-ujian.show', $enrollmentUjian->id)
-                ->with('error', 'Error: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Update enrollment status
      */
     public function updateStatus(EnrollmentUjian $enrollmentUjian, $status)
@@ -487,8 +457,20 @@ class EnrollmentUjianController extends Controller
         try {
             $enrollmentUjian->update([
                 'status_enrollment' => $status,
-                'status_kehadiran' => $status == 'completed' ? 'hadir' : ($status == 'absent' ? 'tidak_hadir' : $enrollmentUjian->status_kehadiran)
             ]);
+
+            // Update kehadiran status in sesi_ruangan_siswa if needed
+            if (in_array($status, ['completed', 'absent'])) {
+                $sesiRuanganSiswa = \App\Models\SesiRuanganSiswa::where('sesi_ruangan_id', $enrollmentUjian->sesi_ruangan_id)
+                    ->where('siswa_id', $enrollmentUjian->siswa_id)
+                    ->first();
+
+                if ($sesiRuanganSiswa) {
+                    $sesiRuanganSiswa->update([
+                        'status_kehadiran' => $status == 'completed' ? 'hadir' : 'tidak_hadir'
+                    ]);
+                }
+            }
 
             $statusText = [
                 'enrolled' => 'Terdaftar',
@@ -554,9 +536,6 @@ class EnrollmentUjianController extends Controller
                         'jadwal_ujian_id' => $jadwalUjian->id,
                         'sesi_ruangan_id' => $sesiRuangan->id,
                         'status_enrollment' => 'enrolled',
-                        'status_kehadiran' => 'belum_hadir',
-                        'token_login' => $this->generateUniqueToken(),
-                        'token_dibuat_pada' => now(),
                     ]);
                     $enrolledCount++;
                 }
@@ -574,18 +553,6 @@ class EnrollmentUjianController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menyinkronkan enrollment: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Generate a unique 6-character token for login
-     */
-    protected function generateUniqueToken()
-    {
-        do {
-            $token = strtoupper(Str::random(6));
-        } while (EnrollmentUjian::where('token_login', $token)->exists());
-
-        return $token;
     }
 
     /**

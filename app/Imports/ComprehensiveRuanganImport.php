@@ -165,7 +165,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 SesiRuanganSiswa::create([
                     'sesi_ruangan_id' => $sesi->id,
                     'siswa_id' => $siswa->id,
-                    'status' => 'tidak_hadir' // Default status
+                    'status_kehadiran' => 'tidak_hadir' // Default status
                 ]);
                 $this->results['siswa_assigned']++;
             }

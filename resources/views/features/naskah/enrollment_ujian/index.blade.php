@@ -33,7 +33,7 @@
                                 @foreach ($jadwalUjians as $jadwal)
                                     <option value="{{ $jadwal->id }}"
                                         {{ request('jadwal_id') == $jadwal->id ? 'selected' : '' }}>
-                                        {{ $jadwal->judul }}
+                                        {{ $jadwal->judul }} - {{ $jadwal->tanggal->format('d M Y') }}
                                     </option>
                                 @endforeach
                             </select>
@@ -152,16 +152,16 @@
                                         {{ $enrollment->sesiRuangan->nama_sesi ?? 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($enrollment->token_login)
-                                            @if (!$enrollment->token_digunakan_pada || $enrollment->token_digunakan_pada->addHours(2) > now())
+                                        @if ($enrollment->sesiRuangan && $enrollment->sesiRuangan->token_ujian)
+                                            @if (!$enrollment->sesiRuangan->token_expired_at || $enrollment->sesiRuangan->token_expired_at > now())
                                                 <span
                                                     class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                    {{ $enrollment->token_login }}
+                                                    {{ $enrollment->sesiRuangan->token_ujian }}
                                                 </span>
                                             @else
                                                 <span
                                                     class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                    {{ $enrollment->token_login }}
+                                                    {{ $enrollment->sesiRuangan->token_ujian }}
                                                     <span class="ml-1">(Expired)</span>
                                                 </span>
                                             @endif
@@ -214,9 +214,9 @@
                                         @endswitch
 
                                         <!-- Kehadiran Status -->
-                                        @if ($enrollment->status_kehadiran)
-                                            <span class="ml-1">
-                                                @switch($enrollment->status_kehadiran)
+                                        @if ($enrollment->sesiRuanganSiswa?->status_kehadiran)
+                                            <div class="mt-1">
+                                                @switch($enrollment->sesiRuanganSiswa->status_kehadiran)
                                                     @case('belum_hadir')
                                                         <span
                                                             class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -238,7 +238,7 @@
                                                         </span>
                                                     @break
                                                 @endswitch
-                                            </span>
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
@@ -251,20 +251,6 @@
                                                 class="inline-flex items-center px-3 py-1 bg-yellow-600 text-white text-xs rounded-md hover:bg-yellow-700">
                                                 <i class="fa-solid fa-edit mr-1"></i> Edit
                                             </a>
-                                            @if (
-                                                !$enrollment->token_login ||
-                                                    ($enrollment->token_digunakan_pada && $enrollment->token_digunakan_pada->addHours(2) < now()))
-                                                <form
-                                                    action="{{ route('naskah.enrollment-ujian.generate-token', $enrollment->id) }}"
-                                                    method="POST" class="inline-block">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="inline-flex items-center px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700"
-                                                        onclick="return confirm('Generate token login baru?')">
-                                                        <i class="fa-solid fa-key mr-1"></i> Token
-                                                    </button>
-                                                </form>
-                                            @endif
                                             <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}"
                                                 method="POST" class="inline-block"
                                                 onsubmit="return confirm('Apakah Anda yakin ingin menghapus pendaftaran ini?')">
@@ -302,12 +288,12 @@
 
     <!-- Modal: Bulk Enrollment -->
     <div id="bulkEnrollmentModal" tabindex="-1" aria-hidden="true"
-        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 w-full md:inset-0 h-modal md:h-full justify-center items-center">
+        class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
         <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
-            <div class="relative bg-white rounded-lg shadow">
+            <div class="relative bg-white rounded-lg shadow-lg">
                 <div class="flex justify-between items-center p-4 border-b rounded-t">
                     <h3 class="text-lg font-medium text-gray-900">
-                        Enrollment Massal
+                        <i class="fa-solid fa-users mr-2"></i>Enrollment Massal
                     </h3>
                     <button type="button"
                         class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
@@ -315,44 +301,60 @@
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
-                <form action="{{ route('naskah.enrollment-ujian.bulk') }}" method="POST">
+                <form action="{{ route('naskah.enrollment-ujian.bulk') }}" method="POST" id="bulkEnrollmentForm">
                     @csrf
                     <div class="p-6 space-y-6">
                         <div class="mb-4">
-                            <label for="jadwal_id" class="block mb-2 text-sm font-medium text-gray-900">Jadwal
-                                Ujian</label>
-                            <select id="jadwal_id" name="jadwal_id" required
+                            <label for="bulk_jadwal_id" class="block mb-2 text-sm font-medium text-gray-900">Jadwal
+                                Ujian <span class="text-red-500">*</span></label>
+                            <select id="bulk_jadwal_id" name="jadwal_id" required
                                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                 <option value="">Pilih Jadwal Ujian</option>
                                 @foreach ($jadwalUjians as $jadwal)
-                                    <option value="{{ $jadwal->id }}">{{ $jadwal->judul }}</option>
+                                    <option value="{{ $jadwal->id }}">
+                                        {{ $jadwal->judul }} - {{ $jadwal->tanggal->format('d M Y') }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="mb-4">
-                            <label for="sesi_ruangan_id" class="block mb-2 text-sm font-medium text-gray-900">Sesi
-                                Ruangan</label>
-                            <select id="sesi_ruangan_id" name="sesi_ruangan_id" required disabled
+                            <label for="bulk_sesi_ruangan_id" class="block mb-2 text-sm font-medium text-gray-900">Sesi
+                                Ruangan <span class="text-red-500">*</span></label>
+                            <select id="bulk_sesi_ruangan_id" name="sesi_ruangan_id" required disabled
                                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                 <option value="">Pilih Sesi Ruangan</option>
                             </select>
                         </div>
 
                         <div>
-                            <label class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
+                            <label class="block mb-2 text-sm font-medium text-gray-900">Kelas <span
+                                    class="text-red-500">*</span></label>
                             <div class="bg-gray-50 border border-gray-300 rounded-lg p-4 h-48 overflow-y-auto">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <div class="mb-2">
+                                    <button type="button" id="selectAllKelas"
+                                        class="text-sm text-blue-600 hover:text-blue-800">
+                                        <i class="fa-solid fa-check-square mr-1"></i>Pilih Semua
+                                    </button>
+                                    <button type="button" id="deselectAllKelas"
+                                        class="ml-3 text-sm text-red-600 hover:text-red-800">
+                                        <i class="fa-solid fa-times-square mr-1"></i>Batal Semua
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     @foreach ($kelasList as $kelas)
                                         <div class="flex items-center">
-                                            <input id="kelas-{{ $kelas->id }}" type="checkbox" name="kelas_ids[]"
-                                                value="{{ $kelas->id }}"
-                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                                            <label for="kelas-{{ $kelas->id }}"
+                                            <input id="bulk_kelas_{{ $kelas->id }}" type="checkbox"
+                                                name="kelas_ids[]" value="{{ $kelas->id }}"
+                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 kelas-checkbox">
+                                            <label for="bulk_kelas_{{ $kelas->id }}"
                                                 class="ml-2 text-sm font-medium text-gray-900">{{ $kelas->nama }}</label>
                                         </div>
                                     @endforeach
                                 </div>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-500">Pilih minimal satu kelas untuk enrollment massal</p>
+                            <div id="kelas-error" class="hidden mt-2 text-sm text-red-600">Harap pilih minimal satu kelas
                             </div>
                         </div>
                     </div>
@@ -360,11 +362,11 @@
                         <button type="button"
                             class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900"
                             data-modal-toggle="bulkEnrollmentModal">
-                            Batal
+                            <i class="fa-solid fa-times mr-2"></i>Batal
                         </button>
                         <button type="submit"
                             class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5">
-                            Daftarkan
+                            <i class="fa-solid fa-save mr-2"></i>Daftarkan Siswa
                         </button>
                     </div>
                 </form>
@@ -384,6 +386,122 @@
                 });
             });
 
+            // Modal functionality
+            const bulkEnrollmentModal = document.getElementById('bulkEnrollmentModal');
+            const modalToggleButtons = document.querySelectorAll('[data-modal-toggle="bulkEnrollmentModal"]');
+
+            modalToggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    bulkEnrollmentModal.classList.toggle('hidden');
+                    bulkEnrollmentModal.classList.toggle('flex');
+                });
+            });
+
+            // Close modal when clicking outside
+            bulkEnrollmentModal.addEventListener('click', function(e) {
+                if (e.target === bulkEnrollmentModal) {
+                    bulkEnrollmentModal.classList.add('hidden');
+                    bulkEnrollmentModal.classList.remove('flex');
+                }
+            });
+
+            // Select all / Deselect all functionality
+            const selectAllBtn = document.getElementById('selectAllKelas');
+            const deselectAllBtn = document.getElementById('deselectAllKelas');
+            const kelasCheckboxes = document.querySelectorAll('.kelas-checkbox');
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', function() {
+                    kelasCheckboxes.forEach(checkbox => {
+                        checkbox.checked = true;
+                    });
+                });
+            }
+
+            if (deselectAllBtn) {
+                deselectAllBtn.addEventListener('click', function() {
+                    kelasCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                });
+            }
+
+            // Form validation
+            const bulkForm = document.getElementById('bulkEnrollmentForm');
+            const kelasError = document.getElementById('kelas-error');
+
+            if (bulkForm) {
+                bulkForm.addEventListener('submit', function(e) {
+                    const checkedKelas = document.querySelectorAll('.kelas-checkbox:checked');
+                    const jadwalSelected = document.getElementById('bulk_jadwal_id').value;
+                    const sesiSelected = document.getElementById('bulk_sesi_ruangan_id').value;
+
+                    if (!jadwalSelected) {
+                        alert('Harap pilih jadwal ujian terlebih dahulu');
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    if (!sesiSelected) {
+                        alert('Harap pilih sesi ruangan terlebih dahulu');
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    if (checkedKelas.length === 0) {
+                        kelasError.classList.remove('hidden');
+                        alert('Harap pilih minimal satu kelas');
+                        e.preventDefault();
+                        return false;
+                    } else {
+                        kelasError.classList.add('hidden');
+                    }
+
+                    // Confirmation dialog
+                    const totalKelas = checkedKelas.length;
+                    if (!confirm(
+                            `Apakah Anda yakin ingin mendaftarkan siswa dari ${totalKelas} kelas ke ujian ini? Proses ini tidak dapat dibatalkan.`
+                        )) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+            }
+
+            // Dynamic sesi options based on jadwal selection (for bulk enrollment modal)
+            const bulkJadwalSelect = document.getElementById('bulk_jadwal_id');
+            const bulkSesiSelect = document.getElementById('bulk_sesi_ruangan_id');
+
+            if (bulkJadwalSelect && bulkSesiSelect) {
+                bulkJadwalSelect.addEventListener('change', function() {
+                    const jadwalId = this.value;
+                    bulkSesiSelect.disabled = true;
+                    bulkSesiSelect.innerHTML = '<option value="">Pilih Sesi Ruangan</option>';
+
+                    if (jadwalId) {
+                        fetch(
+                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`
+                            )
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data && data.length > 0) {
+                                    data.forEach(item => {
+                                        const option = document.createElement('option');
+                                        option.value = item.id;
+                                        option.textContent = item.text;
+                                        bulkSesiSelect.appendChild(option);
+                                    });
+                                    bulkSesiSelect.disabled = false;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error loading sesi options for bulk enrollment', error);
+                                alert('Gagal memuat sesi ujian');
+                            });
+                    }
+                });
+            }
+
             // Dynamic sesi options based on jadwal selection
             const jadwalSelect = document.getElementById('jadwal_id');
             const sesiSelect = document.getElementById('sesi_ruangan_id');
@@ -396,7 +514,8 @@
 
                     if (jadwalId) {
                         fetch(
-                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`)
+                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`
+                            )
                             .then(response => response.json())
                             .then(data => {
                                 if (data && data.length > 0) {

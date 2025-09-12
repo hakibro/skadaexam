@@ -137,7 +137,7 @@ class RuanganController extends Controller
 
         // Get recent sessions
         $recentSessions = $ruangan->sesiRuangan()
-            ->with(['pengawas', 'jadwalUjians'])
+            ->with(['jadwalUjians', 'jadwalUjians.mapel'])
             ->withCount('sesiRuanganSiswa')
             ->orderBy('waktu_mulai', 'desc')
             ->take(5)

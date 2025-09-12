@@ -18,48 +18,35 @@ class LaporanController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'pengawas']);
+        $query = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'sesiRuangan.jadwalUjians.mapel', 'pengawas']);
 
-        // Filter by finalization status
+        // Filter by verification status (matching the view form)
         if ($request->filled('status')) {
-            if ($request->status === 'finalized') {
-                $query->where('is_final', true);
-            } elseif ($request->status === 'draft') {
+            if ($request->status === 'pending') {
                 $query->where('is_final', false);
+            } elseif ($request->status === 'verified') {
+                $query->where('is_final', true);
+            } elseif ($request->status === 'rejected') {
+                // Since we don't have a rejected status, return empty results
+                $query->whereRaw('0 = 1');
             }
         }
 
-        // Filter by pelaksanaan status
-        if ($request->filled('pelaksanaan_status')) {
-            $query->where('status_pelaksanaan', $request->pelaksanaan_status);
+        // Filter by date (using the 'tanggal' parameter from the form)
+        if ($request->filled('tanggal')) {
+            $query->whereDate('created_at', $request->tanggal);
         }
 
-        // Filter by date range (using created_at since tanggal doesn't exist)
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+        // Filter by pengawas (using 'pengawas' parameter from the form)
+        if ($request->filled('pengawas')) {
+            $query->where('pengawas_id', $request->pengawas);
         }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
+        // Set items per page based on the form parameter
+        $perPage = $request->filled('per_page') ? (int) $request->per_page : 15;
+        $perPage = in_array($perPage, [15, 25, 50]) ? $perPage : 15;
 
-        // Filter by pengawas
-        if ($request->filled('pengawas_id')) {
-            $query->where('pengawas_id', $request->pengawas_id);
-        }
-
-        // Search by ruangan or session name
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('sesiRuangan', function ($q) use ($search) {
-                $q->whereHas('ruangan', function ($rq) use ($search) {
-                    $rq->where('nama_ruangan', 'like', "%{$search}%")
-                        ->orWhere('kode_ruangan', 'like', "%{$search}%");
-                });
-            });
-        }
-
-        $beritaAcaras = $query->orderBy('created_at', 'desc')->paginate(15);
+        $beritaAcaras = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         // Get available pengawas for filter
         $pengawasList = Guru::whereHas('user', function ($query) {
@@ -85,49 +72,53 @@ class LaporanController extends Controller
         return view('features.koordinator.laporan.index', compact(
             'beritaAcaras',
             'pengawasList',
-            'stats'
+            'stats',
         ));
     }
 
     /**
      * Display specific berita acara
      */
-    public function show(BeritaAcaraUjian $laporan)
+    public function show(BeritaAcaraUjian $beritaAcara)
     {
-        $laporan->load([
+        $beritaAcara->load([
             'sesiRuangan.ruangan',
             'sesiRuangan.jadwalUjian.mapel',
-            'sesiRuangan.jadwalUjian.kelas',
             'sesiRuangan.sesiRuanganSiswa.siswa',
             'pengawas'
         ]);
 
         // Check if sesiRuangan exists
-        if (!$laporan->sesiRuangan) {
+        if (!$beritaAcara->sesiRuangan) {
             abort(404, 'Data sesi ruangan tidak ditemukan untuk berita acara ini.');
         }
 
         // Pass the berita acara as 'beritaAcara' to match the view
-        return view('features.koordinator.laporan.show', ['beritaAcara' => $laporan]);
+        return view('features.koordinator.laporan.show', ['beritaAcara' => $beritaAcara]);
     }
 
     /**
      * Download berita acara as PDF
      */
-    public function download(BeritaAcaraUjian $laporan)
+    public function download(BeritaAcaraUjian $beritaAcara)
     {
-        $laporan->load(['sesiRuangan.ruangan', 'pengawas']);
+        $beritaAcara->load(['sesiRuangan.ruangan', 'pengawas']);
+
+        // Check if sesiRuangan exists to prevent null access errors
+        if (!$beritaAcara->sesiRuangan) {
+            abort(404, 'Data sesi ruangan tidak ditemukan untuk berita acara ini.');
+        }
 
         // For now, return a simple response
         // In production, you would generate a proper PDF
         return response()->json([
             'message' => 'PDF download akan diimplementasikan dengan package PDF generator',
             'laporan' => [
-                'id' => $laporan->id,
-                'sesi' => $laporan->sesiRuangan->nama_sesi,
-                'ruangan' => $laporan->sesiRuangan->ruangan->nama,
-                'pengawas' => $laporan->pengawas->nama,
-                'tanggal' => $laporan->created_at->format('d/m/Y'),
+                'id' => $beritaAcara->id,
+                'sesi' => $beritaAcara->sesiRuangan->nama_sesi,
+                'ruangan' => $beritaAcara->sesiRuangan->ruangan->nama_ruangan ?? 'Unknown',
+                'pengawas' => $beritaAcara->pengawas->nama ?? 'Unknown',
+                'tanggal' => $beritaAcara->created_at->format('d/m/Y'),
             ]
         ]);
     }
@@ -135,23 +126,22 @@ class LaporanController extends Controller
     /**
      * Show edit form for berita acara
      */
-    public function edit(BeritaAcaraUjian $laporan)
+    public function edit(BeritaAcaraUjian $beritaAcara)
     {
-        $laporan->load([
+        $beritaAcara->load([
             'sesiRuangan.ruangan',
             'sesiRuangan.jadwalUjian.mapel',
-            'sesiRuangan.jadwalUjian.kelas',
             'sesiRuangan.sesiRuanganSiswa.siswa',
             'pengawas'
         ]);
 
-        return view('features.koordinator.laporan.edit', ['beritaAcara' => $laporan]);
+        return view('features.koordinator.laporan.edit', ['beritaAcara' => $beritaAcara]);
     }
 
     /**
      * Update berita acara
      */
-    public function update(Request $request, BeritaAcaraUjian $laporan)
+    public function update(Request $request, BeritaAcaraUjian $beritaAcara)
     {
         $request->validate([
             'catatan_pembukaan' => 'nullable|string',
@@ -161,7 +151,7 @@ class LaporanController extends Controller
         ]);
 
         try {
-            $laporan->update($request->only([
+            $beritaAcara->update($request->only([
                 'catatan_pembukaan',
                 'catatan_pelaksanaan',
                 'catatan_penutupan',
@@ -169,7 +159,7 @@ class LaporanController extends Controller
             ]));
 
             return redirect()
-                ->route('koordinator.laporan.show', $laporan)
+                ->route('koordinator.laporan.show', $beritaAcara)
                 ->with('success', 'Berita acara berhasil diperbarui');
         } catch (\Exception $e) {
             Log::error('Error updating berita acara: ' . $e->getMessage());

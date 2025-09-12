@@ -130,6 +130,48 @@ class SesiRuangan extends Model
         return null;
     }
 
+    /**
+     * Get the first assigned pengawas for backward compatibility with views
+     * 
+     * @return object|null Object with nama property or null
+     */
+    public function getFirstPengawasAttribute()
+    {
+        $assignedPengawas = $this->getAllAssignedPengawas();
+        if (!empty($assignedPengawas)) {
+            return (object)['nama' => array_values($assignedPengawas)[0]];
+        }
+        return null;
+    }
+
+    /**
+     * Get all unique pengawas assigned to this session
+     * 
+     * @return array Array of pengawas names indexed by ID
+     */
+    public function getAllAssignedPengawas()
+    {
+        $pengawasList = [];
+        foreach ($this->jadwalUjians as $jadwal) {
+            $pengawas = $this->getPengawasForJadwal($jadwal->id);
+            if ($pengawas) {
+                $pengawasList[$pengawas->id] = $pengawas->nama;
+            }
+        }
+        return $pengawasList;
+    }
+
+    /**
+     * Get pengawas names as comma-separated string
+     * 
+     * @return string
+     */
+    public function getPengawasNamesAttribute()
+    {
+        $names = array_values($this->getAllAssignedPengawas());
+        return empty($names) ? 'Belum ditentukan' : implode(', ', $names);
+    }
+
     public function sesiRuanganSiswa()
     {
         return $this->hasMany(SesiRuanganSiswa::class);
@@ -139,7 +181,7 @@ class SesiRuangan extends Model
     public function siswa()
     {
         return $this->belongsToMany(Siswa::class, 'sesi_ruangan_siswa')
-            ->withPivot(['status', 'token', 'token_expired_at', 'status_kehadiran', 'keterangan'])
+            ->withPivot(['status_kehadiran', 'keterangan'])
             ->withTimestamps();
     }
 
@@ -157,17 +199,17 @@ class SesiRuangan extends Model
 
     public function siswaHadir()
     {
-        return $this->sesiRuanganSiswa()->where('status', 'hadir');
+        return $this->sesiRuanganSiswa()->where('status_kehadiran', 'hadir');
     }
 
     public function siswaTidakHadir()
     {
-        return $this->sesiRuanganSiswa()->where('status', 'tidak_hadir');
+        return $this->sesiRuanganSiswa()->where('status_kehadiran', 'tidak_hadir');
     }
 
     public function siswaLogout()
     {
-        return $this->sesiRuanganSiswa()->where('status', 'logout');
+        return $this->sesiRuanganSiswa()->where('status_kehadiran', 'logout');
     }
 
     // Status helpers

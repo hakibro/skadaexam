@@ -69,16 +69,22 @@
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Ruangan</label>
-                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->ruangan->nama ?? 'N/A' }}</p>
+                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->ruangan->nama_ruangan ?? 'N/A' }}</p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Mata Pelajaran</label>
-                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->jadwalUjian->mapel->nama ?? 'N/A' }}
+                                <p class="text-gray-900">
+                                    {{ $beritaAcara->sesiRuangan->jadwalUjians->first()?->mapel->nama_mapel ?? 'N/A' }}
                                 </p>
                             </div>
                             <div>
-                                <label class="text-sm font-medium text-gray-500">Kelas</label>
-                                <p class="text-gray-900">{{ $beritaAcara->sesiRuangan->jadwalUjian->kelas->nama ?? 'N/A' }}
+                                <label class="text-sm font-medium text-gray-500">Kelas Target</label>
+                                <p class="text-gray-900">
+                                    @if ($beritaAcara->sesiRuangan->jadwalUjians->first()?->kelasTarget())
+                                        {{ $beritaAcara->sesiRuangan->jadwalUjians->first()->kelasTarget()->pluck('nama_kelas')->implode(', ') }}
+                                    @else
+                                        N/A
+                                    @endif
                                 </p>
                             </div>
                         </div>
@@ -225,12 +231,7 @@
                                     <th
                                         class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status</th>
-                                    <th
-                                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Waktu Masuk</th>
-                                    <th
-                                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Waktu Keluar</th>
+
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -248,12 +249,7 @@
                                                     {{ ucfirst($siswaSession->status) }}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">
-                                                {{ $siswaSession->waktu_masuk ? $siswaSession->waktu_masuk->format('H:i') : '-' }}
-                                            </td>
-                                            <td class="px-4 py-3 text-sm text-gray-500">
-                                                {{ $siswaSession->waktu_keluar ? $siswaSession->waktu_keluar->format('H:i') : '-' }}
-                                            </td>
+
                                         </tr>
                                     @endforeach
                                 @else
@@ -289,10 +285,7 @@
                             <span class="text-gray-500">Email:</span>
                             <span class="text-gray-900">{{ $beritaAcara->pengawas->email ?? 'N/A' }}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Telepon:</span>
-                            <span class="text-gray-900">{{ $beritaAcara->pengawas->telepon ?? 'N/A' }}</span>
-                        </div>
+
                     </div>
 
                     @if ($beritaAcara->status_verifikasi === 'pending')

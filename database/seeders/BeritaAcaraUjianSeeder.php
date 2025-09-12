@@ -31,7 +31,7 @@ class BeritaAcaraUjianSeeder extends Seeder
 
             // Count attendees from sesi_ruangan_siswa
             $totalTerdaftar = $sesiRuangan->sesiRuanganSiswa()->count();
-            $totalHadir = $sesiRuangan->sesiRuanganSiswa()->where('status', 'hadir')->count();
+            $totalHadir = $sesiRuangan->sesiRuanganSiswa()->where('status_kehadiran', 'hadir')->count();
             $totalTidakHadir = $totalTerdaftar - $totalHadir;
 
             $status = $statusOptions[array_rand($statusOptions)];

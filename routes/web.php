@@ -100,6 +100,14 @@ require __DIR__ . '/debug.php';
 require __DIR__ . '/debug-mapel.php'; // Debug route for mapel relationships
 require __DIR__ . '/debug-dates.php'; // Debug route for date filtering issues
 
+// Debug route for student login issues
+if (app()->environment(['local', 'development'])) {
+    $debugRoutesPath = __DIR__ . '/../debug_routes.php';
+    if (file_exists($debugRoutesPath)) {
+        require $debugRoutesPath; // Debug student login tokens
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | DOCUMENTATION ROUTES

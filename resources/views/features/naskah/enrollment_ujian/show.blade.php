@@ -145,7 +145,9 @@
                                             $hadirColor = 'gray';
                                             $hadirIcon = 'fa-question-circle';
 
-                                            switch ($enrollment->status_kehadiran) {
+                                            $statusKehadiran =
+                                                $enrollment->sesiRuanganSiswa?->status_kehadiran ?? 'belum_hadir';
+                                            switch ($statusKehadiran) {
                                                 case 'belum_hadir':
                                                     $hadirColor = 'gray';
                                                     $hadirIcon = 'fa-clock';
@@ -160,6 +162,16 @@
                                                     $hadirColor = 'red';
                                                     $hadirIcon = 'fa-user-xmark';
                                                     $hadirText = 'Tidak Hadir';
+                                                    break;
+                                                case 'sakit':
+                                                    $hadirColor = 'yellow';
+                                                    $hadirIcon = 'fa-thermometer';
+                                                    $hadirText = 'Sakit';
+                                                    break;
+                                                case 'izin':
+                                                    $hadirColor = 'blue';
+                                                    $hadirIcon = 'fa-file-signature';
+                                                    $hadirText = 'Izin';
                                                     break;
                                                 default:
                                                     $hadirText = 'Tidak Diketahui';
@@ -192,15 +204,15 @@
                                 <tr>
                                     <th class="py-3 text-left text-sm font-medium text-gray-900 w-2/5">Token Login</th>
                                     <td class="py-3 text-sm text-gray-700">
-                                        @if ($enrollment->token_login)
+                                        @if ($enrollment->sesiRuangan && $enrollment->sesiRuangan->token_ujian)
                                             <div class="flex items-center space-x-2">
                                                 <span
                                                     class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                    {{ $enrollment->token_login }}
+                                                    {{ $enrollment->sesiRuangan->token_ujian }}
                                                 </span>
                                                 <button type="button"
                                                     class="p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none"
-                                                    onclick="copyToken('{{ $enrollment->token_login }}')">
+                                                    onclick="copyToken('{{ $enrollment->sesiRuangan->token_ujian }}')">
                                                     <i class="fa-solid fa-copy"></i>
                                                 </button>
                                             </div>
@@ -247,12 +259,12 @@
                 </div>
 
                 <!-- QR Code section -->
-                @if ($enrollment->token_login ?? $enrollment->token)
+                @if ($enrollment->sesiRuangan && $enrollment->sesiRuangan->token_ujian)
                     <div class="mt-8 text-center">
                         <h4 class="text-lg font-medium text-gray-900 mb-4">QR Code Login</h4>
                         <div class="flex justify-center my-4">
                             <img class="border p-2 rounded-lg shadow-sm bg-white"
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ urlencode(route('login.direct-token', $enrollment->token_login ?? $enrollment->token)) }}"
+                                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ urlencode(route('login.direct-token', $enrollment->sesiRuangan->token_ujian)) }}"
                                 alt="QR Code for Login">
                         </div>
                         <a href="{{ route('naskah.enrollment-ujian.print-qr', $enrollment->id) }}"

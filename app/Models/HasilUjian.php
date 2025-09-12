@@ -282,4 +282,14 @@ class HasilUjian extends Model
     {
         return $query->where('siswa_id', $siswaId);
     }
+
+    /**
+     * Get the student's answers for this exam.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function jawabanSiswas()
+    {
+        return $this->hasMany(JawabanSiswa::class);
+    }
 }

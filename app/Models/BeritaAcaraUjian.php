@@ -143,16 +143,12 @@ class BeritaAcaraUjian extends Model
 
     /**
      * Get jumlah_logout attribute (calculated from session data)
+     * Note: logout functionality has been removed from current design
      */
     public function getJumlahLogoutAttribute()
     {
-        if (!$this->sesi_ruangan_id) {
-            return 0;
-        }
-
-        return \App\Models\SesiRuanganSiswa::where('sesi_ruangan_id', $this->sesi_ruangan_id)
-            ->where('status', 'logout')
-            ->count();
+        // Logout functionality is no longer tracked in the current system
+        return 0;
     }
 
     /**
@@ -165,14 +161,14 @@ class BeritaAcaraUjian extends Model
         }
 
         $siswaStats = \App\Models\SesiRuanganSiswa::where('sesi_ruangan_id', $this->sesi_ruangan_id)
-            ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status')
+            ->selectRaw('status_kehadiran, COUNT(*) as count')
+            ->groupBy('status_kehadiran')
+            ->pluck('count', 'status_kehadiran')
             ->toArray();
 
         $this->jumlah_peserta_terdaftar = array_sum($siswaStats);
         $this->jumlah_peserta_hadir = $siswaStats['hadir'] ?? 0;
-        $this->jumlah_peserta_tidak_hadir = $siswaStats['tidak_hadir'] ?? 0;
+        $this->jumlah_peserta_tidak_hadir = ($siswaStats['tidak_hadir'] ?? 0) + ($siswaStats['sakit'] ?? 0) + ($siswaStats['izin'] ?? 0);
 
         return $this->save();
     }
@@ -186,7 +182,7 @@ class BeritaAcaraUjian extends Model
         }
 
         $siswaNotPresent = \App\Models\SesiRuanganSiswa::where('sesi_ruangan_id', $this->sesi_ruangan_id)
-            ->where('status', 'tidak_hadir')
+            ->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])
             ->with('siswa')
             ->get()
             ->pluck('siswa.nama')

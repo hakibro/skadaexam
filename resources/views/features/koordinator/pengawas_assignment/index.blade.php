@@ -76,7 +76,7 @@
                             @foreach ($jadwalUjians as $jadwal)
                                 <option value="{{ $jadwal->id }}"
                                     {{ $selectedJadwal && $selectedJadwal->id == $jadwal->id ? 'selected' : '' }}>
-                                    {{ $jadwal->judul }} - {{ $jadwal->mapel->nama ?? 'Unknown' }}
+                                    {{ $jadwal->judul }}
                                 </option>
                             @endforeach
                         </select>

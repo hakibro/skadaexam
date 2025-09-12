@@ -59,7 +59,38 @@
 
         <!-- Filters -->
         <div class="bg-white shadow rounded-lg p-6">
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <!-- Show current filters if any are applied -->
+            @if (request()->hasAny(['tanggal', 'status', 'pengawas', 'per_page']))
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-filter text-blue-600 mr-2"></i>
+                        <span class="text-sm font-medium text-blue-800">Filter aktif:</span>
+                        <div class="ml-2 text-sm text-blue-700">
+                            @if (request('tanggal'))
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Tanggal: {{ request('tanggal') }}</span>
+                            @endif
+                            @if (request('status'))
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Status:
+                                    {{ ucfirst(request('status')) }}</span>
+                            @endif
+                            @if (request('pengawas'))
+                                @php
+                                    $selectedPengawas = $pengawasList->find(request('pengawas'));
+                                @endphp
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Pengawas:
+                                    {{ $selectedPengawas?->nama ?? 'ID ' . request('pengawas') }}</span>
+                            @endif
+                            @if (request('per_page') && request('per_page') != 15)
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Per halaman:
+                                    {{ request('per_page') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"
+                action="{{ route('koordinator.laporan.index') }}" id="filter-form">
                 <div>
                     <label for="tanggal" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fa-solid fa-calendar mr-1 text-gray-400"></i>
@@ -213,7 +244,7 @@
                                             {{ $beritaAcara->sesiRuangan->nama_sesi ?? 'N/A' }}</div>
                                         <div class="text-sm text-gray-500">
                                             <i class="fa-solid fa-door-open mr-1"></i>
-                                            {{ $beritaAcara->sesiRuangan->ruangan->nama ?? 'N/A' }}
+                                            {{ $beritaAcara->sesiRuangan->ruangan->nama_ruangan ?? 'N/A' }}
                                         </div>
                                         <div class="text-xs text-gray-400">
                                             {{ $beritaAcara->sesiRuangan->kode_sesi ?? 'N/A' }}
@@ -237,7 +268,90 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->jadwalUjians->first() ? $beritaAcara->sesiRuangan->jadwalUjians->first()->tanggal->format('d M Y') : 'N/A' }}
+                                            @if ($beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->jadwalUjians->count() > 0)
+                                                @php
+                                                    // Use the BeritaAcaraUjian creation date to filter relevant jadwals
+                                                    $beritaAcaraDate = \Carbon\Carbon::parse(
+                                                        $beritaAcara->created_at,
+                                                    )->toDateString();
+
+                                                    // Find jadwals that match the berita acara date or are close to it
+                                                    $relevantJadwals = $beritaAcara->sesiRuangan->jadwalUjians->filter(
+                                                        function ($jadwal) use ($beritaAcaraDate) {
+                                                            $jadwalDate = \Carbon\Carbon::parse(
+                                                                $jadwal->tanggal,
+                                                            )->toDateString();
+                                                            // Include jadwals from the same date or within 1 day
+                                                            return abs(
+                                                                \Carbon\Carbon::parse($jadwalDate)->diffInDays(
+                                                                    \Carbon\Carbon::parse($beritaAcaraDate),
+                                                                ),
+                                                            ) <= 1;
+                                                        },
+                                                    );
+
+                                                    // If no close jadwals found, use all jadwals
+                                                    if ($relevantJadwals->isEmpty()) {
+                                                        $relevantJadwals = $beritaAcara->sesiRuangan->jadwalUjians;
+                                                    }
+
+                                                    // Get the first relevant jadwal date for display
+                                                    $displayDate =
+                                                        $relevantJadwals->first()->tanggal ??
+                                                        $beritaAcara->created_at->format('Y-m-d');
+                                                @endphp
+                                                {{ \Carbon\Carbon::parse($displayDate)->format('d M Y') }}
+                                            @else
+                                                {{ $beritaAcara->created_at->format('d M Y') }}
+                                            @endif
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            @if ($beritaAcara->sesiRuangan && $beritaAcara->sesiRuangan->jadwalUjians->count() > 0)
+                                                @php
+                                                    // Use the same filtering logic as above
+                                                    $beritaAcaraDate = \Carbon\Carbon::parse(
+                                                        $beritaAcara->created_at,
+                                                    )->toDateString();
+
+                                                    $relevantJadwals = $beritaAcara->sesiRuangan->jadwalUjians->filter(
+                                                        function ($jadwal) use ($beritaAcaraDate) {
+                                                            $jadwalDate = \Carbon\Carbon::parse(
+                                                                $jadwal->tanggal,
+                                                            )->toDateString();
+                                                            return abs(
+                                                                \Carbon\Carbon::parse($jadwalDate)->diffInDays(
+                                                                    \Carbon\Carbon::parse($beritaAcaraDate),
+                                                                ),
+                                                            ) <= 1;
+                                                        },
+                                                    );
+
+                                                    if ($relevantJadwals->isEmpty()) {
+                                                        $relevantJadwals = $beritaAcara->sesiRuangan->jadwalUjians;
+                                                    }
+
+                                                    $mapelNames = $relevantJadwals
+                                                        ->filter(function ($jadwal) {
+                                                            return $jadwal->mapel !== null;
+                                                        })
+                                                        ->map(function ($jadwal) {
+                                                            return $jadwal->mapel->nama_mapel;
+                                                        })
+                                                        ->unique();
+                                                @endphp
+
+                                                @if ($mapelNames->count() > 0)
+                                                    {{ $mapelNames->implode(' + ') }}
+                                                    @if ($mapelNames->count() > 1)
+                                                        <span class="text-xs text-gray-400">({{ $mapelNames->count() }}
+                                                            mapel)</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-red-500">Mapel tidak tersedia</span>
+                                                @endif
+                                            @else
+                                                <span class="text-red-500">Tidak ada jadwal</span>
+                                            @endif
                                         </div>
                                         <div class="text-sm text-gray-500">
                                             {{ $beritaAcara->sesiRuangan->waktu_mulai ?? 'N/A' }} -
@@ -348,6 +462,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Add debugging for form submission
+            const filterForm = document.getElementById('filter-form');
+            if (filterForm) {
+                filterForm.addEventListener('submit', function(e) {
+                    console.log('Filter form submitted');
+
+                    // Log current form data
+                    const formData = new FormData(filterForm);
+                    console.log('Form data:', Object.fromEntries(formData));
+
+                    // Allow normal form submission to continue
+                });
+            }
+
             // Bulk selection functionality
             const selectAllCheckbox = document.getElementById('select-all');
             const beritaCheckboxes = document.querySelectorAll('.berita-checkbox:not([disabled])');

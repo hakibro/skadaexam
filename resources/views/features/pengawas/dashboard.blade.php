@@ -156,7 +156,7 @@
                                                 class="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md">
                                                 <i class="fa-solid fa-key mr-1"></i> Token
                                             </a>
-                                            <a href="{{ route('pengawas.assignment.show', $assignment->id) }}"
+                                            <a href="{{ route('pengawas.assignment', $assignment->id) }}"
                                                 class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md">
                                                 <i class="fa-solid fa-users mr-1"></i> Absen
                                             </a>

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class EnrollmentUjian extends Model
 {
@@ -19,9 +20,6 @@ class EnrollmentUjian extends Model
         'jadwal_ujian_id',
         'siswa_id',
         'status_enrollment',
-        'token_login',
-        'token_dibuat_pada',
-        'token_digunakan_pada',
         'waktu_mulai_ujian',
         'waktu_selesai_ujian',
         'last_login_at',
@@ -30,8 +28,6 @@ class EnrollmentUjian extends Model
     ];
 
     protected $casts = [
-        'token_dibuat_pada' => 'datetime',
-        'token_digunakan_pada' => 'datetime',
         'waktu_mulai_ujian' => 'datetime',
         'waktu_selesai_ujian' => 'datetime',
         'last_login_at' => 'datetime',
@@ -80,55 +76,33 @@ class EnrollmentUjian extends Model
     }
 
     /**
-     * Generate a login token for this enrollment.
+     * Get the attendance record for this enrollment.
      *
-     * @return string
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function generateToken()
+    public function sesiRuanganSiswa(): HasOne
     {
-        $token = strtoupper(Str::random(6));
-
-        while (self::where('token_login', $token)->exists()) {
-            $token = strtoupper(Str::random(6));
-        }
-
-        $this->token_login = $token;
-        $this->token_dibuat_pada = now();
-        $this->token_digunakan_pada = null; // Reset if previously used
-        $this->save();
-
-        return $this->token_login;
+        return $this->hasOne(SesiRuanganSiswa::class, 'sesi_ruangan_id', 'sesi_ruangan_id')
+            ->where('siswa_id', $this->siswa_id);
     }
 
     /**
-     * Validate a token - returns true if valid, false if invalid or already used.
+     * Get the attendance status from sesi_ruangan_siswa table.
      *
-     * @param string $token
-     * @return bool
+     * @return string|null
      */
-    public function validateToken($token)
+    public function getStatusKehadiranAttribute()
     {
-        // If token doesn't match
-        if ($this->token_login !== $token) {
-            return false;
-        }
-
-        // If token is already used and more than 2 hours old
-        if ($this->token_digunakan_pada && $this->token_digunakan_pada->addHours(2) < now()) {
-            return false;
-        }
-
-        return true;
+        return $this->sesiRuanganSiswa?->status_kehadiran ?? 'belum_hadir';
     }
 
     /**
-     * Mark token as used and update attendance status.
+     * Mark student as started and update attendance status.
      *
      * @return void
      */
-    public function useToken()
+    public function startExam()
     {
-        $this->token_digunakan_pada = now();
         $this->waktu_mulai_ujian = now();
         $this->last_login_at = now();
         $this->status_enrollment = 'active';
@@ -141,7 +115,7 @@ class EnrollmentUjian extends Model
                 ->first();
 
             if ($sesiRuanganSiswa) {
-                $sesiRuanganSiswa->status = 'hadir';
+                $sesiRuanganSiswa->status_kehadiran = 'hadir';
                 $sesiRuanganSiswa->save();
             }
         }
@@ -192,34 +166,6 @@ class EnrollmentUjian extends Model
     }
 
     /**
-     * Check if token is expired (created more than 2 hours ago and used).
-     *
-     * @return bool
-     */
-    public function isTokenExpired()
-    {
-        if (!$this->token_login || !$this->token_dibuat_pada) {
-            return true;
-        }
-
-        if ($this->token_digunakan_pada && $this->token_digunakan_pada->addHours(2) < now()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Get token value for this enrollment
-     *
-     * @return string|null
-     */
-    public function getToken()
-    {
-        return $this->token_login;
-    }
-
-    /**
      * Log student logout.
      *
      * @return void
@@ -236,7 +182,7 @@ class EnrollmentUjian extends Model
                 ->first();
 
             if ($sesiRuanganSiswa) {
-                $sesiRuanganSiswa->status = 'logout';
+                $sesiRuanganSiswa->status_kehadiran = 'hadir'; // Completed means attended
                 $sesiRuanganSiswa->save();
             }
         }

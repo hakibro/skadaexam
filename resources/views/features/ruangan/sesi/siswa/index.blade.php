@@ -205,7 +205,7 @@
                                 <div class="flex-1">
                                     <div class="text-sm font-medium text-gray-900">{{ $sesiSiswa->siswa->nama }}</div>
                                     <div class="text-xs text-gray-500">
-                                        NIS: {{ $sesiSiswa->siswa->nis }} -
+                                        ID YYS: {{ $sesiSiswa->siswa->idyayasan }} -
                                         Kelas: {{ $sesiSiswa->siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
                                         @if ($sesiSiswa->siswa->kelas && $sesiSiswa->siswa->kelas->jurusan)
                                             ({{ $sesiSiswa->siswa->kelas->jurusan }})

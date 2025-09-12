@@ -66,15 +66,44 @@
                         <tr>
                             <td class="py-1 text-gray-600 font-medium">Mata Pelajaran</td>
                             <td class="py-1 font-bold">
-                                @php
-                                    $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                                    $mapel = $jadwalUjian
-                                        ? ($jadwalUjian->mapel
-                                            ? $jadwalUjian->mapel->nama
-                                            : 'Tidak ada mapel')
-                                        : 'Tidak ada jadwal';
-                                @endphp
-                                {{ $mapel }}
+                                @if ($sesiRuangan->jadwalUjians->count() > 1)
+                                    @php
+                                        $mapelNames = $sesiRuangan->jadwalUjians
+                                            ->filter(function ($jadwal) {
+                                                return $jadwal->mapel !== null;
+                                            })
+                                            ->map(function ($jadwal) {
+                                                return $jadwal->mapel->nama_mapel;
+                                            })
+                                            ->unique();
+                                    @endphp
+                                    @if ($mapelNames->count() > 0)
+                                        {{ $mapelNames->implode(' + ') }}
+                                        @if ($mapelNames->count() != $sesiRuangan->jadwalUjians->count())
+                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} dari
+                                                {{ $sesiRuangan->jadwalUjians->count() }} mapel)</span>
+                                        @else
+                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} mapel)</span>
+                                        @endif
+                                    @else
+                                        <span class="text-red-500">Tidak ada mapel tersedia</span>
+                                        <span class="text-sm text-gray-500">({{ $sesiRuangan->jadwalUjians->count() }}
+                                            jadwal)</span>
+                                    @endif
+                                @elseif($sesiRuangan->jadwalUjians->count() == 1)
+                                    @php
+                                        $jadwal = $sesiRuangan->jadwalUjians->first();
+                                    @endphp
+                                    @if ($jadwal->mapel)
+                                        {{ $jadwal->mapel->nama_mapel }}
+                                    @else
+                                        <span class="text-red-500">Mapel tidak tersedia</span>
+                                        <span class="text-sm text-gray-500">(ID: {{ $jadwal->id }}, Mapel ID:
+                                            {{ $jadwal->mapel_id ?? 'NULL' }})</span>
+                                    @endif
+                                @else
+                                    <span class="text-red-500">Tidak ada jadwal</span>
+                                @endif
                             </td>
                         </tr>
                         <tr>
@@ -111,7 +140,7 @@
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <h3 class="text-lg font-bold text-gray-800 mb-3">Status Token</h3>
 
-                    @if ($sesiRuangan->token_ujian && now()->lt($sesiRuangan->token_expired_at))
+                    @if ($sesiRuangan->token_ujian && $sesiRuangan->token_expired_at && now()->lt($sesiRuangan->token_expired_at))
                         <div class="text-center">
                             <div class="token-display token-active">
                                 {{ $sesiRuangan->token_ujian }}
@@ -130,11 +159,16 @@
                                 <div class="flex items-center justify-center">
                                     <i class="fa-solid fa-clock text-blue-500 mr-2"></i>
                                     <span>Token dibuat pada
-                                        {{ $sesiRuangan->token_expired_at->subHours(4)->format('H:i') }}</span>
+                                        @if ($sesiRuangan->token_expired_at)
+                                            {{ $sesiRuangan->token_expired_at->copy()->subHours(4)->format('H:i') }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </span>
                                 </div>
                             </div>
                         </div>
-                    @elseif ($sesiRuangan->token_ujian)
+                    @elseif ($sesiRuangan->token_ujian && $sesiRuangan->token_expired_at)
                         <div class="text-center">
                             <div class="token-display token-expired">
                                 {{ $sesiRuangan->token_ujian }}
@@ -147,7 +181,12 @@
                                 <div class="flex items-center justify-center">
                                     <i class="fa-solid fa-clock text-red-500 mr-2"></i>
                                     <span>Token kadaluarsa pada
-                                        {{ $sesiRuangan->token_expired_at->format('d M Y H:i') }}</span>
+                                        @if ($sesiRuangan->token_expired_at)
+                                            {{ $sesiRuangan->token_expired_at->format('d M Y H:i') }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </span>
                                 </div>
                                 <p class="mt-2">Generate token baru untuk melanjutkan ujian.</p>
                             </div>

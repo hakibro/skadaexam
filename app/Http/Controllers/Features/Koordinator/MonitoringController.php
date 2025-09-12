@@ -122,13 +122,13 @@ class MonitoringController extends Controller
      */
     public function getSessionData(SesiRuangan $sesi)
     {
-        $sesi->load(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa', 'beritaAcaraUjian']);
+        $sesi->load(['ruangan', 'sesiRuanganSiswa.siswa', 'beritaAcaraUjian', 'jadwalUjians']);
 
         $studentStats = [
             'total' => $sesi->sesiRuanganSiswa->count(),
-            'hadir' => $sesi->sesiRuanganSiswa->where('status', 'hadir')->count(),
-            'tidak_hadir' => $sesi->sesiRuanganSiswa->where('status', 'tidak_hadir')->count(),
-            'logout' => $sesi->sesiRuanganSiswa->where('status', 'logout')->count(),
+            'hadir' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
+            'tidak_hadir' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'tidak_hadir')->count(),
+            'logout' => 0, // Logout functionality removed from current design
         ];
 
         $attendanceRate = $studentStats['total'] > 0
@@ -176,9 +176,9 @@ class MonitoringController extends Controller
             ->map(function ($sesi) {
                 $studentStats = [
                     'total' => $sesi->sesiRuanganSiswa->count(),
-                    'hadir' => $sesi->sesiRuanganSiswa->where('status', 'hadir')->count(),
-                    'tidak_hadir' => $sesi->sesiRuanganSiswa->where('status', 'tidak_hadir')->count(),
-                    'logout' => $sesi->sesiRuanganSiswa->where('status', 'logout')->count(),
+                    'hadir' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
+                    'tidak_hadir' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'tidak_hadir')->count(),
+                    'logout' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'logout')->count(),
                 ];
 
                 return [
@@ -281,7 +281,7 @@ class MonitoringController extends Controller
 
         $activeSessions = $sessionsToday->clone()->where('status', 'berlangsung')->count();
 
-        $activeStudents = SesiRuanganSiswa::where('status', 'hadir')
+        $activeStudents = SesiRuanganSiswa::where('status_kehadiran', 'hadir')
             ->whereHas('sesiRuangan', function ($query) use ($date) {
                 $query->where('status', 'berlangsung')
                     ->whereHas('jadwalUjians', function ($q) use ($date) {
@@ -289,12 +289,7 @@ class MonitoringController extends Controller
                     });
             })->count();
 
-        $issues = SesiRuanganSiswa::where('status', 'logout')
-            ->whereHas('sesiRuangan', function ($query) use ($date) {
-                $query->whereHas('jadwalUjians', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
-                });
-            })->count();
+        $issues = 0; // Logout functionality removed from current design
 
         $onlineProctors = Guru::whereHas('sesiRuanganDiawasi', function ($query) use ($date) {
             $query->where('status', 'berlangsung')
@@ -318,11 +313,14 @@ class MonitoringController extends Controller
             'total_students' => SesiRuanganSiswa::whereHas('sesiRuangan.jadwalUjians', function ($query) use ($date) {
                 $query->whereDate('tanggal', $date);
             })->count(),
-            'students_present' => SesiRuanganSiswa::where('status', 'hadir')
+            'students_present' => SesiRuanganSiswa::where('status_kehadiran', 'hadir')
                 ->whereHas('sesiRuangan', function ($query) use ($date) {
                     $query->where('tanggal', $date);
                 })->count(),
-            'unassigned_sessions' => $sessionsToday->clone()->whereNull('pengawas_id')->count(),
+            'unassigned_sessions' => $sessionsToday->clone()
+                ->whereDoesntHave('jadwalUjians', function ($query) {
+                    $query->whereNotNull('jadwal_ujian_sesi_ruangan.pengawas_id');
+                })->count(),
             'active_pengawas' => $onlineProctors,
         ];
     }
@@ -332,7 +330,7 @@ class MonitoringController extends Controller
      */
     public function show(SesiRuangan $sesi)
     {
-        $sesi->load(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa', 'beritaAcaraUjian']);
+        $sesi->load(['ruangan', 'sesiRuanganSiswa.siswa', 'beritaAcaraUjian', 'jadwalUjians']);
 
         return view('features.koordinator.monitoring.show', compact('sesi'));
     }
@@ -461,8 +459,8 @@ class MonitoringController extends Controller
                     $session->status,
                     $session->waktu_mulai . ' - ' . $session->waktu_selesai,
                     $session->sesiRuanganSiswa->count(),
-                    $session->sesiRuanganSiswa->where('status', 'hadir')->count(),
-                    $session->sesiRuanganSiswa->where('status', 'tidak_hadir')->count()
+                    $session->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
+                    $session->sesiRuanganSiswa->where('status_kehadiran', 'tidak_hadir')->count()
                 ]);
             }
 
