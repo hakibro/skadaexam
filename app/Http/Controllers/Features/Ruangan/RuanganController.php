@@ -135,6 +135,9 @@ class RuanganController extends Controller
             ->where('sesi_ruangan.ruangan_id', $ruangan->id)
             ->count();
 
+        // Count total sessions
+        $sesiCount = $ruangan->sesiRuangan()->count();
+
         // Get recent sessions
         $recentSessions = $ruangan->sesiRuangan()
             ->with(['jadwalUjians', 'jadwalUjians.mapel'])
@@ -143,12 +146,92 @@ class RuanganController extends Controller
             ->take(5)
             ->get();
 
+        // Get today's sessions
+        $todaySessions = $ruangan->sesiRuangan()
+            ->whereHas('jadwalUjians', function ($query) {
+                $query->whereDate('tanggal', now()->toDateString());
+            })
+            ->orderBy('waktu_mulai', 'asc')
+            ->get();
+
+        // Get all sessions for this room
+        $sesiRuangan = $ruangan->sesiRuangan()
+            ->with(['jadwalUjians', 'jadwalUjians.mapel'])
+            ->withCount('sesiRuanganSiswa')
+            ->orderBy('id', 'desc')  // Menggunakan 'id' sebagai pengganti 'created_at'
+            ->get();
+
+        // Generate calendar data for the current month
+        $calendarDays = [];
+        $sessionsData = [];
+
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        // Include days from previous month to fill the first week
+        $startDay = $startOfMonth->copy()->startOfWeek();
+
+        // Include days from next month to fill the last week
+        $endDay = $endOfMonth->copy()->endOfWeek();
+
+        // Loop through all days
+        for ($day = $startDay; $day->lte($endDay); $day->addDay()) {
+            $date = $day->format('Y-m-d');
+
+            // Get sessions for this day
+            $daySessions = $ruangan->sesiRuangan()
+                ->whereHas('jadwalUjians', function ($query) use ($date) {
+                    $query->whereDate('tanggal', $date);
+                })
+                ->get();
+
+            // Count sessions by status
+            $sessionCounts = [
+                'belum_mulai' => $daySessions->where('status', 'belum_mulai')->count(),
+                'berlangsung' => $daySessions->where('status', 'berlangsung')->count(),
+                'selesai' => $daySessions->where('status', 'selesai')->count()
+            ];
+
+            // Add to calendar data
+            $calendarDays[] = [
+                'date' => $date,
+                'day' => $day->day,
+                'isCurrentMonth' => $day->month === now()->month,
+                'isToday' => $day->isToday(),
+                'hasSessions' => $daySessions->isNotEmpty(),
+                'sessionCounts' => $sessionCounts
+            ];
+
+            // Add to sessions data for the modal
+            if ($daySessions->isNotEmpty()) {
+                $sessionsData[$date] = $daySessions->map(function ($session) {
+                    return [
+                        'id' => $session->id,
+                        'ruangan_id' => $session->ruangan_id,
+                        'nama_sesi' => $session->nama_sesi,
+                        'kode_sesi' => $session->kode_sesi,
+                        'status' => $session->status,
+                        'status_label' => $session->status_label['text'],
+                        'waktu_mulai' => \Carbon\Carbon::parse($session->waktu_mulai)->format('H:i'),
+                        'waktu_selesai' => \Carbon\Carbon::parse($session->waktu_selesai)->format('H:i'),
+                        'siswa_count' => $session->sesiRuanganSiswa()->count(),
+                        'kapasitas' => $session->ruangan->kapasitas,
+                        'jadwal_count' => $session->jadwalUjians->count(),
+                    ];
+                })->toArray();
+            }
+        }
 
         return view('features.ruangan.show', compact(
             'ruangan',
             'activeSessions',
             'totalParticipants',
             'recentSessions',
+            'sesiCount',
+            'todaySessions',
+            'sesiRuangan',
+            'calendarDays',
+            'sessionsData'
         ));
     }
 

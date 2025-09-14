@@ -31,7 +31,7 @@ class DashboardController extends Controller
                         $q->whereDate('tanggal', now()->toDateString());
                     });
             })
-            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+            ->with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->orderBy('waktu_mulai', 'asc')
             ->get();
 
@@ -42,7 +42,7 @@ class DashboardController extends Controller
         $todaySessions = SesiRuangan::whereHas('jadwalUjians', function ($query) {
             $query->whereDate('tanggal', now()->toDateString());
         })
-            ->with(['ruangan', 'pengawas'])
+            ->with(['ruangan'])
             ->withCount('sesiRuanganSiswa')
             ->orderBy('waktu_mulai', 'asc')
             ->get();

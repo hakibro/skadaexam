@@ -6,6 +6,7 @@ use App\Http\Controllers\Features\Data\SiswaController;
 use App\Http\Controllers\Features\Data\KelasController;
 use App\Http\Controllers\Guru\DashboardController as GuruDashboard;
 use App\Http\Controllers\Siswa\SiswaDashboardController as SiswaDashboard;
+use App\Http\Controllers\Siswa\SiswaLoginController;
 use Illuminate\Support\Facades\Route;
 
 // Data Management Routes
@@ -76,18 +77,4 @@ Route::middleware(['auth:web', 'role:guru'])->prefix('guru')->name('guru.')->gro
 // Guru Portal Routes (separate authentication)
 Route::middleware('auth:guru')->prefix('guru-portal')->name('guru.portal.')->group(function () {
     Route::get('/dashboard', [GuruDashboard::class, 'portalIndex'])->name('dashboard');
-});
-
-// Siswa User Routes (for siswa role)
-Route::middleware(['auth:web', 'role:siswa'])->prefix('siswa')->name('siswa.')->group(function () {
-    Route::get('/', [SiswaDashboard::class, 'index'])->name('dashboard');
-});
-
-// Siswa Portal Routes (separate authentication)
-Route::middleware('auth:siswa')->prefix('siswa-portal')->name('siswa.portal.')->group(function () {
-    Route::get('/dashboard', [SiswaDashboard::class, 'portalIndex'])->name('dashboard');
-    Route::get('/exam', [SiswaDashboard::class, 'exam'])->name('exam');
-    Route::post('/exam/save-answer', [SiswaDashboard::class, 'saveAnswer'])->name('exam.save-answer');
-    Route::post('/exam/flag', [SiswaDashboard::class, 'toggleFlag'])->name('exam.flag');
-    Route::post('/exam/submit', [SiswaDashboard::class, 'submitExam'])->name('exam.submit');
 });

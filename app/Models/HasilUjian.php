@@ -30,7 +30,8 @@ class HasilUjian extends Model
         'is_final',
         'status',
         'jawaban',
-        'hasil_detail'
+        'hasil_detail',
+        'violations_count'
     ];
 
     protected $casts = [
@@ -48,7 +49,8 @@ class HasilUjian extends Model
         'is_final' => 'boolean',
         'jawaban' => 'array',
         'hasil_detail' => 'array',
-        'status' => 'string'
+        'status' => 'string',
+        'violations_count' => 'integer'
     ];
 
     /**

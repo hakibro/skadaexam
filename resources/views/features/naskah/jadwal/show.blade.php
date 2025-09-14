@@ -187,6 +187,24 @@
                                     <span class="ml-2">Hasil ujian tidak ditampilkan ke siswa</span>
                                 @endif
                             </li>
+
+                            <li class="flex items-center">
+                                @if ($jadwal->aktifkan_auto_logout ?? true)
+                                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <span class="ml-2">Auto logout saat pindah tab/minimize diaktifkan</span>
+                                @else
+                                    <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    <span class="ml-2">Auto logout saat pindah tab/minimize dinonaktifkan</span>
+                                @endif
+                            </li>
                         </ul>
                     </div>
                 </div>

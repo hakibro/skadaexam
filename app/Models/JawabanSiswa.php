@@ -9,6 +9,8 @@ class JawabanSiswa extends Model
 {
     use HasFactory;
 
+    protected $table = 'jawaban_siswa';
+
     protected $fillable = [
         'hasil_ujian_id',
         'soal_ujian_id',
@@ -28,6 +30,6 @@ class JawabanSiswa extends Model
 
     public function soalUjian()
     {
-        return $this->belongsTo(SoalUjian::class);
+        return $this->belongsTo(SoalUjian::class, 'soal_ujian_id', 'id');
     }
 }

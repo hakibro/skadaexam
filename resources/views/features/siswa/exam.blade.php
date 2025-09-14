@@ -100,6 +100,14 @@
                         <i class="fas fa-user mr-1"></i>
                         {{ $siswa->nama }}
                     </div>
+                    <!-- Violation Counter -->
+                    <div class="flex items-center">
+                        <span id="violation-count"
+                            class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full {{ isset($examData['violations_count']) && $examData['violations_count'] > 0 ? '' : 'hidden' }}">
+                            {{ $examData['violations_count'] ?? 0 }}
+                        </span>
+                        <span class="ml-1 text-xs text-red-500">Pelanggaran</span>
+                    </div>
                 </div>
 
                 <!-- Timer & Progress -->
@@ -146,6 +154,20 @@
         </div>
     </header>
 
+    <!-- Violation Warning Panel -->
+    <div id="violation-warning"
+        class="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-red-500"></i>
+            </div>
+            <div class="ml-3">
+                <p class="font-medium">Peringatan!</p>
+                <p class="text-sm" id="violation-message">Terdeteksi pelanggaran ujian. Pengawas telah diberi tahu.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         @if (!isset($examData['questions']) || count($examData['questions']) == 0)
@@ -158,7 +180,7 @@
                 <p class="text-gray-500 mb-6">Belum ada soal yang tersedia untuk ujian ini atau ujian belum dimulai.</p>
 
                 <div class="space-y-3">
-                    <a href="{{ route('siswa.portal.dashboard') }}"
+                    <a href="{{ route('siswa.dashboard') }}"
                         class="inline-block bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                         <i class="fas fa-arrow-left mr-2"></i>
                         Kembali ke Dashboard
@@ -269,11 +291,14 @@
                                 {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
                             </div>
 
-                            @if (isset($examData['questions'][$examData['currentQuestionIndex']]['gambar_soal']) &&
-                                    $examData['questions'][$examData['currentQuestionIndex']]['gambar_soal']
-                            )
+                            @php
+                                $currentQuestionData = $examData['questions'][$examData['currentQuestionIndex']];
+                                $gambarSoal = $currentQuestionData['gambar_soal'];
+                            @endphp
+
+                            @if (!empty($gambarSoal))
                                 <div class="mt-4">
-                                    <img src="{{ Storage::url($examData['questions'][$examData['currentQuestionIndex']]['gambar_soal']) }}"
+                                    <img src="{{ asset('storage/soal/pertanyaan/' . $gambarSoal) }}"
                                         alt="Gambar soal" class="max-w-md mx-auto rounded-lg shadow-md">
                                 </div>
                             @endif
@@ -301,7 +326,20 @@
                                             {{ strtoupper($key) }}
                                         </div>
                                         <div class="flex-1 text-gray-700 leading-relaxed">
-                                            {!! $option !!}
+                                            @if (is_array($option))
+                                                @if ($option['tipe'] == 'gambar' && $option['gambar'])
+                                                    <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
+                                                        alt="Pilihan {{ $key }}"
+                                                        class="max-w-sm mx-auto rounded-lg shadow-md">
+                                                    @if ($option['teks'])
+                                                        <div class="mt-2">{!! $option['teks'] !!}</div>
+                                                    @endif
+                                                @else
+                                                    {!! $option['teks'] !!}
+                                                @endif
+                                            @else
+                                                {!! $option !!}
+                                            @endif
                                         </div>
                                     </div>
                                 </button>
@@ -370,9 +408,11 @@
         function navigateToQuestion(index) {
             if (index >= 0 && index < questions.length) {
                 saveCurrentAnswer().then(() => {
-                    window.location.href = `{{ route('siswa.portal.dashboard') }}?question=${index}`;
+                    window.location.href =
+                        `{{ route('siswa.exam') }}?question=${index}&jadwal_id={{ $examData['jadwalUjianId'] ?? '' }}`;
                 }).catch(() => {
-                    window.location.href = `{{ route('siswa.portal.dashboard') }}?question=${index}`;
+                    window.location.href =
+                        `{{ route('siswa.exam') }}?question=${index}&jadwal_id={{ $examData['jadwalUjianId'] ?? '' }}`;
                 });
             }
         }
@@ -445,7 +485,7 @@
             if (!selectedAnswer) return Promise.resolve();
 
             try {
-                const response = await fetch('{{ route('siswa.portal.exam.save-answer') }}', {
+                const response = await fetch('{{ route('siswa.exam.save-answer') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -586,6 +626,9 @@
                     saveCurrentAnswer();
                 }
             }, 30000);
+
+            // Set up visibility change detection
+            setupVisibilityChangeDetection();
         });
 
         // Countdown timer function
@@ -651,11 +694,29 @@
         function autoSubmitExam() {
             // Save current answer before submitting
             saveCurrentAnswer().then(() => {
-                // Redirect to submit page or trigger submit
-                window.location.href = '{{ route('siswa.portal.dashboard') }}';
+                // Submit exam formally via the submit API endpoint
+                fetch('{{ route('siswa.exam.submit') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            hasil_ujian_id: hasilUjianId,
+                            is_auto_submit: true
+                        })
+                    })
+                    .then(() => {
+                        // Redirect to dashboard after submission
+                        window.location.href = '{{ route('siswa.dashboard') }}';
+                    })
+                    .catch(() => {
+                        // Even if submission fails, redirect to dashboard
+                        window.location.href = '{{ route('siswa.dashboard') }}';
+                    });
             }).catch(() => {
                 // Even if save fails, still redirect
-                window.location.href = '{{ route('siswa.portal.dashboard') }}';
+                window.location.href = '{{ route('siswa.dashboard') }}';
             });
         }
 
@@ -664,7 +725,7 @@
             const currentQuestion = questions[currentQuestionIndex];
             if (!currentQuestion) return;
 
-            fetch('{{ route('siswa.portal.exam.flag') }}', {
+            fetch('{{ route('siswa.exam.flag-question') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -716,7 +777,7 @@
                 // Save current answer first
                 saveCurrentAnswer().then(() => {
                     // Submit exam
-                    fetch('{{ route('siswa.portal.exam.submit') }}', {
+                    fetch('{{ route('siswa.exam.submit') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -731,9 +792,10 @@
                         .then(data => {
                             if (data.success) {
                                 alert('Ujian berhasil dikumpulkan!');
-                                window.location.href = '{{ route('siswa.portal.dashboard') }}';
+                                window.location.href = '{{ route('siswa.dashboard') }}';
                             } else {
-                                alert('Gagal mengumpulkan ujian: ' + (data.message || 'Unknown error'));
+                                alert('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
+                                    'Unknown error'));
                             }
                         })
                         .catch(error => {
@@ -744,9 +806,160 @@
                     console.error('Error saving answer before submit:', error);
                     // Still try to submit even if save fails
                     if (confirm('Gagal menyimpan jawaban terakhir. Tetap lanjutkan mengumpulkan ujian?')) {
-                        window.location.href = '{{ route('siswa.portal.dashboard') }}';
+                        window.location.href = '{{ route('siswa.dashboard') }}';
                     }
                 });
+            }
+        }
+
+        // Set up detection for browser tab switching or minimizing
+        function setupVisibilityChangeDetection() {
+            // Check if auto-logout is enabled in exam settings
+            const autoLogoutEnabled = {{ $examData['examSettings']['aktifkan_auto_logout'] ? 'true' : 'false' }};
+
+            // If auto-logout is disabled, don't set up the detection
+            if (!autoLogoutEnabled) {
+                console.log('Auto-logout disabled by exam supervisor');
+                return;
+            }
+
+            let visibilityWarnings = 0;
+            const maxWarnings = 1; // Number of warnings before automatic logout
+            let lastFocusTime = Date.now();
+
+            // Add event listeners for visibility change
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('blur', handleWindowBlur);
+            window.addEventListener('focus', handleWindowFocus);
+
+            function handleVisibilityChange() {
+                if (document.visibilityState === 'hidden') {
+                    handleUserLeftPage();
+                } else if (document.visibilityState === 'visible') {
+                    handleUserReturnedToPage();
+                }
+            }
+
+            function handleWindowBlur() {
+                handleUserLeftPage();
+            }
+
+            function handleWindowFocus() {
+                handleUserReturnedToPage();
+            }
+
+            function handleUserLeftPage() {
+                lastFocusTime = Date.now();
+
+                // Increment warning counter and check if should log out
+                visibilityWarnings++;
+
+                if (visibilityWarnings > maxWarnings) {
+                    // Automatically logout
+                    logoutDueToCheating();
+                } else {
+                    // Store the time when user left the page
+                    localStorage.setItem('examLeftPageTime', Date.now());
+                }
+            }
+
+            function handleUserReturnedToPage() {
+                const leftTime = localStorage.getItem('examLeftPageTime');
+                if (leftTime) {
+                    const timeAway = Date.now() - parseInt(leftTime);
+
+                    // If away for more than 3 seconds, show warning or logout
+                    if (timeAway > 3000) {
+                        if (visibilityWarnings >= maxWarnings) {
+                            logoutDueToCheating();
+                        } else {
+                            alert(
+                                `⚠️ PERINGATAN: Anda telah berpindah dari halaman ujian! Peringatan ${visibilityWarnings} dari ${maxWarnings}`
+                            );
+                        }
+                    }
+
+                    // Remove stored time
+                    localStorage.removeItem('examLeftPageTime');
+                }
+            }
+
+            function logoutDueToCheating() {
+                // Save any answers
+                saveCurrentAnswer().catch(() => {});
+
+                let violationCount = parseInt(localStorage.getItem('violationCount') || '0');
+                violationCount++;
+                localStorage.setItem('violationCount', violationCount);
+
+                // Mark this exam attempt as a violation
+                fetch('{{ route('siswa.exam.logout') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            hasil_ujian_id: hasilUjianId,
+                            reason: 'tab_switching'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.continue_exam) {
+                            // Show alert but continue
+                            alert(
+                                'Peringatan: Anda telah berpindah tab/meminimalkan browser. ' +
+                                'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas. ' +
+                                'Anda dapat melanjutkan ujian.'
+                            );
+
+                            // Update UI to show violation count if needed
+                            if (data.violations_count) {
+                                const violationBadge = document.getElementById('violation-count');
+                                if (violationBadge) {
+                                    violationBadge.textContent = data.violations_count;
+                                    violationBadge.classList.remove('hidden');
+                                }
+
+                                // Show violation warning panel
+                                const warningPanel = document.getElementById('violation-warning');
+                                const warningMessage = document.getElementById('violation-message');
+
+                                if (warningPanel && warningMessage) {
+                                    warningPanel.classList.remove('hidden');
+                                    warningMessage.textContent =
+                                        'Terdeteksi perpindahan tab. Pelanggaran telah dicatat dan dilaporkan ke pengawas.';
+
+                                    // Auto-hide the warning after 10 seconds
+                                    setTimeout(() => {
+                                        warningPanel.classList.add('hidden');
+                                    }, 10000);
+                                }
+                            }
+                        } else {
+                            // If server decides to log student out anyway
+                            alert(
+                                'Anda telah melakukan pelanggaran berulang kali. Sistem akan logout otomatis.'
+                            );
+
+                            // Logout if server requests it
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = '{{ route('siswa.logout') }}';
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = '_token';
+                            csrfInput.value = csrfToken;
+                            form.appendChild(csrfInput);
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error recording violation:', error);
+                        alert('Terjadi kesalahan saat merekam pelanggaran. Silakan lanjutkan ujian.');
+                    });
             }
         }
     </script>

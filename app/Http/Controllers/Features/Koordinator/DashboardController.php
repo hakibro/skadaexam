@@ -90,7 +90,7 @@ class DashboardController extends Controller
                     'room' => $session->ruangan->nama_ruangan ?? 'N/A',
                     'students_present' => $session->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
                     'progress' => $session->progress ?? 0,
-                    'supervisor' => $session->pengawas->nama ?? 'N/A',
+                    'supervisor' => $session->pengawas_names ?? 'Belum ditentukan',
                 ];
             })->toArray()
         ]);

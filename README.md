@@ -1,13 +1,22 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<p align="center"><a href="#" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# SKADA Exam System
 
-## About Laravel
+## Overview
+
+SKADA Exam is a comprehensive online examination system built with Laravel. It provides separate interfaces for administrators, teachers, and students, with features including exam scheduling, question management, and real-time examination.
+
+## Key Features
+
+-   **Multi-Guard Authentication**: Separate login systems for administrators, teachers, and students
+-   **Exam Management**: Create, schedule, and manage exams
+-   **Question Bank**: Store and organize questions by subject and difficulty
+-   **Real-time Examination**: Take exams with time limits and randomization
+-   **Security Features**: Tab switching detection, auto-logout for cheating prevention
+-   **Result Processing**: Automated scoring and result generation
+-   **Data Management**: Import/export student data and results
+
+## Technical Documentation
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
@@ -56,6 +65,29 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Route Management
+
+The application uses a structured approach to route management:
+
+-   **Authentication Routes**: Defined in `routes/auth_extended.php`
+-   **Admin Panel Routes**: Defined in `routes/admin.php`
+-   **Data Management Routes**: Defined in `routes/data.php`
+-   **Exam Management Routes**: Defined in `routes/naskah.php` and `routes/ujian.php`
+
+For detailed information on route management best practices, see [Route Management Guide](docs/route_management_guide.md).
+
+For information about the recent route conflict resolution, see [Route Conflict Resolution](route_conflict_resolution.md).
+
+## Authentication
+
+The system uses multiple authentication guards:
+
+-   `web` guard for administrators
+-   `siswa` guard for students
+-   `guru` guard for teachers
+
+Each user type has specific access restrictions and redirects after login.
+
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The application is proprietary software. All rights reserved.

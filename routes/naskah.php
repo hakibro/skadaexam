@@ -55,12 +55,13 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::post('jadwal/{jadwal}/apply-to-sessions', [JadwalUjianController::class, 'applyToSessions'])->name('jadwal.apply-to-sessions');
 
     // ===== HASIL UJIAN MANAGEMENT =====
-    Route::get('hasil', [HasilUjianController::class, 'index'])->name('hasil.index');
-    Route::get('hasil/{hasil}', [HasilUjianController::class, 'show'])->name('hasil.show');
+    Route::get('hasil/export', [HasilUjianController::class, 'export'])->name('hasil.export');
+    Route::get('hasil/analisis', [HasilUjianController::class, 'analisis'])->name('hasil.analisis');
     Route::get('hasil/jadwal/{jadwal}', [HasilUjianController::class, 'byJadwal'])->name('hasil.by-jadwal');
     Route::get('hasil/jadwal/{jadwal}/sesi/{sesi}', [HasilUjianController::class, 'bySesi'])->name('hasil.by-sesi');
-    Route::get('hasil/analisis', [HasilUjianController::class, 'analisis'])->name('hasil.analisis');
-    Route::post('hasil/export', [HasilUjianController::class, 'export'])->name('hasil.export');
+    Route::get('hasil/{hasil}/export', [HasilUjianController::class, 'exportSingle'])->name('hasil.export.single');
+    Route::get('hasil', [HasilUjianController::class, 'index'])->name('hasil.index');
+    Route::get('hasil/{hasil}', [HasilUjianController::class, 'show'])->name('hasil.show');
     Route::delete('hasil/{hasil}', [HasilUjianController::class, 'destroy'])->name('hasil.destroy');
 
     // ===== ENROLLMENT MANAGEMENT =====

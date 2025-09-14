@@ -150,50 +150,64 @@
                                         <span class="font-medium">{{ $sesi->waktu_mulai }} -
                                             {{ $sesi->waktu_selesai }}</span>
                                     </div>
-                                    @if ($jadwals->count() > 0)
-                                        <div class="border-t pt-3">
-                                            <span class="text-gray-600 text-sm">Mata Pelajaran:</span>
-                                            @foreach ($jadwals as $jadwal)
-                                                <div class="mt-1 px-2 py-1 bg-blue-50 rounded text-sm">
-                                                    <span class="font-medium text-blue-800">
-                                                        {{ $jadwal->mapel->nama_mapel ?? 'Mapel tidak tersedia' }}
-                                                    </span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                    <!-- Mata Pelajaran Cards -->
+                                    <div class="border-t pt-3">
+                                        <span class="text-gray-600 text-sm mb-2 block">Mata Pelajaran Aktif Hari
+                                            Ini:</span>
 
-                                    <!-- Action Buttons -->
-                                    <div class="border-t pt-4">
-                                        @if ($currentEnrollment->status_enrollment === 'enrolled' || $currentEnrollment->status_enrollment === 'active')
-                                            @if (now()->between(
-                                                    \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai),
-                                                    \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_selesai)))
-                                                <a href="{{ route('siswa.exam') }}"
-                                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-center block transition-colors">
-                                                    <i class="fas fa-play mr-2"></i>
-                                                    Mulai Ujian
-                                                </a>
-                                            @elseif(now()->lt(\Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)))
-                                                <div class="text-center text-gray-600">
-                                                    <i class="fas fa-clock mr-2"></i>
-                                                    Ujian belum dimulai
-                                                    <div class="text-sm mt-1">
-                                                        Mulai:
-                                                        {{ \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)->format('d M Y H:i') }}
+                                        @if ($activeMapels->count() > 0)
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                                @foreach ($activeMapels as $mapel)
+                                                    <a href="{{ route('siswa.exam', ['jadwal_id' => $mapel['id']]) }}"
+                                                        class="block bg-white border border-green-200 hover:border-green-400 hover:bg-green-50 rounded-lg shadow-sm p-3 transition-colors cursor-pointer">
+                                                        <div class="flex items-start">
+                                                            <div
+                                                                class="rounded-full bg-green-100 text-green-600 p-2 mr-3">
+                                                                <i class="fas fa-book"></i>
+                                                            </div>
+                                                            <div>
+                                                                <h4 class="font-medium text-green-800">
+                                                                    {{ $mapel['nama_mapel'] }}</h4>
+                                                                <div class="text-sm text-gray-600 mt-1">
+                                                                    <span class="inline-block mr-3">
+                                                                        <i class="far fa-clock mr-1"></i>
+                                                                        {{ $mapel['durasi'] }} menit
+                                                                    </span>
+                                                                    @if ($mapel['kode'] != '-')
+                                                                        <span class="inline-block">
+                                                                            <i class="fas fa-tag mr-1"></i>
+                                                                            {{ $mapel['kode'] }}
+                                                                        </span>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            @if ($currentEnrollment->status_enrollment === 'enrolled' || $currentEnrollment->status_enrollment === 'active')
+                                                @if (now()->lt(\Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)))
+                                                    <div class="text-center text-gray-600 p-3">
+                                                        <i class="fas fa-clock mr-2"></i>
+                                                        Ujian belum dimulai
+                                                        <div class="text-sm mt-1">
+                                                            Mulai:
+                                                            {{ \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)->format('d M Y H:i') }}
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                @else
+                                                    <div class="text-center text-gray-600 p-3">
+                                                        <i class="fas fa-info-circle mr-2"></i>
+                                                        Tidak ada mata pelajaran aktif untuk saat ini
+                                                    </div>
+                                                @endif
                                             @else
-                                                <div class="text-center text-red-600">
-                                                    <i class="fas fa-times-circle mr-2"></i>
-                                                    Waktu ujian telah berakhir
+                                                <div class="text-center text-blue-600 p-3">
+                                                    <i class="fas fa-check-circle mr-2"></i>
+                                                    Ujian selesai
                                                 </div>
                                             @endif
-                                        @else
-                                            <div class="text-center text-blue-600">
-                                                <i class="fas fa-check-circle mr-2"></i>
-                                                Ujian selesai
-                                            </div>
                                         @endif
                                     </div>
                                 </div>

@@ -97,16 +97,16 @@ class TokenController extends Controller
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
 
-        // Set expiry time from the request or use default (4 hours)
-        $expiryHours = (int) $request->input('expiry_hours', 4);
+        // Set expiry time from the request or use default (5 minutes)
+        $expiryMinutes = (int) $request->input('expiry_minutes', 5);
 
         try {
             // Generate token
             $token = $sesiRuangan->generateToken();
 
             // Override token expiration if specified in request
-            if ($request->has('expiry_hours')) {
-                $sesiRuangan->token_expired_at = now()->addHours($expiryHours);
+            if ($request->has('expiry_minutes')) {
+                $sesiRuangan->token_expired_at = now()->addMinutes($expiryMinutes);
                 $sesiRuangan->save();
             }
 

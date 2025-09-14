@@ -193,7 +193,14 @@ class SiswaLoginController extends Controller
             $request->session()->put('current_enrollment_id', $enrollment->id);
             $request->session()->put('current_sesi_ruangan_id', $enrollment->sesi_ruangan_id);
 
-            return redirect()->intended('/siswa/dashboard')->with(
+            // Debug log for redirecting
+            Log::info('Redirecting student after login', [
+                'siswa_id' => $siswa->id,
+                'route' => 'siswa.dashboard',
+                'intended_url' => '/siswa/dashboard'
+            ]);
+
+            return redirect()->route('siswa.dashboard')->with(
                 'success',
                 'Login berhasil! Selamat datang ' . $siswa->nama . '. Ujian: ' .
                     ($enrollment->sesiRuangan->nama_sesi ?? 'Ujian')

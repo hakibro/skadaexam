@@ -22,6 +22,18 @@ class SiswaDashboardController extends Controller
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
 
+        // Update enrollment status
+        $enrollment = EnrollmentUjian::where('siswa_id', $siswa->id)
+            ->where('sesi_ruangan_id', $request->session()->get('current_sesi_ruangan_id'))
+            ->first();
+
+        if ($enrollment) {
+            $enrollment->update([
+                'status_enrollment' => 'cancelled',
+                'catatan' => 'Ujian dibatalkan: Pelanggaran integritas (tab switching)'
+            ]);
+        }
+
         $currentEnrollment = null;
         if ($enrollmentId) {
             $currentEnrollment = EnrollmentUjian::with([
@@ -53,23 +65,55 @@ class SiswaDashboardController extends Controller
             }
         }
 
+        // Get active subjects for today's session
+        $activeMapels = collect([]);
+        $today = Carbon::today();
+
+        if ($currentEnrollment && $currentEnrollment->sesiRuangan) {
+            $sesi = $currentEnrollment->sesiRuangan;
+            $sesiDate = Carbon::parse($sesi->tanggal);
+
+            // If this is today's session
+            if ($sesiDate->isToday()) {
+                $activeMapels = $sesi->jadwalUjians->filter(function ($jadwal) use ($sesi) {
+                    try {
+                        // Only filter by today, not by active state
+                        $tanggal = $jadwal->tanggal->format('Y-m-d');
+                        $waktuMulai = Carbon::parse($tanggal . ' ' . $sesi->waktu_mulai);
+                        $waktuSelesai = Carbon::parse($tanggal . ' ' . $sesi->waktu_selesai);
+
+                        return now()->between($waktuMulai, $waktuSelesai);
+                    } catch (\Exception $e) {
+                        Log::error('Error parsing dates for jadwal', [
+                            'jadwal_id' => $jadwal->id,
+                            'error' => $e->getMessage()
+                        ]);
+                        return false;
+                    }
+                })->map(function ($jadwal) {
+                    return [
+                        'id' => $jadwal->id,
+                        'nama_mapel' => $jadwal->mapel->nama_mapel ?? 'Mapel tidak tersedia',
+                        'durasi' => $jadwal->durasi_menit,
+                        'kode' => $jadwal->kode_ujian ?? '-'
+                    ];
+                });
+            }
+        }
+
         return view('features.siswa.dashboard', compact(
             'siswa',
             'currentEnrollment',
-            'sesiRuanganId'
+            'sesiRuanganId',
+            'activeMapels'
         ));
     }
 
     public function portalIndex(Request $request)
     {
-        // Check if this is an exam request (has question parameter)
-        if ($request->has('question') || $request->has('exam')) {
-            // Redirect to exam method
-            return $this->exam($request);
-        }
-
-        // Otherwise, show the normal dashboard
-        return $this->index($request);
+        // This is the old portal index method. We're now using the main index method for the dashboard.
+        // Redirecting to the proper route
+        return redirect()->route('siswa.dashboard');
     }
 
     public function exam(Request $request)
@@ -77,6 +121,7 @@ class SiswaDashboardController extends Controller
         $siswa = Auth::guard('siswa')->user();
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
+        $jadwalId = $request->input('jadwal_id');
 
         if (!$enrollmentId) {
             return redirect()->route('siswa.dashboard')->with('error', 'Sesi ujian tidak ditemukan.');
@@ -90,8 +135,14 @@ class SiswaDashboardController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Enrollment tidak ditemukan.');
         }
 
-        // Get the first jadwal ujian for this session
-        $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians()->first();
+        // Get the requested jadwal ujian or the first one
+        if ($jadwalId) {
+            $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians()
+                ->where('jadwal_ujian.id', $jadwalId) // Specify the table name to avoid ambiguity
+                ->first();
+        } else {
+            $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians()->first();
+        }
 
         if (!$jadwalUjian) {
             return redirect()->route('siswa.dashboard')->with('error', 'Jadwal ujian tidak ditemukan.');
@@ -126,6 +177,7 @@ class SiswaDashboardController extends Controller
             'acak_jawaban' => $jadwalUjian->acak_jawaban ?? false,
             'tampilkan_hasil' => $jadwalUjian->tampilkan_hasil ?? false,
             'batas_waktu' => $jadwalUjian->durasi_menit ?? 0, // in minutes
+            'aktifkan_auto_logout' => $jadwalUjian->aktifkan_auto_logout ?? true, // Default to true for backward compatibility
         ];
 
         // Get or create hasil ujian record
@@ -134,8 +186,16 @@ class SiswaDashboardController extends Controller
             'jadwal_ujian_id' => $jadwalUjian->id,
         ], [
             'enrollment_ujian_id' => $enrollmentId,
+            'sesi_ruangan_id' => $sesiRuanganId,
             'waktu_mulai' => $now,
+            'durasi_menit' => $jadwalUjian->durasi_menit,
+            'jumlah_soal' => $jadwalUjian->jumlah_soal ?: 0,
+            'jumlah_dijawab' => 0,
+            'jumlah_benar' => 0,
+            'jumlah_salah' => 0,
+            'jumlah_tidak_dijawab' => $jadwalUjian->jumlah_soal ?: 0,
             'skor' => 0,
+            'is_final' => false,
             'status' => 'berlangsung'
         ]);
 
@@ -144,16 +204,51 @@ class SiswaDashboardController extends Controller
             ->where('status', 'aktif')
             ->get();
 
+        // Update jumlah_soal with actual count if different
+        $actualJumlahSoal = $soals->count();
+        if ($hasilUjian->jumlah_soal != $actualJumlahSoal) {
+            $hasilUjian->update([
+                'jumlah_soal' => $actualJumlahSoal,
+                'jumlah_tidak_dijawab' => $actualJumlahSoal - ($hasilUjian->jumlah_benar + $hasilUjian->jumlah_salah)
+            ]);
+        }
+
         // Transform questions to match view expectations
         $questions = $soals->map(function ($soal, $index) use ($jadwalUjian, $siswa) {
             $options = [];
 
-            // Build options array from database columns
-            if ($soal->pilihan_a_teks) $options['A'] = $soal->pilihan_a_teks;
-            if ($soal->pilihan_b_teks) $options['B'] = $soal->pilihan_b_teks;
-            if ($soal->pilihan_c_teks) $options['C'] = $soal->pilihan_c_teks;
-            if ($soal->pilihan_d_teks) $options['D'] = $soal->pilihan_d_teks;
-            if ($soal->pilihan_e_teks) $options['E'] = $soal->pilihan_e_teks;
+            // Build options array from database columns, handling both text and image options
+            $options['A'] = [
+                'teks' => $soal->pilihan_a_teks,
+                'gambar' => $soal->pilihan_a_gambar,
+                'tipe' => $soal->pilihan_a_tipe ?? 'teks'
+            ];
+
+            $options['B'] = [
+                'teks' => $soal->pilihan_b_teks,
+                'gambar' => $soal->pilihan_b_gambar,
+                'tipe' => $soal->pilihan_b_tipe ?? 'teks'
+            ];
+
+            $options['C'] = [
+                'teks' => $soal->pilihan_c_teks,
+                'gambar' => $soal->pilihan_c_gambar,
+                'tipe' => $soal->pilihan_c_tipe ?? 'teks'
+            ];
+
+            $options['D'] = [
+                'teks' => $soal->pilihan_d_teks,
+                'gambar' => $soal->pilihan_d_gambar,
+                'tipe' => $soal->pilihan_d_tipe ?? 'teks'
+            ];
+
+            if ($soal->pilihan_e_teks || $soal->pilihan_e_gambar) {
+                $options['E'] = [
+                    'teks' => $soal->pilihan_e_teks,
+                    'gambar' => $soal->pilihan_e_gambar,
+                    'tipe' => $soal->pilihan_e_tipe ?? 'teks'
+                ];
+            }
 
             // Handle option randomization with consistent seed per student-question
             if ($jadwalUjian->acak_jawaban) {
@@ -177,6 +272,8 @@ class SiswaDashboardController extends Controller
                 'id' => $soal->id,
                 'number' => $index + 1,
                 'soal' => $soal->pertanyaan,
+                'tipe_soal' => $soal->tipe_soal ?? 'pilihan_ganda',
+                'tipe_pertanyaan' => $soal->tipe_pertanyaan ?? 'teks',
                 'options' => $options,
                 'gambar_soal' => $soal->gambar_pertanyaan,
                 'kunci_jawaban' => $soal->kunci_jawaban
@@ -220,6 +317,9 @@ class SiswaDashboardController extends Controller
             $remainingTime = max(0, $timeLimit - $elapsedTime);
         }
 
+        // Get violations count
+        $violationsCount = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count();
+
         // Prepare exam data
         $examData = [
             'title' => $jadwalUjian->mapel->nama_mapel ?? 'Ujian',
@@ -230,10 +330,11 @@ class SiswaDashboardController extends Controller
             'totalQuestions' => count($questions),
             'answeredCount' => count(array_filter($existingAnswers)),
             'timeLimit' => $examSettings['batas_waktu'] * 60, // in seconds
-            'remainingTime' => $remainingTime,
+            'remainingTime' => (int) $remainingTime,
             'examSettings' => $examSettings,
             'hasilUjianId' => $hasilUjian->id,
-            'jadwalUjianId' => $jadwalUjian->id
+            'jadwalUjianId' => $jadwalUjian->id,
+            'violations_count' => $violationsCount
         ];
 
         return view('features.siswa.exam', compact('siswa', 'examData'));
@@ -260,7 +361,7 @@ class SiswaDashboardController extends Controller
             }
 
             // Save or update answer
-            JawabanSiswa::updateOrCreate([
+            $jawaban = JawabanSiswa::updateOrCreate([
                 'hasil_ujian_id' => $request->hasil_ujian_id,
                 'soal_ujian_id' => $request->soal_ujian_id
             ], [
@@ -268,6 +369,47 @@ class SiswaDashboardController extends Controller
                 'waktu_jawab' => now()
             ]);
 
+            // Update jumlah_dijawab in hasil_ujian
+            $totalAnswered = JawabanSiswa::where('hasil_ujian_id', $request->hasil_ujian_id)
+                ->whereNotNull('jawaban')
+                ->count();
+
+            // Update nilai-nilai terkait
+            if ($hasilUjian->jumlah_soal > 0) {
+                // Hitung benar dan salah
+                $benarCount = 0;
+                $salahCount = 0;
+
+                $jawabanList = JawabanSiswa::with('soalUjian')
+                    ->where('hasil_ujian_id', $request->hasil_ujian_id)
+                    ->whereNotNull('jawaban')
+                    ->get();
+
+                foreach ($jawabanList as $jwb) {
+                    if ($jwb->soalUjian && $jwb->jawaban === $jwb->soalUjian->kunci_jawaban) {
+                        $benarCount++;
+                    } else {
+                        $salahCount++;
+                    }
+                }
+
+                // Hitung nilai sebagai persentase dari jumlah benar
+                $nilai = ($benarCount / $hasilUjian->jumlah_soal) * 100;
+
+                // Update hasil ujian
+                $hasilUjian->update([
+                    'jumlah_benar' => $benarCount,
+                    'jumlah_salah' => $salahCount,
+                    'jumlah_dijawab' => $totalAnswered,
+                    'jumlah_tidak_dijawab' => $hasilUjian->jumlah_soal - $totalAnswered,
+                    'nilai' => $nilai
+                ]);
+            } else {
+                $hasilUjian->update([
+                    'jumlah_dijawab' => $totalAnswered,
+                    'jumlah_tidak_dijawab' => $hasilUjian->jumlah_soal - $totalAnswered
+                ]);
+            }
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('Error saving answer', [
@@ -333,26 +475,66 @@ class SiswaDashboardController extends Controller
             // Verify hasil ujian belongs to current siswa
             $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
                 ->where('siswa_id', $siswa->id)
-                ->where('status', 'berlangsung')
                 ->first();
 
             if (!$hasilUjian) {
-                return response()->json(['error' => 'Exam not found or already submitted'], 404);
+                return response()->json(['error' => 'Exam not found'], 404);
+            }
+
+            // Check if the exam is already submitted or finalized
+            if ($hasilUjian->status !== 'berlangsung' || $hasilUjian->is_final) {
+                // Log attempt to submit a completed exam
+                Log::warning('Attempt to submit already completed exam', [
+                    'siswa_id' => $siswa->id,
+                    'hasil_ujian_id' => $hasilUjian->id,
+                    'current_status' => $hasilUjian->status,
+                    'is_final' => $hasilUjian->is_final
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Exam already submitted',
+                    'redirect_url' => route('siswa.dashboard')
+                ], 200); // Return 200 instead of 404 to avoid error message
             }
 
             // Calculate score
             $score = $this->calculateScore($hasilUjian);
 
-            // Update hasil ujian
+            // Update hasil ujian dengan nilai lengkap
+            $currentSesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
+            $waktuMulai = $hasilUjian->waktu_mulai;
+            $waktuSelesai = now();
+            $durasiMenit = $waktuMulai ? $waktuSelesai->diffInMinutes($waktuMulai) : $hasilUjian->jadwalUjian->durasi_menit;
+
+            // Hitung nilai (persentase) berdasarkan jumlah_benar dibanding total soal
+            $nilai = 0;
+            if (isset($score['total_soal']) && $score['total_soal'] > 0) {
+                $nilai = ($score['jumlah_benar'] / $score['total_soal']) * 100;
+            }
+
+            // Tentukan status lulus berdasarkan nilai > 75
+            $kkm = 75; // Standar KKM
+            if ($hasilUjian->jadwalUjian && isset($hasilUjian->jadwalUjian->pengaturan['kkm'])) {
+                $kkm = $hasilUjian->jadwalUjian->pengaturan['kkm'];
+            }
+            $lulus = $nilai >= $kkm;
+
             $hasilUjian->update([
-                'waktu_selesai' => now(),
+                'waktu_selesai' => $waktuSelesai,
                 'skor' => $score['total_skor'],
                 'jumlah_benar' => $score['jumlah_benar'],
                 'jumlah_salah' => $score['jumlah_salah'],
-                'status' => 'selesai'
-            ]);
-
-            // Update enrollment status
+                'jumlah_soal' => $score['total_soal'],
+                'jumlah_dijawab' => $score['jumlah_dijawab'],
+                'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
+                'durasi_menit' => $durasiMenit,
+                'nilai' => $nilai,
+                'lulus' => $lulus,
+                'sesi_ruangan_id' => $currentSesiRuanganId,
+                'status' => 'selesai',
+                'is_final' => true
+            ]);            // Update enrollment status
             $enrollment = EnrollmentUjian::where('siswa_id', $siswa->id)
                 ->where('sesi_ruangan_id', $request->session()->get('current_sesi_ruangan_id'))
                 ->first();
@@ -376,11 +558,13 @@ class SiswaDashboardController extends Controller
         } catch (\Exception $e) {
             Log::error('Error submitting exam', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'siswa_id' => $siswa->id ?? null,
                 'request_data' => $request->all()
             ]);
 
-            return response()->json(['error' => 'Failed to submit exam'], 500);
+            $errorMessage = config('app.debug') ? $e->getMessage() : 'Failed to submit exam';
+            return response()->json(['success' => false, 'message' => $errorMessage], 500);
         }
     }
 
@@ -412,8 +596,17 @@ class SiswaDashboardController extends Controller
     private function calculateScore(HasilUjian $hasilUjian)
     {
         $jadwalUjian = $hasilUjian->jadwalUjian;
-        $soalUjians = $jadwalUjian->soalUjians()->where('status', 'aktif')->get();
+
+        // Gunakan soals() sebagai pengganti soalUjians()
+        $soalUjians = $jadwalUjian->bankSoal ? SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)->get() : collect();
+
+        // Ambil jawaban siswa dan konversi ke key-value untuk pencarian lebih cepat
         $jawabanSiswas = $hasilUjian->jawabanSiswas()->get()->keyBy('soal_ujian_id');
+
+        // Hitung jawaban yang benar-benar dijawab (tidak null jawaban)
+        $jawabanDijawab = $hasilUjian->jawabanSiswas()
+            ->whereNotNull('jawaban')
+            ->count();
 
         $jumlahBenar = 0;
         $jumlahSalah = 0;
@@ -422,7 +615,7 @@ class SiswaDashboardController extends Controller
         foreach ($soalUjians as $soal) {
             $jawaban = $jawabanSiswas->get($soal->id);
 
-            if ($jawaban) {
+            if ($jawaban && $jawaban->jawaban) {
                 if ($jawaban->jawaban === $soal->kunci_jawaban) {
                     $jumlahBenar++;
                     $totalSkor += $soal->bobot ?? 1;
@@ -430,16 +623,31 @@ class SiswaDashboardController extends Controller
                     $jumlahSalah++;
                 }
             } else {
-                $jumlahSalah++;
+                // Soal tidak dijawab, tidak dihitung sebagai salah
+                // Hanya dihitung dalam "tidak dijawab"
             }
         }
+
+        // Jumlah soal yang benar-benar dijawab (tidak termasuk yang tidak dijawab)
+        $jumlahDijawab = $jawabanDijawab;
+
+        // Jumlah soal yang salah hanya yang dijawab tapi salah
+        $jumlahSalah = $jumlahDijawab - $jumlahBenar;
+
+        // Total soal adalah jumlah soal dari bank soal
+        $totalSoal = $soalUjians->count();
+
+        // Persentase dihitung dari jumlah benar dibagi total soal
+        $persentase = $totalSoal > 0 ? ($jumlahBenar / $totalSoal) * 100 : 0;
 
         return [
             'jumlah_benar' => $jumlahBenar,
             'jumlah_salah' => $jumlahSalah,
+            'jumlah_dijawab' => $jumlahDijawab,
+            'jumlah_tidak_dijawab' => $totalSoal - $jumlahDijawab,
             'total_skor' => $totalSkor,
-            'total_soal' => $soalUjians->count(),
-            'persentase' => $soalUjians->count() > 0 ? ($jumlahBenar / $soalUjians->count()) * 100 : 0
+            'total_soal' => $totalSoal,
+            'persentase' => $persentase
         ];
     }
 
@@ -489,6 +697,141 @@ class SiswaDashboardController extends Controller
             ]);
 
             return response()->json(['error' => 'Failed to toggle flag'], 500);
+        }
+    }
+
+    /**
+     * Handle automatic logout when student changes tabs or minimizes browser
+     */
+    public function logoutFromExam(Request $request)
+    {
+        try {
+            $siswa = Auth::guard('siswa')->user();
+
+            $request->validate([
+                'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
+                'reason' => 'required|string'
+            ]);
+
+            // Verify hasil ujian belongs to current siswa
+            $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
+                ->where('siswa_id', $siswa->id)
+                ->first();
+
+            if (!$hasilUjian) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Check if this is a page refresh during navigation (which should not count as a violation)
+            if ($request->reason === 'refresh' && $request->has('is_navigation') && $request->input('is_navigation')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Navigation refresh, not counted as violation',
+                    'violations_count' => $hasilUjian->violations_count ?? 0,
+                    'continue_exam' => true
+                ]);
+            }
+
+            // Check if there's already a recent violation of the same type (within the last 60 seconds)
+            $recentViolation = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
+                ->where('jenis_pelanggaran', $request->reason)
+                ->where('waktu_pelanggaran', '>', now()->subSeconds(60))
+                ->first();
+
+            if ($recentViolation) {
+                // Don't create a new violation record, but update the count for the client
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pelanggaran terdeteksi. Pastikan untuk tidak berpindah tab atau meminimalkan browser selama ujian.',
+                    'violations_count' => $hasilUjian->violations_count ?? 0,
+                    'continue_exam' => true
+                ]);
+            }
+
+            // Log the incident
+            Log::warning('Student exam integrity violation', [
+                'siswa_id' => $siswa->id,
+                'nama_siswa' => $siswa->nama,
+                'hasil_ujian_id' => $hasilUjian->id,
+                'jadwal_ujian_id' => $hasilUjian->jadwal_ujian_id,
+                'reason' => $request->reason,
+                'time' => now(),
+                'ip' => $request->ip()
+            ]);
+
+            // Record the violation in the pelanggaran_ujian table
+            $deskripsi = '';
+            switch ($request->reason) {
+                case 'tab_switching':
+                    $deskripsi = 'Berpindah tab/meminimalkan browser saat ujian berlangsung';
+                    break;
+                case 'refresh':
+                    $deskripsi = 'Me-refresh halaman ujian tanpa izin';
+                    break;
+                default:
+                    $deskripsi = 'Melakukan pelanggaran integritas ujian: ' . $request->reason;
+            }
+
+            // Create the violation record
+            \App\Models\PelanggaranUjian::create([
+                'siswa_id' => $siswa->id,
+                'hasil_ujian_id' => $hasilUjian->id,
+                'jadwal_ujian_id' => $hasilUjian->jadwal_ujian_id,
+                'sesi_ruangan_id' => $hasilUjian->sesi_ruangan_id,
+                'jenis_pelanggaran' => $request->reason,
+                'deskripsi' => $deskripsi,
+                'waktu_pelanggaran' => now(),
+                'is_dismissed' => false,
+                'is_finalized' => false
+            ]);
+
+            // Count total violations for this exam
+            $violationsCount = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
+                ->count();
+
+            // Update violations count in hasil ujian
+            $hasilUjian->update([
+                'violations_count' => $violationsCount
+            ]);
+
+            // Update enrollment with violation note but keep it active
+            $enrollment = EnrollmentUjian::where('siswa_id', $siswa->id)
+                ->where('sesi_ruangan_id', $hasilUjian->sesi_ruangan_id)
+                ->first();
+
+            if ($enrollment) {
+                $currentNote = $enrollment->catatan ?? '';
+                $enrollment->update([
+                    'catatan' => trim($currentNote . "\n" . 'Pelanggaran terdeteksi: ' . $request->reason . ' pada ' . now()->format('Y-m-d H:i:s'))
+                ]);
+            }
+
+            // Determine if the student should be logged out based on violation count
+            // After 3 violations, we'll force logout but let them log back in to continue
+            $maxViolations = 3;
+            $continueExam = $violationsCount < $maxViolations;
+            $shouldForceLogout = $violationsCount >= $maxViolations;
+
+            $message = 'Pelanggaran dicatat' . ($shouldForceLogout ?
+                '. Anda akan dikeluarkan dari ujian karena melakukan pelanggaran berulang kali. Anda dapat login kembali untuk melanjutkan ujian.' :
+                ', Anda masih dapat melanjutkan ujian.');
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'violations_count' => $violationsCount,
+                'continue_exam' => $continueExam,
+                'force_logout' => $shouldForceLogout,
+                'logout_url' => route('siswa.logout')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in logout from exam', [
+                'error' => $e->getMessage(),
+                'siswa_id' => $siswa->id ?? null,
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json(['error' => 'Failed to process logout'], 500);
         }
     }
 }

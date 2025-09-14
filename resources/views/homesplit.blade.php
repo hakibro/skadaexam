@@ -11,9 +11,16 @@
 <body class="h-screen w-screen">
 
     @auth
-        <!-- Jika user sudah login, redirect ke dashboard -->
+        <!-- Jika web user sudah login, redirect ke dashboard sesuai role -->
         <script>
-            window.location.href = '{{ route('admin.dashboard') }}';
+            window.location.href = '{{ route('dashboard') }}';
+        </script>
+    @endauth
+
+    @auth('siswa')
+        <!-- Jika siswa sudah login, redirect ke dashboard siswa -->
+        <script>
+            window.location.href = '{{ route('siswa.dashboard') }}';
         </script>
     @else
         <!-- Tampilkan pilihan login jika belum login -->

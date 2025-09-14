@@ -35,6 +35,7 @@ Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(functi
     Route::post('/exam/flag-question', [SiswaDashboardController::class, 'flagQuestion'])->name('exam.flag-question');
     Route::post('/exam/submit', [SiswaDashboardController::class, 'submitExam'])->name('exam.submit');
     Route::get('/exam/result', [SiswaDashboardController::class, 'examResult'])->name('exam.result');
+    Route::post('/exam/logout', [SiswaDashboardController::class, 'logoutFromExam'])->name('exam.logout');
 
     Route::post('/logout', [SiswaLoginController::class, 'logout'])->name('logout');
 });

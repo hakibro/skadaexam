@@ -136,6 +136,7 @@ class JadwalUjianController extends Controller
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
+            'aktifkan_auto_logout' => $request->has('aktifkan_auto_logout'),
             'scheduling_mode' => $request->get('scheduling_mode', 'flexible'),
             'auto_assign_sesi' => $request->get('auto_assign_sesi', true),
             'kelas_target' => $kelasTarget, // Add the kelas_target field
@@ -332,6 +333,7 @@ class JadwalUjianController extends Controller
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
+            'aktifkan_auto_logout' => $request->has('aktifkan_auto_logout'),
             'kelas_target' => $kelasTarget, // Add the kelas_target field
         ]);
 
@@ -436,14 +438,12 @@ class JadwalUjianController extends Controller
                     $count = $this->bulkDelete($jadwalIds);
                     return redirect()->route('naskah.jadwal.index')
                         ->with('success', "Berhasil menghapus {$count} jadwal ujian");
-                    break;
 
                 case 'status_change':
                     $newStatus = $request->new_status;
                     $count = $this->bulkStatusChange($jadwalIds, $newStatus);
                     return redirect()->route('naskah.jadwal.index')
                         ->with('success', "Berhasil mengubah status {$count} jadwal ujian menjadi {$newStatus}");
-                    break;
 
                 default:
                     return redirect()->route('naskah.jadwal.index')

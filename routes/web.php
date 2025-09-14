@@ -99,6 +99,7 @@ require __DIR__ . '/fallback.php';         // Fallback routes for compatibility
 require __DIR__ . '/debug.php';
 require __DIR__ . '/debug-mapel.php'; // Debug route for mapel relationships
 require __DIR__ . '/debug-dates.php'; // Debug route for date filtering issues
+require __DIR__ . '/debug-login-redirect.php'; // Debug route for login redirection
 
 // Debug route for student login issues
 if (app()->environment(['local', 'development'])) {

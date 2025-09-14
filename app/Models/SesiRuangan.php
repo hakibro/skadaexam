@@ -66,9 +66,10 @@ class SesiRuangan extends Model
      */
     public function pengawas()
     {
-        // This will always return null now that the column is removed
-        // For backward compatibility, kept as a method
-        return null;
+        // Return a hasOne relationship with Guru model
+        // This will always be empty now that the column is removed
+        // But at least it returns a relationship instance instead of null
+        return $this->belongsTo(Guru::class, 'koordinator_id')->whereNull('koordinator_id');
     }
 
     /**
@@ -77,9 +78,10 @@ class SesiRuangan extends Model
      */
     public function guru()
     {
-        // This will always return null now that the column is removed
-        // For backward compatibility, kept as a method
-        return null;
+        // Return a hasOne relationship with Guru model
+        // This will always be empty now that the column is removed
+        // But at least it returns a relationship instance instead of null
+        return $this->belongsTo(Guru::class, 'koordinator_id')->whereNull('koordinator_id');
     }
 
     public function template()

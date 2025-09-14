@@ -67,25 +67,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Left Column -->
                 <div class="space-y-4">
-                    <div>
-                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Jadwal</h3>
-                        <div class="mt-2 space-y-2">
-                            <div class="flex items-center text-sm text-gray-900">
-                                <i class="fa-solid fa-calendar mr-3 text-gray-400"></i>
-                                @if ($sesi->jadwalUjians->count() > 0)
-                                    {{ $sesi->jadwalUjians->first()->tanggal->format('l, d F Y') }}
-                                @else
-                                    <span class="text-yellow-500">Belum ada jadwal</span>
-                                @endif
-                            </div>
-                            <div class="flex items-center text-sm text-gray-900">
-                                <i class="fa-solid fa-clock mr-3 text-gray-400"></i>
-                                {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
-                                {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
-                                <span class="ml-2 text-gray-500">({{ $sesi->durasi }} menit)</span>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <div>
                         <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Ruangan</h3>
@@ -101,6 +83,54 @@
                             <div class="flex items-center text-sm text-gray-900">
                                 <i class="fa-solid fa-users mr-3 text-gray-400"></i>
                                 Kapasitas: {{ $ruangan->kapasitas }} orang
+                            </div>
+                            <div class="flex items-center text-sm text-gray-900">
+                                <i class="fa-solid fa-clock mr-3 text-gray-400"></i>
+                                {{ \Carbon\Carbon::parse($sesi->waktu_mulai)->format('H:i') }} -
+                                {{ \Carbon\Carbon::parse($sesi->waktu_selesai)->format('H:i') }}
+                                <span class="ml-2 text-gray-500">({{ $sesi->durasi }} menit)</span>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Jadwal Ujian</h3>
+                                <div class="mt-2">
+                                    @if ($sesi->jadwalUjians->count() > 0)
+                                        <div class="space-y-2">
+                                            @foreach ($sesi->jadwalUjians as $jadwal)
+                                                <div class="flex items-start">
+                                                    <i class="fa-solid fa-calendar-check mr-3 text-blue-400 mt-1"></i>
+                                                    <div class="flex-1">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            {{ $jadwal->judul }} -
+                                                            {{ $jadwal->tanggal->format('l, d F Y') }}
+                                                        </div>
+                                                        <div class="text-xs text-gray-500">
+                                                            {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
+                                                            @if ($jadwal->mapel && $jadwal->mapel->jurusan)
+                                                                <span
+                                                                    class="font-medium">({{ $jadwal->mapel->jurusan }})</span>
+                                                            @elseif($jadwal->mapel)
+                                                                <span class="italic">(Semua Jurusan)</span>
+                                                            @endif
+                                                            • {{ $jadwal->jenis_ujian }} •
+                                                            <span
+                                                                class="text-gray-700 font-semibold">{{ $jadwal->durasi_menit }}
+                                                                menit</span>
+                                                        </div>
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-100 text-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-800 mt-1">
+                                                            {{ ucfirst($jadwal->status) }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="flex items-center text-sm text-gray-500">
+                                            <i class="fa-solid fa-calendar-xmark mr-3 text-gray-400"></i>
+                                            Belum ada jadwal ujian
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -138,45 +168,7 @@
                         </div>
                     </div>
 
-                    <div>
-                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Jadwal Ujian</h3>
-                        <div class="mt-2">
-                            @if ($sesi->jadwalUjians->count() > 0)
-                                <div class="space-y-2">
-                                    @foreach ($sesi->jadwalUjians as $jadwal)
-                                        <div class="flex items-start">
-                                            <i class="fa-solid fa-calendar-check mr-3 text-blue-400 mt-1"></i>
-                                            <div class="flex-1">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $jadwal->judul }}
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
-                                                    @if ($jadwal->mapel && $jadwal->mapel->jurusan)
-                                                        <span class="font-medium">({{ $jadwal->mapel->jurusan }})</span>
-                                                    @elseif($jadwal->mapel)
-                                                        <span class="italic">(Semua Jurusan)</span>
-                                                    @endif
-                                                    • {{ $jadwal->jenis_ujian }} •
-                                                    <span class="text-gray-700 font-semibold">{{ $jadwal->durasi_menit }}
-                                                        menit</span>
-                                                </div>
-                                                <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-100 text-{{ $jadwal->status == 'aktif' ? 'green' : ($jadwal->status == 'draft' ? 'gray' : 'blue') }}-800 mt-1">
-                                                    {{ ucfirst($jadwal->status) }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="flex items-center text-sm text-gray-500">
-                                    <i class="fa-solid fa-calendar-xmark mr-3 text-gray-400"></i>
-                                    Belum ada jadwal ujian
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+
 
                     <div>
                         <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Peserta</h3>

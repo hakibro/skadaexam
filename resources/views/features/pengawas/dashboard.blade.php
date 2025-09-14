@@ -13,7 +13,21 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
                 <div class="flex items-center gap-4">
-                    <div class="bg-green-100 text-green-600 p-3 rounded-full">
+                    })
+                    .catch(error => {
+                    console.error('Error fetching violations:', error);
+                    violationsBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
+                                <p class="text-lg font-medium">Gagal memuat data pelanggaran</p>
+                                <p class="text-sm mt-1">Error: ${error.message}</p>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
+                    }); <div class="bg-green-100 text-green-600 p-3 rounded-full">
                         <i class="fa-solid fa-eye text-2xl"></i>
                     </div>
                     <div>
@@ -97,6 +111,9 @@
                                     Status</th>
                                 <th
                                     class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Keamanan</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Aksi</th>
                             </tr>
                         </thead>
@@ -149,6 +166,23 @@
                                             class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $assignment->status_badge_class }}">
                                             {{ $assignment->status_label['text'] }}
                                         </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex flex-col space-y-2">
+                                            @foreach ($jadwalUjians as $jadwal)
+                                                <button type="button" data-jadwal-id="{{ $jadwal->id }}"
+                                                    data-state="{{ $jadwal->aktifkan_auto_logout ?? true ? 'active' : 'inactive' }}"
+                                                    data-mapel="{{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}"
+                                                    class="toggle-auto-logout inline-flex items-center justify-center rounded-md py-1 px-2 text-xs font-medium w-auto
+                                                        {{ $jadwal->aktifkan_auto_logout ?? true ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white' }}">
+                                                    <i
+                                                        class="fa-solid {{ $jadwal->aktifkan_auto_logout ?? true ? 'fa-lock mr-1' : 'fa-unlock mr-1' }}"></i>
+                                                    {{ $jadwal->aktifkan_auto_logout ?? true ? 'Auto-Logout: Aktif' : 'Auto-Logout: Nonaktif' }}
+                                                </button>
+                                                <span
+                                                    class="text-xs text-gray-500">{{ $jadwal->mapel->nama_mapel ?? '' }}</span>
+                                            @endforeach
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
@@ -273,6 +307,93 @@
             </div>
         </div>
 
+        <!-- Live Monitoring -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">
+                    <i class="fa-solid fa-shield-alt text-red-600 mr-2"></i>
+                    Monitoring Pelanggaran Ujian
+                    <span class="px-3 py-1 ml-3 text-sm font-bold rounded-full bg-red-100 text-red-700">
+                        <span id="violation-counter">0</span> Pelanggaran
+                    </span>
+                </h3>
+                <div class="flex space-x-3">
+                    <select id="monitoring_select" class="p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="all">Semua Ruangan Hari Ini</option>
+                        @foreach ($assignments as $assignment)
+                            @php
+                                $mapelDisplay = implode(
+                                    ' + ',
+                                    $assignment->jadwalUjians
+                                        ->map(function ($jadwal) {
+                                            return $jadwal->mapel ? $jadwal->mapel->nama_mapel : 'Tidak ada mapel';
+                                        })
+                                        ->toArray(),
+                                );
+
+                                $ruanganDisplay = $assignment->ruangan
+                                    ? $assignment->ruangan->nama_ruangan
+                                    : 'Tidak ada ruangan';
+                            @endphp
+                            <option value="{{ $assignment->id }}">
+                                {{ $ruanganDisplay }}: {{ $mapelDisplay }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button id="refresh-violations" class="bg-blue-100 text-blue-700 p-2 rounded-md hover:bg-blue-200">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div id="violations-container" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Waktu</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Siswa</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Mata Pelajaran</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Ruangan</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Jenis Pelanggaran</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="violations-body" class="bg-white divide-y divide-gray-200">
+                        <tr id="no-violations-row">
+                            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i>
+                                    <p class="text-lg font-medium">Tidak ada pelanggaran yang terdeteksi</p>
+                                    <p class="text-sm mt-1">Semua siswa mengikuti ujian dengan tertib</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 text-gray-600 text-sm">
+                <i class="fas fa-info-circle mr-1"></i>
+                Sistem akan memperbarui data secara otomatis setiap 30 detik. Anda juga dapat menekan tombol refresh untuk
+                memperbarui manual.
+            </div>
+        </div>
+
         <!-- Upcoming Assignments -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-xl font-bold text-gray-800 mb-4">
@@ -376,6 +497,350 @@
             const sesiSelect = document.getElementById('sesi_select');
             const beritaAcaraBtn = document.getElementById('berita_acara_btn');
             const beritaAcaraSelect = document.getElementById('berita_acara_select');
+            const monitoringSelect = document.getElementById('monitoring_select');
+            const refreshViolationsBtn = document.getElementById('refresh-violations');
+            const violationsBody = document.getElementById('violations-body');
+            const violationCounter = document.getElementById('violation-counter');
+
+            // Load violations initially
+            loadViolations();
+
+            // Set interval to refresh violations every 30 seconds
+            const violationsRefreshInterval = setInterval(loadViolations, 30000);
+
+            // Handle refresh violations button
+            refreshViolationsBtn.addEventListener('click', function() {
+                loadViolations();
+            });
+
+            // Handle monitoring select change
+            monitoringSelect.addEventListener('change', function() {
+                loadViolations();
+            });
+
+            // Function to load violations
+            function loadViolations() {
+                const sesiId = monitoringSelect.value;
+                console.log('Loading violations for session:', sesiId);
+
+                // Show loading state
+                violationsBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-spinner fa-spin text-blue-500 text-4xl mb-3"></i>
+                                <p class="text-lg font-medium">Memuat data pelanggaran...</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+
+                const url =
+                `{{ url('/features/pengawas/get-violations') }}${sesiId !== 'all' ? '/' + sesiId : ''}`;
+                console.log('Fetching violations from:', url);
+
+                // Fetch violations data
+                fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Response data:', data);
+                        if (data.success && data.violations.length > 0) {
+                            // Update violation counter
+                            violationCounter.textContent = data.violations.length;
+
+                            // Clear existing rows
+                            violationsBody.innerHTML = '';
+
+                            // Add each violation row
+                            data.violations.forEach(violation => {
+                                const row = document.createElement('tr');
+                                row.className = violation.is_dismissed ? 'bg-gray-50' : '';
+                                row.innerHTML = `
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${formatDate(violation.waktu_pelanggaran)}</div>
+                                    <div class="text-xs text-gray-500">${timeSince(violation.waktu_pelanggaran)}</div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="font-medium text-gray-900">${violation.siswa.nama}</div>
+                                    <div class="text-xs text-gray-500">NIS: ${violation.siswa.nomor_induk || '-'}</div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${violation.jadwal_ujian.mapel.nama_mapel || 'Tidak ada mapel'}</div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">${violation.sesi_ruangan.ruangan.nama_ruangan || 'Tidak ada ruangan'}</div>
+                                    <div class="text-xs text-gray-500">Sesi: ${violation.sesi_ruangan.nama_sesi || '-'}</div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        ${formatViolationType(violation.jenis_pelanggaran)}
+                                    </span>
+                                    <div class="text-xs text-gray-500 mt-1">${violation.deskripsi}</div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        ${violation.is_dismissed 
+                                            ? 'bg-gray-100 text-gray-800' 
+                                            : (violation.is_finalized 
+                                                ? 'bg-blue-100 text-blue-800' 
+                                                : 'bg-yellow-100 text-yellow-800')
+                                        }">
+                                        ${violation.is_dismissed 
+                                            ? 'Diabaikan' 
+                                            : (violation.is_finalized 
+                                                ? 'Diproses: ' + (violation.tindakan || 'Tidak ada tindakan') 
+                                                : 'Belum Diproses')
+                                        }
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex space-x-2">
+                                        ${!violation.is_dismissed && !violation.is_finalized ? `
+                                                            <button data-violation-id="${violation.id}" class="dismiss-violation text-yellow-600 hover:text-yellow-800">
+                                                                <i class="fas fa-times-circle"></i> Abaikan
+                                                            </button>
+                                                            <button data-violation-id="${violation.id}" class="process-violation text-blue-600 hover:text-blue-800">
+                                                                <i class="fas fa-check-circle"></i> Proses
+                                                            </button>
+                                                        ` : `
+                                                            <span class="text-gray-400">
+                                                                <i class="fas fa-check"></i> Sudah ditangani
+                                                            </span>
+                                                        `}
+                                    </div>
+                                </td>
+                            `;
+                                violationsBody.appendChild(row);
+                            });
+
+                            // Add event listeners for action buttons
+                            setupViolationActionButtons();
+                        } else {
+                            // Show no violations message
+                            violationsBody.innerHTML = `
+                            <tr id="no-violations-row">
+                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i>
+                                        <p class="text-lg font-medium">Tidak ada pelanggaran yang terdeteksi</p>
+                                        <p class="text-sm mt-1">Semua siswa mengikuti ujian dengan tertib</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+
+                            // Update counter to 0
+                            violationCounter.textContent = '0';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching violations:', error);
+                        violationsBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-6 py-10 text-center text-red-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
+                                    <p class="text-lg font-medium">Gagal memuat data pelanggaran</p>
+                                    <p class="text-sm mt-1">Silakan coba memuat ulang data</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    });
+            }
+
+            // Function to setup violation action buttons
+            function setupViolationActionButtons() {
+                // Dismiss violation buttons
+                document.querySelectorAll('.dismiss-violation').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const violationId = this.getAttribute('data-violation-id');
+                        if (confirm('Apakah Anda yakin ingin mengabaikan pelanggaran ini?')) {
+                            processViolation(violationId, 'dismiss');
+                        }
+                    });
+                });
+
+                // Process violation buttons
+                document.querySelectorAll('.process-violation').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const violationId = this.getAttribute('data-violation-id');
+                        const action = prompt(
+                            'Pilih tindakan untuk pelanggaran ini:\n1. Peringatan\n2. Skors\n3. Diskualifikasi\n\nMasukkan nomor atau nama tindakan:',
+                            '1'
+                        );
+
+                        let tindakan = '';
+                        if (action) {
+                            if (action === '1' || action.toLowerCase() === 'peringatan') {
+                                tindakan = 'peringatan';
+                            } else if (action === '2' || action.toLowerCase() === 'skors') {
+                                tindakan = 'skors';
+                            } else if (action === '3' || action.toLowerCase() ===
+                                'diskualifikasi') {
+                                tindakan = 'diskualifikasi';
+                            } else {
+                                tindakan = action;
+                            }
+
+                            const catatan = prompt('Masukkan catatan tambahan (opsional):');
+                            processViolation(violationId, 'finalize', tindakan, catatan);
+                        }
+                    });
+                });
+            }
+
+            // Function to process violation (dismiss or finalize)
+            function processViolation(violationId, action, tindakan = null, catatan = null) {
+                const payload = {
+                    action: action
+                };
+
+                if (tindakan) {
+                    payload.tindakan = tindakan;
+                }
+
+                if (catatan) {
+                    payload.catatan_pengawas = catatan;
+                }
+
+                fetch(`{{ url('/features/pengawas/process-violation') }}/${violationId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Pelanggaran berhasil diproses');
+                            loadViolations(); // Reload the violations
+                        } else {
+                            alert('Gagal memproses pelanggaran');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error processing violation:', error);
+                        alert('Terjadi kesalahan saat memproses pelanggaran');
+                    });
+            }
+
+            // Helper function to format date
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+
+            // Helper function to format time since
+            function timeSince(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const seconds = Math.floor((now - date) / 1000);
+
+                if (seconds < 60) {
+                    return `${seconds} detik yang lalu`;
+                }
+
+                const minutes = Math.floor(seconds / 60);
+                if (minutes < 60) {
+                    return `${minutes} menit yang lalu`;
+                }
+
+                const hours = Math.floor(minutes / 60);
+                if (hours < 24) {
+                    return `${hours} jam yang lalu`;
+                }
+
+                const days = Math.floor(hours / 24);
+                return `${days} hari yang lalu`;
+            }
+
+            // Helper function to format violation type
+            function formatViolationType(type) {
+                switch (type) {
+                    case 'tab_switching':
+                        return 'Perpindahan Tab';
+                    case 'refresh':
+                        return 'Refresh Halaman';
+                    default:
+                        return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
+                }
+            }
+
+            // Handle auto-logout toggle buttons
+            const toggleButtons = document.querySelectorAll('.toggle-auto-logout');
+
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const jadwalId = this.getAttribute('data-jadwal-id');
+                    const currentState = this.getAttribute('data-state');
+                    const mapelName = this.getAttribute('data-mapel');
+                    const isCurrentlyActive = currentState === 'active';
+                    const confirmMessage = isCurrentlyActive ?
+                        `Nonaktifkan auto-logout untuk ${mapelName}?\n\nSiswa akan dapat berpindah tab tanpa logout otomatis.` :
+                        `Aktifkan auto-logout untuk ${mapelName}?\n\nSiswa akan dilogout otomatis jika berpindah tab.`;
+
+                    if (confirm(confirmMessage)) {
+                        // Send AJAX request to toggle the feature
+                        fetch(`{{ url('/features/pengawas/toggle-auto-logout') }}/${jadwalId}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({})
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Update button appearance based on new state
+                                    if (data.aktifkan_auto_logout) {
+                                        // Active state
+                                        button.className =
+                                            'toggle-auto-logout inline-flex items-center justify-center rounded-md py-1 px-2 text-xs font-medium w-auto bg-red-500 hover:bg-red-600 text-white';
+                                        button.innerHTML =
+                                            '<i class="fa-solid fa-lock mr-1"></i> Auto-Logout: Aktif';
+                                        button.setAttribute('data-state', 'active');
+                                    } else {
+                                        // Inactive state
+                                        button.className =
+                                            'toggle-auto-logout inline-flex items-center justify-center rounded-md py-1 px-2 text-xs font-medium w-auto bg-green-500 hover:bg-green-600 text-white';
+                                        button.innerHTML =
+                                            '<i class="fa-solid fa-unlock mr-1"></i> Auto-Logout: Nonaktif';
+                                        button.setAttribute('data-state', 'inactive');
+                                    }
+
+                                    // Show success message
+                                    alert(data.message);
+                                } else {
+                                    alert('Gagal mengubah pengaturan auto-logout');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Terjadi kesalahan saat mengubah pengaturan auto-logout');
+                            });
+                    }
+                });
+            });
 
             // Handle token generation button
             generateTokenBtn.addEventListener('click', function(e) {

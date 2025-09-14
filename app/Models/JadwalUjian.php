@@ -30,7 +30,8 @@ class JadwalUjian extends Model
         'acak_jawaban',
         'auto_assign_sesi',
         'scheduling_mode',
-        'timezone'
+        'timezone',
+        'aktifkan_auto_logout'
     ];
 
     protected $casts = [
@@ -42,6 +43,7 @@ class JadwalUjian extends Model
         'acak_soal' => 'boolean',
         'acak_jawaban' => 'boolean',
         'auto_assign_sesi' => 'boolean',
+        'aktifkan_auto_logout' => 'boolean',
         'status' => 'string' // Enum: draft, active, completed, cancelled
     ];
 

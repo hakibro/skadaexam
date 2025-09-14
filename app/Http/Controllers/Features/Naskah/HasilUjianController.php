@@ -10,6 +10,7 @@ use App\Models\Siswa;
 use App\Models\Mapel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class HasilUjianController extends Controller
 {
@@ -75,7 +76,7 @@ class HasilUjianController extends Controller
         // Calculate average score from completed tests only
         $statsQuery = clone $query;
         $averageScoreResult = $statsQuery->where('status', 'selesai')
-            ->avg('nilai_akhir');
+            ->avg('nilai');
         $averageScore = $averageScoreResult ? number_format($averageScoreResult, 2) : '0.00';
 
         // Calculate pass rate
@@ -93,7 +94,7 @@ class HasilUjianController extends Controller
         // Get unique values for filters
         $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
         $sesiRuangans = SesiRuangan::orderBy('nama_sesi')->get();
-        $kelasList = \App\Models\Kelas::orderBy('name', 'asc')->get();
+        $kelasList = \App\Models\Kelas::orderBy('nama_kelas', 'asc')->get();
 
         return view('features.naskah.hasil.index', compact(
             'hasilUjians',
@@ -139,9 +140,9 @@ class HasilUjianController extends Controller
         $lulus = $hasilUjians->where('lulus', true)->count();
         $tidakLulus = $hasilUjians->where('status', 'selesai')->where('lulus', false)->count();
 
-        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai_akhir');
-        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai_akhir');
-        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai_akhir');
+        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai');
+        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai');
+        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai');
 
         // Group by grade
         $grades = $hasilUjians->where('status', 'selesai')
@@ -192,9 +193,9 @@ class HasilUjianController extends Controller
         $lulus = $hasilUjians->where('lulus', true)->count();
         $tidakLulus = $hasilUjians->where('status', 'selesai')->where('lulus', false)->count();
 
-        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai_akhir');
-        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai_akhir');
-        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai_akhir');
+        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai');
+        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai');
+        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai');
 
         return view('features.naskah.hasil.by_sesi', compact(
             'jadwal',
@@ -213,12 +214,120 @@ class HasilUjianController extends Controller
     }
 
     /**
-     * Export results to Excel.
+     * Export results to Excel, CSV, or PDF.
      */
     public function export(Request $request)
     {
-        // Implement Excel export using Laravel Excel package
-        return redirect()->back()->with('info', 'Fitur ekspor akan segera tersedia');
+        $query = HasilUjian::query();
+
+        // Apply filters just like in the index method
+        if ($request->has('jadwal_id') && $request->jadwal_id != '') {
+            $query->where('jadwal_ujian_id', $request->jadwal_id);
+        }
+
+        if ($request->has('kelas_id') && $request->kelas_id != '') {
+            $kelasId = $request->kelas_id;
+            $query->whereHas('siswa', function ($q) use ($kelasId) {
+                $q->where('kelas_id', $kelasId);
+            });
+        }
+
+        if ($request->has('sesi_id') && $request->sesi_id != '') {
+            $query->where('sesi_ruangan_id', $request->sesi_id);
+        }
+
+        if ($request->has('status') && $request->status != '') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('lulus') && $request->lulus != '') {
+            $query->where('lulus', $request->lulus == 'yes');
+        }
+
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->whereHas('siswa', function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%");
+            });
+        }
+
+        // Get format (default to xlsx)
+        $format = strtolower($request->input('format', 'xlsx'));
+
+        // Generate filename with current datetime
+        $dateStr = now()->format('Ymd_His');
+        $filename = "hasil_ujian_{$dateStr}";
+
+        // Export based on requested format
+        switch ($format) {
+            case 'csv':
+                return Excel::download(
+                    new \App\Exports\HasilUjianExport($query),
+                    $filename . '.csv',
+                    \Maatwebsite\Excel\Excel::CSV
+                );
+
+            case 'pdf':
+                // Fallback to XLSX if PDF export fails
+                try {
+                    return Excel::download(
+                        new \App\Exports\HasilUjianPdfExport($query),
+                        $filename . '.pdf',
+                        \Maatwebsite\Excel\Excel::DOMPDF
+                    );
+                } catch (\Exception $e) {
+                    // Log the error
+                    \Illuminate\Support\Facades\Log::error('PDF export failed: ' . $e->getMessage());
+
+                    // Fallback to simple Excel export
+                    return Excel::download(
+                        new \App\Exports\HasilUjianSimpleExport($query),
+                        $filename . '.xlsx'
+                    );
+                }
+
+            default: // xlsx
+                return Excel::download(
+                    new \App\Exports\HasilUjianExport($query),
+                    $filename . '.xlsx',
+                    \Maatwebsite\Excel\Excel::XLSX
+                );
+        }
+    }
+
+    /**
+     * Export a single result to PDF.
+     */
+    public function exportSingle(Request $request, HasilUjian $hasil)
+    {
+        // Load necessary relationships
+        $hasil->load(['jadwalUjian.mapel', 'sesiRuangan.ruangan', 'siswa.kelas']);
+
+        // Get format (default to pdf)
+        $format = strtolower($request->input('format', 'pdf'));
+
+        // Generate filename
+        $dateStr = now()->format('Ymd_His');
+        $idyayasan = $hasil->siswa->idyayasan ?? 'unknown';
+        $filename = "hasil_ujian_{$idyayasan}_{$dateStr}";
+
+        try {
+            return Excel::download(
+                new \App\Exports\SingleHasilUjianExport($hasil),
+                $filename . '.pdf',
+                \Maatwebsite\Excel\Excel::DOMPDF
+            );
+        } catch (\Exception $e) {
+            // Log the error
+            \Illuminate\Support\Facades\Log::error('PDF export failed: ' . $e->getMessage());
+
+            // Create a simple Excel representation of this result
+            return response()->view('exports.hasil-ujian-single-text', [
+                'hasil' => $hasil
+            ])->header('Content-Type', 'text/plain')
+                ->header('Content-Disposition', "attachment; filename=\"{$filename}.txt\"");
+        }
     }
 
     /**
@@ -259,9 +368,9 @@ class HasilUjianController extends Controller
 
         // Basic statistics
         $totalHasil = $hasilUjians->count();
-        $avgNilai = $totalHasil > 0 ? $hasilUjians->avg('nilai_akhir') : 0;
-        $maxNilai = $totalHasil > 0 ? $hasilUjians->max('nilai_akhir') : 0;
-        $minNilai = $totalHasil > 0 ? $hasilUjians->min('nilai_akhir') : 0;
+        $avgNilai = $totalHasil > 0 ? $hasilUjians->avg('nilai') : 0;
+        $maxNilai = $totalHasil > 0 ? $hasilUjians->max('nilai') : 0;
+        $minNilai = $totalHasil > 0 ? $hasilUjians->min('nilai') : 0;
 
         // Group results by score ranges
         $scoreRanges = [
@@ -274,7 +383,7 @@ class HasilUjianController extends Controller
         ];
 
         foreach ($hasilUjians as $hasil) {
-            $nilai = $hasil->nilai_akhir;
+            $nilai = $hasil->nilai;
 
             if ($nilai >= 91) {
                 $scoreRanges['91-100']++;
@@ -302,7 +411,7 @@ class HasilUjianController extends Controller
                     return [
                         'kelas' => $kelas,
                         'jumlah' => $items->count(),
-                        'rata_rata' => $items->avg('nilai_akhir'),
+                        'rata_rata' => $items->avg('nilai'),
                         'lulus' => $items->where('lulus', true)->count(),
                         'tidak_lulus' => $items->where('lulus', false)->count(),
                     ];
@@ -313,7 +422,7 @@ class HasilUjianController extends Controller
 
         // Get filters for the view
         $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
-        $kelasList = \App\Models\Kelas::orderBy('name', 'asc')->get();
+        $kelasList = \App\Models\Kelas::orderBy('nama_kelas', 'asc')->get();
 
         return view('features.naskah.hasil.analisis', compact(
             'hasilUjians',

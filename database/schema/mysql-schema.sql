@@ -9,14 +9,14 @@ DROP TABLE IF EXISTS `bank_soal`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bank_soal` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_bank` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `judul` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `deskripsi` text COLLATE utf8mb4_unicode_ci,
+  `kode_bank` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `judul` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deskripsi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `mapel_id` bigint unsigned NOT NULL,
-  `tingkat` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `jenis_soal` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pilihan_ganda',
+  `tingkat` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `jenis_soal` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pilihan_ganda',
   `total_soal` int NOT NULL DEFAULT '0',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
   `pengaturan` json DEFAULT NULL,
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -38,13 +38,13 @@ CREATE TABLE `berita_acara_ujian` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `sesi_ruangan_id` bigint unsigned DEFAULT NULL,
   `pengawas_id` bigint unsigned NOT NULL,
-  `catatan_pembukaan` text COLLATE utf8mb4_unicode_ci,
-  `catatan_pelaksanaan` text COLLATE utf8mb4_unicode_ci,
-  `catatan_penutupan` text COLLATE utf8mb4_unicode_ci,
+  `catatan_pembukaan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `catatan_pelaksanaan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `catatan_penutupan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `jumlah_peserta_terdaftar` int NOT NULL DEFAULT '0',
   `jumlah_peserta_hadir` int NOT NULL DEFAULT '0',
   `jumlah_peserta_tidak_hadir` int NOT NULL DEFAULT '0',
-  `status_pelaksanaan` enum('lancar','kurang_lancar','tidak_lancar') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'lancar',
+  `status_pelaksanaan` enum('selesai_normal','selesai_terganggu','dibatalkan') COLLATE utf8mb4_unicode_ci DEFAULT 'selesai_normal',
   `is_final` tinyint(1) NOT NULL DEFAULT '0',
   `waktu_finalisasi` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -60,8 +60,8 @@ DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache` (
-  `key` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -70,8 +70,8 @@ DROP TABLE IF EXISTS `cache_locks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache_locks` (
-  `key` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `owner` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -84,15 +84,12 @@ CREATE TABLE `enrollment_ujian` (
   `sesi_ruangan_id` bigint unsigned DEFAULT NULL,
   `jadwal_ujian_id` bigint unsigned DEFAULT NULL,
   `siswa_id` bigint unsigned NOT NULL,
-  `status_enrollment` enum('enrolled','completed','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'enrolled',
-  `token_login` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `token_dibuat_pada` timestamp NULL DEFAULT NULL,
-  `token_digunakan_pada` timestamp NULL DEFAULT NULL,
+  `status_enrollment` enum('enrolled','active','completed','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'enrolled',
   `waktu_mulai_ujian` timestamp NULL DEFAULT NULL,
   `waktu_selesai_ujian` timestamp NULL DEFAULT NULL,
   `last_login_at` timestamp NULL DEFAULT NULL,
   `last_logout_at` timestamp NULL DEFAULT NULL,
-  `catatan` text COLLATE utf8mb4_unicode_ci,
+  `catatan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -109,11 +106,11 @@ DROP TABLE IF EXISTS `failed_jobs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `failed_jobs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uuid` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `connection` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `exception` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)
@@ -124,17 +121,20 @@ DROP TABLE IF EXISTS `guru`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guru` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `nama` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nip` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `nama` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nip` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `guru_nip_unique` (`nip`),
-  UNIQUE KEY `guru_email_unique` (`email`)
+  UNIQUE KEY `guru_email_unique` (`email`),
+  KEY `guru_user_id_foreign` (`user_id`),
+  CONSTRAINT `guru_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `hasil_ujian`;
@@ -158,7 +158,7 @@ CREATE TABLE `hasil_ujian` (
   `nilai` decimal(5,2) NOT NULL DEFAULT '0.00',
   `lulus` tinyint(1) NOT NULL DEFAULT '0',
   `is_final` tinyint(1) NOT NULL DEFAULT '0',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
   `jawaban` json DEFAULT NULL,
   `hasil_detail` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -179,12 +179,15 @@ DROP TABLE IF EXISTS `jadwal_ujian`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `jadwal_ujian` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `judul` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `judul` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `mapel_id` bigint unsigned NOT NULL,
   `tanggal` datetime NOT NULL,
   `durasi_menit` int NOT NULL,
-  `deskripsi` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('draft','active','completed','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `deskripsi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `auto_assign_sesi` tinyint(1) NOT NULL DEFAULT '1',
+  `scheduling_mode` enum('fixed','flexible') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'flexible',
+  `timezone` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Asia/Jakarta',
   `tampilkan_hasil` tinyint(1) NOT NULL DEFAULT '0',
   `jumlah_soal` int NOT NULL DEFAULT '0',
   `kelas_target` json DEFAULT NULL,
@@ -192,8 +195,8 @@ CREATE TABLE `jadwal_ujian` (
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `kode_ujian` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `jenis_ujian` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `kode_ujian` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenis_ujian` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `acak_soal` tinyint(1) NOT NULL DEFAULT '0',
   `acak_jawaban` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -206,17 +209,52 @@ CREATE TABLE `jadwal_ujian` (
   CONSTRAINT `jadwal_ujian_mapel_id_foreign` FOREIGN KEY (`mapel_id`) REFERENCES `mapel` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jadwal_ujian_sesi_ruangan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jadwal_ujian_sesi_ruangan` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `jadwal_ujian_id` bigint unsigned NOT NULL,
+  `sesi_ruangan_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `pengawas_id` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `jadwal_sesi_unique` (`jadwal_ujian_id`,`sesi_ruangan_id`),
+  KEY `jadwal_ujian_sesi_ruangan_jadwal_ujian_id_index` (`jadwal_ujian_id`),
+  KEY `jadwal_ujian_sesi_ruangan_sesi_ruangan_id_index` (`sesi_ruangan_id`),
+  KEY `jadwal_ujian_sesi_ruangan_pengawas_id_foreign` (`pengawas_id`),
+  CONSTRAINT `jadwal_ujian_sesi_ruangan_jadwal_ujian_id_foreign` FOREIGN KEY (`jadwal_ujian_id`) REFERENCES `jadwal_ujian` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_ujian_sesi_ruangan_pengawas_id_foreign` FOREIGN KEY (`pengawas_id`) REFERENCES `guru` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `jadwal_ujian_sesi_ruangan_sesi_ruangan_id_foreign` FOREIGN KEY (`sesi_ruangan_id`) REFERENCES `sesi_ruangan` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jawaban_siswa`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jawaban_siswa` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `hasil_ujian_id` bigint unsigned NOT NULL,
+  `soal_ujian_id` bigint unsigned NOT NULL,
+  `jawaban` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_flagged` tinyint(1) NOT NULL DEFAULT '0',
+  `waktu_jawab` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `job_batches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `job_batches` (
-  `id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `total_jobs` int NOT NULL,
   `pending_jobs` int NOT NULL,
   `failed_jobs` int NOT NULL,
-  `failed_job_ids` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `options` mediumtext COLLATE utf8mb4_unicode_ci,
+  `failed_job_ids` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `options` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `cancelled_at` int DEFAULT NULL,
   `created_at` int NOT NULL,
   `finished_at` int DEFAULT NULL,
@@ -228,8 +266,8 @@ DROP TABLE IF EXISTS `jobs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `jobs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `queue` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `attempts` tinyint unsigned NOT NULL,
   `reserved_at` int unsigned DEFAULT NULL,
   `available_at` int unsigned NOT NULL,
@@ -243,10 +281,10 @@ DROP TABLE IF EXISTS `kelas`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `kelas` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `nama_kelas` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tingkat` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `jurusan` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `deskripsi` text COLLATE utf8mb4_unicode_ci,
+  `nama_kelas` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tingkat` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `jurusan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deskripsi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -257,12 +295,12 @@ DROP TABLE IF EXISTS `mapel`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `mapel` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_mapel` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama_mapel` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tingkat` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `jurusan` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `deskripsi` text COLLATE utf8mb4_unicode_ci,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
+  `kode_mapel` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_mapel` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tingkat` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `jurusan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deskripsi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -276,7 +314,7 @@ DROP TABLE IF EXISTS `migrations`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `migrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `migration` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `migration` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -286,7 +324,7 @@ DROP TABLE IF EXISTS `model_has_permissions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `model_has_permissions` (
   `permission_id` bigint unsigned NOT NULL,
-  `model_type` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_type` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `model_id` bigint unsigned NOT NULL,
   PRIMARY KEY (`permission_id`,`model_id`,`model_type`),
   KEY `model_has_permissions_model_id_model_type_index` (`model_id`,`model_type`),
@@ -298,7 +336,7 @@ DROP TABLE IF EXISTS `model_has_roles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `model_has_roles` (
   `role_id` bigint unsigned NOT NULL,
-  `model_type` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_type` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `model_id` bigint unsigned NOT NULL,
   PRIMARY KEY (`role_id`,`model_id`,`model_type`),
   KEY `model_has_roles_model_id_model_type_index` (`model_id`,`model_type`),
@@ -309,8 +347,8 @@ DROP TABLE IF EXISTS `password_reset_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `password_reset_tokens` (
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -320,8 +358,8 @@ DROP TABLE IF EXISTS `permissions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `permissions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `guard_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -345,8 +383,8 @@ DROP TABLE IF EXISTS `roles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `roles` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `guard_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -358,13 +396,13 @@ DROP TABLE IF EXISTS `ruangan`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ruangan` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_ruangan` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama_ruangan` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lokasi` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `kode_ruangan` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_ruangan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `lokasi` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `kapasitas` int NOT NULL,
   `fasilitas` json DEFAULT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
+  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -376,23 +414,19 @@ DROP TABLE IF EXISTS `sesi_ruangan`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sesi_ruangan` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_sesi` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama_sesi` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tanggal` date NOT NULL,
+  `kode_sesi` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_sesi` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `waktu_mulai` time NOT NULL,
   `waktu_selesai` time NOT NULL,
-  `token_ujian` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `token_ujian` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `token_expired_at` datetime DEFAULT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
   `pengaturan` json DEFAULT NULL,
   `ruangan_id` bigint unsigned NOT NULL,
-  `pengawas_id` bigint unsigned DEFAULT NULL,
   `template_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `sesi_ruangan_ruangan_id_foreign` (`ruangan_id`),
-  KEY `sesi_ruangan_pengawas_id_foreign` (`pengawas_id`),
   KEY `sesi_ruangan_template_id_foreign` (`template_id`),
-  CONSTRAINT `sesi_ruangan_pengawas_id_foreign` FOREIGN KEY (`pengawas_id`) REFERENCES `guru` (`id`) ON DELETE SET NULL,
   CONSTRAINT `sesi_ruangan_ruangan_id_foreign` FOREIGN KEY (`ruangan_id`) REFERENCES `ruangan` (`id`) ON DELETE CASCADE,
   CONSTRAINT `sesi_ruangan_template_id_foreign` FOREIGN KEY (`template_id`) REFERENCES `sesi_templates` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -404,13 +438,14 @@ CREATE TABLE `sesi_ruangan_siswa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `sesi_ruangan_id` bigint unsigned NOT NULL,
   `siswa_id` bigint unsigned NOT NULL,
-  `status` enum('hadir','tidak_hadir','logout') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'tidak_hadir',
+  `status_kehadiran` enum('hadir','tidak_hadir','sakit','izin') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `keterangan` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `sesi_ruangan_siswa_sesi_ruangan_id_siswa_id_unique` (`sesi_ruangan_id`,`siswa_id`),
   KEY `sesi_ruangan_siswa_siswa_id_foreign` (`siswa_id`),
-  KEY `idx_sesi_ruangan_siswa_status` (`sesi_ruangan_id`,`status`),
+  KEY `idx_sesi_ruangan_siswa_status` (`sesi_ruangan_id`),
   CONSTRAINT `sesi_ruangan_siswa_sesi_ruangan_id_foreign` FOREIGN KEY (`sesi_ruangan_id`) REFERENCES `sesi_ruangan` (`id`) ON DELETE CASCADE,
   CONSTRAINT `sesi_ruangan_siswa_siswa_id_foreign` FOREIGN KEY (`siswa_id`) REFERENCES `siswa` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -420,15 +455,15 @@ DROP TABLE IF EXISTS `sesi_templates`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sesi_templates` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_sesi` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `nama_sesi` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `deskripsi` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `kode_sesi` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nama_sesi` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deskripsi` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `waktu_mulai` time NOT NULL,
   `waktu_selesai` time NOT NULL,
-  `status` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
+  `status` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
   `pengaturan` json DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_by` bigint unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -441,11 +476,11 @@ DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sessions` (
-  `id` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint unsigned DEFAULT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_activity` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `sessions_user_id_index` (`user_id`),
@@ -457,17 +492,17 @@ DROP TABLE IF EXISTS `siswa`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `siswa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `nis` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `idyayasan` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nis` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `idyayasan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `kelas_id` bigint unsigned DEFAULT NULL,
-  `status_pembayaran` enum('Lunas','Belum Lunas') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Belum Lunas',
-  `rekomendasi` enum('ya','tidak') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'tidak',
-  `catatan_rekomendasi` text COLLATE utf8mb4_unicode_ci,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status_pembayaran` enum('Lunas','Belum Lunas') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Belum Lunas',
+  `rekomendasi` enum('ya','tidak') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'tidak',
+  `catatan_rekomendasi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -486,35 +521,38 @@ CREATE TABLE `soal` (
   `parent_id` bigint unsigned DEFAULT NULL,
   `bank_soal_id` bigint unsigned NOT NULL,
   `is_parent` tinyint(1) NOT NULL DEFAULT '0',
-  `kategori` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sedang',
+  `tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pg',
+  `kategori` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sedang',
   `display_settings` json DEFAULT NULL,
   `nomor_soal` int NOT NULL DEFAULT '1',
-  `tipe_soal` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pilihan_ganda',
-  `pertanyaan` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tipe_pertanyaan` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `pilihan_a_teks` text COLLATE utf8mb4_unicode_ci,
-  `pilihan_a_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pilihan_a_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `pilihan_b_teks` text COLLATE utf8mb4_unicode_ci,
-  `pilihan_b_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pilihan_b_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `pilihan_c_teks` text COLLATE utf8mb4_unicode_ci,
-  `pilihan_c_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pilihan_c_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `pilihan_d_teks` text COLLATE utf8mb4_unicode_ci,
-  `pilihan_d_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pilihan_d_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `pilihan_e_teks` text COLLATE utf8mb4_unicode_ci,
-  `pilihan_e_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pilihan_e_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
-  `gambar_pertanyaan` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tipe_soal` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pilihan_ganda',
+  `pertanyaan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tipe_pertanyaan` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `pilihan_a_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pilihan_a_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pilihan_a_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `pilihan_b_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pilihan_b_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pilihan_b_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `pilihan_c_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pilihan_c_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pilihan_c_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `pilihan_d_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pilihan_d_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pilihan_d_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `pilihan_e_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pilihan_e_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pilihan_e_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `gambar_pertanyaan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `pilihan` json DEFAULT NULL,
-  `kunci_jawaban` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pembahasan_teks` text COLLATE utf8mb4_unicode_ci,
-  `pembahasan_gambar` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pembahasan_tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
+  `kunci_jawaban` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pembahasan` text COLLATE utf8mb4_unicode_ci,
+  `pembahasan_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `pembahasan_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pembahasan_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
   `bobot` decimal(5,2) NOT NULL DEFAULT '1.00',
-  `gambar_pembahasan` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('aktif','draft','arsip') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
+  `gambar_pembahasan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -529,11 +567,11 @@ DROP TABLE IF EXISTS `users`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -589,3 +627,26 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (39,'2025_09_03_100
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (40,'2025_09_03_120000_correct_soal_table_structure',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (41,'2025_09_03_130000_add_missing_columns_to_soal_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (42,'2025_09_03_140000_rename_columns_in_soal_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (43,'2025_09_03_160000_add_missing_columns_to_soal_table_corrected',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (44,'2025_09_04_140615_add_jadwal_ujian_id_to_sesi_ruangan_table',3);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (45,'2025_09_03_150000_add_missing_columns_to_soal_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (46,'2025_09_05_000000_create_jadwal_ujian_sesi_ruangan_pivot_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (48,'2025_09_05_062133_modify_jadwal_ujian_status_column',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (49,'2025_09_05_000001_remove_jadwal_ujian_id_from_sesi_ruangan',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (50,'2025_09_05_062044_update_jadwal_ujian_status_values',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (51,'2025_09_05_064024_modify_jadwal_ujian_for_sesi_based_scheduling',7);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (52,'2025_09_06_000001_remove_tanggal_from_sesi_ruangan_table',8);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (53,'2025_09_10_000000_move_pengawas_id_to_pivot_table',9);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (54,'2025_09_10_123145_add_user_id_to_guru_table',10);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (55,'2025_09_10_130743_make_password_nullable_in_guru_table',11);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (56,'2025_09_10_153213_migrate_legacy_pengawas_assignments_to_pivot',12);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (57,'2025_09_10_225352_remove_pengawas_id_from_sesi_ruangan_table',13);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (58,'2025_09_10_225412_remove_pengawas_id_from_sesi_ruangan_table',14);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (59,'2025_09_11_033109_add_missing_columns_to_sesi_ruangan_siswa_table',15);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (60,'2025_09_11_133841_remove_status_column_from_sesi_ruangan_siswa_table',16);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (61,'2025_09_11_183905_update_status_pelaksanaan_enum_values_in_berita_acara_ujian_table',17);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (62,'2025_01_21_000001_remove_token_columns_from_sesi_ruangan_siswa',18);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (66,'2025_09_12_142724_remove_token_columns_from_enrollment_ujian_table',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (67,'2025_09_12_145442_add_active_status_to_enrollment_ujian_table',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (68,'2025_09_12_221158_create_jawaban_siswas_table',20);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (69,'2023_10_30_000001_fix_jawaban_siswa_foreign_key',21);

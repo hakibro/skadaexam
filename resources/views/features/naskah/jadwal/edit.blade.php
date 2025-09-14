@@ -203,7 +203,7 @@
                     <div class="bg-gray-50 p-4 rounded-md">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Pengaturan Ujian</h4>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="flex items-center">
                                 <input type="checkbox" name="acak_soal" id="acak_soal" value="1"
                                     {{ old('acak_soal', $jadwal->acak_soal) ? 'checked' : '' }}
@@ -228,6 +228,16 @@
                                     class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="tampilkan_hasil" class="ml-2 block text-sm text-gray-700">
                                     Tampilkan Hasil Setelah Selesai
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" name="aktifkan_auto_logout" id="aktifkan_auto_logout"
+                                    value="1"
+                                    {{ old('aktifkan_auto_logout', $jadwal->aktifkan_auto_logout) ? 'checked' : '' }}
+                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="aktifkan_auto_logout" class="ml-2 block text-sm text-gray-700">
+                                    Aktifkan Auto Logout
                                 </label>
                             </div>
                         </div>

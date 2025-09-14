@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 
 // Main ruangan routes
-Route::middleware(['auth:web', 'role:admin'])
+Route::middleware(['auth:web', 'role:admin,ruangan'])
     ->prefix('ruangan')
     ->name('ruangan.')
     ->group(function () {

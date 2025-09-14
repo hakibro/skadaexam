@@ -50,17 +50,7 @@
                                     class="text-red-500">*</span></label>
                             <select name="jenis_ujian" id="jenis_ujian" required
                                 class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('jenis_ujian') border-red-500 @enderror">
-                                <option value="reguler" {{ old('jenis_ujian') == 'reguler' ? 'selected' : '' }}>Reguler
-                                </option>
-                                <option value="susulan" {{ old('jenis_ujian') == 'susulan' ? 'selected' : '' }}>Susulan
-                                </option>
-                                <option value="remedial" {{ old('jenis_ujian') == 'remedial' ? 'selected' : '' }}>Remedial
-                                </option>
-                                <option value="tryout" {{ old('jenis_ujian') == 'tryout' ? 'selected' : '' }}>Try Out
-                                </option>
-                                <option value="penilaian_harian"
-                                    {{ old('jenis_ujian') == 'penilaian_harian' ? 'selected' : '' }}>Penilaian Harian
-                                </option>
+                                <option value="">-- Pilih Jenis Ujian --</option>
                                 <option value="uts" {{ old('jenis_ujian') == 'uts' ? 'selected' : '' }}>UTS</option>
                                 <option value="uas" {{ old('jenis_ujian') == 'uas' ? 'selected' : '' }}>UAS</option>
                             </select>
@@ -210,7 +200,7 @@
                     <div class="bg-gray-50 p-4 rounded-md">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Pengaturan Ujian</h4>
 
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
                             <div class="flex items-center">
                                 <input type="checkbox" name="acak_soal" id="acak_soal" value="1"
                                     {{ old('acak_soal') ? 'checked' : '' }}
@@ -235,6 +225,15 @@
                                     class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="tampilkan_hasil" class="ml-2 block text-sm text-gray-700">
                                     Tampilkan Hasil
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" name="aktifkan_auto_logout" id="aktifkan_auto_logout"
+                                    value="1" {{ old('aktifkan_auto_logout', true) ? 'checked' : '' }}
+                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="aktifkan_auto_logout" class="ml-2 block text-sm text-gray-700">
+                                    Aktifkan Auto Logout
                                 </label>
                             </div>
 

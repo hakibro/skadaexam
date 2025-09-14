@@ -40,13 +40,13 @@
                 <div class="p-4 flex items-center justify-between">
                     @if ($hasilUjian->status === 'selesai')
                         <div
-                            class="text-5xl font-bold {{ $hasilUjian->nilai_akhir >= ($mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($hasilUjian->nilai_akhir, 2) }}
+                            class="text-5xl font-bold {{ $hasilUjian->nilai >= ($mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($hasilUjian->nilai, 2) }}
                         </div>
                         <div class="text-right">
                             <div class="text-sm text-gray-500">Nilai KKM: {{ $mapel->kkm ?? '75.00' }}</div>
                             <div class="mt-1">
-                                @if ($hasilUjian->nilai_akhir >= ($mapel->kkm ?? 75))
+                                @if ($hasilUjian->nilai >= ($mapel->kkm ?? 75))
                                     <span
                                         class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Lulus</span>
                                 @else
@@ -328,7 +328,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ route('naskah.hasil.export.single', ['id' => $hasilUjian->id, 'format' => 'pdf']) }}"
+                                    <a href="{{ route('naskah.hasil.export.single', ['hasil' => $hasilUjian, 'format' => 'pdf']) }}"
                                         class="flex items-center p-2 rounded-md hover:bg-gray-100 text-sm text-gray-700">
                                         <i class="fa-solid fa-file-pdf w-5 h-5 mr-3 text-red-500"></i>
                                         Export ke PDF
@@ -379,8 +379,8 @@
                                             </div>
                                             @if ($hasil->status === 'selesai')
                                                 <div
-                                                    class="font-medium {{ $hasil->nilai_akhir >= ($hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
-                                                    {{ number_format($hasil->nilai_akhir, 2) }}
+                                                    class="font-medium {{ $hasil->nilai >= ($hasil->jadwalUjian->sesiRuangan->bankSoal->mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                                                    {{ number_format($hasil->nilai, 2) }}
                                                 </div>
                                             @else
                                                 <div class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">

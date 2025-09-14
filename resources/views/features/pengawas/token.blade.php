@@ -230,17 +230,16 @@
                     class="flex items-end gap-4">
                     @csrf
                     <div class="flex-grow">
-                        <label for="expiry_hours" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="expiry_minutes" class="block text-sm font-medium text-gray-700 mb-1">
                             Masa Berlaku Token
                         </label>
-                        <select id="expiry_hours" name="expiry_hours"
+                        <select id="expiry_minutes" name="expiry_minutes"
                             class="block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                            <option value="1">1 jam</option>
-                            <option value="2">2 jam</option>
-                            <option value="4" selected>4 jam</option>
-                            <option value="8">8 jam</option>
-                            <option value="12">12 jam</option>
-                            <option value="24">24 jam</option>
+                            <option value="3">3 menit</option>
+                            <option value="5" selected>5 menit</option>
+                            <option value="10">10 menit</option>
+                            <option value="15">15 menit</option>
+                            <option value="20">20 menit</option>
                         </select>
                     </div>
                     <div>
@@ -343,7 +342,7 @@
                     const seconds = String(diffSecs).padStart(2, '0');
 
                     // Update the countdown text
-                    tokenCountdown.innerText = `Berlaku selama: ${hours}:${minutes}:${seconds}`;
+                    tokenCountdown.innerText = `Berlaku selama: ${minutes}:${seconds}`;
 
                     // Schedule next update
                     setTimeout(updateCountdown, 1000);

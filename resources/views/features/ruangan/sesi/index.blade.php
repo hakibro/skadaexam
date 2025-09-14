@@ -188,6 +188,10 @@
                                                 class="text-blue-600 hover:text-blue-900" title="Kelola Siswa">
                                                 <i class="fa-solid fa-users"></i>
                                             </a>
+                                            <a href="{{ route('ruangan.sesi.jadwal.index', [$ruangan->id, $sesi->id]) }}"
+                                                class="text-blue-600 hover:text-purple-900" title="Kelola Jadwal Ujian">
+                                                <i class="fa-solid fa-calendar-plus"></i>
+                                            </a>
                                             <a href="{{ route('ruangan.sesi.edit', [$ruangan->id, $sesi->id]) }}"
                                                 class="text-yellow-600 hover:text-yellow-900" title="Edit">
                                                 <i class="fa-solid fa-edit"></i>

@@ -13,6 +13,33 @@ use Illuminate\Support\Facades\Auth;
 class DashboardController extends Controller
 {
     /**
+     * Toggle auto-logout feature for a jadwal ujian
+     */
+    public function toggleAutoLogout(Request $request, $jadwalUjianId)
+    {
+        $user = Auth::user();
+
+        if (!$user->canSupervise() && !$user->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $jadwalUjian = JadwalUjian::findOrFail($jadwalUjianId);
+
+        // Get the current state and toggle it
+        $currentState = $jadwalUjian->aktifkan_auto_logout ?? true;
+        $jadwalUjian->aktifkan_auto_logout = !$currentState;
+        $jadwalUjian->save();
+
+        return response()->json([
+            'success' => true,
+            'aktifkan_auto_logout' => $jadwalUjian->aktifkan_auto_logout,
+            'message' => $jadwalUjian->aktifkan_auto_logout ?
+                'Auto-logout berhasil diaktifkan' :
+                'Auto-logout berhasil dinonaktifkan'
+        ]);
+    }
+
+    /**
      * Display the pengawas dashboard
      */
 
@@ -115,11 +142,18 @@ class DashboardController extends Controller
             })
             ->take(10);
 
+        // Calculate total students for today's assignments
+        $totalSiswa = 0;
+        foreach ($assignments as $assignment) {
+            $totalSiswa += $assignment->sesiRuanganSiswa->count();
+        }
+
         return view('features.pengawas.dashboard', compact(
             'guru',
             'assignments',
             'upcomingAssignments',
-            'pastAssignments'
+            'pastAssignments',
+            'totalSiswa'
         ));
     }
 

@@ -13,6 +13,9 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/debug', [DashboardController::class, 'debug'])->name('debug');
 
+    // Toggle auto-logout feature
+    Route::post('/toggle-auto-logout/{jadwalUjianId}', [DashboardController::class, 'toggleAutoLogout'])->name('toggle-auto-logout');
+
     // Assignment details and attendance management
     Route::get('/assignment/{id}', [DashboardController::class, 'showAssignment'])->name('assignment');
     Route::post('/assignment/{id}/attendance', [DashboardController::class, 'updateAttendance'])->name('update-attendance');
@@ -28,4 +31,9 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
     Route::get('/berita-acara/{id}/edit', [BeritaAcaraController::class, 'edit'])->name('berita-acara.edit');
     Route::put('/berita-acara/{id}', [BeritaAcaraController::class, 'update'])->name('berita-acara.update');
     Route::post('/berita-acara/{id}/finalize', [BeritaAcaraController::class, 'finalize'])->name('berita-acara.finalize');
+
+    // Pelanggaran / Violations Monitoring
+    Route::get('/get-violations', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'getViolations'])->name('get-violations');
+    Route::get('/get-violations/{id}', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'getViolations'])->name('get-violations.by-session');
+    Route::post('/process-violation/{id}', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'processViolation'])->name('process-violation');
 });
