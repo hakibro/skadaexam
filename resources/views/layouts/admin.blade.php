@@ -55,13 +55,16 @@
 
                 @php
                     $user = Auth::user();
-                    // Cek role dari field 'role' di database, bukan Spatie roles
-                    $isAdmin = $user->role === 'admin' || $user->email === 'admin@skadaexam.test';
-                    $hasDataAccess = $isAdmin || $user->role === 'data';
-                    $hasNaskahAccess = $isAdmin || $user->role === 'naskah';
-                    $hasPengawasAccess = $isAdmin || $user->role === 'pengawas';
-                    $hasKoordinatorAccess = $isAdmin || $user->role === 'koordinator';
-                    $hasRuanganAccess = $isAdmin || $user->role === 'koordinator' || $user->role === 'ruangan';
+                    // Use the proper role checking methods
+                    $isAdmin = $user->isAdmin();
+                    $isGuru = $user->isGuru(); // Check if user has guru role
+                    
+                    // Access permissions - admins get everything, teachers get basic access
+                    $hasDataAccess = $isAdmin || $user->canManageData() || $isGuru; // Teachers need data access
+                    $hasNaskahAccess = $isAdmin || $user->canManageNaskah() || $isGuru; // Teachers need naskah access
+                    $hasPengawasAccess = $isAdmin || $user->canSupervise() || ($user->guru && $user->guru->count() > 0); // Teachers can be pengawas
+                    $hasKoordinatorAccess = $isAdmin || $user->canCoordinate();
+                    $hasRuanganAccess = $isAdmin || $user->canManageRuangan() || $user->canCoordinate();
                 @endphp
 
                 <!-- Admin Panel -->
@@ -281,7 +284,17 @@
                         <div class="text-right">
                             <p class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</p>
                             <p class="text-xs text-gray-600">{{ Auth::user()->email }}</p>
-                            <p class="text-xs text-blue-600 font-semibold capitalize">{{ Auth::user()->role }}</p>
+                            <p class="text-xs text-blue-600 font-semibold capitalize">
+                                @php
+                                    $displayRole = Auth::user()->role;
+                                    if (empty($displayRole) && Auth::user()->isGuru()) {
+                                        $displayRole = 'guru';
+                                    } elseif (empty($displayRole)) {
+                                        $displayRole = Auth::user()->roles->first()?->name ?? 'user';
+                                    }
+                                @endphp
+                                {{ $displayRole }}
+                            </p>
                         </div>
                         <div class="relative">
                             <button class="bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center">
