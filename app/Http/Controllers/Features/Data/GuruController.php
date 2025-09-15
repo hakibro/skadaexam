@@ -7,6 +7,7 @@ use App\Models\Guru;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Imports\GuruImport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -257,13 +258,19 @@ class GuruController extends Controller
      */
     public function search(Request $request)
     {
-        // Debug log untuk troubleshooting
+        // Enhanced debug logging
         Log::info('Guru search called with params: ' . json_encode($request->all()));
 
         // Get filter parameters
         $query = $request->get('q', '');
         $perPage = $request->get('per_page', 10);
         $roleFilter = $request->get('role', '');
+
+        Log::info('Filter parameters:', [
+            'query' => $query,
+            'perPage' => $perPage,
+            'roleFilter' => $roleFilter
+        ]);
 
         // Build query
         $gurusQuery = Guru::query();
@@ -277,11 +284,19 @@ class GuruController extends Controller
             });
         }
 
-        // Apply role filter if provided
+        // Apply role filter if provided - FIXED for Spatie roles
         if (!empty($roleFilter)) {
-            $gurusQuery->whereHas('roles', function ($q) use ($roleFilter) {
+            Log::info("Applying role filter: {$roleFilter}");
+
+            // Include debug SQL logging
+            DB::enableQueryLog();
+
+            $gurusQuery->whereHas('user.roles', function ($q) use ($roleFilter) {
                 $q->where('name', $roleFilter);
             });
+
+            $queries = DB::getQueryLog();
+            Log::info('Role filter query:', end($queries));
         }
 
         // Execute query with pagination
@@ -318,8 +333,20 @@ class GuruController extends Controller
         ]);
 
         try {
-            $count = count($request->ids);
+            // Get all selected gurus with their user IDs
+            $gurus = Guru::whereIn('id', $request->ids)->get();
+            $count = $gurus->count();
+
+            // Collect user IDs that need to be deleted
+            $userIds = $gurus->pluck('user_id')->filter()->values()->all();
+
+            // Delete the guru records
             Guru::whereIn('id', $request->ids)->delete();
+
+            // Delete associated users
+            if (!empty($userIds)) {
+                \App\Models\User::whereIn('id', $userIds)->delete();
+            }
 
             return response()->json([
                 'success' => true,
@@ -349,8 +376,12 @@ class GuruController extends Controller
 
             foreach ($request->ids as $id) {
                 $guru = Guru::findOrFail($id);
-                $guru->syncRoles([$request->role]);
-                $count++;
+
+                // Update role on user model - FIXED
+                if ($guru->user) {
+                    $guru->user->syncRoles([$request->role]);
+                    $count++;
+                }
             }
 
             return response()->json([

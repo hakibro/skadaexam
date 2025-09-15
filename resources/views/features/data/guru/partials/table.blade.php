@@ -4,6 +4,10 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input type="checkbox" id="select-all"
+                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIP</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
@@ -17,6 +21,10 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach ($gurus as $guru)
                     <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" name="selected_gurus[]" value="{{ $guru->id }}"
+                                class="guru-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 h-10 w-10">
@@ -38,19 +46,33 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $roleColors = [
-                                    'guru' => 'bg-green-100 text-green-800',
-                                    'data' => 'bg-blue-100 text-blue-800',
-                                    'naskah' => 'bg-purple-100 text-purple-800',
-                                    'pengawas' => 'bg-yellow-100 text-yellow-800',
-                                    'koordinator' => 'bg-red-100 text-red-800',
-                                    'ruangan' => 'bg-gray-100 text-gray-800',
+                                // Get user's roles from Spatie if available
+$userRoles = $guru->user ? $guru->user->roles->pluck('name')->toArray() : [];
+$displayRole = !empty($userRoles) ? $userRoles[0] : 'guru';
+
+$roleColors = [
+    'guru' => 'bg-green-100 text-green-800',
+    'data' => 'bg-blue-100 text-blue-800',
+    'naskah' => 'bg-purple-100 text-purple-800',
+    'pengawas' => 'bg-yellow-100 text-yellow-800',
+    'koordinator' => 'bg-red-100 text-red-800',
+    'ruangan' => 'bg-gray-100 text-gray-800',
+];
+$colorClass = $roleColors[$displayRole] ?? 'bg-gray-100 text-gray-800';
+
+$roleLabels = [
+    'guru' => 'Guru (Default)',
+    'data' => 'Data Management',
+    'naskah' => 'Naskah Management',
+    'pengawas' => 'Pengawas',
+    'koordinator' => 'Koordinator',
+    'ruangan' => 'Ruangan Management',
                                 ];
-                                $colorClass = $roleColors[$guru->role] ?? 'bg-gray-100 text-gray-800';
+                                $roleLabel = $roleLabels[$displayRole] ?? ucfirst($displayRole);
                             @endphp
                             <span
                                 class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $colorClass }}">
-                                {{ $guru->role_label }}
+                                {{ $roleLabel }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">

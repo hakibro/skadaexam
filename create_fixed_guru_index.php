@@ -1,3 +1,6 @@
+<?php
+// Create a completely new index.blade.php file with clean, fixed code
+$content = <<<'EOD'
 {{-- filepath: c:\laragon\www\skadaexam\resources\views\features\data\guru\index.blade.php --}}
 <!-- File updated on: 2025-09-14 11:20:00 -->
 
@@ -229,16 +232,16 @@
                 console.log(`[DEBUG] ${message}`, data || '');
             }
         }
-
+        
         document.addEventListener('DOMContentLoaded', function() {
             debugLog('DOM Content Loaded - Fixed Version');
-
+            
             // Get filter elements
             const searchInput = document.getElementById('search-input');
             const roleFilter = document.getElementById('role-filter');
             const perPageSelect = document.getElementById('per-page-select');
             const clearFiltersBtn = document.getElementById('clear-filters');
-
+            
             debugLog('Filter elements:', {
                 searchInput: searchInput ? 'found' : 'missing',
                 roleFilter: roleFilter ? 'found' : 'missing',
@@ -377,8 +380,7 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    ?.getAttribute('content')
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                             },
                             body: JSON.stringify({
                                 ids: selectedIds
@@ -435,8 +437,7 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    ?.getAttribute('content')
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                             },
                             body: JSON.stringify({
                                 ids: selectedIds,
@@ -479,7 +480,7 @@
             function performSearch() {
                 // Clear previous timeout to avoid multiple requests
                 clearTimeout(searchTimeout);
-
+                
                 debugLog('Search triggered');
 
                 // Set a new timeout for debouncing
@@ -488,12 +489,8 @@
                     const query = searchInput?.value?.trim() || '';
                     const role = roleFilter?.value || '';
                     const perPage = perPageSelect?.value || '10';
-
-                    debugLog('Search parameters', {
-                        query,
-                        role,
-                        perPage
-                    });
+                    
+                    debugLog('Search parameters', { query, role, perPage });
 
                     // Show loading state
                     showLoading();
@@ -513,8 +510,7 @@
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    ?.getAttribute('content')
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                             }
                         })
                         .then(response => {
@@ -709,7 +705,7 @@
                     }
                 }
             }
-
+            
             // Add pagination click handler
             document.addEventListener('click', handlePaginationClick);
 
@@ -733,3 +729,8 @@
     </script>
 
 @endsection
+EOD;
+
+// Write the content to the file
+file_put_contents('c:/laragon/www/skadaexam/resources/views/features/data/guru/index.blade.php', $content);
+echo "Created a completely new and clean index.blade.php file with fixed code.\n";

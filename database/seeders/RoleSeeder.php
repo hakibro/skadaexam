@@ -39,11 +39,11 @@ class RoleSeeder extends Seeder
             'guru' => 'Guru Default - Basic Teacher Access'
         ];
 
-        echo "\n👨‍🏫 Creating GURU guard roles (guru table)...\n";
+        echo "\n👨‍🏫 Creating web guard roles (users table)...\n";
         foreach ($guruRoles as $roleName => $description) {
             $role = Role::firstOrCreate([
                 'name' => $roleName,
-                'guard_name' => 'guru'
+                'guard_name' => 'web'
             ]);
             echo "   ✅ Guru Role: {$roleName} - {$description}\n";
         }
@@ -63,8 +63,8 @@ class RoleSeeder extends Seeder
         }
 
         echo "\n✨ Multi-Guard Role System created successfully!\n";
-        echo "🎯 Web Guard: Admin manages guru\n";
-        echo "🎯 Guru Guard: Different guru roles for different features\n";
-        echo "🎯 Siswa Guard: Student access\n\n";
+        echo "🎯 Web Guard Role: Admin manages All\n";
+        echo "🎯 Guru Role: Different guru roles for different features\n";
+        echo "🎯 Siswa Guard Role: Student access\n\n";
     }
 }

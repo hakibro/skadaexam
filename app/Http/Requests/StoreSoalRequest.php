@@ -26,34 +26,34 @@ class StoreSoalRequest extends FormRequest
             'pertanyaan' => 'required_unless:tipe_pertanyaan,gambar|string',
             'tipe_pertanyaan' => 'required|in:teks,gambar,teks_gambar',
             'tipe_soal' => 'required|in:pilihan_ganda,essay',
-            'gambar_pertanyaan' => 'nullable|file|image|max:5120',
+            'gambar_pertanyaan' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
 
             // Pilihan jawaban (hanya divalidasi jika tipe_soal = pilihan_ganda)
-            'pilihan_a_teks' => 'required_if:tipe_soal,pilihan_ganda|required_if:pilihan_a_tipe,teks,teks_gambar|nullable|string',
+            'pilihan_a_teks' => 'required_if:pilihan_a_tipe,teks|nullable|string',
             'pilihan_a_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_a_gambar' => 'nullable|file|image|max:5120',
+            'pilihan_a_gambar' => 'required_if:pilihan_a_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
 
-            'pilihan_b_teks' => 'required_if:tipe_soal,pilihan_ganda|required_if:pilihan_b_tipe,teks,teks_gambar|nullable|string',
+            'pilihan_b_teks' => 'required_if:pilihan_b_tipe,teks|nullable|string',
             'pilihan_b_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_b_gambar' => 'nullable|file|image|max:5120',
+            'pilihan_b_gambar' => 'required_if:pilihan_b_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
 
-            'pilihan_c_teks' => 'required_if:tipe_soal,pilihan_ganda|required_if:pilihan_c_tipe,teks,teks_gambar|nullable|string',
+            'pilihan_c_teks' => 'required_if:pilihan_c_tipe,teks|nullable|string',
             'pilihan_c_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_c_gambar' => 'nullable|file|image|max:5120',
+            'pilihan_c_gambar' => 'required_if:pilihan_c_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
 
-            'pilihan_d_teks' => 'required_if:tipe_soal,pilihan_ganda|required_if:pilihan_d_tipe,teks,teks_gambar|nullable|string',
+            'pilihan_d_teks' => 'required_if:pilihan_d_tipe,teks|nullable|string',
             'pilihan_d_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_d_gambar' => 'nullable|file|image|max:5120',
+            'pilihan_d_gambar' => 'required_if:pilihan_d_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
 
             'pilihan_e_teks' => 'nullable|string',
             'pilihan_e_tipe' => 'nullable|in:teks,gambar',
-            'pilihan_e_gambar' => 'nullable|file|image|max:5120',
+            'pilihan_e_gambar' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
 
             'kunci_jawaban' => 'required_if:tipe_soal,pilihan_ganda|nullable|in:A,B,C,D,E',
 
             'pembahasan_teks' => 'nullable|string',
             'pembahasan_tipe' => 'nullable|in:teks,gambar,teks_gambar',
-            'pembahasan_gambar' => 'nullable|file|image|max:5120',
+            'pembahasan_gambar' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'gambar_pembahasan' => 'nullable|string', // Untuk backward compatibility
 
             'bobot' => 'nullable|numeric|min:0.01|max:100.00',
@@ -87,6 +87,13 @@ class StoreSoalRequest extends FormRequest
                     'show_number' => true,
                     'option_layout' => 'vertical',
                 ],
+            ]);
+        }
+
+        // Set default kategori if not provided or empty
+        if (!$this->has('kategori') || $this->input('kategori') === null || $this->input('kategori') === '') {
+            $this->merge([
+                'kategori' => 'umum',
             ]);
         }
     }

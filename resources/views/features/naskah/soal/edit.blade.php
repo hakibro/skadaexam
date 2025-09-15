@@ -5,6 +5,10 @@
 @section('title', 'Edit Soal')
 @section('page-title', 'Edit Soal')
 
+@push('scripts')
+    <script src="{{ asset('js/image-clipboard.js') }}"></script>
+@endpush
+
 @section('content')
     <div class="max-w-4xl mx-auto">
         <form action="{{ route('naskah.soal.update', $soal) }}" method="POST" enctype="multipart/form-data" id="soal-form">
@@ -365,6 +369,12 @@
     <!-- JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize our enhanced image clipboard handler
+            const clipboardHandler = new ImageClipboardHandler({
+                debug: false,
+                maxSize: 5 * 1024 * 1024, // 5MB default for most images
+                validTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg']
+            });
             // Handle tipe pertanyaan changes
             document.querySelectorAll('input[name="tipe_pertanyaan"]').forEach(radio => {
                 radio.addEventListener('change', handleTipePertanyaanChange);
@@ -394,6 +404,68 @@
                     'pilihan-{{ $value }}-img');
             @endforeach
 
+            // Global paste handler for images
+            document.addEventListener('paste', function(e) {
+                // Find which drop zone is active/focused
+                const activeElement = document.activeElement;
+                let targetDropZone = null;
+
+                // Check if we're focused in a textarea or inside a drop zone
+                if (activeElement && activeElement.tagName === 'TEXTAREA') {
+                    // If in textarea, don't interfere with normal paste
+                    return;
+                } else if (activeElement.classList.contains('border-dashed')) {
+                    // If directly focused on drop zone
+                    targetDropZone = activeElement;
+                } else if (activeElement.closest('.border-dashed')) {
+                    // If focused on an element inside a drop zone
+                    targetDropZone = activeElement.closest('.border-dashed');
+                } else {
+                    // Try to find which image section is visible based on the form state
+                    const tipePertanyaan = document.querySelector('input[name="tipe_pertanyaan"]:checked')
+                        .value;
+                    const tipeSoal = document.getElementById('tipe_soal').value;
+                    const tipePembahasan = document.querySelector('input[name="pembahasan_tipe"]:checked')
+                        .value;
+
+                    // Check if pertanyaan gambar section is visible
+                    if (tipePertanyaan === 'gambar' || tipePertanyaan === 'teks_gambar') {
+                        targetDropZone = document.getElementById('gambar-pertanyaan').parentElement;
+                    }
+                    // Check if pembahasan gambar section is visible
+                    else if (tipePembahasan === 'gambar' || tipePembahasan === 'teks_gambar') {
+                        targetDropZone = document.getElementById('pembahasan-gambar').parentElement;
+                    }
+                    // For pilihan ganda options that are set to 'gambar'
+                    else if (tipeSoal === 'pilihan_ganda') {
+                        for (const pilihan of ['a', 'b', 'c', 'd', 'e']) {
+                            const tipePilihan = document.querySelector(
+                                `input[name="pilihan_${pilihan}_tipe"]:checked`).value;
+                            if (tipePilihan === 'gambar') {
+                                targetDropZone = document.getElementById(`pilihan-${pilihan}-gambar`)
+                                    .parentElement;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If we found a drop zone to handle the paste, simulate paste on it
+                if (targetDropZone) {
+                    // Create and dispatch a new paste event to the target drop zone
+                    const newPasteEvent = new ClipboardEvent('paste', {
+                        bubbles: true,
+                        cancelable: true,
+                        clipboardData: e.clipboardData
+                    });
+                    targetDropZone.dispatchEvent(newPasteEvent);
+
+                    // Prevent default only if we handled it
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
             // Initialize form state based on existing data
             handleTipePertanyaanChange();
             handleTipeSoalChange();
@@ -401,6 +473,21 @@
             @foreach (['a', 'b', 'c', 'd', 'e'] as $value)
                 handlePilihanTipeChange('{{ $value }}');
             @endforeach
+
+            // Add image-drop-zone class to all drop zones for clipboard handler
+            document.querySelectorAll('.border-dashed').forEach(dropZone => {
+                dropZone.classList.add('image-drop-zone');
+
+                // Add data attributes for file type constraints
+                const fileInput = dropZone.querySelector('input[type="file"]');
+                if (fileInput) {
+                    if (fileInput.id.includes('pilihan')) {
+                        fileInput.setAttribute('data-max-size', 2 * 1024 * 1024); // 2MB for options
+                    } else {
+                        fileInput.setAttribute('data-max-size', 5 * 1024 * 1024); // 5MB for main images
+                    }
+                }
+            });
         });
 
         function handleTipePertanyaanChange() {
@@ -485,41 +572,150 @@
 
             if (!input || !preview || !img) return;
 
+            // Function to process file for preview
+            function processFile(file) {
+                if (!file) return;
+
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+                if (!validTypes.includes(file.type)) {
+                    alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
+                    return false;
+                }
+
+                // Validate file size (5MB for main images, 2MB for options)
+                const maxSize = inputId.includes('pilihan') ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    const maxSizeMB = inputId.includes('pilihan') ? '2MB' : '5MB';
+                    alert(`File size must be less than ${maxSizeMB}`);
+                    return false;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+                return true;
+            }
+
+            // Handle file input change
             input.addEventListener('change', function() {
                 const file = this.files[0];
                 if (file) {
-                    // Validate file type
-                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
-                    if (!validTypes.includes(file.type)) {
-                        alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
+                    if (!processFile(file)) {
                         this.value = '';
-                        return;
                     }
-
-                    // Validate file size (5MB for main images, 2MB for options)
-                    const maxSize = inputId.includes('pilihan') ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
-                    if (file.size > maxSize) {
-                        const maxSizeMB = inputId.includes('pilihan') ? '2MB' : '5MB';
-                        alert(`File size must be less than ${maxSizeMB}`);
-                        this.value = '';
-                        return;
-                    }
-
-                    // Show preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        img.src = e.target.result;
-                        preview.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
                 } else {
                     preview.classList.add('hidden');
                     img.src = '';
                 }
             });
 
-            // Drag and drop functionality
+            // Handle clipboard paste
             const dropZone = input.parentElement;
+            dropZone.addEventListener('paste', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Get image from clipboard
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const items = clipboardData.items;
+
+                if (!items) return;
+
+                // Find image in clipboard data
+                let blob = null;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        blob = items[i].getAsFile();
+                        break;
+                    }
+                }
+
+                // Process image if found
+                if (blob) {
+                    // Create a new FileList-like object
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(blob);
+
+                    // Set the file input's files property with our clipboard image
+                    input.files = dataTransfer.files;
+
+                    if (processFile(blob)) {
+                        // Flash animation to indicate successful paste
+                        dropZone.classList.add('paste-success');
+                        setTimeout(() => {
+                            dropZone.classList.remove('paste-success');
+                        }, 1000);
+
+                        // Show feedback message
+                        const feedbackMsg = document.createElement('div');
+                        feedbackMsg.className =
+                            'text-green-600 text-sm mt-2 absolute bottom-2 left-0 right-0 text-center';
+                        feedbackMsg.innerHTML =
+                            '<i class="fa-solid fa-check-circle mr-1"></i> Gambar berhasil ditempel!';
+                        dropZone.style.position = 'relative';
+                        dropZone.appendChild(feedbackMsg);
+
+                        setTimeout(() => {
+                            dropZone.removeChild(feedbackMsg);
+                        }, 2000);
+
+                        // If we're editing an existing image, make sure to remove any "remove" flags
+                        const hiddenInputName = `remove_${inputId.replace('-', '_')}`;
+                        const existingHiddenInput = document.querySelector(`input[name="${hiddenInputName}"]`);
+                        if (existingHiddenInput) {
+                            existingHiddenInput.parentNode.removeChild(existingHiddenInput);
+                        }
+                    }
+                }
+            });
+
+            // Make dropZone focusable to enable paste events
+            dropZone.setAttribute('tabindex', '0');
+
+            // Also listen for focus to show user it's pastable
+            dropZone.addEventListener('focus', function() {
+                this.classList.add('border-blue-400');
+            });
+
+            dropZone.addEventListener('blur', function() {
+                this.classList.remove('border-blue-400');
+            });
+
+            // Add paste hint text with keyboard shortcut
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'text-xs text-gray-400 mt-1';
+            hintDiv.innerHTML = '<i class="fa-solid fa-clipboard mr-1"></i> Bisa juga paste gambar dari clipboard (Ctrl+V)';
+            dropZone.querySelector('label').appendChild(hintDiv);
+
+            // Add keyboard shortcut for focus
+            dropZone.addEventListener('keydown', function(e) {
+                // If user presses "v" while holding Ctrl, simulate a paste event
+                if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+                    // Do nothing, the paste event will be handled by the paste handler
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    // Allow delete/backspace to remove the image
+                    if (img.src && !preview.classList.contains('hidden')) {
+                        if (inputId === 'gambar-pertanyaan') {
+                            removeGambarPertanyaan();
+                        } else if (inputId === 'pembahasan-gambar') {
+                            removePembahasanGambar();
+                        } else {
+                            // For pilihan gambar, just clear the input
+                            input.value = '';
+                            preview.classList.add('hidden');
+                            img.src = '';
+                        }
+                        e.preventDefault();
+                    }
+                }
+            });
+
+            // Drag and drop functionality
             dropZone.addEventListener('dragover', function(e) {
                 e.preventDefault();
                 this.classList.add('border-blue-400');
@@ -646,7 +842,7 @@
                         } else if (pilihanImg && pilihanImg.src && !pilihanImg.classList.contains('hidden')) {
                             // Use existing image
                             previewContent +=
-                            `<img src="${pilihanImg.src}" class="max-w-48 h-auto rounded shadow">`;
+                                `<img src="${pilihanImg.src}" class="max-w-48 h-auto rounded shadow">`;
                         }
                     }
 
@@ -877,6 +1073,48 @@
 
         #preview-modal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
             background: #555;
+        }
+
+        /* Clipboard paste animation */
+        @keyframes paste-success-flash {
+            0% {
+                background-color: #d1fae5;
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .paste-success {
+            animation: paste-success-flash 1s ease-out;
+        }
+
+        /* Drop zone focus styles */
+        .border-dashed:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Clipboard icon animation */
+        @keyframes clipboard-pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .fa-clipboard {
+            animation: clipboard-pulse 2s infinite ease-in-out;
+            display: inline-block;
         }
     </style>
 @endsection

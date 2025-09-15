@@ -31,9 +31,6 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     });
 
     // ===== SISWA MANAGEMENT =====
-    // Basic CRUD routes
-    Route::resource('siswa', SiswaController::class);
-
     // Search functionality
     Route::match(['GET', 'POST'], 'siswa/search', [SiswaController::class, 'search'])->name('siswa.search');
 
@@ -47,16 +44,11 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     Route::post('siswa/import-from-api-ajax', [SiswaController::class, 'importFromApiAjax'])->name('siswa.import-from-api-ajax');
     Route::get('siswa/import-progress', [SiswaController::class, 'getImportProgress'])->name('siswa.import-progress');
     Route::post('siswa/clear-import-progress', [SiswaController::class, 'clearImportProgress'])->name('siswa.clear-import-progress');
-    Route::post('siswa/batch-import', [SiswaController::class, 'batchImport'])->name('siswa.batch-import');
-    Route::get('siswa/batch-import-status', [SiswaController::class, 'getBatchImportStatus'])->name('siswa.batch-import-status');
 
     // Sync routes
     Route::post('siswa/sync-from-api', [SiswaController::class, 'syncFromApi'])->name('siswa.sync-from-api');
     Route::get('siswa/sync-progress', [SiswaController::class, 'getSyncProgress'])->name('siswa.sync-progress');
     Route::post('siswa/clear-sync-progress', [SiswaController::class, 'clearSyncProgress'])->name('siswa.clear-sync-progress');
-    Route::post('siswa/batch-sync', [SiswaController::class, 'batchSync'])->name('siswa.batch-sync');
-    Route::get('siswa/batch-sync-status', [SiswaController::class, 'getBatchSyncStatus'])->name('siswa.batch-sync-status');
-    Route::post('siswa/batch-sync-error', [SiswaController::class, 'logBatchSyncError'])->name('siswa.batch-sync-error');
 
     // Export and stats
     Route::get('siswa/export', [SiswaController::class, 'export'])->name('siswa.export');
@@ -67,6 +59,9 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     Route::post('siswa/bulk-delete', [SiswaController::class, 'bulkDelete'])->name('siswa.bulk-delete');
     Route::post('siswa/bulk-update-rekomendasi', [SiswaController::class, 'bulkUpdateRekomendasi'])->name('siswa.bulk-update-rekomendasi');
     Route::post('siswa/bulk-update-status', [SiswaController::class, 'bulkUpdateStatus'])->name('siswa.bulk-update-status');
+
+    // Basic CRUD routes (place at the end so they don't override custom routes)
+    Route::resource('siswa', SiswaController::class);
 });
 
 // Guru User Routes (for guru role)

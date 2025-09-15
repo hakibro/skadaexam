@@ -22,18 +22,6 @@ class SiswaDashboardController extends Controller
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
 
-        // Update enrollment status
-        $enrollment = EnrollmentUjian::where('siswa_id', $siswa->id)
-            ->where('sesi_ruangan_id', $request->session()->get('current_sesi_ruangan_id'))
-            ->first();
-
-        if ($enrollment) {
-            $enrollment->update([
-                'status_enrollment' => 'cancelled',
-                'catatan' => 'Ujian dibatalkan: Pelanggaran integritas (tab switching)'
-            ]);
-        }
-
         $currentEnrollment = null;
         if ($enrollmentId) {
             $currentEnrollment = EnrollmentUjian::with([

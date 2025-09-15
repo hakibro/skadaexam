@@ -168,6 +168,65 @@
         </div>
     </div>
 
+    <!-- Violation Modal - Uncloseable -->
+    <div id="violation-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden backdrop-blur-sm">
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-2xl max-w-md w-full border-4 border-red-500 animate-pulse">
+                <div class="p-6">
+                    <!-- Header with warning icon -->
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="bg-red-100 rounded-full p-4 animate-bounce">
+                            <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                        </div>
+                    </div>
+
+                    <!-- Title -->
+                    <h3 class="text-xl font-bold text-gray-900 text-center mb-4 animate-pulse">
+                        ⚠️ PELANGGARAN TERDETEKSI
+                    </h3>
+
+                    <!-- Message -->
+                    <div id="violation-modal-message" class="text-gray-700 text-center mb-6 space-y-2">
+                        <p class="font-semibold text-red-600">Anda telah berpindah tab atau meminimalkan browser!</p>
+                        <p class="text-sm">Pelanggaran ini telah dicatat dan dilaporkan ke pengawas ujian.</p>
+                        <p class="text-sm font-medium">Harap tetap fokus pada halaman ujian untuk menghindari
+                            pelanggaran lebih lanjut.</p>
+                    </div>
+
+                    <!-- Violation count display -->
+                    <div id="violation-count-display" class="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+                        <div class="flex items-center justify-center">
+                            <span class="text-sm text-gray-600">Total Pelanggaran: </span>
+                            <span id="modal-violation-count"
+                                class="ml-2 px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold animate-pulse">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Continue button -->
+                    <div class="text-center">
+                        <button id="continue-exam-btn"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                            <i class="fas fa-arrow-right mr-2"></i>
+                            Lanjutkan Ujian
+                        </button>
+                    </div>
+
+                    <!-- Warning footer -->
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-xs text-gray-500 text-center">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Pelanggaran berulang dapat menyebabkan diskualifikasi ujian
+                        </p>
+                        <p class="text-xs text-red-500 text-center mt-2 font-medium">
+                            <i class="fas fa-lock mr-1"></i>
+                            Modal ini tidak dapat ditutup sampai Anda menekan "Lanjutkan Ujian"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         @if (!isset($examData['questions']) || count($examData['questions']) == 0)
@@ -826,13 +885,38 @@
             let visibilityWarnings = 0;
             const maxWarnings = 1; // Number of warnings before automatic logout
             let lastFocusTime = Date.now();
+            let isDetectionActive = false;
+            let debounceTimer = null;
 
-            // Add event listeners for visibility change
+            // Grace period: Don't start detection immediately (30 seconds after page load)
+            const gracePeriod = 30000; // 30 seconds
+            console.log('Violation detection will start in 30 seconds...');
+
+            setTimeout(() => {
+                isDetectionActive = true;
+                console.log('Violation detection is now active');
+
+                // Show one-time notification to student
+                const notification = document.createElement('div');
+                notification.className =
+                    'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
+                notification.innerHTML =
+                '<i class="fas fa-shield-alt mr-2"></i>Sistem monitoring ujian telah aktif';
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }, gracePeriod);
+
+            // Add event listeners for visibility change - but only process if detection is active
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('blur', handleWindowBlur);
             window.addEventListener('focus', handleWindowFocus);
 
             function handleVisibilityChange() {
+                if (!isDetectionActive) return; // Skip during grace period
+
                 if (document.visibilityState === 'hidden') {
                     handleUserLeftPage();
                 } else if (document.visibilityState === 'visible') {
@@ -841,42 +925,76 @@
             }
 
             function handleWindowBlur() {
-                handleUserLeftPage();
+                if (!isDetectionActive) return; // Skip during grace period
+
+                // Add debouncing to prevent false positives from quick focus changes
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+
+                debounceTimer = setTimeout(() => {
+                    // Only trigger if the page is still not visible after a short delay
+                    if (document.visibilityState === 'hidden') {
+                        handleUserLeftPage();
+                    }
+                }, 1000); // 1 second debounce
             }
 
             function handleWindowFocus() {
+                if (!isDetectionActive) return; // Skip during grace period
+
+                // Clear the debounce timer as user is back
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = null;
+                }
+
                 handleUserReturnedToPage();
             }
 
             function handleUserLeftPage() {
+                if (!isDetectionActive) return; // Skip during grace period
+
+                console.log('User left page detected');
                 lastFocusTime = Date.now();
 
-                // Increment warning counter and check if should log out
-                visibilityWarnings++;
+                // Only increment warnings for actual visibility changes (not just focus changes)
+                if (document.visibilityState === 'hidden') {
+                    visibilityWarnings++;
+                    console.log(`Violation count: ${visibilityWarnings}`);
 
-                if (visibilityWarnings > maxWarnings) {
-                    // Automatically logout
-                    logoutDueToCheating();
-                } else {
-                    // Store the time when user left the page
-                    localStorage.setItem('examLeftPageTime', Date.now());
+                    if (visibilityWarnings > maxWarnings) {
+                        // Automatically logout
+                        logoutDueToCheating();
+                    } else {
+                        // Store the time when user left the page
+                        localStorage.setItem('examLeftPageTime', Date.now());
+                    }
                 }
             }
 
             function handleUserReturnedToPage() {
+                if (!isDetectionActive) return; // Skip during grace period
+
                 const leftTime = localStorage.getItem('examLeftPageTime');
                 if (leftTime) {
                     const timeAway = Date.now() - parseInt(leftTime);
+                    console.log(`User was away for ${Math.floor(timeAway/1000)} seconds`);
 
-                    // If away for more than 3 seconds, show warning or logout
-                    if (timeAway > 3000) {
+                    // Only show warning if away for more than 5 seconds (increased threshold)
+                    if (timeAway > 5000) {
                         if (visibilityWarnings >= maxWarnings) {
                             logoutDueToCheating();
                         } else {
-                            alert(
-                                `⚠️ PERINGATAN: Anda telah berpindah dari halaman ujian! Peringatan ${visibilityWarnings} dari ${maxWarnings}`
+                            // Show violation modal instead of alert
+                            showViolationModal(
+                                `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
+                                `Peringatan ${visibilityWarnings} dari ${maxWarnings}`,
+                                visibilityWarnings
                             );
                         }
+                    } else {
+                        console.log('Quick focus change detected, ignoring...');
                     }
 
                     // Remove stored time
@@ -907,11 +1025,11 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.continue_exam) {
-                            // Show alert but continue
-                            alert(
-                                'Peringatan: Anda telah berpindah tab/meminimalkan browser. ' +
-                                'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas. ' +
-                                'Anda dapat melanjutkan ujian.'
+                            // Show violation modal instead of alert
+                            showViolationModal(
+                                'Anda telah berpindah tab atau meminimalkan browser!',
+                                'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas. Anda dapat melanjutkan ujian.',
+                                data.violations_count
                             );
 
                             // Update UI to show violation count if needed
@@ -958,9 +1076,111 @@
                     })
                     .catch(error => {
                         console.error('Error recording violation:', error);
-                        alert('Terjadi kesalahan saat merekam pelanggaran. Silakan lanjutkan ujian.');
+                        showViolationModal(
+                            'KESALAHAN SISTEM',
+                            'Terjadi kesalahan saat merekam pelanggaran. Silakan lanjutkan ujian dan laporkan ke pengawas jika masalah berlanjut.',
+                            0
+                        );
                     });
             }
+        }
+
+        // Function to show violation modal (uncloseable)
+        function showViolationModal(title, message, violationCount = 0) {
+            const modal = document.getElementById('violation-modal');
+            const modalTitle = modal.querySelector('h3');
+            const modalMessage = modal.querySelector('#violation-modal-message');
+            const modalViolationCount = document.getElementById('modal-violation-count');
+            const continueBtn = document.getElementById('continue-exam-btn');
+
+            // Update modal content
+            if (title.includes('Peringatan')) {
+                modalTitle.innerHTML = `⚠️ ${title}`;
+            } else {
+                modalTitle.innerHTML = '⚠️ PELANGGARAN TERDETEKSI';
+            }
+
+            // Update message
+            const messageLines = message.split('. ');
+            modalMessage.innerHTML = '';
+            messageLines.forEach(line => {
+                if (line.trim()) {
+                    const p = document.createElement('p');
+                    p.className = 'text-sm mb-2';
+                    if (line.includes('dicatat')) {
+                        p.className += ' font-semibold text-red-600';
+                    }
+                    p.textContent = line.trim() + '.';
+                    modalMessage.appendChild(p);
+                }
+            });
+
+            // Update violation count
+            modalViolationCount.textContent = violationCount || '0';
+
+            // Show modal
+            modal.classList.remove('hidden');
+
+            // Disable page scrolling
+            document.body.style.overflow = 'hidden';
+
+            // Focus on continue button
+            continueBtn.focus();
+
+            // Prevent ESC key from closing modal and other keyboard shortcuts
+            const handleKeyDown = (e) => {
+                // Prevent ESC, Alt+Tab, Ctrl+Tab, F5, Ctrl+R, etc.
+                if (e.key === 'Escape' ||
+                    (e.altKey && e.key === 'Tab') ||
+                    (e.ctrlKey && e.key === 'Tab') ||
+                    e.key === 'F5' ||
+                    (e.ctrlKey && e.key === 'r')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                // Allow Enter key to trigger continue button
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    continueBtn.click();
+                }
+            };
+
+            document.addEventListener('keydown', handleKeyDown);
+
+            // Handle continue button click
+            const handleContinue = () => {
+                // Hide modal
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+
+                // Remove event listeners
+                document.removeEventListener('keydown', handleKeyDown);
+                continueBtn.removeEventListener('click', handleContinue);
+
+                // Focus back on the exam content
+                const currentQuestion = document.querySelector('[data-question-index="' + currentQuestionIndex + '"]');
+                if (currentQuestion) {
+                    currentQuestion.focus();
+                }
+
+                // Log that student acknowledged the violation
+                console.log('Student acknowledged violation and continued exam');
+            };
+
+            continueBtn.addEventListener('click', handleContinue);
+
+            // Prevent clicking outside to close modal
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            // Add visual indication that modal is uncloseable
+            const modalContent = modal.querySelector('.bg-white');
+            modalContent.classList.add('shadow-2xl', 'ring-4', 'ring-red-500', 'ring-opacity-50');
         }
     </script>
 </body>

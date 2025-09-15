@@ -13,21 +13,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
                 <div class="flex items-center gap-4">
-                    })
-                    .catch(error => {
-                    console.error('Error fetching violations:', error);
-                    violationsBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                            <div class="flex flex-col items-center justify-center">
-                                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
-                                <p class="text-lg font-medium">Gagal memuat data pelanggaran</p>
-                                <p class="text-sm mt-1">Error: ${error.message}</p>
-                            </div>
-                        </td>
-                    </tr>
-                    `;
-                    }); <div class="bg-green-100 text-green-600 p-3 rounded-full">
+                    <div class="bg-green-100 text-green-600 p-3 rounded-full">
                         <i class="fa-solid fa-eye text-2xl"></i>
                     </div>
                     <div>
@@ -488,6 +474,121 @@
             @endif
         </div>
     </div>
+
+    <!-- Violation Action Modal -->
+    <div id="violation-action-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full border-2 border-orange-500">
+                <div class="p-6">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="bg-orange-100 rounded-full p-2 mr-3">
+                                <i class="fas fa-exclamation-triangle text-orange-500 text-xl"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900">
+                                Tindakan Pelanggaran Ujian
+                            </h3>
+                        </div>
+                        <button id="close-violation-modal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Student Info -->
+                    <div id="violation-student-info" class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">Siswa:</span>
+                                <span id="modal-student-name" class="font-semibold ml-1">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Waktu:</span>
+                                <span id="modal-violation-time" class="font-semibold ml-1">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Mata Pelajaran:</span>
+                                <span id="modal-subject-name" class="font-semibold ml-1">-</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Jenis:</span>
+                                <span id="modal-violation-type" class="font-semibold ml-1 text-red-600">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Violation Description -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi Pelanggaran:</label>
+                        <div id="modal-violation-description"
+                            class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                            -
+                        </div>
+                    </div>
+
+                    <!-- Action Selection -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Pilih Tindakan:</label>
+                        <div class="grid grid-cols-1 gap-3">
+                            <label
+                                class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="violation-action" value="peringatan"
+                                    class="mr-3 text-green-600">
+                                <div>
+                                    <div class="font-medium text-green-700">Berikan Peringatan</div>
+                                    <div class="text-sm text-gray-500">Siswa dapat melanjutkan ujian dengan catatan
+                                        peringatan</div>
+                                </div>
+                            </label>
+
+                            <label
+                                class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-yellow-500 has-[:checked]:bg-yellow-50">
+                                <input type="radio" name="violation-action" value="skors"
+                                    class="mr-3 text-yellow-600">
+                                <div>
+                                    <div class="font-medium text-yellow-700">Skors Sementara</div>
+                                    <div class="text-sm text-gray-500">Siswa dihentikan sementara, dapat melanjutkan nanti
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label
+                                class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                                <input type="radio" name="violation-action" value="diskualifikasi"
+                                    class="mr-3 text-red-600">
+                                <div>
+                                    <div class="font-medium text-red-700">Diskualifikasi</div>
+                                    <div class="text-sm text-gray-500">Ujian dihentikan permanen untuk siswa ini</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan (Opsional):</label>
+                        <textarea id="violation-notes" rows="3"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Masukkan catatan tambahan mengenai pelanggaran dan tindakan yang diambil..."></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end space-x-3">
+                        <button id="dismiss-violation-btn"
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                            <i class="fas fa-times mr-2"></i>
+                            Abaikan
+                        </button>
+                        <button id="process-violation-btn"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                            <i class="fas fa-check mr-2"></i>
+                            Proses Tindakan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -536,7 +637,7 @@
                 `;
 
                 const url =
-                `{{ url('/features/pengawas/get-violations') }}${sesiId !== 'all' ? '/' + sesiId : ''}`;
+                    `{{ url('/features/pengawas/get-violations') }}${sesiId !== 'all' ? '/' + sesiId : ''}`;
                 console.log('Fetching violations from:', url);
 
                 // Fetch violations data
@@ -571,7 +672,7 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="font-medium text-gray-900">${violation.siswa.nama}</div>
-                                    <div class="text-xs text-gray-500">NIS: ${violation.siswa.nomor_induk || '-'}</div>
+                                    <div class="text-xs text-gray-500">ID YYS: ${violation.siswa.idyayasan || '-'}</div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">${violation.jadwal_ujian.mapel.nama_mapel || 'Tidak ada mapel'}</div>
@@ -605,17 +706,31 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                            <button data-violation-id="${violation.id}" class="dismiss-violation text-yellow-600 hover:text-yellow-800">
-                                                                <i class="fas fa-times-circle"></i> Abaikan
-                                                            </button>
-                                                            <button data-violation-id="${violation.id}" class="process-violation text-blue-600 hover:text-blue-800">
-                                                                <i class="fas fa-check-circle"></i> Proses
-                                                            </button>
-                                                        ` : `
-                                                            <span class="text-gray-400">
-                                                                <i class="fas fa-check"></i> Sudah ditangani
-                                                            </span>
-                                                        `}
+                                                                        <button 
+                                                                            data-violation-id="${violation.id}"
+                                                                            data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
+                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                            data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
+                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                            class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
+                                                                            <i class="fas fa-times-circle mr-1"></i> Abaikan
+                                                                        </button>
+                                                                        <button 
+                                                                            data-violation-id="${violation.id}"
+                                                                            data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
+                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                            data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
+                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                            class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
+                                                                            <i class="fas fa-check-circle mr-1"></i> Proses
+                                                                        </button>
+                                                                    ` : `
+                                                                        <span class="text-gray-400">
+                                                                            <i class="fas fa-check mr-1"></i> Sudah ditangani
+                                                                        </span>
+                                                                    `}
                                     </div>
                                 </td>
                             `;
@@ -664,9 +779,22 @@
                 document.querySelectorAll('.dismiss-violation').forEach(button => {
                     button.addEventListener('click', function() {
                         const violationId = this.getAttribute('data-violation-id');
-                        if (confirm('Apakah Anda yakin ingin mengabaikan pelanggaran ini?')) {
-                            processViolation(violationId, 'dismiss');
-                        }
+                        const studentName = this.getAttribute('data-student-name');
+                        const violationType = this.getAttribute('data-violation-type');
+                        const violationTime = this.getAttribute('data-violation-time');
+                        const subjectName = this.getAttribute('data-subject-name');
+                        const violationDescription = this.getAttribute(
+                            'data-violation-description');
+
+                        showViolationActionModal(
+                            violationId,
+                            studentName,
+                            violationType,
+                            violationTime,
+                            subjectName,
+                            violationDescription,
+                            'dismiss'
+                        );
                     });
                 });
 
@@ -674,27 +802,22 @@
                 document.querySelectorAll('.process-violation').forEach(button => {
                     button.addEventListener('click', function() {
                         const violationId = this.getAttribute('data-violation-id');
-                        const action = prompt(
-                            'Pilih tindakan untuk pelanggaran ini:\n1. Peringatan\n2. Skors\n3. Diskualifikasi\n\nMasukkan nomor atau nama tindakan:',
-                            '1'
+                        const studentName = this.getAttribute('data-student-name');
+                        const violationType = this.getAttribute('data-violation-type');
+                        const violationTime = this.getAttribute('data-violation-time');
+                        const subjectName = this.getAttribute('data-subject-name');
+                        const violationDescription = this.getAttribute(
+                            'data-violation-description');
+
+                        showViolationActionModal(
+                            violationId,
+                            studentName,
+                            violationType,
+                            violationTime,
+                            subjectName,
+                            violationDescription,
+                            'process'
                         );
-
-                        let tindakan = '';
-                        if (action) {
-                            if (action === '1' || action.toLowerCase() === 'peringatan') {
-                                tindakan = 'peringatan';
-                            } else if (action === '2' || action.toLowerCase() === 'skors') {
-                                tindakan = 'skors';
-                            } else if (action === '3' || action.toLowerCase() ===
-                                'diskualifikasi') {
-                                tindakan = 'diskualifikasi';
-                            } else {
-                                tindakan = action;
-                            }
-
-                            const catatan = prompt('Masukkan catatan tambahan (opsional):');
-                            processViolation(violationId, 'finalize', tindakan, catatan);
-                        }
                     });
                 });
             }
@@ -724,16 +847,28 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            alert('Pelanggaran berhasil diproses');
+                            showToast('Pelanggaran berhasil diproses', 'success');
                             loadViolations(); // Reload the violations
                         } else {
-                            alert('Gagal memproses pelanggaran');
+                            showToast('Gagal memproses pelanggaran', 'error');
                         }
                     })
                     .catch(error => {
                         console.error('Error processing violation:', error);
-                        alert('Terjadi kesalahan saat memproses pelanggaran');
+                        showToast('Terjadi kesalahan saat memproses pelanggaran', 'error');
                     });
+            }
+
+            // Helper function to format violation type
+            function formatViolationType(type) {
+                const typeMap = {
+                    'tab_switching': 'Pindah Tab',
+                    'window_blur': 'Keluar Window',
+                    'refresh': 'Refresh Halaman',
+                    'copy_paste': 'Copy Paste',
+                    'right_click': 'Klik Kanan'
+                };
+                return typeMap[type] || type;
             }
 
             // Helper function to format date
@@ -892,6 +1027,168 @@
 
             // Initial update
             updateButtons();
+
+            // Function to show violation action modal
+            function showViolationActionModal(violationId, studentName, violationType, violationTime, subjectName,
+                violationDescription, defaultAction = 'process') {
+                const modal = document.getElementById('violation-action-modal');
+
+                // Populate modal with violation data
+                document.getElementById('modal-student-name').textContent = studentName;
+                document.getElementById('modal-violation-time').textContent = violationTime;
+                document.getElementById('modal-subject-name').textContent = subjectName;
+                document.getElementById('modal-violation-type').textContent = violationType;
+                document.getElementById('modal-violation-description').textContent = violationDescription;
+
+                // Clear previous selections
+                document.querySelectorAll('input[name="violation-action"]').forEach(radio => {
+                    radio.checked = false;
+                });
+
+                // Set default action if specified
+                if (defaultAction === 'dismiss') {
+                    // For dismiss, pre-select warning as default
+                    document.querySelector('input[name="violation-action"][value="peringatan"]').checked = true;
+                }
+
+                // Clear notes
+                document.getElementById('violation-notes').value = '';
+
+                // Show modal
+                modal.classList.remove('hidden');
+
+                // Focus on first radio button
+                const firstRadio = document.querySelector('input[name="violation-action"]');
+                if (firstRadio) firstRadio.focus();
+
+                // Setup keyboard navigation
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeModal();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const processBtn = document.getElementById('process-violation-btn');
+                        processBtn.click();
+                    }
+                };
+
+                // Setup modal event listeners
+                const closeBtn = document.getElementById('close-violation-modal');
+                const dismissBtn = document.getElementById('dismiss-violation-btn');
+                const processBtn = document.getElementById('process-violation-btn');
+
+                // Close modal handlers
+                const closeModal = () => {
+                    modal.classList.add('hidden');
+                    document.removeEventListener('keydown', handleKeyDown);
+                };
+
+                document.addEventListener('keydown', handleKeyDown);
+                closeBtn.addEventListener('click', closeModal);
+
+                // Dismiss violation
+                dismissBtn.addEventListener('click', () => {
+                    if (confirm('Yakin ingin mengabaikan pelanggaran ini tanpa tindakan?')) {
+                        processViolation(violationId, 'dismiss');
+                        closeModal();
+                    }
+                });
+
+                // Process violation
+                processBtn.addEventListener('click', () => {
+                    const selectedAction = document.querySelector('input[name="violation-action"]:checked');
+                    const notes = document.getElementById('violation-notes').value;
+
+                    if (!selectedAction) {
+                        showToast('Pilih tindakan terlebih dahulu', 'warning');
+                        return;
+                    }
+
+                    // Show confirmation based on action severity
+                    let confirmMessage = '';
+                    switch (selectedAction.value) {
+                        case 'peringatan':
+                            confirmMessage = 'Berikan peringatan kepada siswa dan lanjutkan ujian?';
+                            break;
+                        case 'skors':
+                            confirmMessage = 'Skors siswa dari ujian sementara?';
+                            break;
+                        case 'diskualifikasi':
+                            confirmMessage =
+                                'DISKUALIFIKASI siswa dari ujian? Tindakan ini tidak dapat dibatalkan!';
+                            break;
+                    }
+
+                    if (confirm(confirmMessage)) {
+                        processViolation(violationId, 'finalize', selectedAction.value, notes);
+                        closeModal();
+                    }
+                });
+
+                // Close modal when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                // Add visual feedback for action selection
+                document.querySelectorAll('input[name="violation-action"]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        const labels = document.querySelectorAll(
+                            'label:has(input[name="violation-action"])');
+                        labels.forEach(label => {
+                            label.classList.remove('ring-2', 'ring-blue-500');
+                        });
+
+                        const selectedLabel = radio.closest('label');
+                        selectedLabel.classList.add('ring-2', 'ring-blue-500');
+                    });
+                });
+            }
+
+            // Function to show toast notification
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className =
+                    `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium transform transition-all duration-300 translate-x-full`;
+
+                switch (type) {
+                    case 'success':
+                        toast.classList.add('bg-green-500');
+                        break;
+                    case 'error':
+                        toast.classList.add('bg-red-500');
+                        break;
+                    case 'warning':
+                        toast.classList.add('bg-yellow-500');
+                        break;
+                    default:
+                        toast.classList.add('bg-blue-500');
+                }
+
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} mr-2"></i>
+                        <span>${message}</span>
+                    </div>
+                `;
+
+                document.body.appendChild(toast);
+
+                // Animate in
+                setTimeout(() => {
+                    toast.classList.remove('translate-x-full');
+                }, 100);
+
+                // Auto remove after 4 seconds
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        document.body.removeChild(toast);
+                    }, 300);
+                }, 4000);
+            }
         });
     </script>
 @endsection

@@ -108,7 +108,7 @@
                         <thead class="bg-gray-100">
                             <tr>
                                 <th class="border border-gray-300 px-4 py-2 text-left">No.</th>
-                                <th class="border border-gray-300 px-4 py-2 text-left">NIS</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left">ID YYS</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left">Nama Siswa</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left">Kelas</th>
                                 <th class="border border-gray-300 px-4 py-2 text-center">Status Kehadiran</th>
@@ -121,7 +121,7 @@
                                         <td class="border border-gray-300 px-4 py-2">{{ $i + 1 }}</td>
                                         <td class="border border-gray-300 px-4 py-2">
                                             @if ($sesiSiswa->siswa)
-                                                {{ $sesiSiswa->siswa->nis ?: 'Tidak ada NIS' }}
+                                                {{ $sesiSiswa->siswa->idyayasan ?: 'Tidak ada ID YYS' }}
                                             @else
                                                 <span class="text-red-500">Data siswa tidak ditemukan</span>
                                             @endif

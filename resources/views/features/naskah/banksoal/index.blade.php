@@ -276,6 +276,11 @@
                                                 <i class="fa-solid fa-edit"></i>
                                                 <span class="hidden md:inline">Edit</span>
                                             </a>
+                                            <a href="{{ route('naskah.banksoal.show', $bank->id) }}"
+                                                class="text-blue-600 hover:text-blue-800">
+                                                <i class="fa-solid fa-eye"></i>
+                                                <span class="hidden md:inline">Detail</span>
+                                            </a>
                                             <form action="{{ route('naskah.banksoal.destroy', $bank->id) }}"
                                                 method="POST" class="delete-form">
                                                 @csrf

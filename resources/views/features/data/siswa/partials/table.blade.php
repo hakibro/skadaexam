@@ -93,10 +93,12 @@
                                     class="text-indigo-600 hover:text-indigo-900 transition-colors duration-150">
                                     <i class="fa-solid fa-edit"></i>
                                 </a>
-                                <button onclick="deleteSiswa({{ $siswa->id }})"
-                                    class="text-red-600 hover:text-red-900 transition-colors duration-150">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                                @role('admin')
+                                    <button onclick="deleteSiswa({{ $siswa->id }})"
+                                        class="text-red-600 hover:text-red-900 transition-colors duration-150">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                @endrole
                             </div>
                         </td>
                     </tr>

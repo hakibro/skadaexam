@@ -109,6 +109,13 @@ if (app()->environment(['local', 'development'])) {
     }
 }
 
+// Test route for form submission debugging
+if (app()->environment(['local', 'development'])) {
+    Route::get('/test-form', function () {
+        return view('test-form');
+    })->name('test.form');
+}
+
 /*
 |--------------------------------------------------------------------------
 | DOCUMENTATION ROUTES

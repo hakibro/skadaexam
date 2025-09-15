@@ -102,34 +102,98 @@ class SoalController extends Controller
 
             $data = $request->validated();
 
+            // Debug logging - log raw request data
+            Log::info('Raw request data received', [
+                'all_data' => $request->all(),
+                'files' => $request->allFiles(),
+                'content_type' => $request->header('Content-Type'),
+                'method' => $request->method()
+            ]);
+
+            // Log file upload info before processing
+            $hasGambarPertanyaan = $request->hasFile('gambar_pertanyaan');
+            $hasGambarPembahasan = $request->hasFile('pembahasan_gambar');
+
+            $pilihanFiles = [];
+            foreach (['a', 'b', 'c', 'd', 'e'] as $pilihan) {
+                $fieldName = "pilihan_{$pilihan}_gambar";
+                $pilihanFiles[$pilihan] = $request->hasFile($fieldName);
+            }
+
+            Log::info('Processing image uploads for new soal', [
+                'has_gambar_pertanyaan' => $hasGambarPertanyaan,
+                'has_gambar_pembahasan' => $hasGambarPembahasan,
+                'pilihan_files' => $pilihanFiles,
+                'tipe_pertanyaan' => $data['tipe_pertanyaan'],
+                'bank_soal_id' => $data['bank_soal_id'],
+                'nomor_soal' => $data['nomor_soal'],
+                'validated_data_keys' => array_keys($data)
+            ]);
+
             // Handle pertanyaan images
             if ($request->hasFile('gambar_pertanyaan')) {
+                $file = $request->file('gambar_pertanyaan');
+                Log::info('Uploading gambar_pertanyaan', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'is_valid' => $file->isValid(),
+                    'path' => $file->getRealPath()
+                ]);
+
                 $data['gambar_pertanyaan'] = $this->imageService->uploadPertanyaanImage(
-                    $request->file('gambar_pertanyaan'),
+                    $file,
                     $data['bank_soal_id'],
                     $data['nomor_soal']
                 );
+
+                Log::info('Uploaded gambar_pertanyaan successfully', [
+                    'filename' => $data['gambar_pertanyaan']
+                ]);
             }
 
             // Handle pilihan images
             foreach (['a', 'b', 'c', 'd', 'e'] as $pilihan) {
-                if ($request->hasFile("pilihan_{$pilihan}_gambar")) {
-                    $data["pilihan_{$pilihan}_gambar"] = $this->imageService->uploadPilihanImage(
-                        $request->file("pilihan_{$pilihan}_gambar"),
+                $fieldName = "pilihan_{$pilihan}_gambar";
+                if ($request->hasFile($fieldName)) {
+                    $file = $request->file($fieldName);
+                    Log::info("Uploading {$fieldName}", [
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType()
+                    ]);
+
+                    $data[$fieldName] = $this->imageService->uploadPilihanImage(
+                        $file,
                         $data['bank_soal_id'],
                         $data['nomor_soal'],
                         $pilihan
                     );
+
+                    Log::info("Uploaded {$fieldName} successfully", [
+                        'filename' => $data[$fieldName]
+                    ]);
                 }
             }
 
             // Handle pembahasan images
             if ($request->hasFile('pembahasan_gambar')) {
+                $file = $request->file('pembahasan_gambar');
+                Log::info('Uploading pembahasan_gambar', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType()
+                ]);
+
                 $data['pembahasan_gambar'] = $this->imageService->uploadPembahasanImage(
-                    $request->file('pembahasan_gambar'),
+                    $file,
                     $data['bank_soal_id'],
                     $data['nomor_soal']
                 );
+
+                Log::info('Uploaded pembahasan_gambar successfully', [
+                    'filename' => $data['pembahasan_gambar']
+                ]);
             }
 
             // Set default values
@@ -149,7 +213,14 @@ class SoalController extends Controller
                 'soal_id' => $soal->id,
                 'bank_soal_id' => $data['bank_soal_id'],
                 'nomor_soal' => $data['nomor_soal'],
-                'tipe_pertanyaan' => $data['tipe_pertanyaan']
+                'tipe_pertanyaan' => $data['tipe_pertanyaan'],
+                'has_images' => [
+                    'pertanyaan' => !empty($data['gambar_pertanyaan']),
+                    'pembahasan' => !empty($data['pembahasan_gambar']),
+                    'pilihan' => array_map(function ($p) use ($data) {
+                        return !empty($data["pilihan_{$p}_gambar"]);
+                    }, ['a', 'b', 'c', 'd', 'e'])
+                ]
             ]);
 
             return redirect()
@@ -201,56 +272,114 @@ class SoalController extends Controller
 
             $data = $request->validated();
 
+            // Log file upload info before processing
+            $hasGambarPertanyaan = $request->hasFile('gambar_pertanyaan');
+            $hasGambarPembahasan = $request->hasFile('pembahasan_gambar');
+
+            $pilihanFiles = [];
+            foreach (['a', 'b', 'c', 'd', 'e'] as $pilihan) {
+                $fieldName = "pilihan_{$pilihan}_gambar";
+                $pilihanFiles[$pilihan] = $request->hasFile($fieldName);
+            }
+
+            Log::info('Processing image uploads for updated soal', [
+                'soal_id' => $soal->id,
+                'has_gambar_pertanyaan' => $hasGambarPertanyaan,
+                'has_gambar_pembahasan' => $hasGambarPembahasan,
+                'pilihan_files' => $pilihanFiles,
+                'tipe_pertanyaan' => $data['tipe_pertanyaan'],
+                'bank_soal_id' => $data['bank_soal_id'],
+                'nomor_soal' => $data['nomor_soal']
+            ]);
+
             // Handle pertanyaan image update
             if ($request->hasFile('gambar_pertanyaan')) {
+                $file = $request->file('gambar_pertanyaan');
+                Log::info('Uploading gambar_pertanyaan for update', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType()
+                ]);
+
                 // Delete old image if exists
                 if ($soal->gambar_pertanyaan) {
                     $this->imageService->deleteImage('soal/pertanyaan/' . $soal->gambar_pertanyaan);
+                    Log::info('Deleted old gambar_pertanyaan', ['old_filename' => $soal->gambar_pertanyaan]);
                 }
 
                 $data['gambar_pertanyaan'] = $this->imageService->uploadPertanyaanImage(
-                    $request->file('gambar_pertanyaan'),
+                    $file,
                     $data['bank_soal_id'],
                     $data['nomor_soal']
                 );
+
+                Log::info('Updated gambar_pertanyaan successfully', [
+                    'filename' => $data['gambar_pertanyaan']
+                ]);
             }
 
             // Handle pilihan images update
             foreach (['a', 'b', 'c', 'd', 'e'] as $pilihan) {
-                if ($request->hasFile("pilihan_{$pilihan}_gambar")) {
+                $fieldName = "pilihan_{$pilihan}_gambar";
+                if ($request->hasFile($fieldName)) {
+                    $file = $request->file($fieldName);
+                    Log::info("Uploading {$fieldName} for update", [
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType()
+                    ]);
+
                     // Delete old image if exists
                     $oldImage = $soal->{"pilihan_{$pilihan}_gambar"};
                     if ($oldImage) {
                         $this->imageService->deleteImage('soal/pilihan/' . $oldImage);
+                        Log::info("Deleted old {$fieldName}", ['old_filename' => $oldImage]);
                     }
 
-                    $data["pilihan_{$pilihan}_gambar"] = $this->imageService->uploadPilihanImage(
-                        $request->file("pilihan_{$pilihan}_gambar"),
+                    $data[$fieldName] = $this->imageService->uploadPilihanImage(
+                        $file,
                         $data['bank_soal_id'],
                         $data['nomor_soal'],
                         $pilihan
                     );
+
+                    Log::info("Updated {$fieldName} successfully", [
+                        'filename' => $data[$fieldName]
+                    ]);
                 }
             }
 
             // Handle pembahasan image update
             if ($request->hasFile('pembahasan_gambar')) {
+                $file = $request->file('pembahasan_gambar');
+                Log::info('Uploading pembahasan_gambar for update', [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType()
+                ]);
+
                 // Delete old image if exists
                 if ($soal->pembahasan_gambar) {
                     $this->imageService->deleteImage('soal/pembahasan/' . $soal->pembahasan_gambar);
+                    Log::info('Deleted old pembahasan_gambar', ['old_filename' => $soal->pembahasan_gambar]);
                 }
 
                 // Delete gambar_pembahasan if exists (backward compatibility)
                 if ($soal->gambar_pembahasan) {
                     $this->imageService->deleteImage('soal/pembahasan/' . $soal->gambar_pembahasan);
+                    Log::info('Deleted old gambar_pembahasan (backward compatibility)', ['old_filename' => $soal->gambar_pembahasan]);
                     $data['gambar_pembahasan'] = null; // Reset old field
                 }
 
                 $data['pembahasan_gambar'] = $this->imageService->uploadPembahasanImage(
-                    $request->file('pembahasan_gambar'),
+                    $file,
                     $data['bank_soal_id'],
                     $data['nomor_soal']
                 );
+
+                Log::info('Updated pembahasan_gambar successfully', [
+                    'filename' => $data['pembahasan_gambar']
+                ]);
             }
 
             // Update soal
@@ -273,7 +402,15 @@ class SoalController extends Controller
 
             Log::info('Soal updated successfully', [
                 'soal_id' => $soal->id,
-                'changes' => $soal->getChanges()
+                'changes' => $soal->getChanges(),
+                'has_images' => [
+                    'pertanyaan' => !empty($data['gambar_pertanyaan']) || (!isset($data['gambar_pertanyaan']) && $soal->gambar_pertanyaan),
+                    'pembahasan' => !empty($data['pembahasan_gambar']) || (!isset($data['pembahasan_gambar']) && $soal->pembahasan_gambar),
+                    'pilihan' => array_map(function ($p) use ($data, $soal) {
+                        $field = "pilihan_{$p}_gambar";
+                        return !empty($data[$field]) || (!isset($data[$field]) && $soal->{$field});
+                    }, ['a', 'b', 'c', 'd', 'e'])
+                ]
             ]);
 
             return redirect()
@@ -285,7 +422,8 @@ class SoalController extends Controller
             Log::error('Error updating soal', [
                 'soal_id' => $soal->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
 
             return redirect()

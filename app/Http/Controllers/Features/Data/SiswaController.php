@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 class SiswaController extends Controller
 {
     protected $sikeuApiService;
-    protected $batchSize = 50; // Default batch size
 
     public function __construct(SikeuApiService $sikeuApiService)
     {
@@ -615,20 +614,23 @@ class SiswaController extends Controller
         try {
             Log::info('Starting AJAX SIKEU API import process');
 
-            // Initialize session for progress tracking
+            // Initialize session for progress tracking and ensure they're persisted immediately
             session(['import_progress' => 0]);
             session(['import_status' => 'starting']);
             session(['import_message' => 'Initializing import...']);
+            session()->save(); // Force save session immediately
 
             // Fetch data from API
             session(['import_message' => 'Connecting to SIKEU API...']);
             session(['import_progress' => 10]);
+            session()->save(); // Force save session
 
             $apiResult = $this->sikeuApiService->fetchSiswaData();
 
             if (!$apiResult['success']) {
                 session(['import_status' => 'error']);
                 session(['import_message' => 'API Error: ' . $apiResult['error']]);
+                session()->save(); // Force save session
 
                 return response()->json([
                     'success' => false,
@@ -642,6 +644,7 @@ class SiswaController extends Controller
             if (empty($apiData)) {
                 session(['import_status' => 'warning']);
                 session(['import_message' => 'No data received from API']);
+                session()->save(); // Force save session
 
                 return response()->json([
                     'success' => false,
@@ -652,6 +655,7 @@ class SiswaController extends Controller
 
             session(['import_message' => 'Processing class data...']);
             session(['import_progress' => 15]);
+            session()->save(); // Force save session
 
             $results = [
                 'total_records' => count($apiData),
@@ -667,8 +671,10 @@ class SiswaController extends Controller
 
             // LANGKAH 1: Ekstrak data kelas unik dari API (15% - 25%)
             session(['import_message' => 'Extracting unique class data...']);
+            session()->save(); // Force save session
             $uniqueKelas = $this->extractUniqueKelasFromApiData($apiData);
             session(['import_progress' => 25]);
+            session()->save(); // Force save session
 
             Log::info('Extracted unique kelas', [
                 'count' => count($uniqueKelas),
@@ -688,6 +694,10 @@ class SiswaController extends Controller
                 try {
                     $currentProgress += $progressStepKelas;
                     session(['import_progress' => min(35, $currentProgress)]);
+                    // Only save session every few iterations to avoid performance issues
+                    if (rand(0, 5) === 0) {
+                        session()->save(); // Periodically save session
+                    }
 
                     $existingKelas = \App\Models\Kelas::where('nama_kelas', $kelasName)->first();
 
@@ -729,6 +739,7 @@ class SiswaController extends Controller
 
             session(['import_message' => 'Processing student data...']);
             session(['import_progress' => 35]);
+            session()->save(); // Force save session
 
             Log::info('Kelas data saved', [
                 'created' => $results['created_kelas'],
@@ -748,6 +759,12 @@ class SiswaController extends Controller
                     $currentProgress += $progressStepSiswa;
                     session(['import_progress' => min(90, $currentProgress)]);
                     session(['import_message' => "Processing student " . ($index + 1) . " of " . count($apiData)]);
+
+                    // Only save session periodically to avoid performance issues
+                    // Save more frequently at the beginning to show progress quickly
+                    if ($index < 10 || $index % 20 === 0 || $index === count($apiData) - 1) {
+                        session()->save(); // Periodically save session
+                    }
 
                     // Validasi data yang diperlukan
                     if (empty($studentData['idyayasan'])) {
@@ -810,11 +827,13 @@ class SiswaController extends Controller
 
             session(['import_progress' => 95]);
             session(['import_message' => 'Finalizing import...']);
+            session()->save(); // Force save session
 
             DB::commit();
 
             session(['import_progress' => 100]);
             session(['import_status' => 'completed']);
+            session()->save(); // Force save session
 
             $message = "Import completed! Created kelas: {$results['created_kelas']}, Updated kelas: {$results['updated_kelas']}, ";
             $message .= "Created siswa: {$results['created_siswa']}, Updated siswa: {$results['updated_siswa']}";
@@ -824,6 +843,7 @@ class SiswaController extends Controller
             }
 
             session(['import_message' => $message]);
+            session()->save(); // Force save session
 
             Log::info('AJAX SIKEU API import completed', $results);
 
@@ -837,6 +857,7 @@ class SiswaController extends Controller
 
             session(['import_status' => 'error']);
             session(['import_message' => 'Import failed: ' . $e->getMessage()]);
+            session()->save(); // Force save session
 
             Log::error('AJAX SIKEU API import failed', [
                 'error' => $e->getMessage(),
@@ -855,10 +876,24 @@ class SiswaController extends Controller
      */
     public function getImportProgress()
     {
+        // Ensure we're getting the latest session data
+        $progress = session('import_progress', 0);
+        $status = session('import_status', 'idle');
+        $message = session('import_message', 'Ready to import');
+
+        // Log to help with debugging
+        Log::debug('Import progress request', [
+            'progress' => $progress,
+            'status' => $status,
+            'message' => $message,
+            'session_id' => session()->getId()
+        ]);
+
         return response()->json([
-            'progress' => session('import_progress', 0),
-            'status' => session('import_status', 'idle'),
-            'message' => session('import_message', 'Ready to import')
+            'progress' => $progress,
+            'status' => $status,
+            'message' => $message,
+            'timestamp' => now()->timestamp // Include timestamp for debugging
         ]);
     }
 
@@ -1172,510 +1207,6 @@ class SiswaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Bulk update gagal: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * New batch import method that processes students in batches to prevent timeouts
-     * and provide progress feedback
-     */
-    public function batchImport(Request $request)
-    {
-        try {
-            // Validate request
-            $validated = $request->validate([
-                'batch_size' => 'nullable|integer|min:10|max:500',
-            ]);
-
-            // Set batch size from request or use default
-            $batchSize = $validated['batch_size'] ?? $this->batchSize;
-
-            // Initialize session for batch tracking
-            session([
-                'batch_import_status' => 'initializing',
-                'batch_import_progress' => 0,
-                'batch_import_message' => 'Starting batch import...',
-                'batch_import_results' => [
-                    'created_kelas' => 0,
-                    'updated_kelas' => 0,
-                    'created_siswa' => 0,
-                    'updated_siswa' => 0,
-                    'skipped' => 0,
-                    'errors' => []
-                ]
-            ]);
-
-            // Fetch data from API
-            session(['batch_import_message' => 'Connecting to SIKEU API...']);
-            session(['batch_import_progress' => 5]);
-
-            $apiResult = $this->sikeuApiService->fetchSiswaData();
-
-            if (!$apiResult['success']) {
-                session([
-                    'batch_import_status' => 'error',
-                    'batch_import_message' => 'API Error: ' . $apiResult['error']
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error' => 'API Error: ' . $apiResult['error']
-                ]);
-            }
-
-            $apiData = $apiResult['data'];
-
-            if (empty($apiData)) {
-                session([
-                    'batch_import_status' => 'completed',
-                    'batch_import_message' => 'No data received from API'
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No data received from API'
-                ]);
-            }
-
-            // Set up batch processing
-            $totalRecords = count($apiData);
-            $batchCount = ceil($totalRecords / $batchSize);
-
-            // Store batch information in session
-            session([
-                'batch_import_data' => [
-                    'api_data' => $apiData,
-                    'batch_size' => $batchSize,
-                    'total_records' => $totalRecords,
-                    'batch_count' => $batchCount,
-                    'current_batch' => 0,
-                    'current_index' => 0
-                ],
-                'batch_import_status' => 'ready',
-                'batch_import_message' => "Ready to process {$totalRecords} records in {$batchCount} batches",
-                'batch_import_progress' => 10
-            ]);
-
-            // Process first batch immediately
-            return $this->processBatchImport();
-        } catch (\Exception $e) {
-            Log::error('Batch import initialization failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            session([
-                'batch_import_status' => 'error',
-                'batch_import_message' => 'Import initialization failed: ' . $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Import initialization failed: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Process a batch from the batch import job
-     */
-    private function processBatchImport()
-    {
-        // Get batch data from session
-        $batchData = session('batch_import_data');
-        $batchResults = session('batch_import_results');
-
-        if (!$batchData) {
-            return response()->json([
-                'success' => false,
-                'error' => 'No batch import in progress'
-            ]);
-        }
-
-        $currentBatch = $batchData['current_batch'];
-        $currentIndex = $batchData['current_index'];
-        $batchSize = $batchData['batch_size'];
-        $apiData = $batchData['api_data'];
-        $totalRecords = $batchData['total_records'];
-        $batchCount = $batchData['batch_count'];
-
-        // Update progress information
-        $progressPercent = min(10 + (90 * $currentBatch / $batchCount), 99);
-        session([
-            'batch_import_status' => 'processing',
-            'batch_import_progress' => $progressPercent,
-            'batch_import_message' => "Processing batch " . ($currentBatch + 1) . " of {$batchCount}..."
-        ]);
-
-        try {
-            // Process this batch using the BatchSiswaProcessor
-            $result = \App\Http\Controllers\Features\Data\BatchSiswaProcessor::processBatchImport(
-                $apiData,
-                $batchSize,
-                $currentIndex
-            );
-
-            // Update cumulative results
-            $batchResults['created_kelas'] += $result['created_kelas'];
-            $batchResults['updated_kelas'] += $result['updated_kelas'];
-            $batchResults['created_siswa'] += $result['created_siswa'];
-            $batchResults['updated_siswa'] += $result['updated_siswa'];
-            $batchResults['skipped'] += $result['skipped'];
-
-            if (!empty($result['errors'])) {
-                $batchResults['errors'] = array_merge($batchResults['errors'], $result['errors']);
-            }
-
-            // Update session with results
-            session(['batch_import_results' => $batchResults]);
-
-            // Check if this is the last batch
-            if ($result['is_last_batch']) {
-                session([
-                    'batch_import_status' => 'completed',
-                    'batch_import_progress' => 100,
-                    'batch_import_message' => $this->generateCompletionMessage($batchResults)
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'status' => 'completed',
-                    'message' => 'Import completed successfully',
-                    'results' => $batchResults
-                ]);
-            } else {
-                // Update batch tracking for next batch
-                $nextBatch = $currentBatch + 1;
-                $nextIndex = $currentIndex + $batchSize;
-
-                session([
-                    'batch_import_data' => array_merge($batchData, [
-                        'current_batch' => $nextBatch,
-                        'current_index' => $nextIndex
-                    ])
-                ]);
-
-                // Return success and indicate there are more batches to process
-                return response()->json([
-                    'success' => true,
-                    'status' => 'processing',
-                    'current_batch' => $nextBatch,
-                    'total_batches' => $batchCount,
-                    'progress' => $progressPercent,
-                    'next_batch_url' => route('data.siswa.batch-import'),
-                    'batch_results' => $result
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Batch import processing failed', [
-                'batch' => $currentBatch,
-                'index' => $currentIndex,
-                'error' => $e->getMessage()
-            ]);
-
-            session([
-                'batch_import_status' => 'error',
-                'batch_import_message' => 'Batch processing failed: ' . $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Batch processing failed: ' . $e->getMessage(),
-                'batch' => $currentBatch,
-                'index' => $currentIndex
-            ]);
-        }
-    }
-
-    /**
-     * Get the current status of a batch import job
-     */
-    public function getBatchImportStatus()
-    {
-        return response()->json([
-            'status' => session('batch_import_status', 'none'),
-            'progress' => session('batch_import_progress', 0),
-            'message' => session('batch_import_message', 'No import in progress'),
-            'results' => session('batch_import_results', []),
-            'current_batch' => session('batch_import_data.current_batch', 0),
-            'total_batches' => session('batch_import_data.batch_count', 0)
-        ]);
-    }
-
-    /**
-     * Batch sync method that processes students in batches
-     */
-    public function batchSync(Request $request)
-    {
-        try {
-            // Validate request
-            $validated = $request->validate([
-                'batch_size' => 'nullable|integer|min:10|max:500',
-            ]);
-
-            // Set batch size from request or use default
-            $batchSize = $validated['batch_size'] ?? $this->batchSize;
-
-            // Initialize session for batch tracking
-            session([
-                'batch_sync_status' => 'initializing',
-                'batch_sync_progress' => 0,
-                'batch_sync_message' => 'Starting batch sync...',
-                'batch_sync_results' => [
-                    'created_kelas' => 0,
-                    'updated_kelas' => 0,
-                    'created_siswa' => 0,
-                    'updated_siswa' => 0,
-                    'skipped' => 0,
-                    'errors' => []
-                ]
-            ]);
-
-            // Fetch data from API
-            session(['batch_sync_message' => 'Connecting to SIKEU API...']);
-            session(['batch_sync_progress' => 5]);
-
-            $apiResult = $this->sikeuApiService->fetchSiswaData();
-
-            if (!$apiResult['success']) {
-                session([
-                    'batch_sync_status' => 'error',
-                    'batch_sync_message' => 'API Error: ' . $apiResult['error']
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error' => 'API Error: ' . $apiResult['error']
-                ]);
-            }
-
-            $apiData = $apiResult['data'];
-
-            if (empty($apiData)) {
-                session([
-                    'batch_sync_status' => 'completed',
-                    'batch_sync_message' => 'No data received from API'
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No data received from API'
-                ]);
-            }
-
-            // Set up batch processing
-            $totalRecords = count($apiData);
-            $batchCount = ceil($totalRecords / $batchSize);
-
-            // Store batch information in session
-            session([
-                'batch_sync_data' => [
-                    'api_data' => $apiData,
-                    'batch_size' => $batchSize,
-                    'total_records' => $totalRecords,
-                    'batch_count' => $batchCount,
-                    'current_batch' => 0,
-                    'current_index' => 0
-                ],
-                'batch_sync_status' => 'ready',
-                'batch_sync_message' => "Ready to sync {$totalRecords} records in {$batchCount} batches",
-                'batch_sync_progress' => 10
-            ]);
-
-            // Process first batch immediately
-            return $this->processBatchSync();
-        } catch (\Exception $e) {
-            Log::error('Batch sync initialization failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            session([
-                'batch_sync_status' => 'error',
-                'batch_sync_message' => 'Sync initialization failed: ' . $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Sync initialization failed: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Process a batch from the batch sync job
-     */
-    private function processBatchSync()
-    {
-        // Get batch data from session
-        $batchData = session('batch_sync_data');
-        $batchResults = session('batch_sync_results');
-
-        if (!$batchData) {
-            return response()->json([
-                'success' => false,
-                'error' => 'No batch sync in progress'
-            ]);
-        }
-
-        $currentBatch = $batchData['current_batch'];
-        $currentIndex = $batchData['current_index'];
-        $batchSize = $batchData['batch_size'];
-        $apiData = $batchData['api_data'];
-        $totalRecords = $batchData['total_records'];
-        $batchCount = $batchData['batch_count'];
-
-        // Update progress information
-        $progressPercent = min(10 + (90 * $currentBatch / $batchCount), 99);
-        session([
-            'batch_sync_status' => 'processing',
-            'batch_sync_progress' => $progressPercent,
-            'batch_sync_message' => "Processing batch " . ($currentBatch + 1) . " of {$batchCount}..."
-        ]);
-
-        try {
-            // Process this batch using the BatchSiswaProcessor
-            $result = \App\Http\Controllers\Features\Data\BatchSiswaProcessor::processBatchSync(
-                $apiData,
-                $batchSize,
-                $currentIndex
-            );
-
-            // Update cumulative results
-            $batchResults['created_kelas'] += $result['created_kelas'];
-            $batchResults['updated_kelas'] += $result['updated_kelas'];
-            $batchResults['created_siswa'] += $result['created_siswa'];
-            $batchResults['updated_siswa'] += $result['updated_siswa'];
-            $batchResults['skipped'] += $result['skipped'];
-
-            if (!empty($result['errors'])) {
-                $batchResults['errors'] = array_merge($batchResults['errors'], $result['errors']);
-            }
-
-            // Update session with results
-            session(['batch_sync_results' => $batchResults]);
-
-            // Check if this is the last batch
-            if ($result['is_last_batch']) {
-                session([
-                    'batch_sync_status' => 'completed',
-                    'batch_sync_progress' => 100,
-                    'batch_sync_message' => $this->generateCompletionMessage($batchResults, 'sync')
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'status' => 'completed',
-                    'message' => 'Sync completed successfully',
-                    'results' => $batchResults
-                ]);
-            } else {
-                // Update batch tracking for next batch
-                $nextBatch = $currentBatch + 1;
-                $nextIndex = $currentIndex + $batchSize;
-
-                session([
-                    'batch_sync_data' => array_merge($batchData, [
-                        'current_batch' => $nextBatch,
-                        'current_index' => $nextIndex
-                    ])
-                ]);
-
-                // Return success and indicate there are more batches to process
-                return response()->json([
-                    'success' => true,
-                    'status' => 'processing',
-                    'current_batch' => $nextBatch,
-                    'total_batches' => $batchCount,
-                    'progress' => $progressPercent,
-                    'next_batch_url' => route('data.siswa.batch-sync'),
-                    'batch_results' => $result
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Batch sync processing failed', [
-                'batch' => $currentBatch,
-                'index' => $currentIndex,
-                'error' => $e->getMessage()
-            ]);
-
-            session([
-                'batch_sync_status' => 'error',
-                'batch_sync_message' => 'Batch processing failed: ' . $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Batch processing failed: ' . $e->getMessage(),
-                'batch' => $currentBatch,
-                'index' => $currentIndex
-            ]);
-        }
-    }
-
-    /**
-     * Get the current status of a batch sync job
-     */
-    public function getBatchSyncStatus()
-    {
-        return response()->json([
-            'status' => session('batch_sync_status', 'none'),
-            'progress' => session('batch_sync_progress', 0),
-            'message' => session('batch_sync_message', 'No sync in progress'),
-            'results' => session('batch_sync_results', []),
-            'current_batch' => session('batch_sync_data.current_batch', 0),
-            'total_batches' => session('batch_sync_data.batch_count', 0)
-        ]);
-    }
-
-    /**
-     * Generate completion message from batch results
-     */
-    private function generateCompletionMessage(array $results, string $type = 'import')
-    {
-        $action = ucfirst($type);
-        $message = "{$action} completed! ";
-        $message .= "Created kelas: {$results['created_kelas']}, Updated kelas: {$results['updated_kelas']}, ";
-        $message .= "Created siswa: {$results['created_siswa']}, Updated siswa: {$results['updated_siswa']}";
-
-        if ($results['skipped'] > 0) {
-            $message .= ", Skipped: {$results['skipped']}";
-        }
-
-        return $message;
-    }
-
-    /**
-     * Log client-side batch sync errors
-     */
-    public function logBatchSyncError(Request $request)
-    {
-        try {
-            $data = $request->all();
-
-            Log::error('Client-side batch sync error', [
-                'error' => $data['error'] ?? 'Unknown error',
-                'url' => $data['url'] ?? 'Unknown URL',
-                'stack' => $data['stack'] ?? 'No stack trace provided',
-                'user_id' => auth()->id(),
-                'user_agent' => $request->userAgent(),
-                'ip' => $request->ip()
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Error logged successfully'
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to log client error', [
-                'error' => $e->getMessage(),
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to log error'
             ], 500);
         }
     }

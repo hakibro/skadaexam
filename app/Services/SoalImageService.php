@@ -67,13 +67,65 @@ class SoalImageService
             $filename .= '_' . $pilihan;
         }
 
-        $filename .= '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $originalExtension = $file->getClientOriginalExtension();
+        $mimeType = $file->getMimeType();
 
+        // Use a fallback extension if needed
+        if (empty($originalExtension)) {
+            $mimeToExt = [
+                'image/jpeg' => 'jpg',
+                'image/jpg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/webp' => 'webp'
+            ];
+            $originalExtension = $mimeToExt[$mimeType] ?? 'png';
+        }
+
+        $filename .= '_' . Str::random(8) . '.' . $originalExtension;
         $path = 'soal/' . $type . '/' . $filename;
 
-        Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
+        // Log image info
+        \Illuminate\Support\Facades\Log::info("Uploading image to {$path}", [
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $mimeType,
+            'size' => $file->getSize(),
+            'extension' => $originalExtension,
+            'path' => $path
+        ]);
 
-        return $filename;
+        try {
+            // Get file content
+            $content = file_get_contents($file->getRealPath());
+
+            // Verify we have content
+            if (empty($content)) {
+                throw new \Exception("Empty file content for {$file->getClientOriginalName()}");
+            }
+
+            // Upload to storage
+            $success = Storage::disk('public')->put($path, $content);
+
+            if (!$success) {
+                throw new \Exception("Failed to write file to storage at {$path}");
+            }
+
+            \Illuminate\Support\Facades\Log::info("Image uploaded successfully", [
+                'path' => $path,
+                'filename' => $filename,
+                'size' => strlen($content)
+            ]);
+
+            return $filename;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error uploading image", [
+                'error' => $e->getMessage(),
+                'path' => $path,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
     }
 
     /**

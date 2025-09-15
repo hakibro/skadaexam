@@ -7,6 +7,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="base-url" content="{{ url('/') }}">
 
     <title>@yield('title', 'Dashboard') - {{ config('app.name', 'SKADA Exam') }}</title>
 
@@ -58,7 +59,7 @@
                     // Use the proper role checking methods
                     $isAdmin = $user->isAdmin();
                     $isGuru = $user->isGuru(); // Check if user has guru role
-                    
+
                     // Access permissions - admins get everything, teachers get basic access
                     $hasDataAccess = $isAdmin || $user->canManageData() || $isGuru; // Teachers need data access
                     $hasNaskahAccess = $isAdmin || $user->canManageNaskah() || $isGuru; // Teachers need naskah access

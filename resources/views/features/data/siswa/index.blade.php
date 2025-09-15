@@ -150,11 +150,6 @@
                         <i class="fa-solid fa-cloud-download-alt mr-3"></i>
                         Quick Import
                     </button>
-                    <button type="button" id="batch-import-btn"
-                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all duration-200 inline-flex items-center">
-                        <i class="fa-solid fa-cloud-download-alt mr-3"></i>
-                        Batch Import
-                    </button>
                 </div>
 
                 <div class="mt-6 text-sm text-gray-500 max-w-md mx-auto">
@@ -182,10 +177,6 @@
                     <button type="button" id="test-single-student-btn-populated"
                         class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
                         <i class="fa-solid fa-user-check mr-1"></i>Test API
-                    </button>
-                    <button type="button" id="batch-sync-btn"
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
-                        <i class="fa-solid fa-sync mr-1"></i>Batch Sync
                     </button>
                     <button type="button" id="sync-api-btn"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
@@ -243,8 +234,7 @@
                     </div>
                 </div>
 
-                {{-- Batch Processing Components --}}
-                @include('features.data.siswa.partials.batch-operations')
+                {{-- Batch Processing removed --}}
             </div>
 
             {{-- Search & Filters --}}
@@ -342,14 +332,16 @@
                             class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors">
                             Update Rekomendasi
                         </button>
-                        <button id="bulk-delete"
-                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
-                            Delete Selected
-                        </button>
-                        <button id="clear-selection"
-                            class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
-                            Clear Selection
-                        </button>
+                        @role('admin', 'web')
+                            <button id="bulk-delete"
+                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors">
+                                Delete Selected
+                            </button>
+                            <button id="clear-selection"
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                Clear Selection
+                            </button>
+                        @endrole
                     </div>
                 </div>
             </div>
@@ -814,8 +806,17 @@
                     if (importResultsSection) importResultsSection.classList.add('hidden');
                     if (importErrorSection) importErrorSection.classList.add('hidden');
 
+                    // Debug UI elements
+                    console.log('Debugging UI elements:');
+                    console.log('- importProgressBar exists:', !!importProgressBar);
+                    console.log('- importPercentage exists:', !!importPercentage);
+                    console.log('- importStatusText exists:', !!importStatusText);
+                    console.log('- importMessage exists:', !!importMessage);
+
                     // Start the import process
                     isImporting = true;
+
+                    console.log('Starting Quick Import process...');
 
                     fetch('{{ route('data.siswa.import-from-api-ajax') }}', {
                             method: 'POST',
@@ -826,18 +827,30 @@
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(
+                                    `Import request failed with status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
                         .then(data => {
+                            console.log('Import initiated response:', data);
+
                             if (data.success) {
+                                console.log(
+                                    'Import process started successfully, starting progress polling'
+                                );
                                 // Start progress polling
                                 pollImportProgress();
                             } else {
+                                console.error('Import failed:', data.error);
                                 stopImportProgress();
                                 showImportError(data.error || 'Unknown error occurred');
                             }
                         })
                         .catch(error => {
-                            console.error('Import error:', error);
+                            console.error('Import request error:', error);
                             stopImportProgress();
                             showImportError(error.message);
                         });
@@ -850,38 +863,85 @@
                     clearInterval(importProgressInterval);
                 }
 
+                console.log('Starting import progress polling');
+
                 importProgressInterval = setInterval(() => {
                     if (!isImporting) {
+                        console.log('Import process stopped, clearing interval');
                         clearInterval(importProgressInterval);
                         return;
                     }
 
-                    fetch('{{ route('data.siswa.import-progress') }}')
-                        .then(response => response.json())
-                        .then(data => {
-                            // Update progress UI
-                            if (importProgressBar) importProgressBar.style.width = data.progress + '%';
-                            if (importPercentage) importPercentage.textContent = data.progress + '%';
-                            if (importStatusText) importStatusText.textContent = data.status;
-                            if (importMessage) importMessage.textContent = data.message;
+                    console.log('Polling import progress from:',
+                        '{{ route('data.siswa.import-progress') }}');
 
-                            // Check if import is complete
+                    // Add a cache-busting parameter to prevent caching
+                    const url = new URL('{{ route('data.siswa.import-progress') }}', window.location
+                        .origin);
+                    url.searchParams.append('_', new Date().getTime());
+
+                    fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Cache-Control': 'no-cache, no-store, must-revalidate'
+                            },
+                            cache: 'no-store' // Ensure no caching
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(
+                                    `Import progress request failed with status: ${response.status}`
+                                );
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Import progress update:', data);
+
+                            // Update progress UI with more detailed logging
+                            if (importProgressBar) {
+                                importProgressBar.style.width = data.progress + '%';
+                                console.log('Updated progress bar to ' + data.progress + '%');
+                            }
+                            if (importPercentage) {
+                                importPercentage.textContent = data.progress + '%';
+                                console.log('Updated progress percentage text to ' + data.progress +
+                                    '%');
+                            }
+                            if (importStatusText) {
+                                importStatusText.textContent = data.status;
+                                console.log('Updated status text to: ' + data.status);
+                            }
+                            if (importMessage) {
+                                importMessage.textContent = data.message;
+                                console.log('Updated message to: ' + data.message);
+                            } // Check if import is complete
                             if (data.status === 'completed') {
+                                console.log('Import completed');
                                 stopImportProgress();
                                 showImportResults(data.message);
                             } else if (data.status === 'error') {
+                                console.log('Import error:', data.message);
                                 stopImportProgress();
                                 showImportError(data.message);
                             }
                         })
                         .catch(error => {
-                            console.error('Progress polling error:', error);
+                            console.error('Import progress polling error:', error);
+                            // Show a message for the first error but keep polling
+                            if (importMessage) importMessage.textContent = 'Error checking progress: ' +
+                                error.message;
                             // Don't stop polling on network errors
                         });
                 }, 1000);
             }
 
             function stopImportProgress() {
+                console.log('Stopping import progress');
                 isImporting = false;
                 if (importProgressInterval) {
                     clearInterval(importProgressInterval);
@@ -889,13 +949,26 @@
                 }
 
                 // Clear session data
+                console.log('Clearing import progress session data');
                 fetch('{{ route('data.siswa.clear-import-progress') }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                }).catch(error => console.error('Error clearing progress:', error));
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Clear progress request failed with status: ${response.status}`);
+                        }
+                        console.log('Import progress session cleared successfully');
+                        return response.json();
+                    })
+                    .catch(error => {
+                        console.error('Error clearing import progress:', error);
+                        // This is not critical enough to show to the user
+                    });
             }
 
             function showImportResults(message) {
@@ -1018,8 +1091,22 @@
                         return;
                     }
 
-                    fetch('{{ route('data.siswa.sync-progress') }}')
-                        .then(response => response.json())
+                    fetch('{{ route('data.siswa.sync-progress') }}', {
+                            method: 'GET',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(
+                                    `Status polling failed with status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             // Update progress UI
                             if (syncProgressBar) syncProgressBar.style.width = data.progress + '%';
@@ -1038,7 +1125,9 @@
                         })
                         .catch(error => {
                             console.error('Progress polling error:', error);
-                            // Don't stop polling on network errors
+                            // Show a message for the first error but keep polling in case of temporary issues
+                            showToast('Sync progress polling error: ' + error.message, 'warning');
+                            // Don't stop polling on network errors, it might recover
                         });
                 }, 1000);
             }
@@ -1055,9 +1144,13 @@
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                }).catch(error => console.error('Error clearing progress:', error));
+                }).catch(error => {
+                    console.error('Error clearing progress:', error);
+                    showToast('Error clearing sync progress: ' + error.message, 'error');
+                });
             }
 
             function showSyncResults(message) {
@@ -1317,7 +1410,6 @@
         });
     </script>
 
-    {{-- Include Batch Processing JavaScript --}}
-    <script src="{{ asset('js/batch-siswa.js') }}"></script>
+    {{-- Batch Processing JavaScript removed --}}
 
 @endsection

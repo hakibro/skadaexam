@@ -344,8 +344,16 @@
     </div>
 
     <!-- JavaScript -->
+    <script src="{{ asset('js/image-clipboard.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize our enhanced image clipboard handler
+            const clipboardHandler = new ImageClipboardHandler({
+                debug: false,
+                maxSize: 5 * 1024 * 1024, // 5MB default for most images
+                validTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg']
+            });
+
             // Handle tipe pertanyaan changes
             document.querySelectorAll('input[name="tipe_pertanyaan"]').forEach(radio => {
                 radio.addEventListener('change', handleTipePertanyaanChange);
@@ -382,6 +390,21 @@
             @foreach (['a', 'b', 'c', 'd', 'e'] as $value)
                 handlePilihanTipeChange('{{ $value }}');
             @endforeach
+
+            // Add image-drop-zone class to all drop zones for clipboard handler
+            document.querySelectorAll('.border-dashed').forEach(dropZone => {
+                dropZone.classList.add('image-drop-zone');
+
+                // Add data attributes for file type constraints
+                const fileInput = dropZone.querySelector('input[type="file"]');
+                if (fileInput) {
+                    if (fileInput.id.includes('pilihan')) {
+                        fileInput.setAttribute('data-max-size', 2 * 1024 * 1024); // 2MB for options
+                    } else {
+                        fileInput.setAttribute('data-max-size', 5 * 1024 * 1024); // 5MB for main images
+                    }
+                }
+            });
         });
 
         function handleTipePertanyaanChange() {
@@ -463,27 +486,48 @@
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
             const img = document.getElementById(imgId);
+            const form = document.getElementById('soal-form');
+            const dropZone = input ? input.parentElement : null;
 
-            if (!input || !preview || !img) return;
+            if (!input || !preview || !img || !dropZone) return;
 
-            input.addEventListener('change', function() {
-                const file = this.files[0];
-                if (file) {
-                    // Validate file type
-                    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
-                    if (!validTypes.includes(file.type)) {
-                        alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
-                        this.value = '';
-                        return;
-                    }
+            // Mark this element as a form group
+            const formGroup = dropZone.closest('.bg-white') || dropZone.parentElement;
+            if (formGroup) {
+                formGroup.classList.add('form-group');
+            }
 
-                    // Validate file size (5MB for main images, 2MB for options)
-                    const maxSize = inputId.includes('pilihan') ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
-                    if (file.size > maxSize) {
-                        const maxSizeMB = inputId.includes('pilihan') ? '2MB' : '5MB';
-                        alert(`File size must be less than ${maxSizeMB}`);
-                        this.value = '';
-                        return;
+            // Mark the preview container with a class
+            preview.classList.add('image-preview');
+
+            // Function to process file for preview
+            function processFile(file) {
+                if (!file) return false;
+
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+                if (!validTypes.includes(file.type)) {
+                    alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
+                    return false;
+                }
+
+                // Validate file size (5MB for main images, 2MB for options)
+                const maxSize = inputId.includes('pilihan') ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    const maxSizeMB = inputId.includes('pilihan') ? '2MB' : '5MB';
+                    alert(`File size must be less than ${maxSizeMB}`);
+                    return false;
+                }
+
+                // Create a proper file object from the blob/file
+                // This is necessary for reliable form submission
+                try {
+                    // Create a new File if needed to ensure proper file object
+                    if (!(file instanceof File)) {
+                        file = new File([file], `image-${Date.now()}.${getExtensionForMimeType(file.type)}`, {
+                            type: file.type,
+                            lastModified: new Date().getTime()
+                        });
                     }
 
                     // Show preview
@@ -493,14 +537,89 @@
                         preview.classList.remove('hidden');
                     };
                     reader.readAsDataURL(file);
+
+                    // Create a new DataTransfer to hold our file
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+
+                    return true;
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    return false;
+                }
+            }
+
+            // Helper for getting file extension from MIME type
+            function getExtensionForMimeType(mimeType) {
+                const mimeToExt = {
+                    'image/jpeg': 'jpg',
+                    'image/jpg': 'jpg',
+                    'image/png': 'png',
+                    'image/gif': 'gif',
+                    'image/webp': 'webp'
+                };
+
+                return mimeToExt[mimeType] || 'png';
+            }
+
+            // Handle file input change
+            input.addEventListener('change', function(e) {
+                const file = this.files[0];
+                if (file) {
+                    if (!processFile(file)) {
+                        this.value = '';
+                        preview.classList.add('hidden');
+                        img.src = '';
+                    }
                 } else {
                     preview.classList.add('hidden');
                     img.src = '';
                 }
             });
 
+            // Make dropZone focusable to enable paste events
+            dropZone.setAttribute('tabindex', '0');
+
+            // Focus/blur effects
+            dropZone.addEventListener('focus', function() {
+                this.classList.add('border-blue-400');
+            });
+
+            dropZone.addEventListener('blur', function() {
+                this.classList.remove('border-blue-400');
+            });
+
+            // Add paste hint text with keyboard shortcut
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'text-xs text-gray-400 mt-1';
+            hintDiv.innerHTML = '<i class="fa-solid fa-clipboard mr-1"></i> Bisa juga paste gambar dari clipboard (Ctrl+V)';
+            const label = dropZone.querySelector('label');
+            if (label) {
+                label.appendChild(hintDiv);
+            }
+
+            // Add keyboard shortcut for focus
+            dropZone.addEventListener('keydown', function(e) {
+                // If user presses Delete/Backspace to remove image
+                if ((e.key === 'Delete' || e.key === 'Backspace') &&
+                    img.src && !preview.classList.contains('hidden')) {
+
+                    if (inputId === 'gambar-pertanyaan') {
+                        removeGambarPertanyaan();
+                    } else if (inputId === 'pembahasan-gambar') {
+                        removePembahasanGambar();
+                    } else {
+                        // For pilihan gambar, just clear the input
+                        input.value = '';
+                        preview.classList.add('hidden');
+                        img.src = '';
+                    }
+                    e.preventDefault();
+                }
+            });
+
             // Drag and drop functionality
-            const dropZone = input.parentElement;
             dropZone.addEventListener('dragover', function(e) {
                 e.preventDefault();
                 this.classList.add('border-blue-400');
@@ -516,8 +635,13 @@
 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    input.files = files;
-                    input.dispatchEvent(new Event('change'));
+                    // Use the processFile function to handle the file properly
+                    if (processFile(files[0])) {
+                        // Trigger change event for any listeners
+                        input.dispatchEvent(new Event('change', {
+                            bubbles: true
+                        }));
+                    }
                 }
             });
         }
@@ -699,7 +823,7 @@
         document.getElementById('soal-form').addEventListener('submit', function(e) {
             // Validate required fields based on selected types
             const tipePertanyaan = document.querySelector('input[name="tipe_pertanyaan"]:checked').value;
-            const pertanyaan = document.querySelector('input[name="pertanyaan"]').value.trim();
+            const pertanyaan = document.querySelector('textarea[name="pertanyaan"]').value.trim();
             const gambarPertanyaan = document.querySelector('input[name="gambar_pertanyaan"]').files[0];
 
             // Check pertanyaan requirements
@@ -736,7 +860,7 @@
                 ['a', 'b'].forEach(pilihan => {
                     const tipe = document.querySelector(`input[name="pilihan_${pilihan}_tipe"]:checked`)
                         .value;
-                    const teks = document.querySelector(`input[name="pilihan_${pilihan}_teks"]`).value
+                    const teks = document.querySelector(`textarea[name="pilihan_${pilihan}_teks"]`).value
                         .trim();
                     const gambar = document.querySelector(`input[name="pilihan_${pilihan}_gambar"]`).files[
                         0];
@@ -838,6 +962,48 @@
 
         #preview-modal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
             background: #555;
+        }
+
+        /* Clipboard paste animation */
+        @keyframes paste-success-flash {
+            0% {
+                background-color: #d1fae5;
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .paste-success {
+            animation: paste-success-flash 1s ease-out;
+        }
+
+        /* Drop zone focus styles */
+        .border-dashed:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Clipboard icon animation */
+        @keyframes clipboard-pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .fa-clipboard {
+            animation: clipboard-pulse 2s infinite ease-in-out;
+            display: inline-block;
         }
     </style>
 @endsection

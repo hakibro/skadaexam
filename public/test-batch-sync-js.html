@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="csrf-token" content="DUMMY-TOKEN-FOR-TESTING" />
+        <meta name="base-url" content="" />
+        <title>Batch Sync JS Test</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            type="text/css"
+            href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+        />
+        <style>
+            .hidden {
+                display: none;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-100">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-2xl font-bold mb-6">Batch Sync JavaScript Test</h1>
+
+            <!-- Controls -->
+            <div class="bg-white p-4 rounded shadow mb-6">
+                <h2 class="text-lg font-semibold mb-3">Test Controls</h2>
+                <button
+                    id="batch-sync-btn"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                >
+                    Start Batch Sync
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div
+                id="batch-sync-section"
+                class="bg-white p-4 rounded shadow mb-6 hidden"
+            >
+                <h2 class="text-lg font-semibold mb-3">Batch Sync Progress</h2>
+                <p id="batch-sync-status-text" class="mb-2">
+                    Initializing sync...
+                </p>
+
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                    <div
+                        id="batch-sync-progress-bar"
+                        class="bg-blue-600 h-2.5 rounded-full"
+                        style="width: 0%"
+                    ></div>
+                </div>
+
+                <p class="mb-1">
+                    Progress: <span id="batch-sync-percentage">0%</span>
+                </p>
+                <p class="mb-1">
+                    Batch: <span id="batch-sync-current-batch">0</span> of
+                    <span id="batch-sync-total-batches">0</span>
+                </p>
+                <p id="batch-sync-message" class="mb-3">
+                    Starting batch sync...
+                </p>
+
+                <div class="mb-3">
+                    <p class="font-semibold">Current Results:</p>
+                    <p>
+                        Created Classes:
+                        <span id="batch-sync-created-kelas">0</span>
+                    </p>
+                    <p>
+                        Updated Classes:
+                        <span id="batch-sync-updated-kelas">0</span>
+                    </p>
+                    <p>
+                        Created Students:
+                        <span id="batch-sync-created-siswa">0</span>
+                    </p>
+                    <p>
+                        Updated Students:
+                        <span id="batch-sync-updated-siswa">0</span>
+                    </p>
+                </div>
+
+                <button
+                    id="cancel-batch-sync-btn"
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-4 rounded"
+                >
+                    Cancel
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div
+                id="batch-sync-results-section"
+                class="bg-white p-4 rounded shadow mb-6 hidden"
+            >
+                <h2 class="text-lg font-semibold mb-3">Batch Sync Complete</h2>
+                <p id="batch-sync-results-content" class="mb-3">
+                    Sync completed successfully!
+                </p>
+
+                <div class="mb-3">
+                    <p class="font-semibold">Results:</p>
+                    <p>
+                        Created Classes:
+                        <span id="sync-results-created-kelas">0</span>
+                    </p>
+                    <p>
+                        Updated Classes:
+                        <span id="sync-results-updated-kelas">0</span>
+                    </p>
+                    <p>
+                        Created Students:
+                        <span id="sync-results-created-siswa">0</span>
+                    </p>
+                    <p>
+                        Updated Students:
+                        <span id="sync-results-updated-siswa">0</span>
+                    </p>
+                </div>
+
+                <div id="batch-sync-errors-container" class="mb-3 hidden">
+                    <p class="font-semibold text-red-600">Errors:</p>
+                    <div
+                        id="batch-sync-errors"
+                        class="bg-red-50 border border-red-200 p-2 rounded"
+                    ></div>
+                </div>
+
+                <button
+                    id="close-batch-sync-results-btn"
+                    class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-4 rounded"
+                >
+                    Close
+                </button>
+            </div>
+
+            <!-- Error Section -->
+            <div
+                id="batch-sync-error-section"
+                class="bg-white p-4 rounded shadow mb-6 hidden"
+            >
+                <h2 class="text-lg font-semibold text-red-600 mb-3">
+                    Batch Sync Error
+                </h2>
+                <p id="batch-sync-error-content" class="mb-3 text-red-600">
+                    An error occurred during the sync operation.
+                </p>
+
+                <div class="flex space-x-2">
+                    <button
+                        id="retry-batch-sync-btn"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded"
+                    >
+                        Retry
+                    </button>
+                    <button
+                        id="close-batch-sync-error-btn"
+                        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-4 rounded"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- Debug Section -->
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="text-lg font-semibold mb-3">Debug Information</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="font-medium">Base URL:</p>
+                        <pre
+                            id="debug-base-url"
+                            class="bg-gray-100 p-2 rounded text-xs overflow-auto"
+                        ></pre>
+                    </div>
+                    <div>
+                        <p class="font-medium">Endpoint URL:</p>
+                        <pre
+                            id="debug-endpoint-url"
+                            class="bg-gray-100 p-2 rounded text-xs overflow-auto"
+                        ></pre>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="font-medium">Console Output:</p>
+                    <pre
+                        id="debug-console"
+                        class="bg-gray-100 p-2 rounded text-xs h-40 overflow-auto"
+                    ></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import JS -->
+        <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+        <script>
+            // Debug console implementation
+            const originalConsole = {
+                log: console.log,
+                error: console.error,
+                warn: console.warn,
+                info: console.info,
+            };
+
+            const debugConsole = document.getElementById("debug-console");
+
+            // Override console methods to capture output
+            console.log = function () {
+                const args = Array.from(arguments);
+                debugConsole.textContent +=
+                    "▶ LOG: " +
+                    args
+                        .map((a) =>
+                            typeof a === "object" ? JSON.stringify(a) : a
+                        )
+                        .join(" ") +
+                    "\n";
+                debugConsole.scrollTop = debugConsole.scrollHeight;
+                originalConsole.log.apply(console, arguments);
+            };
+
+            console.error = function () {
+                const args = Array.from(arguments);
+                debugConsole.textContent +=
+                    "❌ ERROR: " +
+                    args
+                        .map((a) =>
+                            typeof a === "object" ? JSON.stringify(a) : a
+                        )
+                        .join(" ") +
+                    "\n";
+                debugConsole.scrollTop = debugConsole.scrollHeight;
+                originalConsole.error.apply(console, arguments);
+            };
+
+            // Mock server responses for testing
+            const mockResponses = {
+                "/data/siswa/batch-sync": {
+                    success: true,
+                    status: "processing",
+                    message: "Sync started",
+                    progress: 0,
+                    current_batch: 1,
+                    total_batches: 5,
+                    next_batch_url: "/data/siswa/batch-sync/process/1",
+                },
+                "/data/siswa/batch-sync/process/1": {
+                    success: true,
+                    status: "processing",
+                    message: "Processing batch 1/5",
+                    progress: 20,
+                    current_batch: 2,
+                    total_batches: 5,
+                    next_batch_url: "/data/siswa/batch-sync/process/2",
+                    batch_results: {
+                        created_kelas: 2,
+                        updated_kelas: 3,
+                        created_siswa: 10,
+                        updated_siswa: 15,
+                        skipped: 0,
+                        errors: [],
+                    },
+                },
+                "/data/siswa/batch-sync/process/2": {
+                    success: true,
+                    status: "processing",
+                    message: "Processing batch 2/5",
+                    progress: 40,
+                    current_batch: 3,
+                    total_batches: 5,
+                    next_batch_url: "/data/siswa/batch-sync/process/3",
+                    batch_results: {
+                        created_kelas: 1,
+                        updated_kelas: 2,
+                        created_siswa: 12,
+                        updated_siswa: 8,
+                        skipped: 1,
+                        errors: ["Error processing student with NISN 12345"],
+                    },
+                },
+                "/data/siswa/batch-sync/process/3": {
+                    success: true,
+                    status: "processing",
+                    message: "Processing batch 3/5",
+                    progress: 60,
+                    current_batch: 4,
+                    total_batches: 5,
+                    next_batch_url: "/data/siswa/batch-sync/process/4",
+                    batch_results: {
+                        created_kelas: 0,
+                        updated_kelas: 1,
+                        created_siswa: 5,
+                        updated_siswa: 20,
+                        skipped: 0,
+                        errors: [],
+                    },
+                },
+                "/data/siswa/batch-sync/process/4": {
+                    success: true,
+                    status: "processing",
+                    message: "Processing batch 4/5",
+                    progress: 80,
+                    current_batch: 5,
+                    total_batches: 5,
+                    next_batch_url: "/data/siswa/batch-sync/process/5",
+                    batch_results: {
+                        created_kelas: 0,
+                        updated_kelas: 0,
+                        created_siswa: 8,
+                        updated_siswa: 7,
+                        skipped: 2,
+                        errors: ["Error processing student with NISN 67890"],
+                    },
+                },
+                "/data/siswa/batch-sync/process/5": {
+                    success: true,
+                    status: "completed",
+                    message: "All batches processed successfully",
+                    progress: 100,
+                    current_batch: 5,
+                    total_batches: 5,
+                    batch_results: {
+                        created_kelas: 0,
+                        updated_kelas: 1,
+                        created_siswa: 5,
+                        updated_siswa: 10,
+                        skipped: 0,
+                        errors: [],
+                    },
+                    results: {
+                        created_kelas: 3,
+                        updated_kelas: 7,
+                        created_siswa: 40,
+                        updated_siswa: 60,
+                        skipped: 3,
+                        errors: [
+                            "Error processing student with NISN 12345",
+                            "Error processing student with NISN 67890",
+                        ],
+                    },
+                },
+                "/data/siswa/batch-sync-status": {
+                    status: "processing",
+                    progress: 60,
+                    message: "Processing batch 3/5",
+                    results: {
+                        created_kelas: 3,
+                        updated_kelas: 6,
+                        created_siswa: 27,
+                        updated_siswa: 43,
+                        skipped: 1,
+                        errors: ["Error processing student with NISN 12345"],
+                    },
+                },
+            };
+
+            // Mock the fetch API
+            const originalFetch = window.fetch;
+            window.fetch = function (url, options) {
+                return new Promise((resolve, reject) => {
+                    console.log(`Mock fetch called for: ${url}`);
+
+                    // Extract path from URL
+                    let path = url;
+                    if (url.startsWith("http")) {
+                        const urlObj = new URL(url);
+                        path = urlObj.pathname;
+                    }
+
+                    // Find matching mock response
+                    const response = mockResponses[path];
+
+                    if (response) {
+                        setTimeout(() => {
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                json: () => Promise.resolve(response),
+                            });
+                        }, 500);
+                    } else {
+                        console.error(`No mock response for: ${path}`);
+                        setTimeout(() => {
+                            reject(new Error(`Mock 404: ${url} not found`));
+                        }, 500);
+                    }
+                });
+            };
+
+            // Set empty base URL to test relative URL handling
+            document
+                .querySelector('meta[name="base-url"]')
+                .setAttribute("content", "");
+
+            // When the page loads, display debug info
+            document.addEventListener("DOMContentLoaded", () => {
+                const getBaseUrlFn = () => {
+                    // Get the base URL from the meta tag if available
+                    const baseUrlMeta = document.querySelector(
+                        'meta[name="base-url"]'
+                    );
+                    if (baseUrlMeta) {
+                        return baseUrlMeta.getAttribute("content");
+                    }
+
+                    // Fallback to constructing from window.location
+                    const protocol = window.location.protocol;
+                    const hostname = window.location.hostname;
+                    const port = window.location.port
+                        ? `:${window.location.port}`
+                        : "";
+                    return `${protocol}//${hostname}${port}`;
+                };
+
+                const buildUrlFn = (path) => {
+                    // Make sure path starts with a slash
+                    if (!path.startsWith("/")) {
+                        path = "/" + path;
+                    }
+                    return `${getBaseUrlFn()}${path}`;
+                };
+
+                const baseUrl = getBaseUrlFn();
+                const endpointUrl = buildUrlFn("/data/siswa/batch-sync-status");
+
+                document.getElementById("debug-base-url").textContent =
+                    baseUrl || "(empty)";
+                document.getElementById("debug-endpoint-url").textContent =
+                    endpointUrl;
+
+                console.log(`Base URL: ${baseUrl || "(empty)"}`);
+                console.log(`Endpoint URL: ${endpointUrl}`);
+            });
+        </script>
+        <script src="js/batch-siswa-fixed.js"></script>
+    </body>
+</html>
