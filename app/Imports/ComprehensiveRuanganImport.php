@@ -108,6 +108,10 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     /**
      * Process sesi ruangan data
      */
+
+
+
+
     protected function processSesiRuangan($row, $ruangan)
     {
         try {
@@ -194,24 +198,47 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     /**
      * Format time string to HH:MM:SS format
      */
-    protected function formatTime($timeStr)
-    {
-        try {
-            // Already in time format
-            if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $timeStr)) {
-                // Add seconds if not included
-                if (substr_count($timeStr, ':') === 1) {
-                    $timeStr .= ':00';
-                }
-                return $timeStr;
-            }
+    // protected function formatTime($timeStr)
+    // {
+    //     try {
+    //         // Already in time format
+    //         if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $timeStr)) {
+    //             // Add seconds if not included
+    //             if (substr_count($timeStr, ':') === 1) {
+    //                 $timeStr .= ':00';
+    //             }
+    //             return $timeStr;
+    //         }
 
-            // Try to parse as a datetime string
-            $time = Carbon::parse($timeStr)->format('H:i:s');
-            return $time;
+    //         // Try to parse as a datetime string
+    //         $time = Carbon::parse($timeStr)->format('H:i:s');
+    //         return $time;
+    //     } catch (\Exception $e) {
+    //         // Default to 08:00:00 if parsing fails
+    //         return '08:00:00';
+    //     }
+    // }
+
+    protected function formatTime($value)
+    {
+        // Jika kosong, fallback
+        if (empty($value)) {
+            return null;
+        }
+
+        // Jika numeric, berarti format time serial Excel
+        if (is_numeric($value)) {
+            // Excel time disimpan sebagai pecahan 24 jam
+            $seconds = (int)round($value * 24 * 60 * 60);
+            return gmdate('H:i:s', $seconds);
+        }
+
+        // Jika string, coba parse langsung
+        try {
+            return \Carbon\Carbon::createFromFormat('H:i', $value)->format('H:i:s');
         } catch (\Exception $e) {
-            // Default to 08:00:00 if parsing fails
-            return '08:00:00';
+            // fallback kalau format tidak sesuai
+            return date('H:i:s', strtotime($value));
         }
     }
 
