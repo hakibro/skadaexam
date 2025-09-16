@@ -883,14 +883,14 @@
             }
 
             let visibilityWarnings = 0;
-            const maxWarnings = 1; // Number of warnings before automatic logout
+            const maxWarnings = 3; // Number of warnings before automatic logout
             let lastFocusTime = Date.now();
             let isDetectionActive = false;
             let debounceTimer = null;
 
-            // Grace period: Don't start detection immediately (10 seconds after page load)
-            const gracePeriod = 10000; // 10 seconds
-            console.log('Violation detection will start in 10 seconds...');
+            // Grace period: Don't start detection immediately (3 seconds after page load)
+            const gracePeriod = 2000; // 2 seconds
+            console.log('Violation detection will start in 2 seconds...');
 
             setTimeout(() => {
                 isDetectionActive = true;
