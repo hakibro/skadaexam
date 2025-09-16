@@ -32,6 +32,69 @@
 
             </div>
 
+            <div class="flex flex-wrap gap-2">
+                <form action="{{ route('ruangan.index') }}" method="GET" class="flex items-center gap-2">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" name="search" id="search" placeholder="Cari ruangan..."
+                            value="{{ request('search') }}"
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+
+                    <div class="relative">
+                        <select name="status" id="status"
+                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Semua Status</option>
+                            <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif
+                            </option>
+                            <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>
+                                Non-aktif
+                            </option>
+                            <option value="perbaikan" {{ request('status') == 'perbaikan' ? 'selected' : '' }}>
+                                Perbaikan</option>
+                        </select>
+                    </div>
+
+                    <div class="relative">
+                        <select name="sort" id="sort"
+                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="nama_asc" {{ request('sort', 'nama_asc') == 'nama_asc' ? 'selected' : '' }}>
+                                Nama (A-Z)
+                            </option>
+                            <option value="nama_desc" {{ request('sort') == 'nama_desc' ? 'selected' : '' }}>
+                                Nama
+                                (Z-A)</option>
+                            <option value="kapasitas_asc" {{ request('sort') == 'kapasitas_asc' ? 'selected' : '' }}>
+                                Kapasitas (Terkecil)
+                            </option>
+                            <option value="kapasitas_desc" {{ request('sort') == 'kapasitas_desc' ? 'selected' : '' }}>
+                                Kapasitas (Terbesar)
+                            </option>
+                            <option value="created_at_desc" {{ request('sort') == 'created_at_desc' ? 'selected' : '' }}>
+                                Terbaru
+                            </option>
+                            <option value="created_at_asc" {{ request('sort') == 'created_at_asc' ? 'selected' : '' }}>
+                                Terlama
+                            </option>
+                        </select>
+                    </div>
+
+                    <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Filter
+                    </button>
+
+                    @if (request('search') || request('status') || request('sort') != 'nama_asc')
+                        <a href="{{ route('ruangan.index') }}"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200">
+                            <i class="fa-solid fa-times mr-2"></i> Reset
+                        </a>
+                    @endif
+                </form>
+            </div>
+
 
         </div>
         <!-- Room Statistics -->
@@ -87,7 +150,8 @@
 
         <!-- Bulk Actions -->
         @if ($ruangans->count() > 0)
-            <div x-data="{ showBulkActions: false, selectedItems: [] }" class="mb-6">
+            {{-- <div x-data="{ showBulkActions: false, selectedItems: [] }" class="mb-6"> --}}
+            <div x-data="bulkActions" class="mb-6">
                 <div class="bg-white p-4 rounded-lg shadow-md">
                     <div class="flex flex-wrap items-center justify-between">
                         <div class="flex items-center space-x-4">
@@ -100,73 +164,6 @@
                                 class="text-sm text-gray-600"></span>
                         </div>
 
-                        <div class="flex flex-wrap gap-2">
-                            <form action="{{ route('ruangan.index') }}" method="GET" class="flex items-center gap-2">
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <i class="fa-solid fa-search text-gray-400"></i>
-                                    </div>
-                                    <input type="text" name="search" id="search" placeholder="Cari ruangan..."
-                                        value="{{ request('search') }}"
-                                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-
-                                <div class="relative">
-                                    <select name="status" id="status"
-                                        class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <option value="">Semua Status</option>
-                                        <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif
-                                        </option>
-                                        <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>
-                                            Non-aktif
-                                        </option>
-                                        <option value="perbaikan" {{ request('status') == 'perbaikan' ? 'selected' : '' }}>
-                                            Perbaikan</option>
-                                    </select>
-                                </div>
-
-                                <div class="relative">
-                                    <select name="sort" id="sort"
-                                        class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <option value="nama_asc"
-                                            {{ request('sort', 'nama_asc') == 'nama_asc' ? 'selected' : '' }}>
-                                            Nama (A-Z)
-                                        </option>
-                                        <option value="nama_desc" {{ request('sort') == 'nama_desc' ? 'selected' : '' }}>
-                                            Nama
-                                            (Z-A)</option>
-                                        <option value="kapasitas_asc"
-                                            {{ request('sort') == 'kapasitas_asc' ? 'selected' : '' }}>
-                                            Kapasitas (Terkecil)
-                                        </option>
-                                        <option value="kapasitas_desc"
-                                            {{ request('sort') == 'kapasitas_desc' ? 'selected' : '' }}>
-                                            Kapasitas (Terbesar)
-                                        </option>
-                                        <option value="created_at_desc"
-                                            {{ request('sort') == 'created_at_desc' ? 'selected' : '' }}>
-                                            Terbaru
-                                        </option>
-                                        <option value="created_at_asc"
-                                            {{ request('sort') == 'created_at_asc' ? 'selected' : '' }}>
-                                            Terlama
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Filter
-                                </button>
-
-                                @if (request('search') || request('status') || request('sort') != 'nama_asc')
-                                    <a href="{{ route('ruangan.index') }}"
-                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200">
-                                        <i class="fa-solid fa-times mr-2"></i> Reset
-                                    </a>
-                                @endif
-                            </form>
-                        </div>
 
                         <div x-show="selectedItems.length > 0" class="flex flex-wrap gap-2 mt-2 sm:mt-0">
                             <button @click="confirmBulkAction('aktifkan')"
@@ -198,7 +195,23 @@
             </div>
         @endif
 
+        @if (session('error_with_force'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                <strong class="font-bold">Gagal!</strong>
+                <span class="block sm:inline">{{ session('error_with_force')['message'] }}</span>
 
+                <form action="{{ route('ruangan.bulk-action') }}" method="POST" class="inline ml-2">
+                    @csrf
+                    <input type="hidden" name="action" value="hapus_paksa">
+                    <input type="hidden" name="ids" value="{{ session('error_with_force')['ids'] }}">
+                    <button type="submit"
+                        onclick="return confirm('Yakin ingin HAPUS PAKSA ruangan ini beserta semua data terkait?')"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded">
+                        Hapus Paksa
+                    </button>
+                </form>
+            </div>
+        @endif
 
         <!-- Room List -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -210,9 +223,12 @@
                 <span class="text-sm text-gray-600">{{ $ruangans->total() }} ruangan ditemukan</span>
             </div>
 
+
             @if ($ruangans->count() > 0)
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
+
+
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="w-12 px-6 py-3 text-left">

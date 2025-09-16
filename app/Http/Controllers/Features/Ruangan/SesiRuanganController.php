@@ -41,9 +41,7 @@ class SesiRuanganController extends Controller
             });
         })->orderBy('nama')->get();
 
-        $templates = \App\Models\SesiTemplate::where('is_active', true)->get();
-
-        return view('features.ruangan.sesi.create', compact('ruangan', 'pengawasList', 'templates'));
+        return view('features.ruangan.sesi.create', compact('ruangan', 'pengawasList'));
     }
 
     /**

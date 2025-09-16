@@ -25,8 +25,7 @@ class SesiRuangan extends Model
         'token_expired_at',
         'status',
         'pengaturan',
-        'ruangan_id',
-        'template_id'
+        'ruangan_id'
     ];
 
     protected $casts = [
@@ -82,11 +81,6 @@ class SesiRuangan extends Model
         // This will always be empty now that the column is removed
         // But at least it returns a relationship instance instead of null
         return $this->belongsTo(Guru::class, 'koordinator_id')->whereNull('koordinator_id');
-    }
-
-    public function template()
-    {
-        return $this->belongsTo(SesiTemplate::class, 'template_id');
     }
 
     public function koordinator()

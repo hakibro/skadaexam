@@ -412,6 +412,99 @@ class RuanganController extends Controller
         }
     }
 
+    public function bulkAction(Request $request)
+    {
+        $action = $request->input('action');
+        $ids = $request->input('ids', []);
+
+        // Pastikan $ids selalu array
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+
+        // Buang kemungkinan nilai kosong
+        $ids = array_filter($ids);
+
+        if (count($ids) === 0) {
+            return redirect()->back()->with('error', 'Tidak ada item yang dipilih.');
+        }
+
+        try {
+            switch ($action) {
+                case 'hapus':
+                    try {
+                        Ruangan::whereIn('id', $ids)->delete();
+                        return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Cek kode error MySQL 1451 = cannot delete or update a parent row
+                        if ($e->errorInfo[1] == 1451) {
+                            return redirect()->back()->with('error_with_force', [
+                                'message' => 'Tidak bisa menghapus ruangan karena masih ada data terkait.',
+                                'ids' => implode(',', $ids)
+                            ]);
+                        }
+                        throw $e; // biarkan error lain jalan normal
+                    }
+
+                    // case 'hapus_paksa':
+                    //     foreach ($ids as $id) {
+                    //         Ruangan::where('id', $id)->forceDelete(); // atau delete dengan disable fk
+                    //     }
+                    //     return redirect()->back()->with('success', 'Ruangan dan semua data terkait berhasil dihapus paksa.');
+
+                case 'hapus_paksa':
+                    foreach ($ids as $id) {
+                        // Ambil semua sesi dalam ruangan ini
+                        $sesiIds = DB::table('sesi_ruangan')->where('ruangan_id', $id)->pluck('id');
+
+                        foreach ($sesiIds as $sesiId) {
+                            // Cari hasil ujian dalam sesi ini
+                            $hasilUjianIds = DB::table('hasil_ujian')->where('sesi_ruangan_id', $sesiId)->pluck('id');
+
+                            // Hapus pelanggaran ujian yang terkait hasil ujian
+                            DB::table('pelanggaran_ujian')->whereIn('hasil_ujian_id', $hasilUjianIds)->delete();
+
+                            // Hapus hasil ujian
+                            DB::table('hasil_ujian')->whereIn('id', $hasilUjianIds)->delete();
+
+                            // Hapus sesi ruangan
+                            DB::table('sesi_ruangan')->where('id', $sesiId)->delete();
+                        }
+
+                        // Hapus ruangannya
+                        DB::table('ruangan')->where('id', $id)->delete();
+                    }
+
+                    return redirect()->back()->with('success', 'Ruangan dan semua data terkait berhasil dihapus paksa.');
+
+
+
+                case 'aktifkan':
+                    Ruangan::whereIn('id', $ids)->update(['status' => 'aktif']);
+                    return redirect()->back()->with('success', 'Ruangan berhasil diaktifkan.');
+
+                case 'nonaktifkan':
+                    Ruangan::whereIn('id', $ids)->update(['status' => 'tidak_aktif']);
+                    return redirect()->back()->with('success', 'Ruangan berhasil dinonaktifkan.');
+
+                case 'perbaikan':
+                    Ruangan::whereIn('id', $ids)->update(['status' => 'perbaikan']);
+                    return redirect()->back()->with('success', 'Ruangan berhasil ditandai untuk perbaikan.');
+
+                default:
+                    return redirect()->back()->with('error', 'Aksi tidak dikenal.');
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == '23000') { // Integrity constraint violation
+                return redirect()->back()->with('error', 'Tidak bisa menghapus karena ada data terkait. 
+                Klik tombol Hapus Paksa jika ingin menghapus beserta semua data terkait.');
+            }
+            throw $e; // biar error lain tetap muncul
+        }
+    }
+
+
+
     /**
      * Bulk delete rooms
      */

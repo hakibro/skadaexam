@@ -25,22 +25,6 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::get('/', [DashboardController::class, 'index'])
             ->name('dashboard');
 
-        // ===============================
-        // Template routes (STATIC PREFIX)
-        // ===============================
-        Route::prefix('template')->name('template.')->group(function () {
-            Route::get('/', [SesiTemplateController::class, 'index'])->name('index');
-            Route::get('/create', [SesiTemplateController::class, 'create'])->name('create');
-            Route::post('/', [SesiTemplateController::class, 'store'])->name('store');
-            Route::get('/{template}', [SesiTemplateController::class, 'show'])->name('show');
-            Route::get('/{template}/edit', [SesiTemplateController::class, 'edit'])->name('edit');
-            Route::put('/{template}', [SesiTemplateController::class, 'update'])->name('update');
-            Route::delete('/{template}', [SesiTemplateController::class, 'destroy'])->name('destroy');
-            Route::delete('/{template}/force', [SesiTemplateController::class, 'forceDelete'])->name('force-delete');
-            Route::put('/{template}/toggle-active', [SesiTemplateController::class, 'toggleActive'])->name('toggle-active');
-            Route::get('/{template}/apply', [SesiTemplateController::class, 'showApplyForm'])->name('show-apply');
-            Route::post('/{template}/apply', [SesiTemplateController::class, 'applyTemplate'])->name('apply');
-        });
 
         // ===============================
         // CRUD Ruangan
@@ -70,6 +54,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
             Route::put('/update-status', [RuanganController::class, 'updateStatus'])->name('update-status');
             Route::delete('/', [RuanganController::class, 'destroy'])->name('destroy');
             Route::delete('/force', [RuanganController::class, 'forceDelete'])->name('force-delete');
+
 
             // Sesi Ruangan
             Route::prefix('sesi')->name('sesi.')->group(function () {

@@ -30,8 +30,20 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     public function collection(Collection $rows)
     {
         foreach ($rows as $row) {
-            // Skip rows with empty kode_ruangan
+            // Convert numeric idyayasan to string if exists
+            if (isset($row['idyayasan']) && is_numeric($row['idyayasan'])) {
+                $row['idyayasan'] = (string) $row['idyayasan'];
+            }
+
+            // If no kode_ruangan, skip ruangan and sesi processing but check for student assignment
             if (empty($row['kode_ruangan'])) {
+                // If we have kode_sesi, try to find existing session and assign student
+                if (!empty($row['kode_sesi']) && !empty($row['idyayasan'])) {
+                    $sesi = SesiRuangan::where('kode_sesi', $row['kode_sesi'])->first();
+                    if ($sesi) {
+                        $this->processSiswaAssignment($row, $sesi);
+                    }
+                }
                 continue;
             }
 
@@ -68,9 +80,9 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 // Update existing ruangan
                 $ruangan->update([
                     'nama_ruangan' => $row['nama_ruangan'] ?? $ruangan->nama_ruangan,
-                    'kapasitas' => $row['kapasitas_ruangan'] ?? $ruangan->kapasitas,
-                    'lokasi' => $row['lokasi_ruangan'] ?? $ruangan->lokasi,
-                    'status' => $row['status_ruangan'] ?? $ruangan->status,
+                    'kapasitas' => $row['kapasitas'] ?? $ruangan->kapasitas,
+                    'lokasi' => $row['lokasi'] ?? $ruangan->lokasi,
+                    'status' => $row['status'] ?? $ruangan->status,
                     // Only update other fields if provided
                 ]);
                 $this->results['ruangan_updated']++;
@@ -79,10 +91,9 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 $ruangan = Ruangan::create([
                     'kode_ruangan' => $row['kode_ruangan'],
                     'nama_ruangan' => $row['nama_ruangan'] ?? 'Ruangan ' . $row['kode_ruangan'],
-                    'kapasitas' => $row['kapasitas_ruangan'] ?? 30,
-                    'lokasi' => $row['lokasi_ruangan'] ?? null,
-                    'status' => $row['status_ruangan'] ?? 'aktif',
-                    'jenis_ruangan' => $row['jenis_ruangan'] ?? 'kelas',
+                    'kapasitas' => $row['kapasitas'] ?? 30,
+                    'lokasi' => $row['lokasi'] ?? null,
+                    'status' => $row['status'] ?? 'aktif',
                 ]);
                 $this->results['ruangan_created']++;
             }
@@ -146,12 +157,15 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     protected function processSiswaAssignment($row, $sesi)
     {
         try {
+            // Convert idyayasan to string if numeric
+            $idyayasan = is_numeric($row['idyayasan']) ? (string) $row['idyayasan'] : $row['idyayasan'];
+
             // Find the student by idyayasan
-            $siswa = Siswa::where('idyayasan', $row['idyayasan'])->first();
+            $siswa = Siswa::where('idyayasan', $idyayasan)->first();
 
             // If student doesn't exist, log and skip
             if (!$siswa) {
-                Log::warning("Student with idyayasan {$row['idyayasan']} not found, skipping assignment");
+                Log::warning("Student with idyayasan {$idyayasan} not found, skipping assignment");
                 return null;
             }
 
@@ -215,19 +229,22 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     public function rules(): array
     {
         return [
-            '*.kode_ruangan' => 'required|string|max:20',
+            // Ruangan fields - kode_ruangan nullable to allow student-only rows
+            '*.kode_ruangan' => 'nullable|string|max:20',
             '*.nama_ruangan' => 'nullable|string|max:191',
-            '*.kapasitas_ruangan' => 'nullable|integer|min:1|max:1000',
-            '*.lokasi_ruangan' => 'nullable|string|max:191',
-            '*.status_ruangan' => 'nullable|string|in:aktif,perbaikan,tidak_aktif',
+            '*.kapasitas' => 'nullable|integer|min:1|max:1000',
+            '*.lokasi' => 'nullable|string|max:191',
+            '*.status' => 'nullable|string|in:aktif,perbaikan,tidak_aktif',
 
+            // Sesi fields
             '*.kode_sesi' => 'nullable|string|max:20',
             '*.nama_sesi' => 'nullable|string|max:191',
             '*.waktu_mulai_sesi' => 'nullable',
             '*.waktu_selesai_sesi' => 'nullable',
             '*.status_sesi' => 'nullable|string|in:belum_mulai,berlangsung,selesai,dibatalkan',
 
-            '*.idyayasan' => 'nullable|string|max:50',
+            // Siswa fields - convert to string if needed
+            '*.idyayasan' => 'nullable',
             '*.nama_siswa' => 'nullable|string|max:191',
         ];
     }
