@@ -872,6 +872,7 @@
         }
 
         // Set up detection for browser tab switching or minimizing
+        // Perbaikan untuk deteksi pelanggaran yang lebih responsif
         function setupVisibilityChangeDetection() {
             // Check if auto-logout is enabled in exam settings
             const autoLogoutEnabled = {{ $examData['examSettings']['aktifkan_auto_logout'] ? 'true' : 'false' }};
@@ -883,122 +884,255 @@
             }
 
             let visibilityWarnings = 0;
-            const maxWarnings = 1; // Number of warnings before automatic logout
+            const maxWarnings = 1;
             let lastFocusTime = Date.now();
             let isDetectionActive = false;
             let debounceTimer = null;
+            let violationTimer = null; // Timer untuk tracking durasi pelanggaran
 
-            // Grace period: Don't start detection immediately (30 seconds after page load)
-            const gracePeriod = 30000; // 30 seconds
-            console.log('Violation detection will start in 30 seconds...');
+            // PERBAIKAN 1: Kurangi grace period dari 30 detik ke 10 detik
+            const gracePeriod = 10000; // 10 seconds instead of 30
+            console.log('Violation detection will start in 10 seconds...');
 
             setTimeout(() => {
                 isDetectionActive = true;
                 console.log('Violation detection is now active');
 
                 // Show one-time notification to student
-                const notification = document.createElement('div');
-                notification.className =
-                    'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
-                notification.innerHTML =
-                '<i class="fas fa-shield-alt mr-2"></i>Sistem monitoring ujian telah aktif';
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
+                showDetectionActiveNotification();
             }, gracePeriod);
 
-            // Add event listeners for visibility change - but only process if detection is active
+            // PERBAIKAN 2: Tambahkan listener tambahan untuk deteksi lebih akurat
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('blur', handleWindowBlur);
             window.addEventListener('focus', handleWindowFocus);
+            window.addEventListener('beforeunload', handleBeforeUnload);
+
+            // PERBAIKAN 3: Deteksi keyboard shortcuts yang mencurigakan
+            document.addEventListener('keydown', handleSuspiciousKeyboard);
+
+            function showDetectionActiveNotification() {
+                const notification = document.createElement('div');
+                notification.className =
+                    'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
+                notification.innerHTML = '<i class="fas fa-shield-alt mr-2"></i>Sistem monitoring ujian telah aktif';
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 3000);
+            }
 
             function handleVisibilityChange() {
-                if (!isDetectionActive) return; // Skip during grace period
+                if (!isDetectionActive) return;
 
                 if (document.visibilityState === 'hidden') {
-                    handleUserLeftPage();
+                    console.log('Page hidden detected via visibilitychange');
+                    handleUserLeftPage('visibility_hidden');
                 } else if (document.visibilityState === 'visible') {
+                    console.log('Page visible detected via visibilitychange');
                     handleUserReturnedToPage();
                 }
             }
 
             function handleWindowBlur() {
-                if (!isDetectionActive) return; // Skip during grace period
+                if (!isDetectionActive) return;
 
-                // Add debouncing to prevent false positives from quick focus changes
+                console.log('Window blur detected');
+
+                // PERBAIKAN 4: Kurangi debounce dari 1000ms ke 500ms
                 if (debounceTimer) {
                     clearTimeout(debounceTimer);
                 }
 
                 debounceTimer = setTimeout(() => {
-                    // Only trigger if the page is still not visible after a short delay
-                    if (document.visibilityState === 'hidden') {
-                        handleUserLeftPage();
+                    if (document.visibilityState === 'hidden' || !document.hasFocus()) {
+                        handleUserLeftPage('window_blur');
                     }
-                }, 1000); // 1 second debounce
+                }, 500); // Reduced from 1000ms
             }
 
             function handleWindowFocus() {
-                if (!isDetectionActive) return; // Skip during grace period
+                if (!isDetectionActive) return;
 
-                // Clear the debounce timer as user is back
+                console.log('Window focus detected');
+
                 if (debounceTimer) {
                     clearTimeout(debounceTimer);
                     debounceTimer = null;
                 }
 
+                if (violationTimer) {
+                    clearTimeout(violationTimer);
+                    violationTimer = null;
+                }
+
                 handleUserReturnedToPage();
             }
 
-            function handleUserLeftPage() {
-                if (!isDetectionActive) return; // Skip during grace period
+            function handleBeforeUnload(event) {
+                if (!isDetectionActive) return;
 
-                console.log('User left page detected');
-                lastFocusTime = Date.now();
+                // Deteksi saat user mencoba menutup tab/browser
+                console.log('Before unload detected - potential violation');
+                handleUserLeftPage('before_unload');
+            }
 
-                // Only increment warnings for actual visibility changes (not just focus changes)
-                if (document.visibilityState === 'hidden') {
-                    visibilityWarnings++;
-                    console.log(`Violation count: ${visibilityWarnings}`);
+            function handleSuspiciousKeyboard(event) {
+                if (!isDetectionActive) return;
 
-                    if (visibilityWarnings > maxWarnings) {
-                        // Automatically logout
-                        logoutDueToCheating();
-                    } else {
-                        // Store the time when user left the page
-                        localStorage.setItem('examLeftPageTime', Date.now());
+                // Deteksi kombinasi keyboard yang mencurigakan
+                const suspiciousKeys = [{
+                        key: 'Tab',
+                        alt: true
+                    }, // Alt+Tab
+                    {
+                        key: 'Tab',
+                        ctrl: true
+                    }, // Ctrl+Tab
+                    {
+                        key: 'w',
+                        ctrl: true
+                    }, // Ctrl+W (close tab)
+                    {
+                        key: 't',
+                        ctrl: true
+                    }, // Ctrl+T (new tab)
+                    {
+                        key: 'n',
+                        ctrl: true
+                    }, // Ctrl+N (new window)
+                    {
+                        key: 'F4',
+                        alt: true
+                    }, // Alt+F4
+                ];
+
+                for (let combo of suspiciousKeys) {
+                    if (event.key === combo.key &&
+                        ((combo.ctrl && event.ctrlKey) || (combo.alt && event.altKey))) {
+                        console.log(
+                            `Suspicious keyboard combination detected: ${combo.alt ? 'Alt+' : ''}${combo.ctrl ? 'Ctrl+' : ''}${combo.key}`
+                        );
+
+                        // Prevent the action
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        // Record as violation
+                        handleUserLeftPage('suspicious_keyboard');
+                        return false;
                     }
                 }
             }
 
+            function handleUserLeftPage(source = 'unknown') {
+                if (!isDetectionActive) return;
+
+                console.log(`User left page detected via: ${source}`);
+                lastFocusTime = Date.now();
+
+                // PERBAIKAN 5: Langsung increment violation untuk semua jenis pelanggaran
+                visibilityWarnings++;
+                console.log(`Violation count: ${visibilityWarnings} (source: ${source})`);
+
+                // Store violation info
+                localStorage.setItem('examLeftPageTime', Date.now());
+                localStorage.setItem('examViolationSource', source);
+
+                // PERBAIKAN 6: Immediate response untuk keyboard violations
+                if (source === 'suspicious_keyboard' || source === 'before_unload') {
+                    // Show modal immediately for keyboard violations
+                    handleUserReturnedToPage();
+                    return;
+                }
+
+                // PERBAIKAN 7: Set timer untuk auto-trigger modal jika user tidak kembali
+                if (violationTimer) {
+                    clearTimeout(violationTimer);
+                }
+
+                violationTimer = setTimeout(() => {
+                    console.log('Auto-triggering violation modal after 3 seconds');
+                    if (document.visibilityState === 'hidden' || !document.hasFocus()) {
+                        // Force show modal even if user hasn't returned
+                        forceShowViolationModal(source);
+                    }
+                }, 3000); // Show modal after 3 seconds if user doesn't return
+
+                if (visibilityWarnings > maxWarnings) {
+                    logoutDueToCheating();
+                }
+            }
+
             function handleUserReturnedToPage() {
-                if (!isDetectionActive) return; // Skip during grace period
+                if (!isDetectionActive) return;
 
                 const leftTime = localStorage.getItem('examLeftPageTime');
+                const violationSource = localStorage.getItem('examViolationSource') || 'unknown';
+
                 if (leftTime) {
                     const timeAway = Date.now() - parseInt(leftTime);
-                    console.log(`User was away for ${Math.floor(timeAway/1000)} seconds`);
+                    console.log(`User returned after ${Math.floor(timeAway/1000)} seconds (source: ${violationSource})`);
 
-                    // Only show warning if away for more than 5 seconds (increased threshold)
-                    if (timeAway > 5000) {
+                    // PERBAIKAN 8: Kurangi threshold dari 5 detik ke 2 detik
+                    const minViolationTime = violationSource === 'suspicious_keyboard' ? 0 :
+                        2000; // 2 seconds or immediate for keyboard
+
+                    if (timeAway > minViolationTime || violationSource === 'suspicious_keyboard' || violationSource ===
+                        'before_unload') {
                         if (visibilityWarnings >= maxWarnings) {
                             logoutDueToCheating();
                         } else {
-                            // Show violation modal instead of alert
+                            // PERBAIKAN 9: Show modal dengan informasi lebih detail
                             showViolationModal(
-                                `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
+                                getViolationMessage(violationSource, timeAway),
                                 `Peringatan ${visibilityWarnings} dari ${maxWarnings}`,
                                 visibilityWarnings
                             );
                         }
                     } else {
                         console.log('Quick focus change detected, ignoring...');
+                        // Revert violation count if it was just a quick change
+                        visibilityWarnings = Math.max(0, visibilityWarnings - 1);
                     }
 
-                    // Remove stored time
+                    // Clean up stored data
                     localStorage.removeItem('examLeftPageTime');
+                    localStorage.removeItem('examViolationSource');
+                }
+            }
+
+            function forceShowViolationModal(source) {
+                const timeAway = Date.now() - parseInt(localStorage.getItem('examLeftPageTime') || Date.now());
+
+                showViolationModal(
+                    getViolationMessage(source, timeAway),
+                    `Peringatan ${visibilityWarnings} dari ${maxWarnings}`,
+                    visibilityWarnings
+                );
+
+                // Clean up
+                localStorage.removeItem('examLeftPageTime');
+                localStorage.removeItem('examViolationSource');
+            }
+
+            function getViolationMessage(source, timeAway) {
+                const seconds = Math.floor(timeAway / 1000);
+
+                switch (source) {
+                    case 'suspicious_keyboard':
+                        return 'Terdeteksi penggunaan shortcut keyboard yang tidak diizinkan!';
+                    case 'before_unload':
+                        return 'Terdeteksi percobaan menutup tab atau browser!';
+                    case 'visibility_hidden':
+                        return `Anda telah berpindah dari halaman ujian selama ${seconds} detik!`;
+                    case 'window_blur':
+                        return `Anda telah kehilangan fokus dari halaman ujian selama ${seconds} detik!`;
+                    default:
+                        return `Anda telah meninggalkan halaman ujian selama ${seconds} detik!`;
                 }
             }
 
@@ -1010,7 +1144,9 @@
                 violationCount++;
                 localStorage.setItem('violationCount', violationCount);
 
-                // Mark this exam attempt as a violation
+                // PERBAIKAN 10: Tambahkan informasi source pelanggaran ke server
+                const violationSource = localStorage.getItem('examViolationSource') || 'multiple_violations';
+
                 fetch('{{ route('siswa.exam.logout') }}', {
                         method: 'POST',
                         headers: {
@@ -1019,59 +1155,23 @@
                         },
                         body: JSON.stringify({
                             hasil_ujian_id: hasilUjianId,
-                            reason: 'tab_switching'
+                            reason: violationSource,
+                            violation_count: visibilityWarnings
                         })
                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.continue_exam) {
-                            // Show violation modal instead of alert
                             showViolationModal(
-                                'Anda telah berpindah tab atau meminimalkan browser!',
+                                'Anda telah melakukan pelanggaran berulang!',
                                 'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas. Anda dapat melanjutkan ujian.',
                                 data.violations_count
                             );
 
-                            // Update UI to show violation count if needed
-                            if (data.violations_count) {
-                                const violationBadge = document.getElementById('violation-count');
-                                if (violationBadge) {
-                                    violationBadge.textContent = data.violations_count;
-                                    violationBadge.classList.remove('hidden');
-                                }
-
-                                // Show violation warning panel
-                                const warningPanel = document.getElementById('violation-warning');
-                                const warningMessage = document.getElementById('violation-message');
-
-                                if (warningPanel && warningMessage) {
-                                    warningPanel.classList.remove('hidden');
-                                    warningMessage.textContent =
-                                        'Terdeteksi perpindahan tab. Pelanggaran telah dicatat dan dilaporkan ke pengawas.';
-
-                                    // Auto-hide the warning after 10 seconds
-                                    setTimeout(() => {
-                                        warningPanel.classList.add('hidden');
-                                    }, 10000);
-                                }
-                            }
+                            updateViolationUI(data.violations_count);
                         } else {
-                            // If server decides to log student out anyway
-                            alert(
-                                'Anda telah melakukan pelanggaran berulang kali. Sistem akan logout otomatis.'
-                            );
-
-                            // Logout if server requests it
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            form.action = '{{ route('siswa.logout') }}';
-                            const csrfInput = document.createElement('input');
-                            csrfInput.type = 'hidden';
-                            csrfInput.name = '_token';
-                            csrfInput.value = csrfToken;
-                            form.appendChild(csrfInput);
-                            document.body.appendChild(form);
-                            form.submit();
+                            alert('Anda telah melakukan pelanggaran berulang kali. Sistem akan logout otomatis.');
+                            performLogout();
                         }
                     })
                     .catch(error => {
@@ -1082,6 +1182,39 @@
                             0
                         );
                     });
+            }
+
+            function updateViolationUI(violationCount) {
+                const violationBadge = document.getElementById('violation-count');
+                if (violationBadge) {
+                    violationBadge.textContent = violationCount;
+                    violationBadge.classList.remove('hidden');
+                }
+
+                const warningPanel = document.getElementById('violation-warning');
+                const warningMessage = document.getElementById('violation-message');
+
+                if (warningPanel && warningMessage) {
+                    warningPanel.classList.remove('hidden');
+                    warningMessage.textContent = 'Terdeteksi pelanggaran ujian. Pengawas telah diberi tahu.';
+
+                    setTimeout(() => {
+                        warningPanel.classList.add('hidden');
+                    }, 10000);
+                }
+            }
+
+            function performLogout() {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route('siswa.logout') }}';
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
             }
         }
 
