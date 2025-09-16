@@ -888,9 +888,9 @@
             let isDetectionActive = false;
             let debounceTimer = null;
 
-            // Grace period: Don't start detection immediately (30 seconds after page load)
-            const gracePeriod = 30000; // 30 seconds
-            console.log('Violation detection will start in 30 seconds...');
+            // Grace period: Don't start detection immediately (10 seconds after page load)
+            const gracePeriod = 10000; // 10 seconds
+            console.log('Violation detection will start in 10 seconds...');
 
             setTimeout(() => {
                 isDetectionActive = true;
@@ -901,7 +901,7 @@
                 notification.className =
                     'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
                 notification.innerHTML =
-                '<i class="fas fa-shield-alt mr-2"></i>Sistem monitoring ujian telah aktif';
+                    '<i class="fas fa-shield-alt mr-2"></i>Sistem monitoring ujian telah aktif';
                 document.body.appendChild(notification);
 
                 setTimeout(() => {
