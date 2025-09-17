@@ -31,35 +31,38 @@ class GuruImport implements
     {
         $validRoles = array_keys(Guru::getRoleOptions());
 
-        // Kumpulkan data user & guru per batch
         $userBatch = [];
         $guruBatch = [];
         $rolesBatch = [];
 
+        // Ambil last user id
+        $lastId = DB::table('users')->max('id') ?? 0;
+        $nextId = $lastId + 1;
+
         foreach ($rows as $index => $row) {
             try {
-                $userData = [
+                $userBatch[] = [
+                    'id' => $nextId,
                     'name' => $row['nama'],
                     'email' => $row['email'],
                     'password' => Hash::make($row['password']),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
-                $userBatch[] = $userData;
 
-                $guruData = [
+                $guruBatch[] = [
                     'nama' => $row['nama'],
                     'nip' => $row['nip'] ?? null,
                     'email' => $row['email'],
+                    'user_id' => $nextId,
                     'password' => null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
-                $guruBatch[] = $guruData;
 
-                // Simpan role sementara sesuai index
-                $role = in_array($row['role'], $validRoles) ? $row['role'] : 'guru';
-                $rolesBatch[] = $role;
+                $rolesBatch[$nextId] = in_array($row['role'], $validRoles) ? $row['role'] : 'guru';
+
+                $nextId++;
             } catch (\Exception $e) {
                 $this->errorCount++;
                 $this->errors[] = [
@@ -69,21 +72,18 @@ class GuruImport implements
             }
         }
 
-        // Insert user dan guru secara batch
+        // Batch insert
         DB::transaction(function () use ($userBatch, $guruBatch, $rolesBatch) {
-            $insertedUsers = [];
-            foreach ($userBatch as $userData) {
-                $insertedUsers[] = User::create($userData);
-            }
+            User::insert($userBatch);
+            Guru::insert($guruBatch);
 
-            foreach ($guruBatch as $i => $guruData) {
-                $guruData['user_id'] = $insertedUsers[$i]->id;
-                Guru::create($guruData);
-
-                // Assign role
-                $insertedUsers[$i]->assignRole($rolesBatch[$i]);
-
-                $this->successCount++;
+            // Assign role per user
+            foreach ($rolesBatch as $userId => $role) {
+                $user = User::find($userId);
+                if ($user) {
+                    $user->assignRole($role);
+                    $this->successCount++;
+                }
             }
         });
     }
