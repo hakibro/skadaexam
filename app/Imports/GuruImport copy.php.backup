@@ -1,16 +1,17 @@
 <?php
 
+
 namespace App\Imports;
 
 use App\Models\Guru;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Validators\Failure;
 
 class GuruImport implements
@@ -18,8 +19,7 @@ class GuruImport implements
     WithHeadingRow,
     WithValidation,
     SkipsOnError,
-    SkipsOnFailure,
-    WithChunkReading
+    SkipsOnFailure
 {
     private $successCount = 0;
     private $errorCount = 0;
@@ -31,32 +31,35 @@ class GuruImport implements
 
         foreach ($rows as $index => $row) {
             try {
+                // Create user first
                 $user = \App\Models\User::create([
                     'name' => $row['nama'],
                     'email' => $row['email'],
                     'password' => Hash::make($row['password']),
                 ]);
 
+                // Create guru linked to user
                 $guru = Guru::create([
                     'nama' => $row['nama'],
                     'nip' => $row['nip'] ?? null,
                     'email' => $row['email'],
                     'user_id' => $user->id,
-                    'password' => null,
+                    'password' => null, // Set to null since we store passwords in the users table
                 ]);
 
+                // Assign role to user
                 $role = $row['role'];
                 if (in_array($role, $validRoles)) {
                     $user->assignRole($role);
                 } else {
-                    $user->assignRole('guru');
+                    $user->assignRole('guru'); // Default role
                 }
 
                 $this->successCount++;
             } catch (\Exception $e) {
                 $this->errorCount++;
                 $this->errors[] = [
-                    'row' => $index + 2,
+                    'row' => $index + 2, // +2 for heading row and 0-index
                     'errors' => [$e->getMessage()]
                 ];
             }
@@ -106,11 +109,5 @@ class GuruImport implements
     public function getErrors()
     {
         return $this->errors;
-    }
-
-    // Tambahkan ini untuk batch 20
-    public function chunkSize(): int
-    {
-        return 20;
     }
 }
