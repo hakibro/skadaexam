@@ -3,14 +3,16 @@
 namespace App\Imports;
 
 use App\Models\Guru;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Validators\Failure;
 
 class GuruImport implements
@@ -29,30 +31,35 @@ class GuruImport implements
     {
         $validRoles = array_keys(Guru::getRoleOptions());
 
+        // Kumpulkan data user & guru per batch
+        $userBatch = [];
+        $guruBatch = [];
+        $rolesBatch = [];
+
         foreach ($rows as $index => $row) {
             try {
-                $user = \App\Models\User::create([
+                $userData = [
                     'name' => $row['nama'],
                     'email' => $row['email'],
                     'password' => Hash::make($row['password']),
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                $userBatch[] = $userData;
 
-                $guru = Guru::create([
+                $guruData = [
                     'nama' => $row['nama'],
                     'nip' => $row['nip'] ?? null,
                     'email' => $row['email'],
-                    'user_id' => $user->id,
                     'password' => null,
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                $guruBatch[] = $guruData;
 
-                $role = $row['role'];
-                if (in_array($role, $validRoles)) {
-                    $user->assignRole($role);
-                } else {
-                    $user->assignRole('guru');
-                }
-
-                $this->successCount++;
+                // Simpan role sementara sesuai index
+                $role = in_array($row['role'], $validRoles) ? $row['role'] : 'guru';
+                $rolesBatch[] = $role;
             } catch (\Exception $e) {
                 $this->errorCount++;
                 $this->errors[] = [
@@ -61,6 +68,24 @@ class GuruImport implements
                 ];
             }
         }
+
+        // Insert user dan guru secara batch
+        DB::transaction(function () use ($userBatch, $guruBatch, $rolesBatch) {
+            $insertedUsers = [];
+            foreach ($userBatch as $userData) {
+                $insertedUsers[] = User::create($userData);
+            }
+
+            foreach ($guruBatch as $i => $guruData) {
+                $guruData['user_id'] = $insertedUsers[$i]->id;
+                Guru::create($guruData);
+
+                // Assign role
+                $insertedUsers[$i]->assignRole($rolesBatch[$i]);
+
+                $this->successCount++;
+            }
+        });
     }
 
     public function rules(): array
@@ -108,7 +133,6 @@ class GuruImport implements
         return $this->errors;
     }
 
-    // Tambahkan ini untuk batch 20
     public function chunkSize(): int
     {
         return 20;
