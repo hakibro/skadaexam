@@ -272,6 +272,10 @@
                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
                         <i class="fa-solid fa-download mr-1"></i>Export
                     </button>
+                    <button type="button" id="import-btn-populated"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
+                        <i class="fa-solid fa-cloud-download-alt mr-1"></i>Quick Import
+                    </button>
                     <button type="button" id="test-single-student-btn-populated"
                         class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition-colors inline-flex items-center">
                         <i class="fa-solid fa-user-check mr-1"></i>Test API
@@ -483,9 +487,218 @@
                 </div>
             </div>
         @endif
-    </div>
 
-    {{-- Inline JavaScript for Immediate Functionality --}}
+        {{-- Progress Sections - Available for both Empty and Populated State --}}
+        <div id="global-progress-sections" class="space-y-4">
+            {{-- Import Progress Section with Batch Processing Details --}}
+            <div id="import-progress-section" class="hidden">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-4xl mx-auto">
+                    <h4 class="text-lg font-medium text-blue-900 mb-6">
+                        <i class="fa-solid fa-cloud-download-alt mr-2"></i>Importing Students Data - Batch Processing
+                    </h4>
+
+                    {{-- Overall Progress --}}
+                    <div class="mb-6">
+                        <div class="flex justify-between text-sm text-gray-600 mb-2">
+                            <span id="import-status-text">Initializing...</span>
+                            <span id="import-percentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div id="import-progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-300"
+                                style="width: 0%">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Current Message --}}
+                    <div id="import-message" class="text-sm text-gray-700 mb-6 p-3 bg-white rounded border">
+                        Ready to start import...
+                    </div>
+
+                    {{-- Batch Processing Steps --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {{-- Step 1: API Data Fetch --}}
+                        <div id="step-api" class="bg-white rounded-lg p-4 border">
+                            <div class="flex items-center mb-2">
+                                <div id="step-api-icon"
+                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                    <i class="fa-solid fa-download text-gray-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-gray-900">1. Mengambil Data API</h5>
+                                    <p id="step-api-status" class="text-xs text-gray-500">Waiting...</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="step-api-progress"
+                                    class="bg-orange-500 h-2 rounded-full transition-all duration-300" style="width: 0%">
+                                </div>
+                            </div>
+                            <div id="step-api-detail" class="text-xs text-gray-600 mt-2"></div>
+                        </div>
+
+                        {{-- Step 2: Class Processing --}}
+                        <div id="step-kelas" class="bg-white rounded-lg p-4 border">
+                            <div class="flex items-center mb-2">
+                                <div id="step-kelas-icon"
+                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                    <i class="fa-solid fa-school text-gray-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-gray-900">2. Proses Kelas</h5>
+                                    <p id="step-kelas-status" class="text-xs text-gray-500">Waiting...</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="step-kelas-progress"
+                                    class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%">
+                                </div>
+                            </div>
+                            <div id="step-kelas-detail" class="text-xs text-gray-600 mt-2"></div>
+                        </div>
+
+                        {{-- Step 3: Student Processing --}}
+                        <div id="step-siswa" class="bg-white rounded-lg p-4 border">
+                            <div class="flex items-center mb-2">
+                                <div id="step-siswa-icon"
+                                    class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                    <i class="fa-solid fa-users text-gray-400 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-gray-900">3. Proses Siswa (Batch)</h5>
+                                    <p id="step-siswa-status" class="text-xs text-gray-500">Waiting...</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="step-siswa-progress"
+                                    class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%">
+                                </div>
+                            </div>
+                            <div id="step-siswa-detail" class="text-xs text-gray-600 mt-2"></div>
+                        </div>
+                    </div>
+
+                    {{-- Batch Details --}}
+                    <div id="batch-details" class="hidden bg-white rounded-lg p-4 border mb-4">
+                        <h6 class="font-medium text-gray-900 mb-3">
+                            <i class="fa-solid fa-layer-group mr-2"></i>Batch Processing Details
+                        </h6>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div class="bg-blue-50 rounded p-3">
+                                <div id="batch-current" class="text-lg font-bold text-blue-600">0</div>
+                                <div class="text-xs text-gray-600">Current Batch</div>
+                            </div>
+                            <div class="bg-purple-50 rounded p-3">
+                                <div id="batch-total" class="text-lg font-bold text-purple-600">0</div>
+                                <div class="text-xs text-gray-600">Total Batches</div>
+                            </div>
+                            <div class="bg-green-50 rounded p-3">
+                                <div id="batch-processed" class="text-lg font-bold text-green-600">0</div>
+                                <div class="text-xs text-gray-600">Records Processed</div>
+                            </div>
+                            <div class="bg-orange-50 rounded p-3">
+                                <div id="batch-remaining" class="text-lg font-bold text-orange-600">0</div>
+                                <div class="text-xs text-gray-600">Remaining</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Action Buttons --}}
+                    <div class="flex justify-center space-x-3">
+                        <button type="button" id="cancel-import-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm">
+                            <i class="fa-solid fa-times mr-1"></i>Cancel Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Import Results --}}
+            <div id="import-results-section" class="hidden">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-6 max-w-2xl mx-auto">
+                    <h4 class="text-lg font-medium text-green-900 mb-4">
+                        <i class="fa-solid fa-check-circle mr-2"></i>Import Completed!
+                    </h4>
+                    <div id="import-results-content" class="text-sm"></div>
+                    <button type="button" id="close-results-btn"
+                        class="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            {{-- Import Error --}}
+            <div id="import-error-section" class="hidden">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+                    <h4 class="text-lg font-medium text-red-900 mb-4">
+                        <i class="fa-solid fa-exclamation-triangle mr-2"></i>Import Failed
+                    </h4>
+                    <div id="import-error-content" class="text-sm text-red-700 mb-4"></div>
+                    <div class="flex justify-center space-x-2">
+                        <button type="button" id="retry-import-btn"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fa-solid fa-redo mr-1"></i>Retry Import
+                        </button>
+                        <button type="button" id="close-error-btn"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sync Progress Section --}}
+            <div id="sync-progress-section" class="hidden">
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                    <h4 class="text-lg font-medium text-purple-900 mb-4">
+                        <i class="fa-solid fa-sync mr-2"></i>Syncing Data with SIKEU API
+                    </h4>
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span id="sync-status-text">Starting sync...</span>
+                            <span id="sync-percentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="sync-progress-bar" class="bg-purple-600 h-3 rounded-full transition-all duration-300"
+                                style="width: 0%">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="sync-message" class="text-sm text-gray-700 mb-4">Ready to start sync...</div>
+                    <button type="button" id="cancel-sync-btn"
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fa-solid fa-times mr-1"></i>Cancel Sync
+                    </button>
+                </div>
+            </div>
+
+            {{-- Sync Results --}}
+            <div id="sync-results-section" class="hidden">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <h4 class="text-lg font-medium text-green-900 mb-4">
+                        <i class="fa-solid fa-check-circle mr-2"></i>Sync Completed!
+                    </h4>
+                    <div id="sync-results-content" class="text-sm"></div>
+                    <button type="button" id="close-sync-results-btn"
+                        class="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            {{-- API Status Display --}}
+            <div id="api-status-display" class="hidden bg-white shadow rounded-lg p-4">
+                <h4 class="text-lg font-medium text-gray-900 mb-3">
+                    <i class="fa-solid fa-server mr-2"></i>API Status
+                </h4>
+                <div id="api-status-content"></div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('scripts')
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Siswa Management JS loaded');
@@ -505,6 +718,7 @@
             const testSingleStudentBtnPopulated = document.getElementById('test-single-student-btn-populated');
             const syncApiBtn = document.getElementById('sync-api-btn');
             const importBtn = document.getElementById('import-btn');
+            const importBtnPopulated = document.getElementById('import-btn-populated');
             const cancelImportBtn = document.getElementById('cancel-import-btn');
             const cancelSyncBtn = document.getElementById('cancel-sync-btn');
             const closeResultsBtn = document.getElementById('close-results-btn');
@@ -928,7 +1142,78 @@
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(
-                                `Import request failed with status: ${response.status}`);
+                                    `Import request failed with status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Import initiated response:', data);
+
+                            if (data.success) {
+                                console.log(
+                                    'Import process started successfully, starting progress polling'
+                                );
+                                // Start progress polling
+                                pollImportProgress();
+                            } else {
+                                console.error('Import failed:', data.error);
+                                stopImportProgress();
+                                showImportError(data.error || 'Unknown error occurred');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Import request error:', error);
+                            stopImportProgress();
+                            showImportError(error.message);
+                        });
+                });
+            }
+
+            // Import button for populated state (same functionality as empty state)
+            if (importBtnPopulated) {
+                importBtnPopulated.addEventListener('click', function() {
+                    if (!confirm('Are you sure you want to import students data from SIKEU API?')) return;
+
+                    // Show the progress section
+                    if (importProgressSection) {
+                        importProgressSection.classList.remove('hidden');
+                    }
+
+                    // Reset overall progress
+                    if (importProgressBar) importProgressBar.style.width = '0%';
+                    if (importPercentage) importPercentage.textContent = '0%';
+                    if (importStatusText) importStatusText.textContent = 'Starting import...';
+                    if (importMessage) importMessage.textContent = 'Initializing batch processing...';
+
+                    // Reset all step indicators
+                    resetStepIndicators();
+
+                    // Hide batch details initially
+                    const batchDetails = document.getElementById('batch-details');
+                    if (batchDetails) batchDetails.classList.add('hidden');
+
+                    // Hide result sections
+                    if (importResultsSection) importResultsSection.classList.add('hidden');
+                    if (importErrorSection) importErrorSection.classList.add('hidden');
+
+                    // Start the import process
+                    isImporting = true;
+
+                    console.log('Starting Batch Import process from populated state...');
+
+                    fetch('{{ route('data.siswa.import-from-api-ajax') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(
+                                    `Import request failed with status: ${response.status}`);
                             }
                             return response.json();
                         })
@@ -1016,7 +1301,7 @@
                             if (!response.ok) {
                                 throw new Error(
                                     `Import progress request failed with status: ${response.status}`
-                                    );
+                                );
                             }
                             return response.json();
                         })
@@ -1094,7 +1379,7 @@
                     setStepActive(elements.stepApiIcon, elements.stepApiStatus, elements.stepApiProgress);
                     elements.stepApiStatus.textContent = 'Fetching...';
                     elements.stepApiProgress.style.width = Math.min(overallProgress * 5, 100) +
-                    '%'; // 0-20% maps to 0-100%
+                        '%'; // 0-20% maps to 0-100%
                     elements.stepApiDetail.textContent = 'Mengambil data dari SIKEU API';
 
                     if (overallProgress >= 20) {
@@ -1105,14 +1390,14 @@
 
                 // Step 2: Class Processing (20-40%)
                 if (msg.includes('kelas') || msg.includes('class') || (overallProgress > 20 && overallProgress <
-                    40)) {
+                        40)) {
                     if (overallProgress >= 20) {
                         markStepCompleted(elements.stepApiIcon, elements.stepApiStatus, elements.stepApiProgress);
                     }
                     setStepActive(elements.stepKelasIcon, elements.stepKelasStatus, elements.stepKelasProgress);
                     elements.stepKelasStatus.textContent = 'Processing...';
                     elements.stepKelasProgress.style.width = Math.max(0, (overallProgress - 20) * 5) +
-                    '%'; // 20-40% maps to 0-100%
+                        '%'; // 20-40% maps to 0-100%
                     elements.stepKelasDetail.textContent = 'Memproses data kelas';
 
                     if (overallProgress >= 40) {
@@ -1135,7 +1420,7 @@
                     setStepActive(elements.stepSiswaIcon, elements.stepSiswaStatus, elements.stepSiswaProgress);
                     elements.stepSiswaStatus.textContent = 'Processing Batch...';
                     elements.stepSiswaProgress.style.width = Math.max(0, (overallProgress - 40) * 1.67) +
-                    '%'; // 40-100% maps to 0-100%
+                        '%'; // 40-100% maps to 0-100%
                     elements.stepSiswaDetail.textContent = 'Memproses data siswa dalam batch';
                 }
             }
@@ -1680,7 +1965,7 @@
                     if (step.progress) {
                         step.progress.style.width = '0%';
                         step.progress.className =
-                        'bg-gray-300 h-2 rounded-full transition-all duration-300';
+                            'bg-gray-300 h-2 rounded-full transition-all duration-300';
                     }
                     if (step.detail) step.detail.textContent = '';
                 });
@@ -1694,6 +1979,4 @@
             }
         });
     </script>
-
-
 @endsection
