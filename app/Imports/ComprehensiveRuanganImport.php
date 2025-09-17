@@ -80,7 +80,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 // Update existing ruangan
                 $ruangan->update([
                     'nama_ruangan' => $row['nama_ruangan'] ?? $ruangan->nama_ruangan,
-                    'kapasitas' => $row['kapasitas'] ?? $ruangan->kapasitas,
+                    'kapasitas' => $row['kapasitas_ruangan'] ?? $ruangan->kapasitas,
                     'lokasi' => $row['lokasi'] ?? $ruangan->lokasi,
                     'status' => $row['status'] ?? $ruangan->status,
                     // Only update other fields if provided
@@ -119,8 +119,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             $sesi = SesiRuangan::where('kode_sesi', $row['kode_sesi'])->first();
 
             // Validate time format
-            $waktuMulai = $this->formatTime($row['waktu_mulai_sesi'] ?? '08:00');
-            $waktuSelesai = $this->formatTime($row['waktu_selesai_sesi'] ?? '10:00');
+            $waktuMulai = $this->formatTime($row['waktu_mulai_sesi'] ?? '00:00');
+            $waktuSelesai = $this->formatTime($row['waktu_selesai_sesi'] ?? '00:00');
 
             if ($sesi) {
                 // Update existing sesi
@@ -221,26 +221,64 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
 
     protected function formatTime($value)
     {
-        // Jika kosong, fallback
-        if (empty($value)) {
+        // 1. Jika null atau kosong, return null
+        if (is_null($value) || (is_string($value) && trim($value) === '')) {
+            Log::info("formatTime: null or empty value received");
             return null;
         }
 
-        // Jika numeric, berarti format time serial Excel
-        if (is_numeric($value)) {
-            // Excel time disimpan sebagai pecahan 24 jam
-            $seconds = (int)round($value * 24 * 60 * 60);
-            return gmdate('H:i:s', $seconds);
+        // 2. Jika objek DateTime, format langsung
+        if ($value instanceof \DateTime) {
+            $time = $value->format('H:i:s');
+            Log::info("formatTime: DateTime object -> $time");
+            return $time;
         }
 
-        // Jika string, coba parse langsung
-        try {
-            return \Carbon\Carbon::createFromFormat('H:i', $value)->format('H:i:s');
-        } catch (\Exception $e) {
-            // fallback kalau format tidak sesuai
-            return date('H:i:s', strtotime($value));
+        // 3. Jika numeric, dianggap Excel time (pecahan 24 jam)
+        if (is_numeric($value)) {
+            $seconds = (int)round($value * 24 * 60 * 60);
+            $time = gmdate('H:i:s', $seconds);
+            Log::info("formatTime: numeric Excel value $value -> $time");
+            return $time;
         }
+
+        // 4. Jika string, bersihkan dulu
+        if (is_string($value)) {
+            $original = $value;
+            $value = trim($value);
+            $value = str_replace("'", "", $value);   // hapus kutip tunggal
+            $value = str_replace(".", ":", $value); // ubah titik menjadi colon
+
+            // Coba parse format H:i
+            try {
+                $time = \Carbon\Carbon::createFromFormat('H:i', $value)->format('H:i:s');
+                Log::info("formatTime: string '$original' parsed as H:i -> $time");
+                return $time;
+            } catch (\Exception $e) {
+                // Coba H:i:s
+                try {
+                    $time = \Carbon\Carbon::createFromFormat('H:i:s', $value)->format('H:i:s');
+                    Log::info("formatTime: string '$original' parsed as H:i:s -> $time");
+                    return $time;
+                } catch (\Exception $e) {
+                    // Coba strtotime untuk format fleksibel (AM/PM, dsb)
+                    $timestamp = strtotime($value);
+                    if ($timestamp !== false) {
+                        $time = date('H:i:s', $timestamp);
+                        Log::info("formatTime: string '$original' parsed via strtotime -> $time");
+                        return $time;
+                    }
+                }
+            }
+
+            Log::warning("formatTime: string '$original' gagal diparse, fallback ke default 07:00:00");
+        }
+
+        // 5. Jika semua gagal, fallback default
+        return '07:00:00';
     }
+
+
 
     /**
      * Get import results summary

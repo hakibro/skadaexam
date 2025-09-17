@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 // Allow access from web guard with pengawas role
 Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawas')->name('pengawas.')->group(function () {
     // Dashboard
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/debug', [DashboardController::class, 'debug'])->name('debug');
 

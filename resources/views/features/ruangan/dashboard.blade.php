@@ -109,7 +109,7 @@
         @endif
 
         <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
                 <div class="text-center">
                     <div
@@ -140,20 +140,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <div class="text-center">
-                    <div
-                        class="bg-green-100 text-green-600 p-3 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <i class="fa-solid fa-calendar-alt text-2xl"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Template Sesi</h3>
-                    <p class="text-gray-600 text-sm mb-4">Kelola template sesi ujian</p>
-                    <a href="{{ route('ruangan.template.index') }}"
-                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm font-medium">
-                        Lihat Template
-                    </a>
-                </div>
-            </div>
+
 
             <div class="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
                 <div class="text-center">
@@ -163,7 +150,7 @@
                     </div>
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">Import Data</h3>
                     <p class="text-gray-600 text-sm mb-4">Import dari Excel</p>
-                    <a href="{{ route('ruangan.import') }}"
+                    <a href="{{ route('ruangan.import.comprehensive') }}"
                         class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition text-sm font-medium">
                         Import Data
                     </a>

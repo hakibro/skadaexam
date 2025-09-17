@@ -136,14 +136,7 @@
                     @enderror
                 </div>
 
-                <div class="mb-6">
-                    <label for="deskripsi" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                    <textarea name="deskripsi" id="deskripsi" rows="3"
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 @error('deskripsi') border-red-500 @enderror">{{ old('deskripsi', $ruangan->deskripsi) }}</textarea>
-                    @error('deskripsi')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
+
 
                 <div class="flex justify-between">
                     <div>

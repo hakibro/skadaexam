@@ -44,7 +44,7 @@ CREATE TABLE `berita_acara_ujian` (
   `jumlah_peserta_terdaftar` int NOT NULL DEFAULT '0',
   `jumlah_peserta_hadir` int NOT NULL DEFAULT '0',
   `jumlah_peserta_tidak_hadir` int NOT NULL DEFAULT '0',
-  `status_pelaksanaan` enum('selesai_normal','selesai_terganggu','dibatalkan') COLLATE utf8mb4_unicode_ci DEFAULT 'selesai_normal',
+  `status_pelaksanaan` enum('selesai_normal','selesai_terganggu','dibatalkan') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'selesai_normal',
   `is_final` tinyint(1) NOT NULL DEFAULT '0',
   `waktu_finalisasi` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE `enrollment_ujian` (
   `sesi_ruangan_id` bigint unsigned DEFAULT NULL,
   `jadwal_ujian_id` bigint unsigned DEFAULT NULL,
   `siswa_id` bigint unsigned NOT NULL,
-  `status_enrollment` enum('enrolled','active','completed','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'enrolled',
+  `status_enrollment` enum('enrolled','active','completed','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'enrolled',
   `waktu_mulai_ujian` timestamp NULL DEFAULT NULL,
   `waktu_selesai_ujian` timestamp NULL DEFAULT NULL,
   `last_login_at` timestamp NULL DEFAULT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE `guru` (
   `nip` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -159,6 +159,7 @@ CREATE TABLE `hasil_ujian` (
   `lulus` tinyint(1) NOT NULL DEFAULT '0',
   `is_final` tinyint(1) NOT NULL DEFAULT '0',
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
+  `violations_count` int NOT NULL DEFAULT '0' COMMENT 'Count of detected violations during the exam',
   `jawaban` json DEFAULT NULL,
   `hasil_detail` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -184,10 +185,10 @@ CREATE TABLE `jadwal_ujian` (
   `tanggal` datetime NOT NULL,
   `durasi_menit` int NOT NULL,
   `deskripsi` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `auto_assign_sesi` tinyint(1) NOT NULL DEFAULT '1',
-  `scheduling_mode` enum('fixed','flexible') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'flexible',
-  `timezone` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Asia/Jakarta',
+  `scheduling_mode` enum('fixed','flexible') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'flexible',
+  `timezone` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Asia/Jakarta',
   `tampilkan_hasil` tinyint(1) NOT NULL DEFAULT '0',
   `jumlah_soal` int NOT NULL DEFAULT '0',
   `kelas_target` json DEFAULT NULL,
@@ -199,6 +200,7 @@ CREATE TABLE `jadwal_ujian` (
   `jenis_ujian` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `acak_soal` tinyint(1) NOT NULL DEFAULT '0',
   `acak_jawaban` tinyint(1) NOT NULL DEFAULT '0',
+  `aktifkan_auto_logout` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `jadwal_ujian_kode_ujian_unique` (`kode_ujian`),
   KEY `jadwal_ujian_created_by_foreign` (`created_by`),
@@ -236,7 +238,7 @@ CREATE TABLE `jawaban_siswa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `hasil_ujian_id` bigint unsigned NOT NULL,
   `soal_ujian_id` bigint unsigned NOT NULL,
-  `jawaban` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `jawaban` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_flagged` tinyint(1) NOT NULL DEFAULT '0',
   `waktu_jawab` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -353,6 +355,35 @@ CREATE TABLE `password_reset_tokens` (
   PRIMARY KEY (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `pelanggaran_ujian`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pelanggaran_ujian` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `siswa_id` bigint unsigned NOT NULL,
+  `hasil_ujian_id` bigint unsigned NOT NULL,
+  `jadwal_ujian_id` bigint unsigned NOT NULL,
+  `sesi_ruangan_id` bigint unsigned NOT NULL,
+  `jenis_pelanggaran` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deskripsi` text COLLATE utf8mb4_unicode_ci,
+  `waktu_pelanggaran` timestamp NOT NULL,
+  `is_dismissed` tinyint(1) NOT NULL DEFAULT '0',
+  `is_finalized` tinyint(1) NOT NULL DEFAULT '0',
+  `tindakan` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `catatan_pengawas` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `pelanggaran_ujian_siswa_id_foreign` (`siswa_id`),
+  KEY `pelanggaran_ujian_hasil_ujian_id_foreign` (`hasil_ujian_id`),
+  KEY `pelanggaran_ujian_jadwal_ujian_id_foreign` (`jadwal_ujian_id`),
+  KEY `pelanggaran_ujian_sesi_ruangan_id_foreign` (`sesi_ruangan_id`),
+  CONSTRAINT `pelanggaran_ujian_hasil_ujian_id_foreign` FOREIGN KEY (`hasil_ujian_id`) REFERENCES `hasil_ujian` (`id`),
+  CONSTRAINT `pelanggaran_ujian_jadwal_ujian_id_foreign` FOREIGN KEY (`jadwal_ujian_id`) REFERENCES `jadwal_ujian` (`id`),
+  CONSTRAINT `pelanggaran_ujian_sesi_ruangan_id_foreign` FOREIGN KEY (`sesi_ruangan_id`) REFERENCES `sesi_ruangan` (`id`),
+  CONSTRAINT `pelanggaran_ujian_siswa_id_foreign` FOREIGN KEY (`siswa_id`) REFERENCES `siswa` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -423,12 +454,9 @@ CREATE TABLE `sesi_ruangan` (
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
   `pengaturan` json DEFAULT NULL,
   `ruangan_id` bigint unsigned NOT NULL,
-  `template_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `sesi_ruangan_ruangan_id_foreign` (`ruangan_id`),
-  KEY `sesi_ruangan_template_id_foreign` (`template_id`),
-  CONSTRAINT `sesi_ruangan_ruangan_id_foreign` FOREIGN KEY (`ruangan_id`) REFERENCES `ruangan` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `sesi_ruangan_template_id_foreign` FOREIGN KEY (`template_id`) REFERENCES `sesi_templates` (`id`) ON DELETE SET NULL
+  CONSTRAINT `sesi_ruangan_ruangan_id_foreign` FOREIGN KEY (`ruangan_id`) REFERENCES `ruangan` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `sesi_ruangan_siswa`;
@@ -438,8 +466,8 @@ CREATE TABLE `sesi_ruangan_siswa` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `sesi_ruangan_id` bigint unsigned NOT NULL,
   `siswa_id` bigint unsigned NOT NULL,
-  `status_kehadiran` enum('hadir','tidak_hadir','sakit','izin') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `status_kehadiran` enum('hadir','tidak_hadir','sakit','izin') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -448,28 +476,6 @@ CREATE TABLE `sesi_ruangan_siswa` (
   KEY `idx_sesi_ruangan_siswa_status` (`sesi_ruangan_id`),
   CONSTRAINT `sesi_ruangan_siswa_sesi_ruangan_id_foreign` FOREIGN KEY (`sesi_ruangan_id`) REFERENCES `sesi_ruangan` (`id`) ON DELETE CASCADE,
   CONSTRAINT `sesi_ruangan_siswa_siswa_id_foreign` FOREIGN KEY (`siswa_id`) REFERENCES `siswa` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `sesi_templates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `sesi_templates` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kode_sesi` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `nama_sesi` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `deskripsi` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `waktu_mulai` time NOT NULL,
-  `waktu_selesai` time NOT NULL,
-  `status` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'belum_mulai',
-  `pengaturan` json DEFAULT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_by` bigint unsigned DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `sesi_templates_created_by_foreign` (`created_by`),
-  CONSTRAINT `sesi_templates_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `sessions`;
@@ -521,7 +527,7 @@ CREATE TABLE `soal` (
   `parent_id` bigint unsigned DEFAULT NULL,
   `bank_soal_id` bigint unsigned NOT NULL,
   `is_parent` tinyint(1) NOT NULL DEFAULT '0',
-  `tipe` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pg',
+  `tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pg',
   `kategori` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sedang',
   `display_settings` json DEFAULT NULL,
   `nomor_soal` int NOT NULL DEFAULT '1',
@@ -546,12 +552,12 @@ CREATE TABLE `soal` (
   `gambar_pertanyaan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `pilihan` json DEFAULT NULL,
   `kunci_jawaban` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `pembahasan` text COLLATE utf8mb4_unicode_ci,
+  `pembahasan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `pembahasan_teks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `pembahasan_gambar` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `pembahasan_tipe` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'teks',
   `bobot` decimal(5,2) NOT NULL DEFAULT '1.00',
-  `status` enum('aktif','draft','arsip') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
+  `status` enum('aktif','draft','arsip') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'aktif',
   `gambar_pembahasan` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -650,3 +656,9 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (66,'2025_09_12_142
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (67,'2025_09_12_145442_add_active_status_to_enrollment_ujian_table',19);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (68,'2025_09_12_221158_create_jawaban_siswas_table',20);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (69,'2023_10_30_000001_fix_jawaban_siswa_foreign_key',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (70,'2023_11_05_add_aktifkan_auto_logout_to_jadwal_ujian_table',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (71,'2023_12_13_000000_create_pelanggaran_ujian_table',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (72,'2023_12_13_000001_add_violations_count_to_hasil_ujian_table',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (73,'2025_09_16_100000_create_sesi_template_assignments_tables',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (74,'2025_09_16_131552_remove_template_id_from_sesi_ruangan_table',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (75,'2025_09_16_131614_drop_template_tables',22);

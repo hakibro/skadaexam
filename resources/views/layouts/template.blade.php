@@ -187,11 +187,7 @@
                             <span class="text-sm">Daftar Ruangan</span>
                         </a>
 
-                        <a href="{{ route('ruangan.template.index') }}"
-                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('ruangan.template.*') ? 'bg-red-600 text-white' : '' }}">
-                            <i class="fa-solid fa-clipboard-list text-sm"></i>
-                            <span class="text-sm">Template Sesi</span>
-                        </a>
+
 
                         {{-- Link untuk Sesi Ruangan yang hanya muncul jika ada parameter ruangan --}}
                         @if (request()->route('ruangan'))

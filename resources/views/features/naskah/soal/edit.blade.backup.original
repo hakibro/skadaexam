@@ -369,6 +369,7 @@
 
     <!-- JavaScript -->
     <script src="{{ asset('js/image-clipboard.js') }}"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize our enhanced image clipboard handler
@@ -377,7 +378,6 @@
                 maxSize: 5 * 1024 * 1024, // 5MB default for most images
                 validTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg']
             });
-
             // Handle tipe pertanyaan changes
             document.querySelectorAll('input[name="tipe_pertanyaan"]').forEach(radio => {
                 radio.addEventListener('change', handleTipePertanyaanChange);
@@ -407,7 +407,69 @@
                     'pilihan-{{ $value }}-img');
             @endforeach
 
-            // Initialize form state
+            // Global paste handler for images
+            document.addEventListener('paste', function(e) {
+                // Find which drop zone is active/focused
+                const activeElement = document.activeElement;
+                let targetDropZone = null;
+
+                // Check if we're focused in a textarea or inside a drop zone
+                if (activeElement && activeElement.tagName === 'TEXTAREA') {
+                    // If in textarea, don't interfere with normal paste
+                    return;
+                } else if (activeElement.classList.contains('border-dashed')) {
+                    // If directly focused on drop zone
+                    targetDropZone = activeElement;
+                } else if (activeElement.closest('.border-dashed')) {
+                    // If focused on an element inside a drop zone
+                    targetDropZone = activeElement.closest('.border-dashed');
+                } else {
+                    // Try to find which image section is visible based on the form state
+                    const tipePertanyaan = document.querySelector('input[name="tipe_pertanyaan"]:checked')
+                        .value;
+                    const tipeSoal = document.getElementById('tipe_soal').value;
+                    const tipePembahasan = document.querySelector('input[name="pembahasan_tipe"]:checked')
+                        .value;
+
+                    // Check if pertanyaan gambar section is visible
+                    if (tipePertanyaan === 'gambar' || tipePertanyaan === 'teks_gambar') {
+                        targetDropZone = document.getElementById('gambar-pertanyaan').parentElement;
+                    }
+                    // Check if pembahasan gambar section is visible
+                    else if (tipePembahasan === 'gambar' || tipePembahasan === 'teks_gambar') {
+                        targetDropZone = document.getElementById('pembahasan-gambar').parentElement;
+                    }
+                    // For pilihan ganda options that are set to 'gambar'
+                    else if (tipeSoal === 'pilihan_ganda') {
+                        for (const pilihan of ['a', 'b', 'c', 'd', 'e']) {
+                            const tipePilihan = document.querySelector(
+                                `input[name="pilihan_${pilihan}_tipe"]:checked`).value;
+                            if (tipePilihan === 'gambar') {
+                                targetDropZone = document.getElementById(`pilihan-${pilihan}-gambar`)
+                                    .parentElement;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If we found a drop zone to handle the paste, simulate paste on it
+                if (targetDropZone) {
+                    // Create and dispatch a new paste event to the target drop zone
+                    const newPasteEvent = new ClipboardEvent('paste', {
+                        bubbles: true,
+                        cancelable: true,
+                        clipboardData: e.clipboardData
+                    });
+                    targetDropZone.dispatchEvent(newPasteEvent);
+
+                    // Prevent default only if we handled it
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            // Initialize form state based on existing data
             handleTipePertanyaanChange();
             handleTipeSoalChange();
             handlePembahasanTipeChange();
@@ -510,23 +572,12 @@
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
             const img = document.getElementById(imgId);
-            const form = document.getElementById('soal-form');
-            const dropZone = input ? input.parentElement : null;
 
-            if (!input || !preview || !img || !dropZone) return;
-
-            // Mark this element as a form group
-            const formGroup = dropZone.closest('.bg-white') || dropZone.parentElement;
-            if (formGroup) {
-                formGroup.classList.add('form-group');
-            }
-
-            // Mark the preview container with a class
-            preview.classList.add('image-preview');
+            if (!input || !preview || !img) return;
 
             // Function to process file for preview
             function processFile(file) {
-                if (!file) return false;
+                if (!file) return;
 
                 // Validate file type
                 const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -543,58 +594,22 @@
                     return false;
                 }
 
-                // Create a proper file object from the blob/file
-                // This is necessary for reliable form submission
-                try {
-                    // Create a new File if needed to ensure proper file object
-                    if (!(file instanceof File)) {
-                        file = new File([file], `image-${Date.now()}.${getExtensionForMimeType(file.type)}`, {
-                            type: file.type,
-                            lastModified: new Date().getTime()
-                        });
-                    }
-
-                    // Show preview
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        img.src = e.target.result;
-                        preview.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-
-                    // Create a new DataTransfer to hold our file
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    input.files = dataTransfer.files;
-
-                    return true;
-                } catch (error) {
-                    console.error('Error processing file:', error);
-                    return false;
-                }
-            }
-
-            // Helper for getting file extension from MIME type
-            function getExtensionForMimeType(mimeType) {
-                const mimeToExt = {
-                    'image/jpeg': 'jpg',
-                    'image/jpg': 'jpg',
-                    'image/png': 'png',
-                    'image/gif': 'gif',
-                    'image/webp': 'webp'
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.classList.remove('hidden');
                 };
-
-                return mimeToExt[mimeType] || 'png';
+                reader.readAsDataURL(file);
+                return true;
             }
 
             // Handle file input change
-            input.addEventListener('change', function(e) {
+            input.addEventListener('change', function() {
                 const file = this.files[0];
                 if (file) {
                     if (!processFile(file)) {
                         this.value = '';
-                        preview.classList.add('hidden');
-                        img.src = '';
                     }
                 } else {
                     preview.classList.add('hidden');
@@ -602,10 +617,70 @@
                 }
             });
 
+            // Handle clipboard paste
+            const dropZone = input.parentElement;
+            dropZone.addEventListener('paste', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Get image from clipboard
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const items = clipboardData.items;
+
+                if (!items) return;
+
+                // Find image in clipboard data
+                let blob = null;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        blob = items[i].getAsFile();
+                        break;
+                    }
+                }
+
+                // Process image if found
+                if (blob) {
+                    // Create a new FileList-like object
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(blob);
+
+                    // Set the file input's files property with our clipboard image
+                    input.files = dataTransfer.files;
+
+                    if (processFile(blob)) {
+                        // Flash animation to indicate successful paste
+                        dropZone.classList.add('paste-success');
+                        setTimeout(() => {
+                            dropZone.classList.remove('paste-success');
+                        }, 1000);
+
+                        // Show feedback message
+                        const feedbackMsg = document.createElement('div');
+                        feedbackMsg.className =
+                            'text-green-600 text-sm mt-2 absolute bottom-2 left-0 right-0 text-center';
+                        feedbackMsg.innerHTML =
+                            '<i class="fa-solid fa-check-circle mr-1"></i> Gambar berhasil ditempel!';
+                        dropZone.style.position = 'relative';
+                        dropZone.appendChild(feedbackMsg);
+
+                        setTimeout(() => {
+                            dropZone.removeChild(feedbackMsg);
+                        }, 2000);
+
+                        // If we're editing an existing image, make sure to remove any "remove" flags
+                        const hiddenInputName = `remove_${inputId.replace('-', '_')}`;
+                        const existingHiddenInput = document.querySelector(`input[name="${hiddenInputName}"]`);
+                        if (existingHiddenInput) {
+                            existingHiddenInput.parentNode.removeChild(existingHiddenInput);
+                        }
+                    }
+                }
+            });
+
             // Make dropZone focusable to enable paste events
             dropZone.setAttribute('tabindex', '0');
 
-            // Focus/blur effects
+            // Also listen for focus to show user it's pastable
             dropZone.addEventListener('focus', function() {
                 this.classList.add('border-blue-400');
             });
@@ -618,28 +693,28 @@
             const hintDiv = document.createElement('div');
             hintDiv.className = 'text-xs text-gray-400 mt-1';
             hintDiv.innerHTML = '<i class="fa-solid fa-clipboard mr-1"></i> Bisa juga paste gambar dari clipboard (Ctrl+V)';
-            const label = dropZone.querySelector('label');
-            if (label) {
-                label.appendChild(hintDiv);
-            }
+            dropZone.querySelector('label').appendChild(hintDiv);
 
             // Add keyboard shortcut for focus
             dropZone.addEventListener('keydown', function(e) {
-                // If user presses Delete/Backspace to remove image
-                if ((e.key === 'Delete' || e.key === 'Backspace') &&
-                    img.src && !preview.classList.contains('hidden')) {
-
-                    if (inputId === 'gambar-pertanyaan') {
-                        removeGambarPertanyaan();
-                    } else if (inputId === 'pembahasan-gambar') {
-                        removePembahasanGambar();
-                    } else {
-                        // For pilihan gambar, just clear the input
-                        input.value = '';
-                        preview.classList.add('hidden');
-                        img.src = '';
+                // If user presses "v" while holding Ctrl, simulate a paste event
+                if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+                    // Do nothing, the paste event will be handled by the paste handler
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    // Allow delete/backspace to remove the image
+                    if (img.src && !preview.classList.contains('hidden')) {
+                        if (inputId === 'gambar-pertanyaan') {
+                            removeGambarPertanyaan();
+                        } else if (inputId === 'pembahasan-gambar') {
+                            removePembahasanGambar();
+                        } else {
+                            // For pilihan gambar, just clear the input
+                            input.value = '';
+                            preview.classList.add('hidden');
+                            img.src = '';
+                        }
+                        e.preventDefault();
                     }
-                    e.preventDefault();
                 }
             });
 
@@ -659,13 +734,8 @@
 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
-                    // Use the processFile function to handle the file properly
-                    if (processFile(files[0])) {
-                        // Trigger change event for any listeners
-                        input.dispatchEvent(new Event('change', {
-                            bubbles: true
-                        }));
-                    }
+                    input.files = files;
+                    input.dispatchEvent(new Event('change'));
                 }
             });
         }
@@ -678,6 +748,13 @@
             input.value = '';
             preview.classList.add('hidden');
             img.src = '';
+
+            // Add a hidden input to tell the backend to remove the image
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'remove_gambar_pertanyaan';
+            hiddenInput.value = '1';
+            document.getElementById('soal-form').appendChild(hiddenInput);
         }
 
         function removePembahasanGambar() {
@@ -688,6 +765,13 @@
             input.value = '';
             preview.classList.add('hidden');
             img.src = '';
+
+            // Add a hidden input to tell the backend to remove the image
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'remove_pembahasan_gambar';
+            hiddenInput.value = '1';
+            document.getElementById('soal-form').appendChild(hiddenInput);
         }
 
         function previewSoal() {
@@ -709,15 +793,22 @@
                 }
             }
 
+            // For existing image or newly uploaded
             if (tipePertanyaan === 'gambar' || tipePertanyaan === 'teks_gambar') {
                 const gambarFile = formData.get('gambar_pertanyaan');
+                const gambarImg = document.getElementById('gambar-pertanyaan-img');
+
                 if (gambarFile && gambarFile.size > 0) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        previewContent +=
-                            `<img src="${e.target.result}" class="max-w-full h-auto rounded shadow mb-4">`;
+                        document.querySelector('#preview-pertanyaan-img').src = e.target.result;
                     };
                     reader.readAsDataURL(gambarFile);
+                    previewContent +=
+                        `<img id="preview-pertanyaan-img" src="" class="max-w-full h-auto rounded shadow mb-4">`;
+                } else if (gambarImg && gambarImg.src && !gambarImg.classList.contains('hidden')) {
+                    // Use existing image
+                    previewContent += `<img src="${gambarImg.src}" class="max-w-full h-auto rounded shadow mb-4">`;
                 }
             }
 
@@ -732,17 +823,18 @@
                 ['a', 'b', 'c', 'd', 'e'].forEach((pilihan, index) => {
                     const tipePilihan = formData.get(`pilihan_${pilihan}_tipe`);
                     const teksPilihan = formData.get(`pilihan_${pilihan}_teks`);
+                    const pilihanImg = document.getElementById(`pilihan-${pilihan}-img`);
                     const gambarPilihan = formData.get(`pilihan_${pilihan}_gambar`);
 
-                    if (teksPilihan || (gambarPilihan && gambarPilihan.size > 0)) {
-                        const label = String.fromCharCode(65 + index); // A, B, C, D, E
-                        previewContent += `<div class="flex items-start mb-3">`;
-                        previewContent += `<span class="font-bold mr-3">${label}.</span>`;
+                    const label = String.fromCharCode(65 + index); // A, B, C, D, E
+                    previewContent += `<div class="flex items-start mb-3">`;
+                    previewContent += `<span class="font-bold mr-3">${label}.</span>`;
 
-                        if (tipePilihan === 'teks' && teksPilihan) {
-                            previewContent += `<span>${teksPilihan}</span>`;
-                        } else if (tipePilihan === 'gambar' && gambarPilihan && gambarPilihan.size > 0) {
-                            // Handle image preview for options
+                    if (tipePilihan === 'teks' && teksPilihan) {
+                        previewContent += `<span>${teksPilihan}</span>`;
+                    } else if (tipePilihan === 'gambar') {
+                        if (gambarPilihan && gambarPilihan.size > 0) {
+                            // New uploaded image
                             const reader = new FileReader();
                             reader.onload = function(e) {
                                 document.querySelector(`#preview-pilihan-${pilihan}-img`).src = e.target.result;
@@ -750,10 +842,14 @@
                             reader.readAsDataURL(gambarPilihan);
                             previewContent +=
                                 `<img id="preview-pilihan-${pilihan}-img" src="" class="max-w-48 h-auto rounded shadow">`;
+                        } else if (pilihanImg && pilihanImg.src && !pilihanImg.classList.contains('hidden')) {
+                            // Use existing image
+                            previewContent +=
+                                `<img src="${pilihanImg.src}" class="max-w-48 h-auto rounded shadow">`;
                         }
-
-                        previewContent += `</div>`;
                     }
+
+                    previewContent += `</div>`;
                 });
 
                 // Kunci jawaban
@@ -770,29 +866,32 @@
             // Pembahasan
             const tipePembahasan = formData.get('pembahasan_tipe');
             const teksPembahasan = formData.get('pembahasan_teks');
+            const pembahasanImg = document.getElementById('pembahasan-gambar-img');
             const gambarPembahasan = formData.get('pembahasan_gambar');
 
-            if (teksPembahasan || (gambarPembahasan && gambarPembahasan.size > 0)) {
-                previewContent += '<div class="bg-white p-6 rounded-lg shadow">';
-                previewContent += '<h3 class="font-bold text-lg mb-4">Pembahasan:</h3>';
+            previewContent += '<div class="bg-white p-6 rounded-lg shadow">';
+            previewContent += '<h3 class="font-bold text-lg mb-4">Pembahasan:</h3>';
 
-                if ((tipePembahasan === 'teks' || tipePembahasan === 'teks_gambar') && teksPembahasan) {
-                    previewContent += `<p class="mb-4">${teksPembahasan}</p>`;
-                }
+            if ((tipePembahasan === 'teks' || tipePembahasan === 'teks_gambar') && teksPembahasan) {
+                previewContent += `<p class="mb-4">${teksPembahasan}</p>`;
+            }
 
-                if ((tipePembahasan === 'gambar' || tipePembahasan === 'teks_gambar') && gambarPembahasan &&
-                    gambarPembahasan.size > 0) {
+            if (tipePembahasan === 'gambar' || tipePembahasan === 'teks_gambar') {
+                if (gambarPembahasan && gambarPembahasan.size > 0) {
+                    // New uploaded image
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         document.querySelector('#preview-pembahasan-img').src = e.target.result;
                     };
                     reader.readAsDataURL(gambarPembahasan);
                     previewContent += `<img id="preview-pembahasan-img" src="" class="max-w-full h-auto rounded shadow">`;
+                } else if (pembahasanImg && pembahasanImg.src && !pembahasanImg.classList.contains('hidden')) {
+                    // Use existing image
+                    previewContent += `<img src="${pembahasanImg.src}" class="max-w-full h-auto rounded shadow">`;
                 }
-
-                previewContent += '</div>';
             }
 
+            previewContent += '</div>';
             previewContent += '</div>';
 
             // Show preview in modal
@@ -820,7 +919,7 @@
                                 Tutup
                             </button>
                             <button onclick="submitForm()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                                <i class="fa-solid fa-save mr-2"></i>Simpan Soal
+                                <i class="fa-solid fa-save mr-2"></i>Simpan Perubahan
                             </button>
                         </div>
                     </div>
@@ -849,6 +948,8 @@
             const tipePertanyaan = document.querySelector('input[name="tipe_pertanyaan"]:checked').value;
             const pertanyaan = document.querySelector('textarea[name="pertanyaan"]').value.trim();
             const gambarPertanyaan = document.querySelector('input[name="gambar_pertanyaan"]').files[0];
+            const existingGambar = document.getElementById('gambar-pertanyaan-img').src;
+            const hasExistingGambar = existingGambar && existingGambar !== '';
 
             // Check pertanyaan requirements
             if (tipePertanyaan === 'teks' && !pertanyaan) {
@@ -857,13 +958,13 @@
                 return false;
             }
 
-            if (tipePertanyaan === 'gambar' && !gambarPertanyaan) {
+            if (tipePertanyaan === 'gambar' && !gambarPertanyaan && !hasExistingGambar) {
                 e.preventDefault();
                 alert('Gambar pertanyaan wajib diupload untuk tipe yang dipilih');
                 return false;
             }
 
-            if (tipePertanyaan === 'teks_gambar' && (!pertanyaan || !gambarPertanyaan)) {
+            if (tipePertanyaan === 'teks_gambar' && (!pertanyaan || (!gambarPertanyaan && !hasExistingGambar))) {
                 e.preventDefault();
                 alert('Pertanyaan teks dan gambar wajib diisi untuk tipe yang dipilih');
                 return false;
@@ -888,8 +989,11 @@
                         .trim();
                     const gambar = document.querySelector(`input[name="pilihan_${pilihan}_gambar"]`).files[
                         0];
+                    const existingPilihanImg = document.getElementById(`pilihan-${pilihan}-img`).src;
+                    const hasExistingPilihanImg = existingPilihanImg && existingPilihanImg !== '';
 
-                    if ((tipe === 'teks' && teks) || (tipe === 'gambar' && gambar)) {
+                    if ((tipe === 'teks' && teks) || (tipe === 'gambar' && (gambar ||
+                            hasExistingPilihanImg))) {
                         validOptions++;
                     }
                 });
@@ -910,22 +1014,7 @@
             // If validation passes, allow form to submit
             return true;
         });
-
-        // Auto-save draft functionality (optional)
-        let autoSaveTimer;
-
-        function enableAutoSave() {
-            clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(() => {
-                // Implement auto-save logic here if needed
-                console.log('Auto-saving draft...');
-            }, 30000); // Auto-save every 30 seconds
-        }
-
-        // Trigger auto-save on form changes
-        document.getElementById('soal-form').addEventListener('input', enableAutoSave);
     </script>
-
     <!-- Custom CSS for enhanced styling -->
     <style>
         .has-\[\:checked\]\:border-blue-500:has(:checked) {

@@ -27,6 +27,9 @@ class Ruangan extends Model
         'kapasitas' => 'integer',
         'status' => 'string',
         'jenis_ruangan' => 'string',
+        'nama_ruangan' => 'string',
+        'kode_ruangan' => 'string',
+        'lokasi' => 'string',
     ];
 
     /**

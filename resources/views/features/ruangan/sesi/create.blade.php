@@ -28,22 +28,6 @@
             <div class="p-6 space-y-6">
                 <h2 class="text-lg font-medium text-gray-900">Informasi Sesi Ruangan</h2>
 
-                <!-- Template Sesi -->
-                <div>
-                    <label for="template_id" class="block text-sm font-medium text-gray-700">
-                        Template Sesi
-                    </label>
-                    <select name="template_id" id="template_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Pilih Template (Opsional)</option>
-                        @foreach ($templates as $template)
-                            <option value="{{ $template->id }}" {{ old('template_id') == $template->id ? 'selected' : '' }}>
-                                {{ $template->nama_sesi }} - {{ $template->kode_sesi }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-gray-500">Memilih template akan mengisi otomatis detail sesi</p>
-                </div>
 
                 <!-- Nama Sesi -->
                 <div>
@@ -158,33 +142,10 @@
 @section('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const templateSelect = document.getElementById('template_id');
             const namaSesiInput = document.getElementById('nama_sesi');
             const waktuMulaiInput = document.getElementById('waktu_mulai');
             const waktuSelesaiInput = document.getElementById('waktu_selesai');
             const keteranganInput = document.getElementById('keterangan');
-
-            // Template data
-            const templates = @json($templates);
-
-            // Handle template selection
-            templateSelect.addEventListener('change', function() {
-                const selectedTemplateId = parseInt(this.value);
-
-                if (selectedTemplateId) {
-                    const selectedTemplate = templates.find(template => template.id === selectedTemplateId);
-
-                    if (selectedTemplate) {
-                        // Fill form fields with template data
-                        namaSesiInput.value = selectedTemplate.nama_sesi;
-                        waktuMulaiInput.value = selectedTemplate.waktu_mulai;
-                        waktuSelesaiInput.value = selectedTemplate.waktu_selesai;
-                        if (selectedTemplate.deskripsi) {
-                            keteranganInput.value = selectedTemplate.deskripsi;
-                        }
-                    }
-                }
-            });
 
             // Handle start time change
             waktuMulaiInput.addEventListener('change', function() {

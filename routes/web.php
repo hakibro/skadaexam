@@ -87,7 +87,6 @@ require __DIR__ . '/admin.php';            // Admin routes
 require __DIR__ . '/data.php';             // Data management (guru, siswa, kelas) + Guru/Siswa user/portal routes
 require __DIR__ . '/naskah.php';           // Naskah management (mapel, banksoal, soal, jadwal, hasil, panduan)
 require __DIR__ . '/pengawas.php';         // Pengawas features
-require __DIR__ . '/guru_pengawas.php';    // Guru Pengawas features (specifically for guru guard)
 require __DIR__ . '/koordinator.php';      // Koordinator features
 require __DIR__ . '/ruangan.php';          // Ruangan management (ruangan, sesi, siswa)
 require __DIR__ . '/ujian.php';            // Ujian/Exam functionality
