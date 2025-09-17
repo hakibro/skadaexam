@@ -681,115 +681,52 @@ class SiswaController extends Controller
                 'kelas_list' => array_keys($uniqueKelas)
             ]);
 
-            // LANGKAH 2: Simpan data kelas ke database secara batch (25% - 35%)
+            // LANGKAH 2: Simpan data kelas ke database (25% - 35%)
             session(['import_message' => 'Saving class data to database...']);
 
-            // Process kelas in batches
-            $kelasArray = array_values($uniqueKelas);
-            $kelasBatchSize = 50; // Smaller batch for kelas since there are usually fewer
-            $totalKelasBatches = ceil(count($kelasArray) / $kelasBatchSize);
-            $progressStepKelas = 10 / max($totalKelasBatches, 1);
+            // Track progress untuk pemrosesan kelas
+            $progressStepKelas = 10 / max(count($uniqueKelas), 1);
             $currentProgress = 25;
 
             // Proses dan simpan data kelas
             $kelasResults = ['created' => 0, 'updated' => 0, 'errors' => []];
+            foreach ($uniqueKelas as $kelasName => $kelasData) {
+                try {
+                    $currentProgress += $progressStepKelas;
+                    session(['import_progress' => min(35, $currentProgress)]);
+                    // Only save session every few iterations to avoid performance issues
+                    if (rand(0, 5) === 0) {
+                        session()->save(); // Periodically save session
+                    }
 
-            for ($kelasBatchIndex = 0; $kelasBatchIndex < $totalKelasBatches; $kelasBatchIndex++) {
-                $currentProgress += $progressStepKelas;
-                session(['import_progress' => min(35, $currentProgress)]);
-                session(['import_message' => "Processing class batch " . ($kelasBatchIndex + 1) . " of {$totalKelasBatches}"]);
-                session()->save();
-
-                $kelasBatch = array_slice($kelasArray, $kelasBatchIndex * $kelasBatchSize, $kelasBatchSize);
-                $kelasBatchNames = array_column($kelasBatch, 'nama_kelas');
-
-                // Get existing kelas for this batch
-                $existingKelasBatch = \App\Models\Kelas::whereIn('nama_kelas', $kelasBatchNames)
-                    ->get()
-                    ->keyBy('nama_kelas');
-
-                $kelasToCreate = [];
-                $kelasToUpdate = [];
-
-                foreach ($kelasBatch as $kelasData) {
-                    $kelasName = $kelasData['nama_kelas'];
-                    $existingKelas = $existingKelasBatch->get($kelasName);
+                    $existingKelas = \App\Models\Kelas::where('nama_kelas', $kelasName)->first();
 
                     if ($existingKelas) {
-                        // Check if update is needed
+                        // Update kelas yang sudah ada jika diperlukan
                         if (
                             $existingKelas->tingkat !== $kelasData['tingkat'] ||
                             $existingKelas->jurusan !== $kelasData['jurusan']
                         ) {
-                            $kelasToUpdate[] = [
-                                'id' => $existingKelas->id,
-                                'data' => [
-                                    'tingkat' => $kelasData['tingkat'],
-                                    'jurusan' => $kelasData['jurusan']
-                                ]
-                            ];
+                            $existingKelas->update([
+                                'tingkat' => $kelasData['tingkat'],
+                                'jurusan' => $kelasData['jurusan']
+                            ]);
+
+                            $kelasResults['updated']++;
                         }
                     } else {
-                        // Prepare for batch creation
-                        $kelasToCreate[] = array_merge($kelasData, [
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
+                        // Buat kelas baru
+                        \App\Models\Kelas::create($kelasData);
+                        $kelasResults['created']++;
                     }
-                }
-
-                // Bulk create kelas
-                if (!empty($kelasToCreate)) {
-                    try {
-                        \App\Models\Kelas::insert($kelasToCreate);
-                        $kelasResults['created'] += count($kelasToCreate);
-                        Log::info("Kelas batch {$kelasBatchIndex}: Created " . count($kelasToCreate) . " classes");
-                    } catch (\Exception $e) {
-                        Log::error("Failed to bulk create kelas batch {$kelasBatchIndex}", [
-                            'error' => $e->getMessage(),
-                            'count' => count($kelasToCreate)
-                        ]);
-                        // Fallback to individual creation
-                        foreach ($kelasToCreate as $kelasData) {
-                            try {
-                                \App\Models\Kelas::create($kelasData);
-                                $kelasResults['created']++;
-                            } catch (\Exception $e) {
-                                $kelasResults['errors'][] = [
-                                    'kelas' => $kelasData['nama_kelas'],
-                                    'error' => $e->getMessage()
-                                ];
-                            }
-                        }
-                    }
-                }
-
-                // Bulk update kelas
-                if (!empty($kelasToUpdate)) {
-                    try {
-                        foreach ($kelasToUpdate as $updateItem) {
-                            \App\Models\Kelas::where('id', $updateItem['id'])->update($updateItem['data']);
-                        }
-                        $kelasResults['updated'] += count($kelasToUpdate);
-                        Log::info("Kelas batch {$kelasBatchIndex}: Updated " . count($kelasToUpdate) . " classes");
-                    } catch (\Exception $e) {
-                        Log::error("Failed to bulk update kelas batch {$kelasBatchIndex}", [
-                            'error' => $e->getMessage(),
-                            'count' => count($kelasToUpdate)
-                        ]);
-                        // Fallback to individual updates
-                        foreach ($kelasToUpdate as $updateItem) {
-                            try {
-                                \App\Models\Kelas::where('id', $updateItem['id'])->update($updateItem['data']);
-                                $kelasResults['updated']++;
-                            } catch (\Exception $e) {
-                                $kelasResults['errors'][] = [
-                                    'kelas' => "ID: " . $updateItem['id'],
-                                    'error' => $e->getMessage()
-                                ];
-                            }
-                        }
-                    }
+                } catch (\Exception $e) {
+                    Log::error("Error processing kelas {$kelasName}", [
+                        'error' => $e->getMessage(),
+                    ]);
+                    $kelasResults['errors'][] = [
+                        'kelas' => $kelasName,
+                        'error' => $e->getMessage()
+                    ];
                 }
             }
 
@@ -810,168 +747,77 @@ class SiswaController extends Controller
                 'available_kelas' => count($allKelas)
             ]);
 
-            // LANGKAH 3: Proses data siswa secara batch (35% - 95%)
-            $batchSize = 100;
-            $totalStudents = count($apiData);
-            $totalBatches = ceil($totalStudents / $batchSize);
-            $progressStepBatch = 55 / max($totalBatches, 1);
+            // LANGKAH 3: Proses data siswa (35% - 95%)
+            $progressStepSiswa = 55 / max(count($apiData), 1);
             $currentProgress = 35;
 
             // Proses dan simpan data siswa
             $siswaResults = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+            foreach ($apiData as $index => $studentData) {
+                try {
+                    // Update progress
+                    $currentProgress += $progressStepSiswa;
+                    session(['import_progress' => min(90, $currentProgress)]);
+                    session(['import_message' => "Processing student " . ($index + 1) . " of " . count($apiData)]);
 
-            // Process data in batches of 100
-            for ($batchIndex = 0; $batchIndex < $totalBatches; $batchIndex++) {
-                $batchStart = $batchIndex * $batchSize;
-                $batchEnd = min($batchStart + $batchSize, $totalStudents);
-                $batch = array_slice($apiData, $batchStart, $batchSize);
+                    // Only save session periodically to avoid performance issues
+                    // Save more frequently at the beginning to show progress quickly
+                    if ($index < 10 || $index % 20 === 0 || $index === count($apiData) - 1) {
+                        session()->save(); // Periodically save session
+                    }
 
-                $currentProgress += $progressStepBatch;
-                session(['import_progress' => min(90, $currentProgress)]);
-                session(['import_message' => "Processing batch " . ($batchIndex + 1) . " of {$totalBatches} (students " . ($batchStart + 1) . "-{$batchEnd})"]);
-                session()->save();
-
-                // Collect existing students IDs for this batch to minimize database queries
-                $batchIdyayasans = collect($batch)->pluck('idyayasan')->filter()->toArray();
-                $existingStudents = Siswa::whereIn('idyayasan', $batchIdyayasans)
-                    ->get()
-                    ->keyBy('idyayasan');
-
-                // Prepare batch data for bulk operations
-                $studentsToCreate = [];
-                $studentsToUpdate = [];
-
-                foreach ($batch as $studentData) {
-                    try {
-                        // Validasi data yang diperlukan
-                        if (empty($studentData['idyayasan'])) {
-                            $siswaResults['errors'][] = [
-                                'batch' => $batchIndex + 1,
-                                'error' => 'Missing idyayasan'
-                            ];
-                            $siswaResults['skipped']++;
-                            continue;
-                        }
-
-                        // Dapatkan kelas_id
-                        $kelasId = null;
-                        if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
-                            $kelasId = $allKelas[trim($studentData['kelas'])];
-                        }
-
-                        $existingSiswa = $existingStudents->get($studentData['idyayasan']);
-
-                        if ($existingSiswa) {
-                            // Prepare update data
-                            $updateData = [
-                                'nama' => $studentData['nama'] ?? $existingSiswa->nama,
-                                'kelas_id' => $kelasId ?? $existingSiswa->kelas_id,
-                                'status_pembayaran' => $studentData['status_pembayaran'] ?? $existingSiswa->status_pembayaran,
-                            ];
-
-                            // Only update if data has changed
-                            $hasChanges = false;
-                            foreach ($updateData as $field => $value) {
-                                if ($existingSiswa->$field != $value) {
-                                    $hasChanges = true;
-                                    break;
-                                }
-                            }
-
-                            if ($hasChanges) {
-                                $studentsToUpdate[] = [
-                                    'id' => $existingSiswa->id,
-                                    'data' => $updateData
-                                ];
-                            }
-                        } else {
-                            // Prepare create data
-                            $studentsToCreate[] = [
-                                'idyayasan' => $studentData['idyayasan'],
-                                'nama' => $studentData['nama'] ?? null,
-                                'kelas_id' => $kelasId,
-                                'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas',
-                                'email' => $studentData['email'] ?? $this->generateEmail($studentData['idyayasan']),
-                                'password' => bcrypt('password'),
-                                'rekomendasi' => 'tidak',
-                                'catatan_rekomendasi' => null,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ];
-                        }
-                    } catch (\Exception $e) {
+                    // Validasi data yang diperlukan
+                    if (empty($studentData['idyayasan'])) {
                         $siswaResults['errors'][] = [
-                            'idyayasan' => $studentData['idyayasan'] ?? "Unknown in batch " . ($batchIndex + 1),
-                            'error' => $e->getMessage()
+                            'index' => $index,
+                            'error' => 'Missing idyayasan'
                         ];
                         $siswaResults['skipped']++;
+                        continue;
                     }
-                }
 
-                // Bulk create new students
-                if (!empty($studentsToCreate)) {
-                    try {
-                        Siswa::insert($studentsToCreate);
-                        $siswaResults['created'] += count($studentsToCreate);
-                        Log::info("Batch {$batchIndex}: Created " . count($studentsToCreate) . " students");
-                    } catch (\Exception $e) {
-                        Log::error("Batch {$batchIndex}: Failed to bulk create students", [
-                            'error' => $e->getMessage(),
-                            'count' => count($studentsToCreate)
-                        ]);
-                        // Fall back to individual creation
-                        foreach ($studentsToCreate as $studentData) {
-                            try {
-                                Siswa::create($studentData);
-                                $siswaResults['created']++;
-                            } catch (\Exception $e) {
-                                $siswaResults['errors'][] = [
-                                    'idyayasan' => $studentData['idyayasan'],
-                                    'error' => $e->getMessage()
-                                ];
-                                $siswaResults['skipped']++;
-                            }
-                        }
+                    // Dapatkan kelas_id
+                    $kelasId = null;
+                    if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
+                        $kelasId = $allKelas[trim($studentData['kelas'])];
                     }
-                }
 
-                // Bulk update existing students
-                if (!empty($studentsToUpdate)) {
-                    try {
-                        foreach ($studentsToUpdate as $updateItem) {
-                            Siswa::where('id', $updateItem['id'])->update($updateItem['data']);
-                        }
-                        $siswaResults['updated'] += count($studentsToUpdate);
-                        Log::info("Batch {$batchIndex}: Updated " . count($studentsToUpdate) . " students");
-                    } catch (\Exception $e) {
-                        Log::error("Batch {$batchIndex}: Failed to bulk update students", [
-                            'error' => $e->getMessage(),
-                            'count' => count($studentsToUpdate)
-                        ]);
-                        // Fall back to individual updates
-                        foreach ($studentsToUpdate as $updateItem) {
-                            try {
-                                Siswa::where('id', $updateItem['id'])->update($updateItem['data']);
-                                $siswaResults['updated']++;
-                            } catch (\Exception $e) {
-                                $siswaResults['errors'][] = [
-                                    'id' => $updateItem['id'],
-                                    'error' => $e->getMessage()
-                                ];
-                                $siswaResults['skipped']++;
-                            }
-                        }
+                    // Cek apakah siswa sudah ada
+                    $existingSiswa = Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+
+                    if ($existingSiswa) {
+                        // Update siswa yang sudah ada (simpan rekomendasi dan catatan_rekomendasi)
+                        $updateData = [
+                            'nama' => $studentData['nama'] ?? $existingSiswa->nama,
+                            'kelas_id' => $kelasId ?? $existingSiswa->kelas_id,
+                            'status_pembayaran' => $studentData['status_pembayaran'] ?? $existingSiswa->status_pembayaran,
+                        ];
+
+                        $existingSiswa->update($updateData);
+                        $siswaResults['updated']++;
+                    } else {
+                        // Buat siswa baru
+                        $createData = [
+                            'idyayasan' => $studentData['idyayasan'],
+                            'nama' => $studentData['nama'] ?? null,
+                            'kelas_id' => $kelasId,
+                            'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas',
+                            'email' => $studentData['email'] ?? $this->generateEmail($studentData['idyayasan']),
+                            'password' => bcrypt('password'),
+                            'rekomendasi' => 'tidak',
+                            'catatan_rekomendasi' => null,
+                        ];
+
+                        Siswa::create($createData);
+                        $siswaResults['created']++;
                     }
+                } catch (\Exception $e) {
+                    $siswaResults['errors'][] = [
+                        'idyayasan' => $studentData['idyayasan'] ?? "Unknown (index: {$index})",
+                        'error' => $e->getMessage()
+                    ];
+                    $siswaResults['skipped']++;
                 }
-
-                // Log batch completion
-                Log::info("Completed batch " . ($batchIndex + 1) . " of {$totalBatches}", [
-                    'batch_created' => count($studentsToCreate),
-                    'batch_updated' => count($studentsToUpdate),
-                    'total_created' => $siswaResults['created'],
-                    'total_updated' => $siswaResults['updated'],
-                    'progress' => round($currentProgress) . '%'
-                ]);
             }
 
             $results['created_siswa'] = $siswaResults['created'];
@@ -1157,137 +1003,74 @@ class SiswaController extends Controller
             session(['sync_message' => 'Synchronizing student data...']);
             session(['sync_progress' => 50]);
 
-            // LANGKAH 3: Proses data siswa dengan batch processing
+            // LANGKAH 3: Proses data siswa
+            $progressStep = 40 / max(count($apiData), 1);
+            $currentProgress = 50;
+
             $siswaResults = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
-            $batchSize = 100;
-            $totalBatches = ceil(count($apiData) / $batchSize);
 
-            for ($batchIndex = 0; $batchIndex < $totalBatches; $batchIndex++) {
-                $batchStart = $batchIndex * $batchSize;
-                $batch = array_slice($apiData, $batchStart, $batchSize);
+            foreach ($apiData as $index => $studentData) {
+                try {
+                    $currentProgress += $progressStep;
+                    session(['sync_progress' => min(90, $currentProgress)]);
+                    session(['sync_message' => "Syncing student " . ($index + 1) . " of " . count($apiData)]);
 
-                // Update progress untuk batch ini
-                $batchProgress = 50 + (($batchIndex + 1) / $totalBatches) * 40;
-                session(['sync_progress' => min(90, $batchProgress)]);
-                session(['sync_message' => "Syncing batch " . ($batchIndex + 1) . " of {$totalBatches} (students " . ($batchStart + 1) . "-" . min($batchStart + $batchSize, count($apiData)) . ")"]);
-
-                // Collect idyayasan dari batch ini
-                $batchIdyayasan = array_column($batch, 'idyayasan');
-                $batchIdyayasan = array_filter($batchIdyayasan); // Remove empty values
-
-                if (empty($batchIdyayasan)) {
-                    $siswaResults['skipped'] += count($batch);
-                    continue;
-                }
-
-                // Ambil existing students untuk batch ini
-                $existingStudents = Siswa::whereIn('idyayasan', $batchIdyayasan)
-                    ->pluck('idyayasan')
-                    ->toArray();
-
-                $studentsToCreate = [];
-                $studentsToUpdate = [];
-
-                foreach ($batch as $index => $studentData) {
-                    try {
-                        if (empty($studentData['idyayasan'])) {
-                            $siswaResults['errors'][] = "Missing idyayasan for student at index " . ($batchStart + $index);
-                            $siswaResults['skipped']++;
-                            continue;
-                        }
-
-                        // Dapatkan kelas_id dari lookup array
-                        $kelasId = null;
-                        if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
-                            $kelasId = $allKelas[trim($studentData['kelas'])];
-                        }
-
-                        if (in_array($studentData['idyayasan'], $existingStudents)) {
-                            // Student exists, prepare for update
-                            $studentsToUpdate[] = [
-                                'idyayasan' => $studentData['idyayasan'],
-                                'nama' => $studentData['nama'] ?? null,
-                                'kelas_id' => $kelasId,
-                                'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas'
-                            ];
-                        } else {
-                            // New student, prepare for creation
-                            $studentsToCreate[] = [
-                                'idyayasan' => $studentData['idyayasan'],
-                                'nama' => $studentData['nama'] ?? null,
-                                'kelas_id' => $kelasId,
-                                'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas',
-                                'email' => $this->generateEmail($studentData['idyayasan']),
-                                'password' => bcrypt('password'),
-                                'rekomendasi' => 'tidak',
-                                'catatan_rekomendasi' => null,
-                            ];
-                        }
-                    } catch (\Exception $e) {
-                        $siswaResults['errors'][] = "Error preparing {$studentData['idyayasan']}: " . $e->getMessage();
+                    if (empty($studentData['idyayasan'])) {
+                        $siswaResults['errors'][] = "Missing idyayasan for student at index {$index}";
                         $siswaResults['skipped']++;
+                        continue;
                     }
-                }
 
-                // Bulk create new students
-                if (!empty($studentsToCreate)) {
-                    try {
-                        Siswa::insert($studentsToCreate);
-                        $siswaResults['created'] += count($studentsToCreate);
-                    } catch (\Exception $e) {
-                        // Fallback to individual creation
-                        foreach ($studentsToCreate as $studentData) {
-                            try {
-                                Siswa::create($studentData);
-                                $siswaResults['created']++;
-                            } catch (\Exception $individualE) {
-                                $siswaResults['errors'][] = "Error creating {$studentData['idyayasan']}: " . $individualE->getMessage();
-                                $siswaResults['skipped']++;
-                            }
+                    // Dapatkan kelas_id dari lookup array
+                    $kelasId = null;
+                    if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
+                        $kelasId = $allKelas[trim($studentData['kelas'])];
+                    }
+
+                    $existingSiswa = Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+
+                    if ($existingSiswa) {
+                        // Cek apakah data perlu diupdate
+                        $needsUpdate = false;
+                        $updateData = [];
+
+                        if ($existingSiswa->nama !== ($studentData['nama'] ?? null)) {
+                            $updateData['nama'] = $studentData['nama'];
+                            $needsUpdate = true;
                         }
-                    }
-                }
 
-                // Update existing students individually (Laravel doesn't have good bulk update for complex conditions)
-                foreach ($studentsToUpdate as $updateData) {
-                    try {
-                        $existingSiswa = Siswa::where('idyayasan', $updateData['idyayasan'])->first();
-
-                        if ($existingSiswa) {
-                            $needsUpdate = false;
-                            $finalUpdateData = [];
-
-                            if ($existingSiswa->nama !== $updateData['nama']) {
-                                $finalUpdateData['nama'] = $updateData['nama'];
-                                $needsUpdate = true;
-                            }
-
-                            if ($existingSiswa->kelas_id !== $updateData['kelas_id'] && $updateData['kelas_id'] !== null) {
-                                $finalUpdateData['kelas_id'] = $updateData['kelas_id'];
-                                $needsUpdate = true;
-                            }
-
-                            if ($existingSiswa->status_pembayaran !== $updateData['status_pembayaran']) {
-                                $finalUpdateData['status_pembayaran'] = $updateData['status_pembayaran'];
-                                $needsUpdate = true;
-                            }
-
-                            if ($needsUpdate) {
-                                $existingSiswa->update($finalUpdateData);
-                                $siswaResults['updated']++;
-                            }
+                        if ($existingSiswa->kelas_id !== $kelasId && $kelasId !== null) {
+                            $updateData['kelas_id'] = $kelasId;
+                            $needsUpdate = true;
                         }
-                    } catch (\Exception $e) {
-                        $siswaResults['errors'][] = "Error updating {$updateData['idyayasan']}: " . $e->getMessage();
-                        $siswaResults['skipped']++;
-                    }
-                }
 
-                // Log batch completion
-                Log::info("Sync batch {$batchIndex} completed", [
-                    'created' => count($studentsToCreate),
-                    'to_update' => count($studentsToUpdate)
-                ]);
+                        if ($existingSiswa->status_pembayaran !== ($studentData['status_pembayaran'] ?? 'Belum Lunas')) {
+                            $updateData['status_pembayaran'] = $studentData['status_pembayaran'];
+                            $needsUpdate = true;
+                        }
+
+                        if ($needsUpdate) {
+                            $existingSiswa->update($updateData);
+                            $siswaResults['updated']++;
+                        }
+                    } else {
+                        // Buat siswa baru
+                        Siswa::create([
+                            'idyayasan' => $studentData['idyayasan'],
+                            'nama' => $studentData['nama'] ?? null,
+                            'kelas_id' => $kelasId,
+                            'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas',
+                            'email' => $this->generateEmail($studentData['idyayasan']),
+                            'password' => bcrypt('password'),
+                            'rekomendasi' => 'tidak',
+                            'catatan_rekomendasi' => null,
+                        ]);
+                        $siswaResults['created']++;
+                    }
+                } catch (\Exception $e) {
+                    $siswaResults['errors'][] = "Error processing {$studentData['idyayasan']}: " . $e->getMessage();
+                    $siswaResults['skipped']++;
+                }
             }
 
             $results['updated_siswa'] = $siswaResults['updated'];
