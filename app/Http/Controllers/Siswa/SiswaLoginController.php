@@ -43,7 +43,7 @@ class SiswaLoginController extends Controller
                 ])->withInput();
             }
 
-            // Check payment status - allow if 'Lunas' or has recommendation 'ya'
+            // Check payment status - allow if 'Lunas' OR has recommendation 'ya'
             if ($siswa->status_pembayaran !== 'Lunas' && $siswa->rekomendasi !== 'ya') {
                 return back()->withErrors([
                     'idyayasan' => 'Status pembayaran belum lunas dan tidak ada rekomendasi. Silahkan hubungi admin keuangan.'
@@ -56,77 +56,31 @@ class SiswaLoginController extends Controller
                 'idyayasan' => $idyayasan,
                 'token_input' => $token,
                 'payment_status' => $siswa->status_pembayaran,
+                'rekomendasi' => $siswa->rekomendasi,
             ]);
 
-            // Find active enrollment where sesi ruangan has matching token
-            $enrollment = EnrollmentUjian::with(['sesiRuangan', 'siswa'])
-                ->where('siswa_id', $siswa->id)
-                ->whereHas('sesiRuangan', function ($query) use ($token) {
-                    $query->where('token_ujian', $token);
-                })
-                ->whereIn('status_enrollment', ['enrolled', 'active'])
+            // Find sesi ruangan with matching token (no enrollment validation required)
+            $sesiRuangan = SesiRuangan::where('token_ujian', $token)
+                ->whereIn('status', ['berlangsung', 'belum_mulai'])
                 ->first();
 
-            // If not found, try to find any enrollment with this sesi ruangan token for this student
-            // (maybe the status is different)
-            if (!$enrollment) {
-                $enrollment = EnrollmentUjian::with(['sesiRuangan', 'siswa'])
-                    ->where('siswa_id', $siswa->id)
-                    ->whereHas('sesiRuangan', function ($query) use ($token) {
-                        $query->where('token_ujian', $token);
-                    })
-                    ->first();
-
-                if ($enrollment && !in_array($enrollment->status_enrollment, ['enrolled', 'active'])) {
-                    Log::warning('Found enrollment with non-active status', [
-                        'siswa_id' => $siswa->id,
-                        'enrollment_id' => $enrollment->id,
-                        'status' => $enrollment->status_enrollment,
-                        'token' => $token,
-                    ]);
-
-                    return back()->withErrors([
-                        'token' => 'Token ditemukan tapi status enrollment tidak aktif: ' . $enrollment->status_enrollment .
-                            '. Silahkan hubungi pengawas.'
-                    ])->withInput();
-                }
-            }
-
-            if (!$enrollment) {
-                // Debug: Check what enrollments exist for this student and their sesi ruangan tokens
-                $allEnrollments = EnrollmentUjian::with('sesiRuangan')->where('siswa_id', $siswa->id)->get();
-                $sesiWithToken = SesiRuangan::where('token_ujian', $token)->get();
-
-                Log::warning('No matching enrollment found', [
+            if (!$sesiRuangan) {
+                Log::warning('No valid token found', [
                     'siswa_id' => $siswa->id,
                     'token_search' => $token,
-                    'student_enrollments' => $allEnrollments->map(function ($e) {
-                        return [
-                            'id' => $e->id,
-                            'sesi_ruangan_id' => $e->sesi_ruangan_id,
-                            'sesi_token' => $e->sesiRuangan->token_ujian ?? null,
-                            'sesi_expired' => $e->sesiRuangan->token_expired_at ?? null,
-                            'status' => $e->status_enrollment,
-                        ];
-                    })->toArray(),
-                    'sesi_with_token' => $sesiWithToken->map(function ($s) {
-                        return [
-                            'id' => $s->id,
-                            'nama' => $s->nama_sesi,
-                            'token' => $s->token_ujian,
-                            'expired' => $s->token_expired_at,
-                        ];
-                    })->toArray(),
                 ]);
 
                 return back()->withErrors([
-                    'token' => 'Token tidak valid atau sudah tidak aktif. Silahkan hubungi pengawas.' .
-                        ' (Debug: Siswa ID ' . $siswa->id . ', Token: ' . $token . ')'
+                    'token' => 'Token tidak valid atau sudah tidak aktif. Silahkan hubungi pengawas.'
                 ])->withInput();
             }
 
-            // Validate sesi ruangan token and session
-            $sesiRuangan = $enrollment->sesiRuangan;
+            // Optional: Find enrollment if exists (for context only, not required for login)
+            $enrollment = EnrollmentUjian::with(['sesiRuangan', 'siswa'])
+                ->where('siswa_id', $siswa->id)
+                ->where('sesi_ruangan_id', $sesiRuangan->id)
+                ->first();
+            // Validate sesi ruangan token
             if (!$sesiRuangan->token_ujian || $sesiRuangan->token_ujian !== $token) {
                 return back()->withErrors([
                     'token' => 'Token sesi ruangan tidak valid.'
@@ -141,17 +95,14 @@ class SiswaLoginController extends Controller
             }
 
             // Check if session room is active
-            if (!$enrollment->sesiRuangan || !in_array($enrollment->sesiRuangan->status, ['berlangsung', 'belum_mulai'])) {
+            if (!in_array($sesiRuangan->status, ['berlangsung', 'belum_mulai'])) {
                 return back()->withErrors([
                     'token' => 'Sesi ujian belum dimulai atau sudah selesai. Silahkan hubungi pengawas.'
                 ])->withInput();
             }
 
-            // Check if this is within exam time
-            $sesiRuangan = $enrollment->sesiRuangan;
+            // Check if this is within exam time (optional timing validation)
             $now = now();
-
-            // Get exam date from jadwal ujian related to this sesi ruangan
             $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
 
             if ($jadwalUjian) {
@@ -172,39 +123,50 @@ class SiswaLoginController extends Controller
                 }
             }
 
-            // Mark enrollment as active and log login
-            $enrollment->startExam();
+            // Mark enrollment as active if exists (optional, for tracking purposes)
+            if ($enrollment) {
+                $enrollment->startExam();
+            }
 
             // Log successful authentication
             Log::info('Student login successful', [
                 'siswa_id' => $siswa->id,
                 'idyayasan' => $idyayasan,
-                'enrollment_id' => $enrollment->id,
-                'sesi_ruangan_id' => $enrollment->sesi_ruangan_id,
+                'enrollment_id' => $enrollment ? $enrollment->id : 'no_enrollment',
+                'sesi_ruangan_id' => $sesiRuangan->id,
                 'login_time' => now(),
                 'ip_address' => $request->ip(),
+                'has_enrollment' => $enrollment !== null,
+                'payment_status' => $siswa->status_pembayaran,
+                'rekomendasi' => $siswa->rekomendasi,
             ]);
 
             // Login student using siswa guard
             Auth::guard('siswa')->login($siswa, true);
             $request->session()->regenerate();
 
-            // Store enrollment info in session for exam context
-            $request->session()->put('current_enrollment_id', $enrollment->id);
-            $request->session()->put('current_sesi_ruangan_id', $enrollment->sesi_ruangan_id);
+            // Store enrollment info in session for exam context (if exists)
+            if ($enrollment) {
+                $request->session()->put('current_enrollment_id', $enrollment->id);
+            } else {
+                $request->session()->forget('current_enrollment_id');
+            }
+            $request->session()->put('current_sesi_ruangan_id', $sesiRuangan->id);
 
             // Debug log for redirecting
             Log::info('Redirecting student after login', [
                 'siswa_id' => $siswa->id,
                 'route' => 'siswa.dashboard',
-                'intended_url' => '/siswa/dashboard'
+                'intended_url' => '/siswa/dashboard',
+                'has_enrollment' => $enrollment !== null,
             ]);
 
-            return redirect()->route('siswa.dashboard')->with(
-                'success',
-                'Login berhasil! Selamat datang ' . $siswa->nama . '. Ujian: ' .
-                    ($enrollment->sesiRuangan->nama_sesi ?? 'Ujian')
-            );
+            $welcomeMessage = 'Login berhasil! Selamat datang ' . $siswa->nama . '. Sesi: ' . $sesiRuangan->nama_sesi;
+            if (!$enrollment) {
+                $welcomeMessage .= ' (Anda dapat mengikuti ujian sesuai dengan sesi yang tersedia)';
+            }
+
+            return redirect()->route('siswa.dashboard')->with('success', $welcomeMessage);
         } catch (\Exception $e) {
             Log::error('Student login error', [
                 'idyayasan' => $idyayasan,

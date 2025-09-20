@@ -107,6 +107,13 @@ class SiswaDashboardController extends Controller
         ));
     }
 
+    public function portalIndex(Request $request)
+    {
+        // This is the old portal index method. We're now using the main index method for the dashboard.
+        // Redirecting to the proper route
+        return redirect()->route('siswa.dashboard');
+    }
+
     public function exam(Request $request)
     {
         $siswa = Auth::guard('siswa')->user();

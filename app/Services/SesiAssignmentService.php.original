@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
-use App\Models\EnrollmentUjian;
-use App\Models\Siswa;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -55,13 +53,7 @@ class SesiAssignmentService
             $assignedCount += $createdCount;
         }
 
-        // STEP 4: Auto-enroll siswa from assigned sesi ruangan
-        if ($assignedCount > 0) {
-            $enrolledCount = $this->autoEnrollStudentsFromAssignedSesi($jadwalUjian);
-            Log::info("Auto-enrolled {$enrolledCount} students to jadwal {$jadwalUjian->kode_ujian}");
-        }
-
-        // STEP 5: Log summary
+        // STEP 4: Log summary
         if ($assignedCount > 0) {
             $summary = "Assigned {$assignedCount} sesi to jadwal {$jadwalUjian->kode_ujian}: ";
             if ($reusedCount > 0) $summary .= "{$reusedCount} reused, ";
@@ -257,56 +249,54 @@ class SesiAssignmentService
      */
     private function createNewSesiByDuplication(JadwalUjian $jadwalUjian, string $targetDate): int
     {
+        // Get any existing sesi_ruangan as template for duplication
+        $existingSesi = SesiRuangan::whereHas('ruangan', function ($query) {
+            $query->where('status', 'aktif');
+        })->with(['ruangan', 'sesiRuanganSiswa'])->first();
+
+        if (!$existingSesi) {
+            // If no existing sesi found, create basic sesi for all active rooms
+            return $this->createBasicSesiForAllRooms($jadwalUjian, $targetDate);
+        }
+
+        // Get all active rooms for duplication
         $activeRooms = \App\Models\Ruangan::where('status', 'aktif')->get();
         $createdCount = 0;
 
         foreach ($activeRooms as $room) {
-            // Ambil template sesi khusus untuk ruangan ini
-            $templateSesis = SesiRuangan::where('ruangan_id', $room->id)
-                ->whereDoesntHave('jadwalUjians')
-                ->orderBy('waktu_mulai')
-                ->get();
+            // Create new sesi by duplicating structure but with new date and room
+            $newSesi = SesiRuangan::create([
+                'ruangan_id' => $room->id,
+                'nama_sesi' => $existingSesi->nama_sesi . ' - ' . $room->nama_ruangan,
+                'waktu_mulai' => $existingSesi->waktu_mulai,
+                'waktu_selesai' => $existingSesi->waktu_selesai,
+                'status' => 'belum_mulai',
+                'pengaturan' => $existingSesi->pengaturan,
+                'template_id' => null // No template dependency
+            ]);
 
-            // Jika ruangan ini belum punya sesi template, skip
-            if ($templateSesis->isEmpty()) {
-                continue;
+            // Link the new sesi to the jadwal ujian
+            $jadwalUjian->sesiRuangans()->attach($newSesi->id, [
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Copy assignment siswa dari sesi acuan ke sesi duplikat
+            foreach ($existingSesi->sesiRuanganSiswa as $assignment) {
+                $newSesi->sesiRuanganSiswa()->create([
+                    'siswa_id' => $assignment->siswa_id,
+                    'status_kehadiran' => 'tidak_hadir',
+                    'keterangan' => $assignment->keterangan,
+                ]);
             }
 
-            foreach ($templateSesis as $templateSesi) {
-                $newSesi = SesiRuangan::create([
-                    'ruangan_id'    => $room->id,
-                    'nama_sesi'     => $templateSesi->nama_sesi, // tidak perlu tambah nama ruangan lagi
-                    'waktu_mulai'   => $templateSesi->waktu_mulai,
-                    'waktu_selesai' => $templateSesi->waktu_selesai,
-                    'status'        => 'belum_mulai',
-                    'pengaturan'    => $templateSesi->pengaturan,
-                    'template_id'   => $templateSesi->id
-                ]);
+            $createdCount++;
 
-                $jadwalUjian->sesiRuangans()->attach($newSesi->id, [
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-
-                // Copy assignment siswa (optional, bisa di-skip kalau tidak perlu)
-                foreach ($templateSesi->sesiRuanganSiswa as $assignment) {
-                    $newSesi->sesiRuanganSiswa()->create([
-                        'siswa_id'         => $assignment->siswa_id,
-                        'status_kehadiran' => 'tidak_hadir',
-                        'keterangan'       => $assignment->keterangan,
-                    ]);
-                }
-
-                $createdCount++;
-
-                Log::info("Created new sesi {$newSesi->id} (from template {$templateSesi->id}) "
-                    . "for jadwal {$jadwalUjian->kode_ujian} in room {$room->nama_ruangan}");
-            }
+            Log::info("Created new sesi {$newSesi->kode_sesi} for jadwal {$jadwalUjian->kode_ujian} in room {$room->nama_ruangan} and assigned siswa from template sesi");
         }
 
         return $createdCount;
     }
-
 
     /**
      * Create basic sesi for all rooms when no existing sesi found
@@ -345,89 +335,5 @@ class SesiAssignmentService
         }
 
         return $createdCount;
-    }
-
-    /**
-     * Auto-enroll siswa from assigned sesi ruangan to jadwal ujian 
-     * based on kelas and jurusan compatibility
-     */
-    private function autoEnrollStudentsFromAssignedSesi(JadwalUjian $jadwalUjian): int
-    {
-        $enrolledCount = 0;
-
-        // Get all sesi ruangan assigned to this jadwal
-        $assignedSesi = $jadwalUjian->sesiRuangans()->with(['sesiRuanganSiswa.siswa.kelas'])->get();
-
-        foreach ($assignedSesi as $sesi) {
-            // Get all siswa in this sesi ruangan
-            foreach ($sesi->sesiRuanganSiswa as $sesiSiswa) {
-                $siswa = $sesiSiswa->siswa;
-
-                if (!$siswa || !$siswa->kelas) {
-                    continue;
-                }
-
-                // Check if student is eligible for this jadwal ujian based on kelas and jurusan
-                if (!$this->isSiswaEligibleForJadwal($siswa, $jadwalUjian)) {
-                    Log::debug("Siswa {$siswa->nama} (ID: {$siswa->id}) not eligible for jadwal {$jadwalUjian->kode_ujian} - kelas/jurusan mismatch");
-                    continue;
-                }
-
-                // Check if student is already enrolled in this jadwal ujian
-                $existingEnrollment = \App\Models\EnrollmentUjian::where('siswa_id', $siswa->id)
-                    ->where('jadwal_ujian_id', $jadwalUjian->id)
-                    ->first();
-
-                if ($existingEnrollment) {
-                    Log::debug("Siswa {$siswa->nama} (ID: {$siswa->id}) already enrolled in jadwal {$jadwalUjian->kode_ujian}");
-                    continue;
-                }
-
-                // Create enrollment
-                try {
-                    \App\Models\EnrollmentUjian::create([
-                        'siswa_id' => $siswa->id,
-                        'jadwal_ujian_id' => $jadwalUjian->id,
-                        'sesi_ruangan_id' => $sesi->id,
-                        'status_enrollment' => 'enrolled',
-                        'catatan' => 'Auto-enrolled from sesi assignment'
-                    ]);
-
-                    $enrolledCount++;
-
-                    Log::info("Auto-enrolled siswa {$siswa->nama} (ID: {$siswa->id}) to jadwal {$jadwalUjian->kode_ujian} in sesi {$sesi->nama_sesi}");
-                } catch (\Exception $e) {
-                    Log::error("Failed to auto-enroll siswa {$siswa->nama} (ID: {$siswa->id}) to jadwal {$jadwalUjian->kode_ujian}: " . $e->getMessage());
-                }
-            }
-        }
-
-        return $enrolledCount;
-    }
-
-    /**
-     * Check if siswa is eligible for jadwal ujian based on kelas_target and jurusan compatibility
-     */
-    private function isSiswaEligibleForJadwal(\App\Models\Siswa $siswa, JadwalUjian $jadwalUjian): bool
-    {
-        // Check if siswa's kelas is in jadwal's kelas_target
-        $kelasTargets = $jadwalUjian->kelas_target ?? [];
-
-        if (!empty($kelasTargets) && !in_array($siswa->kelas_id, $kelasTargets)) {
-            return false;
-        }
-
-        // Check jurusan compatibility with mapel
-        if ($jadwalUjian->mapel && $jadwalUjian->mapel->jurusan) {
-            $mapelJurusan = $jadwalUjian->mapel->jurusan;
-            $siswaJurusan = $siswa->kelas->jurusan ?? null;
-
-            // If mapel has specific jurusan and siswa's jurusan doesn't match
-            if ($mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

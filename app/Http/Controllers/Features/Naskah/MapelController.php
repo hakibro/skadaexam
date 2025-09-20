@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Mapel;
 use App\Models\Kelas;
 use App\Models\User;
+use App\Models\SesiRuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MapelController extends Controller
 {
@@ -164,52 +167,49 @@ class MapelController extends Controller
      */
     public function destroy(Request $request, Mapel $mapel)
     {
-        \Illuminate\Support\Facades\Log::info('Destroy request received', [
+        Log::info('Destroy request received', [
             'mapel_id' => $mapel->id,
             'mapel_name' => $mapel->nama_mapel,
             'force' => $request->input('force'),
             'request_data' => $request->all()
         ]);
 
-        // Check if force is either "1", "true", or true (boolean)
         $forceDelete = in_array($request->input('force'), [1, "1", true, "true"], true);
 
-        // Check if mapel is used in bank soal
         if ($mapel->bankSoals()->exists() && !$forceDelete) {
-            \Illuminate\Support\Facades\Log::info('Cannot delete mapel due to bank soal relation', [
-                'mapel_id' => $mapel->id,
-                'bank_soal_count' => $mapel->bankSoals()->count()
-            ]);
-
             return redirect()->route('naskah.mapel.index')
                 ->with('error', 'Mata pelajaran tidak dapat dihapus karena digunakan dalam bank soal. Gunakan hapus paksa jika yakin.')
                 ->with('mapel_id', $mapel->id);
         }
 
-        if ($forceDelete) {
-            // Detach or cascade delete related records if needed
+        DB::transaction(function () use ($mapel, $forceDelete) {
+            // hapus semua jadwal ujian + sesi terkait
+            foreach ($mapel->jadwalUjians as $jadwal) {
+                if (!$forceDelete && $jadwal->hasilUjian()->count() > 0) {
+                    throw new \Exception("Jadwal ujian tidak dapat dihapus karena sudah ada hasil ujian");
+                }
+
+                $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+                $jadwal->sesiRuangans()->detach();
+                $forceDelete ? $jadwal->forceDelete() : $jadwal->delete();
+
+                $this->cleanupSesiRuangan($sesiIds);
+            }
+
+            // hapus semua bank soal & soal
             foreach ($mapel->bankSoals as $bankSoal) {
-                // Delete related soals first
                 $bankSoal->soals()->delete();
                 $bankSoal->delete();
             }
 
-            // Permanently delete the mapel record instead of soft delete
-            $mapel->forceDelete();
+            $forceDelete ? $mapel->forceDelete() : $mapel->delete();
 
-            \Illuminate\Support\Facades\Log::info('Mapel force deleted', [
+            Log::info('Mapel deleted', [
                 'mapel_id' => $mapel->id,
-                'mapel_name' => $mapel->nama_mapel
+                'mapel_name' => $mapel->nama_mapel,
+                'force' => $forceDelete
             ]);
-        } else {
-            // Regular soft delete
-            $mapel->delete();
-
-            \Illuminate\Support\Facades\Log::info('Mapel soft deleted', [
-                'mapel_id' => $mapel->id,
-                'mapel_name' => $mapel->nama_mapel
-            ]);
-        }
+        });
 
         return redirect()->route('naskah.mapel.index')
             ->with('success', $forceDelete ? 'Mata pelajaran berhasil dihapus secara permanen' : 'Mata pelajaran berhasil dihapus');
@@ -220,7 +220,7 @@ class MapelController extends Controller
      */
     public function bulkAction(Request $request)
     {
-        \Illuminate\Support\Facades\Log::info('Bulk action request received', [
+        Log::info('Bulk action request received', [
             'action' => $request->action,
             'mapel_ids' => $request->mapel_ids ?? [],
             'all_request_data' => $request->all()
@@ -239,40 +239,60 @@ class MapelController extends Controller
 
         switch ($action) {
             case 'delete':
-                foreach ($mapelIds as $id) {
-                    $mapel = Mapel::find($id);
-                    if ($mapel) {
+                DB::transaction(function () use ($mapelIds, &$count, &$errors) {
+                    foreach ($mapelIds as $id) {
+                        $mapel = Mapel::find($id);
+                        if (!$mapel) continue;
+
                         if ($mapel->bankSoals()->exists()) {
                             $errors[] = "Mata pelajaran '{$mapel->nama_mapel}' tidak dapat dihapus karena digunakan dalam bank soal";
-                        } else {
-                            $mapel->delete();
-                            $count++;
+                            continue;
                         }
+
+                        foreach ($mapel->jadwalUjians as $jadwal) {
+                            if ($jadwal->hasilUjian()->count() > 0) {
+                                $errors[] = "Jadwal ujian dari mapel '{$mapel->nama_mapel}' tidak dapat dihapus karena sudah ada hasil ujian";
+                                continue;
+                            }
+
+                            $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+                            $jadwal->sesiRuangans()->detach();
+                            $jadwal->delete();
+
+                            $this->cleanupSesiRuangan($sesiIds);
+                        }
+
+                        $mapel->delete();
+                        $count++;
                     }
-                }
+                });
                 $message = "Berhasil menghapus {$count} mata pelajaran";
                 break;
 
             case 'force_delete':
-                foreach ($mapelIds as $id) {
-                    $mapel = Mapel::find($id);
-                    if ($mapel) {
-                        // Delete related bank soals and their soals
+                DB::transaction(function () use ($mapelIds, &$count) {
+                    foreach ($mapelIds as $id) {
+                        $mapel = Mapel::find($id);
+                        if (!$mapel) continue;
+
+                        foreach ($mapel->jadwalUjians as $jadwal) {
+                            $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+                            $jadwal->sesiRuangans()->detach();
+                            $jadwal->forceDelete();
+
+                            $this->cleanupSesiRuangan($sesiIds);
+                        }
+
                         foreach ($mapel->bankSoals as $bankSoal) {
                             $bankSoal->soals()->delete();
                             $bankSoal->delete();
                         }
-                        // Use forceDelete to permanently remove from database
+
                         $mapel->forceDelete();
                         $count++;
-
-                        \Illuminate\Support\Facades\Log::info('Mapel force deleted in bulk action', [
-                            'mapel_id' => $mapel->id,
-                            'mapel_name' => $mapel->nama_mapel
-                        ]);
                     }
-                }
-                $message = "Berhasil menghapus paksa {$count} mata pelajaran beserta bank soal dan soal terkait";
+                });
+                $message = "Berhasil menghapus paksa {$count} mata pelajaran beserta jadwal ujian, sesi ruangan, bank soal, dan soal terkait";
                 break;
 
             case 'status_aktif':
@@ -294,6 +314,17 @@ class MapelController extends Controller
         return redirect()->route('naskah.mapel.index')
             ->with('success', $message);
     }
+
+    protected function cleanupSesiRuangan(array $sesiIds)
+    {
+        foreach ($sesiIds as $sesiId) {
+            $sesi = SesiRuangan::find($sesiId);
+            if ($sesi && $sesi->jadwalUjians()->count() === 0) {
+                $sesi->delete();
+            }
+        }
+    }
+
 
     // The filter method has been removed as we're using standard form submission instead of AJAX
 }

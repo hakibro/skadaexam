@@ -138,26 +138,3 @@
         </form>
     </div>
 @endsection
-
-@section('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const namaSesiInput = document.getElementById('nama_sesi');
-            const waktuMulaiInput = document.getElementById('waktu_mulai');
-            const waktuSelesaiInput = document.getElementById('waktu_selesai');
-            const keteranganInput = document.getElementById('keterangan');
-
-            // Handle start time change
-            waktuMulaiInput.addEventListener('change', function() {
-                // If end time is empty or earlier than start time, set it to start time + 2 hours
-                if (!waktuSelesaiInput.value || waktuSelesaiInput.value <= waktuMulaiInput.value) {
-                    const startTime = new Date(`2000-01-01T${waktuMulaiInput.value}`);
-                    startTime.setHours(startTime.getHours() + 2);
-                    const hours = String(startTime.getHours()).padStart(2, '0');
-                    const minutes = String(startTime.getMinutes()).padStart(2, '0');
-                    waktuSelesaiInput.value = `${hours}:${minutes}`;
-                }
-            });
-        });
-    </script>
-@endsection

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Auth\LoginController;
@@ -89,7 +90,7 @@ require __DIR__ . '/naskah.php';           // Naskah management (mapel, banksoal
 require __DIR__ . '/pengawas.php';         // Pengawas features
 require __DIR__ . '/koordinator.php';      // Koordinator features
 require __DIR__ . '/ruangan.php';          // Ruangan management (ruangan, sesi, siswa)
-require __DIR__ . '/ujian.php';            // Ujian/Exam functionality
+// require __DIR__ . '/ujian.php';            // Ujian/Exam functionality
 require __DIR__ . '/enrollment.php';       // Enrollment management (consolidated from multiple modules)
 require __DIR__ . '/api_internal.php';     // API endpoints for AJAX
 require __DIR__ . '/fallback.php';         // Fallback routes for compatibility
@@ -120,8 +121,3 @@ if (app()->environment(['local', 'development'])) {
 | DOCUMENTATION ROUTES
 |--------------------------------------------------------------------------
 */
-
-// Test route for ruangan/template
-Route::get('/test-ruangan-template', function () {
-    return 'This is a test route for ruangan/template';
-});

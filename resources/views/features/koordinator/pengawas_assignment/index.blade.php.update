@@ -130,16 +130,18 @@
             @if ($selectedJadwal && $sesiRuangans->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto max-h-[600px]">
                     @foreach ($sesiRuangans->groupBy(fn($s) => $s->ruangan->nama_ruangan ?? 'Unknown') as $ruanganNama => $sesiList)
-                        <div class="bg-white shadow-md rounded-xl border">
+                        <div class="bg-white shadow-md rounded-xl border py-4">
                             {{-- Header Card --}}
-                            <div class="bg-gray-100 flex items-center gap-3 py-3 px-4">
-                                <input type="checkbox"
-                                    class="select-all-ruangan rounded border-gray-300 text-blue-600 shadow-sm focus:ring focus:ring-blue-200"
-                                    data-ruangan="{{ Str::slug($ruanganNama, '-') }}">
+                            <div class="flex items-center justify-between mb-3 px-4">
                                 <h2 class="text-lg font-semibold text-gray-700">
-                                    {{ $ruanganNama }}
+                                    Ruangan: {{ $ruanganNama }}
                                 </h2>
-
+                                <div class="flex items-center text-sm">
+                                    <input type="checkbox"
+                                        class="select-all-ruangan rounded border-gray-300 text-blue-600 shadow-sm focus:ring focus:ring-blue-200"
+                                        data-ruangan="{{ Str::slug($ruanganNama, '-') }}">
+                                    <span class="ml-2 text-gray-600">Pilih Semua</span>
+                                </div>
                             </div>
 
                             {{-- Daftar Sesi --}}
@@ -197,7 +199,7 @@
                                                     <div id="pengawas-display-{{ $sesi->id }}" class="mt-1">
                                                         @if ($sesi->pengawas_for_jadwal)
                                                             <p class="text-sm text-green-700 font-medium">
-                                                                {{ $sesi->pengawas_for_jadwal->nama }}
+                                                                Pengawas: {{ $sesi->pengawas_for_jadwal->nama }}
                                                             </p>
                                                         @else
                                                             <p class="text-sm text-red-600 italic">Belum ditugaskan</p>
@@ -215,7 +217,7 @@
                                                     data-sesi-nama="{{ $sesi->nama_sesi }}"
                                                     data-ruangan="{{ $sesi->ruangan->nama_ruangan ?? 'Unknown' }}"
                                                     data-waktu="{{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}">
-                                                    <i class="fa-solid fa-user-plus"></i>
+                                                    <i class="fa-solid fa-user-plus"></i> Tugaskan
                                                 </button>
 
                                                 @if ($sesi->pengawas_for_jadwal)
@@ -223,7 +225,7 @@
                                                         class="remove-pengawas px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
                                                         data-sesi-id="{{ $sesi->id }}"
                                                         data-jadwal-id="{{ $selectedJadwal->id }}">
-                                                        <i class="fa-solid fa-user-minus"></i>
+                                                        <i class="fa-solid fa-user-minus"></i> Hapus
                                                     </button>
                                                 @endif
                                             </div>

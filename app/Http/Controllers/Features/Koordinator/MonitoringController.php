@@ -26,7 +26,7 @@ class MonitoringController extends Controller
         $selectedRuangan = $request->get('ruangan_id', 'all');
 
         // Build query for sessions
-        $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa', 'jadwalUjians'])
+        $query = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa.siswa', 'jadwalUjians'])
             ->whereHas('jadwalUjians', function ($q) use ($selectedDate) {
                 $q->whereDate('tanggal', $selectedDate);
             });
@@ -51,7 +51,7 @@ class MonitoringController extends Controller
 
         // Get real-time data for ongoing sessions
         $activeSessions = SesiRuangan::where('status', 'berlangsung')
-            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
+            ->with(['ruangan', 'sesiRuanganSiswa'])
             ->get()
             ->map(function ($session) {
                 // Add computed properties for the view
@@ -103,7 +103,7 @@ class MonitoringController extends Controller
             });
 
         // Get rooms for filter dropdown
-        $rooms = Ruangan::where('status', 'aktif')->orderBy('nama')->get();
+        $rooms = Ruangan::where('status', 'aktif')->orderBy('nama_ruangan')->get();
 
         return view('features.koordinator.monitoring.index', compact(
             'sessions',
@@ -153,11 +153,7 @@ class MonitoringController extends Controller
                 'kapasitas' => $sesi->ruangan->kapasitas,
                 'lokasi' => $sesi->ruangan->lokasi,
             ],
-            'pengawas' => $sesi->pengawas ? [
-                'nama' => $sesi->pengawas->nama,
-                'nip' => $sesi->pengawas->nip,
-                'email' => $sesi->pengawas->email,
-            ] : null,
+            'pengawas' => null, // Pengawas info now handled differently through pivot table
             'students' => $studentStats,
             'attendance_rate' => $attendanceRate,
             'has_berita_acara' => $sesi->beritaAcaraUjian ? true : false,
@@ -171,7 +167,7 @@ class MonitoringController extends Controller
     public function getLiveUpdates()
     {
         $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
-            ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
+            ->with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->get()
             ->map(function ($sesi) {
                 $studentStats = [
@@ -181,11 +177,21 @@ class MonitoringController extends Controller
                     'logout' => $sesi->sesiRuanganSiswa->where('status_kehadiran', 'logout')->count(),
                 ];
 
+                // Get pengawas from pivot table for the first jadwal
+                $pengawasName = 'Belum ditugaskan';
+                $firstJadwal = $sesi->jadwalUjians->first(); // Use collection method instead of query
+                if ($firstJadwal) {
+                    $pengawas = $sesi->getPengawasForJadwal($firstJadwal->id);
+                    if ($pengawas) {
+                        $pengawasName = $pengawas->nama;
+                    }
+                }
+
                 return [
                     'id' => $sesi->id,
                     'nama_sesi' => $sesi->nama_sesi,
                     'ruangan' => $sesi->ruangan->nama_ruangan,
-                    'pengawas' => $sesi->pengawas?->nama ?? 'Belum ditugaskan',
+                    'pengawas' => $pengawasName,
                     'students' => $studentStats,
                     'attendance_rate' => $studentStats['total'] > 0
                         ? round(($studentStats['hadir'] / $studentStats['total']) * 100, 1)
@@ -291,12 +297,14 @@ class MonitoringController extends Controller
 
         $issues = 0; // Logout functionality removed from current design
 
-        $onlineProctors = Guru::whereHas('sesiRuanganDiawasi', function ($query) use ($date) {
-            $query->where('status', 'berlangsung')
-                ->whereHas('jadwalUjians', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
-                });
-        })->count();
+        $onlineProctors = DB::table('jadwal_ujian_sesi_ruangan')
+            ->join('sesi_ruangan', 'jadwal_ujian_sesi_ruangan.sesi_ruangan_id', '=', 'sesi_ruangan.id')
+            ->join('jadwal_ujian', 'jadwal_ujian_sesi_ruangan.jadwal_ujian_id', '=', 'jadwal_ujian.id')
+            ->whereDate('jadwal_ujian.tanggal', $date)
+            ->where('sesi_ruangan.status', 'berlangsung')
+            ->whereNotNull('jadwal_ujian_sesi_ruangan.pengawas_id')
+            ->distinct('jadwal_ujian_sesi_ruangan.pengawas_id')
+            ->count();
 
         return [
             'active_sessions' => $activeSessions,
@@ -314,13 +322,15 @@ class MonitoringController extends Controller
                 $query->whereDate('tanggal', $date);
             })->count(),
             'students_present' => SesiRuanganSiswa::where('status_kehadiran', 'hadir')
-                ->whereHas('sesiRuangan', function ($query) use ($date) {
-                    $query->where('tanggal', $date);
+                ->whereHas('sesiRuangan.jadwalUjians', function ($query) use ($date) {
+                    $query->whereDate('tanggal', $date);
                 })->count(),
-            'unassigned_sessions' => $sessionsToday->clone()
-                ->whereDoesntHave('jadwalUjians', function ($query) {
-                    $query->whereNotNull('jadwal_ujian_sesi_ruangan.pengawas_id');
-                })->count(),
+            'unassigned_sessions' => DB::table('sesi_ruangan')
+                ->join('jadwal_ujian_sesi_ruangan', 'sesi_ruangan.id', '=', 'jadwal_ujian_sesi_ruangan.sesi_ruangan_id')
+                ->join('jadwal_ujian', 'jadwal_ujian_sesi_ruangan.jadwal_ujian_id', '=', 'jadwal_ujian.id')
+                ->whereDate('jadwal_ujian.tanggal', $date)
+                ->whereNull('jadwal_ujian_sesi_ruangan.pengawas_id')
+                ->count(),
             'active_pengawas' => $onlineProctors,
         ];
     }
@@ -414,7 +424,7 @@ class MonitoringController extends Controller
         $room = $request->get('room', 'all');
 
         // Get sessions data
-        $sessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
+        $sessions = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->whereHas('jadwalUjians', function ($q) use ($date) {
                 $q->whereDate('tanggal', $date);
             })
@@ -452,10 +462,20 @@ class MonitoringController extends Controller
 
             // CSV data
             foreach ($sessions as $session) {
+                // Get pengawas from pivot table for the first jadwal
+                $pengawasName = 'Belum ditugaskan';
+                $firstJadwal = $session->jadwalUjians->first(); // Use collection method instead of query
+                if ($firstJadwal) {
+                    $pengawas = $session->getPengawasForJadwal($firstJadwal->id);
+                    if ($pengawas) {
+                        $pengawasName = $pengawas->nama;
+                    }
+                }
+
                 fputcsv($file, [
                     $session->nama_sesi,
-                    $session->ruangan->nama,
-                    $session->pengawas->nama ?? 'Belum ditugaskan',
+                    $session->ruangan->nama_ruangan,
+                    $pengawasName,
                     $session->status,
                     $session->waktu_mulai . ' - ' . $session->waktu_selesai,
                     $session->sesiRuanganSiswa->count(),

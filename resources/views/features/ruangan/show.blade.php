@@ -275,7 +275,7 @@
                                             </div>
                                             <span
                                                 class="{{ $sesi->status == 'belum_mulai' ? 'bg-blue-100 text-blue-800' : ($sesi->status == 'berlangsung' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') }} px-2 py-1 text-xs rounded-full">
-                                                {{ $sesi->status_label }}
+                                                {{ $ruangan->status_label['text'] }}
                                             </span>
                                         </div>
                                         <div class="p-4">

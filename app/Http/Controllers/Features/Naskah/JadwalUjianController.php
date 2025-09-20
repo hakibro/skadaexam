@@ -406,15 +406,42 @@ class JadwalUjianController extends Controller
     public function destroy(JadwalUjian $jadwal)
     {
         // Check if there are any results associated with this exam
+        // if ($jadwal->hasilUjian()->count() > 0) {
+        //     return redirect()->route('naskah.jadwal.index')
+        //         ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian');
+        // }
+
+        // $jadwal->delete();
+
+        // return redirect()->route('naskah.jadwal.index')
+        //     ->with('success', 'Jadwal ujian berhasil dihapus');
+
+        // Cek apakah sudah ada hasil ujian
         if ($jadwal->hasilUjian()->count() > 0) {
             return redirect()->route('naskah.jadwal.index')
                 ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian');
         }
 
+        // Ambil semua sesi ruangan yang terkait
+        $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+
+        // Lepaskan relasi jadwal <-> sesi
+        $jadwal->sesiRuangans()->detach();
+
+        // Cek setiap sesi, apakah masih dipakai jadwal lain
+        foreach ($sesiIds as $sesiId) {
+            $sesi = SesiRuangan::find($sesiId);
+            if ($sesi && $sesi->jadwalUjians()->count() === 0) {
+                // Kalau sesi sudah tidak dipakai jadwal lain, hapus
+                $sesi->delete();
+            }
+        }
+
+        // Hapus jadwal
         $jadwal->delete();
 
         return redirect()->route('naskah.jadwal.index')
-            ->with('success', 'Jadwal ujian berhasil dihapus');
+            ->with('success', 'Jadwal ujian berhasil dihapus beserta sesi ruangan yang tidak terpakai');
     }
 
     /**

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
+        <title>Import Progress Test</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            .progress-container {
+                width: 100%;
+                max-width: 500px;
+                margin: 20px 0;
+            }
+            .progress-bar-bg {
+                width: 100%;
+                height: 30px;
+                background-color: #e5e7eb;
+                border-radius: 15px;
+                overflow: hidden;
+            }
+            .progress-bar {
+                height: 100%;
+                background-color: #3b82f6;
+                transition: width 0.3s ease;
+                width: 0%;
+            }
+            .progress-text {
+                text-align: center;
+                margin-top: 10px;
+                font-weight: bold;
+            }
+            .message {
+                margin: 10px 0;
+                padding: 10px;
+                background-color: #f3f4f6;
+                border-radius: 5px;
+            }
+            button {
+                padding: 10px 20px;
+                margin: 5px;
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #2563eb;
+            }
+            .log {
+                margin: 20px 0;
+                padding: 10px;
+                background-color: #f9fafb;
+                border-radius: 5px;
+                white-space: pre-wrap;
+                font-family: monospace;
+                font-size: 12px;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Import Progress Test Page</h1>
+
+        <div class="progress-container">
+            <div class="progress-bar-bg">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+
+        <div class="message" id="status-message">Ready to test</div>
+
+        <button onclick="startPolling()">Start Progress Polling</button>
+        <button onclick="stopPolling()">Stop Polling</button>
+        <button onclick="testImport()">Test Import</button>
+        <button onclick="clearLog()">Clear Log</button>
+
+        <div class="log" id="log"></div>
+
+        <script>
+            let pollingInterval = null;
+            let isPolling = false;
+
+            function log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logElement = document.getElementById("log");
+                logElement.textContent += `[${timestamp}] ${message}\n`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+
+            function updateProgress(data) {
+                const progressBar = document.getElementById("progress-bar");
+                const progressText = document.getElementById("progress-text");
+                const statusMessage = document.getElementById("status-message");
+
+                if (progressBar) {
+                    progressBar.style.width = data.progress + "%";
+                }
+                if (progressText) {
+                    progressText.textContent = data.progress + "%";
+                }
+                if (statusMessage) {
+                    statusMessage.textContent = `${data.status}: ${data.message}`;
+                }
+
+                log(
+                    `Progress Update: ${data.progress}% - ${data.status} - ${data.message}`
+                );
+            }
+
+            function startPolling() {
+                if (isPolling) {
+                    log("Polling already active");
+                    return;
+                }
+
+                isPolling = true;
+                log("Starting progress polling...");
+
+                pollingInterval = setInterval(() => {
+                    const url = new URL(
+                        "/features/data/siswa/import-progress",
+                        window.location.origin
+                    );
+                    url.searchParams.append("_", new Date().getTime());
+
+                    fetch(url, {
+                        method: "GET",
+                        headers: {
+                            Accept: "application/json",
+                            "X-Requested-With": "XMLHttpRequest",
+                            "Cache-Control":
+                                "no-cache, no-store, must-revalidate",
+                        },
+                        cache: "no-store",
+                    })
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error(
+                                    `HTTP ${response.status}: ${response.statusText}`
+                                );
+                            }
+                            return response.json();
+                        })
+                        .then((data) => {
+                            updateProgress(data);
+                        })
+                        .catch((error) => {
+                            log(`Error: ${error.message}`);
+                        });
+                }, 1000);
+
+                log("Polling started (1 second interval)");
+            }
+
+            function stopPolling() {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                    isPolling = false;
+                    log("Polling stopped");
+                }
+            }
+
+            function testImport() {
+                log("Starting test import...");
+
+                fetch("/features/data/siswa/import-ajax", {
+                    method: "POST",
+                    headers: {
+                        Accept: "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRF-TOKEN":
+                            document.querySelector('meta[name="csrf-token"]')
+                                ?.content || "",
+                    },
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.success) {
+                            log("Import completed successfully");
+                        } else {
+                            log(`Import failed: ${data.error}`);
+                        }
+                    })
+                    .catch((error) => {
+                        log(`Import error: ${error.message}`);
+                    });
+            }
+
+            function clearLog() {
+                document.getElementById("log").textContent = "";
+            }
+
+            // Initialize
+            log("Test page loaded");
+            log('Use "Start Progress Polling" to monitor progress');
+            log('Use "Test Import" to trigger actual import');
+        </script>
+    </body>
+</html>

@@ -83,49 +83,6 @@
         .pulse {
             animation: pulse 2s infinite;
         }
-
-        /* Responsive Additions */
-        .mobile-nav-toggle {
-            display: none;
-        }
-
-        @media (max-width: 1023px) {
-            .mobile-nav-toggle {
-                display: block;
-            }
-
-            .question-sidebar {
-                position: fixed;
-                left: -100%;
-                top: 0;
-                bottom: 0;
-                width: 85%;
-                max-width: 320px;
-                z-index: 40;
-                transition: left 0.3s ease;
-                padding-top: 4rem;
-                overflow-y: auto;
-            }
-
-            .question-sidebar.active {
-                left: 0;
-            }
-
-            .sidebar-overlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 39;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.3s ease;
-            }
-
-            .sidebar-overlay.active {
-                opacity: 1;
-                pointer-events: auto;
-            }
-        }
     </style>
 </head>
 
@@ -133,19 +90,13 @@
     <!-- Header -->
     <header class="bg-white shadow-lg border-b-4 border-indigo-500 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap justify-between items-center py-4">
-                <div class="flex flex-wrap items-center space-x-2 md:space-x-4 mb-2 sm:mb-0">
-                    <!-- Mobile Sidebar Toggle -->
-                    <button id="mobile-nav-toggle" class="mobile-nav-toggle mr-2 lg:hidden text-indigo-500">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-
-                    <h1 class="text-lg sm:text-xl font-bold text-gray-800">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-800">
                         <i class="fas fa-brain text-indigo-500 mr-2"></i>
-                        <span class="hidden xs:inline">{{ $examData['title'] ?? 'Ujian' }}</span>
-                        <span class="xs:hidden">Ujian</span>
+                        {{ $examData['title'] ?? 'Ujian' }}
                     </h1>
-                    <div class="text-xs sm:text-sm text-gray-600 truncate max-w-[120px] sm:max-w-none">
+                    <div class="text-sm text-gray-600">
                         <i class="fas fa-user mr-1"></i>
                         {{ $siswa->nama }}
                     </div>
@@ -160,21 +111,14 @@
                 </div>
 
                 <!-- Timer & Progress -->
-                <div class="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-6">
+                <div class="flex items-center space-x-6">
                     <!-- Progress Circle -->
-                    <div class="relative w-10 h-10 sm:w-12 sm:h-12">
-                        <svg class="w-10 h-10 sm:w-12 sm:h-12 transform -rotate-90">
-                            <circle cx="20" cy="20" r="16" stroke="#e5e7eb" stroke-width="3"
-                                fill="none" class="sm:hidden" />
-                            <circle cx="20" cy="20" r="16" stroke="#3b82f6" stroke-width="3"
-                                fill="none" class="progress-ring sm:hidden"
-                                stroke-dasharray="{{ $examData['totalQuestions'] > 0 ? ($examData['answeredCount'] / $examData['totalQuestions']) * 100 : 0 }} 100"
-                                stroke-linecap="round" />
-
+                    <div class="relative w-12 h-12">
+                        <svg class="w-12 h-12 transform -rotate-90">
                             <circle cx="24" cy="24" r="20" stroke="#e5e7eb" stroke-width="3"
-                                fill="none" class="hidden sm:block" />
+                                fill="none" />
                             <circle cx="24" cy="24" r="20" stroke="#3b82f6" stroke-width="3"
-                                fill="none" class="progress-ring hidden sm:block"
+                                fill="none" class="progress-ring"
                                 stroke-dasharray="{{ $examData['totalQuestions'] > 0 ? ($examData['answeredCount'] / $examData['totalQuestions']) * 126 : 0 }} 126"
                                 stroke-linecap="round" />
                         </svg>
@@ -187,10 +131,10 @@
                     <!-- Timer -->
                     @if (isset($examData['timeLimit']) && $examData['timeLimit'] > 0)
                         <div
-                            class="bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md">
-                            <div class="flex items-center space-x-1 sm:space-x-2">
+                            class="bg-gradient-to-r from-orange-400 to-red-500 text-white px-4 py-2 rounded-lg shadow-md">
+                            <div class="flex items-center space-x-2">
                                 <i class="fas fa-clock"></i>
-                                <span id="timer" class="font-mono font-bold text-sm sm:text-lg">
+                                <span id="timer" class="font-mono font-bold text-lg">
                                     {{ gmdate('H:i:s', $examData['remainingTime'] ?? 0) }}
                                 </span>
                             </div>
@@ -200,19 +144,15 @@
                     <!-- Submit Button -->
                     <button id="submitExam" onclick="submitExam()"
                         class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
-                               text-white px-3 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-300 
-                               transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base">
-                        <i class="fas fa-check mr-1 sm:mr-2"></i>
-                        <span class="hidden xs:inline">Selesai</span>
-                        <span class="xs:hidden">Selesai</span>
+                                   text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 
+                                   transform hover:scale-105 shadow-lg hover:shadow-xl">
+                        <i class="fas fa-check mr-2"></i>
+                        Selesai
                     </button>
                 </div>
             </div>
         </div>
     </header>
-
-    <!-- Sidebar Overlay -->
-    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <!-- Violation Warning Panel -->
     <div id="violation-warning"
@@ -232,26 +172,24 @@
     <div id="violation-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden backdrop-blur-sm">
         <div class="fixed inset-0 flex items-center justify-center p-4">
             <div class="bg-white rounded-lg shadow-2xl max-w-md w-full border-4 border-red-500 animate-pulse">
-                <div class="p-4 sm:p-6">
+                <div class="p-6">
                     <!-- Header with warning icon -->
                     <div class="flex items-center justify-center mb-4">
                         <div class="bg-red-100 rounded-full p-4 animate-bounce">
-                            <i class="fas fa-exclamation-triangle text-red-500 text-2xl sm:text-3xl"></i>
+                            <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
                         </div>
                     </div>
 
                     <!-- Title -->
-                    <h3 class="text-lg sm:text-xl font-bold text-gray-900 text-center mb-4 animate-pulse">
+                    <h3 class="text-xl font-bold text-gray-900 text-center mb-4 animate-pulse">
                         ⚠️ PELANGGARAN TERDETEKSI
                     </h3>
 
                     <!-- Message -->
                     <div id="violation-modal-message" class="text-gray-700 text-center mb-6 space-y-2">
-                        <p class="font-semibold text-red-600 text-sm sm:text-base">Anda telah berpindah tab atau
-                            meminimalkan browser!</p>
-                        <p class="text-xs sm:text-sm">Pelanggaran ini telah dicatat dan dilaporkan ke pengawas ujian.
-                        </p>
-                        <p class="text-xs sm:text-sm font-medium">Harap tetap fokus pada halaman ujian untuk menghindari
+                        <p class="font-semibold text-red-600">Anda telah berpindah tab atau meminimalkan browser!</p>
+                        <p class="text-sm">Pelanggaran ini telah dicatat dan dilaporkan ke pengawas ujian.</p>
+                        <p class="text-sm font-medium">Harap tetap fokus pada halaman ujian untuk menghindari
                             pelanggaran lebih lanjut.</p>
                     </div>
 
@@ -267,7 +205,7 @@
                     <!-- Continue button -->
                     <div class="text-center">
                         <button id="continue-exam-btn"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                             <i class="fas fa-arrow-right mr-2"></i>
                             Lanjutkan Ujian
                         </button>
@@ -298,8 +236,7 @@
                     <i class="fas fa-question-circle text-6xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-600 mb-2">Ujian Belum Tersedia</h3>
-                <p class="text-gray-500 mb-6">Belum ada soal yang tersedia untuk ujian ini atau ujian belum dimulai.
-                </p>
+                <p class="text-gray-500 mb-6">Belum ada soal yang tersedia untuk ujian ini atau ujian belum dimulai.</p>
 
                 <div class="space-y-3">
                     <a href="{{ route('siswa.dashboard') }}"
@@ -310,28 +247,21 @@
                 </div>
             </div>
         @else
-            <div class="lg:grid lg:grid-cols-12 lg:gap-6 flex flex-col-reverse">
-                <!-- Question Navigation Sidebar -->
-                <div class="lg:col-span-3 mt-6 lg:mt-0">
-                    <div id="question-sidebar"
-                        class="question-sidebar bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:sticky lg:top-24">
-                        <!-- Mobile Close Button -->
-                        <button id="close-sidebar"
-                            class="absolute top-2 right-2 lg:hidden text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
+            <div class="grid grid-cols-12 gap-6">
 
+                <!-- Question Navigation Sidebar -->
+                <div class="col-span-3">
+                    <div class="bg-white rounded-2xl shadow-xl p-6 sticky top-24">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">
                             <i class="fas fa-list-ol text-indigo-500 mr-2"></i>
                             Navigasi Soal
                         </h3>
 
                         <!-- Question Grid -->
-                        <div
-                            class="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-5 gap-2 mb-4">
+                        <div class="grid grid-cols-5 gap-2 mb-4">
                             @foreach ($examData['questions'] as $index => $question)
                                 <button
-                                    class="question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 
+                                    class="question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 
                                            {{ $examData['currentQuestionIndex'] == $index
                                                ? 'bg-indigo-500 text-white border-indigo-500'
                                                : (isset($examData['answers'][$question['id']])
@@ -385,19 +315,19 @@
                 </div>
 
                 <!-- Question Content -->
-                <div class="lg:col-span-9">
-                    <div id="questionContainer" class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+                <div class="col-span-9">
+                    <div id="questionContainer" class="bg-white rounded-2xl shadow-xl p-8">
                         <!-- Question Header -->
-                        <div class="flex flex-wrap justify-between items-start mb-6 gap-2">
-                            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center space-x-3">
                                 <div
-                                    class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg px-3 sm:px-4 py-1 sm:py-2">
-                                    <span class="font-bold text-base sm:text-lg">Soal
+                                    class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg px-4 py-2">
+                                    <span class="font-bold text-lg">Soal
                                         {{ $examData['currentQuestionIndex'] + 1 }}</span>
                                 </div>
                                 @if (isset($examData['questions'][$examData['currentQuestionIndex']]['tingkat_kesulitan']))
                                     <div
-                                        class="px-2 sm:px-3 py-1 rounded-full text-xs font-medium
+                                        class="px-3 py-1 rounded-full text-xs font-medium
                                             {{ $examData['questions'][$examData['currentQuestionIndex']]['tingkat_kesulitan'] == 'mudah'
                                                 ? 'bg-green-100 text-green-800'
                                                 : ($examData['questions'][$examData['currentQuestionIndex']]['tingkat_kesulitan'] == 'sedang'
@@ -408,15 +338,15 @@
                                 @endif
                             </div>
 
-                            <div class="text-xs sm:text-sm text-gray-500">
+                            <div class="text-sm text-gray-500">
                                 {{ $examData['currentQuestionIndex'] + 1 }} dari {{ count($examData['questions']) }}
                                 soal
                             </div>
                         </div>
 
                         <!-- Question Text -->
-                        <div class="mb-6 sm:mb-8">
-                            <div class="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
+                        <div class="mb-8">
+                            <div class="text-lg font-medium text-gray-800 leading-relaxed">
                                 {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
                             </div>
 
@@ -426,15 +356,15 @@
                             @endphp
 
                             @if (!empty($gambarSoal))
-                                <div class="mt-4 text-center">
+                                <div class="mt-4">
                                     <img src="{{ asset('storage/soal/pertanyaan/' . $gambarSoal) }}"
-                                        alt="Gambar soal" class="max-w-full sm:max-w-md mx-auto rounded-lg shadow-md">
+                                        alt="Gambar soal" class="max-w-md mx-auto rounded-lg shadow-md">
                                 </div>
                             @endif
                         </div>
 
                         <!-- Answer Options -->
-                        <div class="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
+                        <div class="space-y-4 mb-8">
                             @php
                                 $currentQuestion = $examData['questions'][$examData['currentQuestionIndex']];
                                 // Use options directly from controller
@@ -443,23 +373,23 @@
 
                             @foreach ($options as $key => $option)
                                 <button
-                                    class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left 
+                                    class="option-card w-full p-6 rounded-xl border-2 border-gray-200 text-left 
                                            hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100
                                            {{ isset($examData['answers'][$currentQuestion['id']]) && $examData['answers'][$currentQuestion['id']] == $key ? 'option-selected border-indigo-500' : '' }}"
                                     data-option="{{ $key }}"
                                     onclick="selectAnswer('{{ $currentQuestion['id'] }}', '{{ $key }}')">
-                                    <div class="flex items-start space-x-3 sm:space-x-4">
+                                    <div class="flex items-start space-x-4">
                                         <div
-                                            class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 
-                                               flex items-center justify-center text-white font-bold text-xs sm:text-sm">
+                                            class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 
+                                               flex items-center justify-center text-white font-bold">
                                             {{ strtoupper($key) }}
                                         </div>
-                                        <div class="flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
+                                        <div class="flex-1 text-gray-700 leading-relaxed">
                                             @if (is_array($option))
                                                 @if ($option['tipe'] == 'gambar' && $option['gambar'])
                                                     <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
                                                         alt="Pilihan {{ $key }}"
-                                                        class="max-w-full sm:max-w-sm mx-auto rounded-lg shadow-md">
+                                                        class="max-w-sm mx-auto rounded-lg shadow-md">
                                                     @if ($option['teks'])
                                                         <div class="mt-2">{!! $option['teks'] !!}</div>
                                                     @endif
@@ -476,39 +406,37 @@
                         </div>
 
                         <!-- Navigation Buttons -->
-                        <div class="flex flex-wrap justify-between items-center gap-2 pt-4 sm:pt-6 border-t">
+                        <div class="flex justify-between items-center pt-6 border-t">
                             <button id="prevBtn"
-                                class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-gray-200 hover:bg-gray-300 
-                                       text-gray-700 rounded-lg font-medium transition-colors text-sm sm:text-base
-                                       {{ $examData['currentQuestionIndex'] == 0 ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                class="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 
+                                           text-gray-700 rounded-lg font-medium transition-colors
+                                           {{ $examData['currentQuestionIndex'] == 0 ? 'opacity-50 cursor-not-allowed' : '' }}"
                                 {{ $examData['currentQuestionIndex'] == 0 ? 'disabled' : '' }}
                                 onclick="navigateQuestion('prev')">
                                 <i class="fas fa-chevron-left"></i>
                                 <span>Sebelumnya</span>
                             </button>
 
-                            <div class="flex space-x-2 sm:space-x-3">
+                            <div class="flex space-x-3">
                                 <button
-                                    class="px-3 sm:px-6 py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors text-xs sm:text-base"
+                                    class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors"
                                     onclick="skipQuestion()">
-                                    <i class="fas fa-forward mr-1 sm:mr-2"></i>
-                                    <span class="hidden xs:inline">Lewati</span>
-                                    <span class="xs:hidden">Lewat</span>
+                                    <i class="fas fa-forward mr-2"></i>
+                                    Lewati
                                 </button>
 
                                 <button
-                                    class="px-3 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors text-xs sm:text-base"
+                                    class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
                                     onclick="saveAndNext()">
-                                    <i class="fas fa-save mr-1 sm:mr-2"></i>
-                                    <span class="hidden xs:inline">Simpan & Lanjut</span>
-                                    <span class="xs:hidden">Simpan</span>
+                                    <i class="fas fa-save mr-2"></i>
+                                    Simpan & Lanjut
                                 </button>
                             </div>
 
                             <button id="nextBtn"
-                                class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-indigo-500 hover:bg-indigo-600 
-                                       text-white rounded-lg font-medium transition-colors text-sm sm:text-base
-                                       {{ $examData['currentQuestionIndex'] >= count($examData['questions']) - 1 ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                class="flex items-center space-x-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 
+                                           text-white rounded-lg font-medium transition-colors
+                                           {{ $examData['currentQuestionIndex'] >= count($examData['questions']) - 1 ? 'opacity-50 cursor-not-allowed' : '' }}"
                                 {{ $examData['currentQuestionIndex'] >= count($examData['questions']) - 1 ? 'disabled' : '' }}
                                 onclick="navigateQuestion('next')">
                                 <span>Selanjutnya</span>
@@ -519,37 +447,6 @@
                 </div>
             </div>
         @endif
-
-        <!-- Mobile Bottom Navigation Bar -->
-        <div
-            class="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t lg:hidden flex justify-between items-center px-4 py-2 z-30">
-            <button onclick="navigateQuestion('prev')"
-                class="{{ $examData['currentQuestionIndex'] == 0 ? 'opacity-50 cursor-not-allowed' : '' }}"
-                {{ $examData['currentQuestionIndex'] == 0 ? 'disabled' : '' }}>
-                <i class="fas fa-chevron-left text-lg text-indigo-500"></i>
-            </button>
-
-            <button id="mobile-nav-show" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm">
-                <i class="fas fa-th-large mr-1"></i>
-                <span>Soal</span>
-            </button>
-
-            <div class="text-xs font-bold text-center">
-                <span class="text-green-600">{{ count($examData['answers'] ?? []) }}</span>
-                <span class="text-gray-500">/{{ count($examData['questions'] ?? []) }}</span>
-            </div>
-
-            <button onclick="saveAndNext()" class="px-3 py-1 rounded-full bg-blue-500 text-white text-sm">
-                <i class="fas fa-save mr-1"></i>
-                <span>Simpan</span>
-            </button>
-
-            <button onclick="navigateQuestion('next')"
-                class="{{ $examData['currentQuestionIndex'] >= count($examData['questions']) - 1 ? 'opacity-50 cursor-not-allowed' : '' }}"
-                {{ $examData['currentQuestionIndex'] >= count($examData['questions']) - 1 ? 'disabled' : '' }}>
-                <i class="fas fa-chevron-right text-lg text-indigo-500"></i>
-            </button>
-        </div>
     </div>
 
     <!-- Modals and JavaScript -->
@@ -566,35 +463,6 @@
 
         // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-        // Mobile sidebar functionality
-        const mobileSidebar = document.getElementById('question-sidebar');
-        const mobileNavToggle = document.getElementById('mobile-nav-toggle');
-        const mobileNavShow = document.getElementById('mobile-nav-show');
-        const closeSidebar = document.getElementById('close-sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-
-        function toggleSidebar() {
-            mobileSidebar.classList.toggle('active');
-            sidebarOverlay.classList.toggle('active');
-            document.body.classList.toggle('overflow-hidden');
-        }
-
-        if (mobileNavToggle) {
-            mobileNavToggle.addEventListener('click', toggleSidebar);
-        }
-
-        if (mobileNavShow) {
-            mobileNavShow.addEventListener('click', toggleSidebar);
-        }
-
-        if (closeSidebar) {
-            closeSidebar.addEventListener('click', toggleSidebar);
-        }
-
-        if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-        }
 
         function navigateToQuestion(index) {
             if (index >= 0 && index < questions.length) {
@@ -726,7 +594,7 @@
                 if (currentQuestionIndex < questions.length - 1) {
                     navigateQuestion('next');
                 } else {
-                    // alert('Semua soal sudah dijawab!');
+                    alert('Semua soal sudah dijawab!');
                 }
             }
         }
@@ -738,7 +606,7 @@
                     navigateQuestion('next');
                 } else {
                     // Last question, could show submit confirmation
-                    // alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
+                    alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
                 }
             }).catch((error) => {
                 console.error('Save failed:', error);
@@ -746,7 +614,7 @@
                 if (currentQuestionIndex < questions.length - 1) {
                     navigateQuestion('next');
                 } else {
-                    // alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
+                    alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
                 }
             });
         }
@@ -754,31 +622,17 @@
         function updateProgress() {
             const answeredCount = Object.keys(answers).length;
             const totalQuestions = questions.length;
+            const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 126 : 0;
 
-            // Update both progress rings
-            const mobileSVGProgressRing = document.querySelector('.progress-ring.sm\\:hidden');
-            const desktopSVGProgressRing = document.querySelector('.progress-ring.hidden.sm\\:block');
-
-            if (mobileSVGProgressRing) {
-                const mobileProgress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
-                mobileSVGProgressRing.style.strokeDasharray = `${mobileProgress} 100`;
-            }
-
-            if (desktopSVGProgressRing) {
-                const desktopProgress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 126 : 0;
-                desktopSVGProgressRing.style.strokeDasharray = `${desktopProgress} 126`;
+            const progressRing = document.querySelector('.progress-ring');
+            if (progressRing) {
+                progressRing.style.strokeDasharray = `${progress} 126`;
             }
 
             // Update question count
-            const countElements = document.querySelectorAll('.text-xs.font-bold.text-gray-700 span');
-            countElements.forEach(el => {
-                el.textContent = `${answeredCount}/${totalQuestions}`;
-            });
-
-            // Update mobile bottom bar count
-            const mobileCount = document.querySelector('.fixed.bottom-0 .text-xs.font-bold span.text-green-600');
-            if (mobileCount) {
-                mobileCount.textContent = answeredCount;
+            const countElement = document.querySelector('.text-xs.font-bold.text-gray-700');
+            if (countElement) {
+                countElement.textContent = `${answeredCount}/${totalQuestions}`;
             }
 
             // Update navigation button colors
@@ -798,19 +652,19 @@
                 if (index === currentQuestionIndex) {
                     // Current question - keep current styling (blue)
                     btn.className =
-                        'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-indigo-500 text-white border-indigo-500';
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-indigo-500 text-white border-indigo-500';
                 } else if (answers[question.id]) {
                     // Answered question - green
                     btn.className =
-                        'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-green-500 text-white border-green-500';
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-green-500 text-white border-green-500';
                 } else if (flaggedQuestions.includes(question.id)) {
                     // Flagged question - yellow  
                     btn.className =
-                        'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-yellow-500 text-white border-yellow-500';
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-yellow-500 text-white border-yellow-500';
                 } else {
                     // Unanswered question - gray
                     btn.className =
-                        'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200';
+                        'question-nav-btn w-10 h-10 rounded-lg border-2 font-bold text-sm transition-all duration-300 bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200';
                 }
             });
         }
@@ -884,13 +738,13 @@
                 const timerParent = timerElement.parentElement.parentElement;
                 if (remainingTime <= 300) { // 5 minutes
                     timerParent.className =
-                        'bg-gradient-to-r from-red-500 to-red-600 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md pulse';
+                        'bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg shadow-md pulse';
                 } else if (remainingTime <= 600) { // 10 minutes  
                     timerParent.className =
-                        'bg-gradient-to-r from-orange-400 to-orange-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
+                        'bg-gradient-to-r from-orange-400 to-orange-500 text-white px-4 py-2 rounded-lg shadow-md';
                 } else {
                     timerParent.className =
-                        'bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
+                        'bg-gradient-to-r from-orange-400 to-red-500 text-white px-4 py-2 rounded-lg shadow-md';
                 }
             }
         }

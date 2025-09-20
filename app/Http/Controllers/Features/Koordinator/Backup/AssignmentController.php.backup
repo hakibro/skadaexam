@@ -92,7 +92,7 @@ class AssignmentController extends Controller
             'total_pengawas' => $availablePengawas->count(),
         ];
 
-        return view('features.koordinator.assignment.index', compact(
+        return view('features.koordinator.pengawas-assignment.index', compact(
             'sesiRuangans',
             'availablePengawas',
             'availableRuangan',

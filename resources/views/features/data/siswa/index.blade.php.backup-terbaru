@@ -391,7 +391,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Siswa Management JS loaded');
-
             // Basic elements
             const searchInput = document.getElementById('search-input');
             const paymentFilter = document.getElementById('payment-filter');

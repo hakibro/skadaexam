@@ -104,7 +104,7 @@
                             class="border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
                             <option value="">Semua Ruangan</option>
                             @foreach ($rooms as $room)
-                                <option value="{{ $room->id }}">{{ $room->nama }}</option>
+                                <option value="{{ $room->id }}">{{ $room->nama_ruangan }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -147,7 +147,7 @@
                                 <h3 class="text-lg font-semibold text-gray-900">{{ $session->nama_sesi }}</h3>
                                 <div class="flex items-center text-sm text-gray-600 mt-1">
                                     <i class="fa-solid fa-door-open mr-1"></i>
-                                    <span>{{ $session->ruangan->nama }}</span>
+                                    <span>{{ $session->ruangan->nama_ruangan }}</span>
                                     <span class="mx-2">•</span>
                                     <i class="fa-solid fa-clock mr-1"></i>
                                     <span>{{ $session->waktu_mulai }} - {{ $session->waktu_selesai }}</span>
@@ -188,24 +188,31 @@
                         </div>
 
                         <!-- Supervisor Info -->
-                        @if ($session->pengawas)
-                            <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg mb-4">
-                                <div class="flex items-center">
-                                    <div class="bg-purple-100 text-purple-600 p-2 rounded-full mr-3">
-                                        <i class="fa-solid fa-user-tie"></i>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ $session->pengawas->nama }}
-                                        </div>
-                                        <div class="text-xs text-gray-600">Pengawas</div>
-                                    </div>
+                        {{-- Pengawas info now handled through pivot table, simplified for now --}}
+                        <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg mb-4">
+                            <div class="flex items-center">
+                                <div class="bg-purple-100 text-purple-600 p-2 rounded-full mr-3">
+                                    <i class="fa-solid fa-user-tie"></i>
                                 </div>
-                                <div class="flex items-center">
-                                    <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                                    <span class="text-xs text-gray-600">Online</span>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">
+                                        @php
+                                            $firstJadwal = $session->jadwalUjians->first();
+                                            $pengawas = $firstJadwal
+                                                ? $session->getPengawasForJadwal($firstJadwal->id)
+                                                : null;
+                                        @endphp
+                                        {{ $pengawas ? $pengawas->nama : 'Belum ditugaskan' }}
+                                    </div>
+                                    <div class="text-xs text-gray-600">Pengawas</div>
                                 </div>
                             </div>
-                        @endif
+                            <div class="flex items-center">
+                                <span
+                                    class="w-2 h-2 {{ $pengawas ? 'bg-green-400' : 'bg-gray-400' }} rounded-full mr-2"></span>
+                                <span class="text-xs text-gray-600">{{ $pengawas ? 'Online' : 'Belum ditugaskan' }}</span>
+                            </div>
+                        </div>
 
                         <!-- Session Details (Collapsible) -->
                         <div id="session-details-{{ $session->id }}" class="hidden">
@@ -294,7 +301,7 @@
                 <i class="fa-solid fa-calendar-times text-6xl text-gray-400 mb-4"></i>
                 <h3 class="text-xl font-medium text-gray-900 mb-2">Tidak Ada Sesi Aktif</h3>
                 <p class="text-gray-600">Saat ini tidak ada sesi ujian yang sedang berlangsung.</p>
-                <a href="{{ route('koordinator.assignment.index') }}"
+                <a href="{{ route('koordinator.pengawas-assignment.index') }}"
                     class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
                     <i class="fa-solid fa-plus mr-2"></i>
                     Lihat Penjadwalan

@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -91,7 +92,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 $ruangan = Ruangan::create([
                     'kode_ruangan' => $row['kode_ruangan'],
                     'nama_ruangan' => $row['nama_ruangan'] ?? 'Ruangan ' . $row['kode_ruangan'],
-                    'kapasitas' => $row['kapasitas'] ?? 30,
+                    'kapasitas' => $row['kapasitas_ruangan'] ?? 30,
                     'lokasi' => $row['lokasi'] ?? null,
                     'status' => $row['status'] ?? 'aktif',
                 ]);
@@ -108,9 +109,6 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     /**
      * Process sesi ruangan data
      */
-
-
-
 
     protected function processSesiRuangan($row, $ruangan)
     {
@@ -219,63 +217,29 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     //     }
     // }
 
-    protected function formatTime($value)
+    private function formatTime($time)
     {
-        // 1. Jika null atau kosong, return null
-        if (is_null($value) || (is_string($value) && trim($value) === '')) {
-            Log::info("formatTime: null or empty value received");
-            return null;
-        }
-
-        // 2. Jika objek DateTime, format langsung
-        if ($value instanceof \DateTime) {
-            $time = $value->format('H:i:s');
-            Log::info("formatTime: DateTime object -> $time");
-            return $time;
-        }
-
-        // 3. Jika numeric, dianggap Excel time (pecahan 24 jam)
-        if (is_numeric($value)) {
-            $seconds = (int)round($value * 24 * 60 * 60);
-            $time = gmdate('H:i:s', $seconds);
-            Log::info("formatTime: numeric Excel value $value -> $time");
-            return $time;
-        }
-
-        // 4. Jika string, bersihkan dulu
-        if (is_string($value)) {
-            $original = $value;
-            $value = trim($value);
-            $value = str_replace("'", "", $value);   // hapus kutip tunggal
-            $value = str_replace(".", ":", $value); // ubah titik menjadi colon
-
-            // Coba parse format H:i
-            try {
-                $time = \Carbon\Carbon::createFromFormat('H:i', $value)->format('H:i:s');
-                Log::info("formatTime: string '$original' parsed as H:i -> $time");
-                return $time;
-            } catch (\Exception $e) {
-                // Coba H:i:s
-                try {
-                    $time = \Carbon\Carbon::createFromFormat('H:i:s', $value)->format('H:i:s');
-                    Log::info("formatTime: string '$original' parsed as H:i:s -> $time");
-                    return $time;
-                } catch (\Exception $e) {
-                    // Coba strtotime untuk format fleksibel (AM/PM, dsb)
-                    $timestamp = strtotime($value);
-                    if ($timestamp !== false) {
-                        $time = date('H:i:s', $timestamp);
-                        Log::info("formatTime: string '$original' parsed via strtotime -> $time");
-                        return $time;
-                    }
-                }
+        try {
+            // Case 1: langsung DateTime
+            if ($time instanceof \DateTime) {
+                return Carbon::instance($time)->format('H:i:s');
             }
 
-            Log::warning("formatTime: string '$original' gagal diparse, fallback ke default 07:00:00");
+            if (is_numeric($time)) {
+                $dt = Date::excelToDateTimeObject($time);
+                Log::info("Converted time", ['float' => $time, 'result' => $dt->format('H:i:s')]);
+                return $dt->format('H:i:s');
+            }
+
+            // Case 3: String format
+            if (is_string($time)) {
+                return Carbon::parse($time)->format('H:i:s');
+            }
+        } catch (\Exception $e) {
+            return '00:00:00';
         }
 
-        // 5. Jika semua gagal, fallback default
-        return '07:00:00';
+        return '00:00:00';
     }
 
 

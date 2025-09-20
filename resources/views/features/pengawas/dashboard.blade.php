@@ -202,96 +202,7 @@
             @endif
         </div>
 
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">
-                    <i class="fa-solid fa-key text-green-600 mr-2"></i>
-                    Generate Token Ujian
-                </h3>
-                <p class="text-gray-600 mb-4">Generate token untuk siswa login ke sistem ujian.</p>
 
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-                    <label for="sesi_select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Sesi
-                        Ruangan:</label>
-                    <select id="sesi_select" class="block w-full p-2 border border-gray-300 rounded-md">
-                        <option value="">-- Pilih Sesi --</option>
-                        @foreach ($assignments as $assignment)
-                            @php
-                                $jadwalUjians = $assignment->jadwalUjians;
-                                $mapelNames = [];
-
-                                foreach ($jadwalUjians as $jadwal) {
-                                    if ($jadwal->mapel) {
-                                        $mapelNames[] = $jadwal->mapel->nama_mapel;
-                                    } else {
-                                        $mapelNames[] = 'Tidak ada mapel';
-                                    }
-                                }
-
-                                $mapelDisplay =
-                                    count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
-                            @endphp
-                            <option value="{{ $assignment->id }}">
-                                {{ $mapelDisplay }} -
-                                {{ $assignment->ruangan ? $assignment->ruangan->nama_ruangan : 'Tidak ada ruangan' }}
-                                ({{ $assignment->waktu_mulai }} - {{ $assignment->waktu_selesai }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <a href="#" id="generate_token_btn"
-                    class="inline-block text-center bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-key mr-2"></i>
-                    Generate Token
-                </a>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">
-                    <i class="fa-solid fa-file-alt text-blue-600 mr-2"></i>
-                    Berita Acara Ujian
-                </h3>
-                <p class="text-gray-600 mb-4">Buat dan kelola berita acara hasil pengawasan ujian.</p>
-
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-                    <label for="berita_acara_select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Sesi
-                        Ruangan:</label>
-                    <select id="berita_acara_select" class="block w-full p-2 border border-gray-300 rounded-md">
-                        <option value="">-- Pilih Sesi --</option>
-                        @foreach ($assignments as $assignment)
-                            @php
-                                $jadwalUjians = $assignment->jadwalUjians;
-                                $mapelNames = [];
-
-                                foreach ($jadwalUjians as $jadwal) {
-                                    if ($jadwal->mapel) {
-                                        $mapelNames[] = $jadwal->mapel->nama_mapel;
-                                    } else {
-                                        $mapelNames[] = 'Tidak ada mapel';
-                                    }
-                                }
-
-                                $mapelDisplay =
-                                    count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
-                            @endphp
-                            <option value="{{ $assignment->id }}">
-                                {{ $mapelDisplay }} -
-                                {{ $assignment->ruangan ? $assignment->ruangan->nama_ruangan : 'Tidak ada ruangan' }}
-                                ({{ $assignment->waktu_mulai }} - {{ $assignment->waktu_selesai }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <a href="#" id="berita_acara_btn"
-                    class="inline-block text-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-clipboard mr-2"></i>
-                    Buat Berita Acara
-                </a>
-            </div>
-        </div>
 
         <!-- Live Monitoring -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -706,31 +617,31 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                        <button 
-                                                                            data-violation-id="${violation.id}"
-                                                                            data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
-                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                            data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
-                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                            class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
-                                                                            <i class="fas fa-times-circle mr-1"></i> Abaikan
-                                                                        </button>
-                                                                        <button 
-                                                                            data-violation-id="${violation.id}"
-                                                                            data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
-                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                            data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
-                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                            class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
-                                                                            <i class="fas fa-check-circle mr-1"></i> Proses
-                                                                        </button>
-                                                                    ` : `
-                                                                        <span class="text-gray-400">
-                                                                            <i class="fas fa-check mr-1"></i> Sudah ditangani
-                                                                        </span>
-                                                                    `}
+                                                                            <button 
+                                                                                data-violation-id="${violation.id}"
+                                                                                data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
+                                                                                data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
+                                                                                data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
+                                                                                <i class="fas fa-times-circle mr-1"></i> Abaikan
+                                                                            </button>
+                                                                            <button 
+                                                                                data-violation-id="${violation.id}"
+                                                                                data-student-name="${violation.siswa?.nama || 'Tidak diketahui'}"
+                                                                                data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                data-subject-name="${violation.jadwal_ujian?.mapel?.nama_mapel || 'Tidak diketahui'}"
+                                                                                data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
+                                                                                <i class="fas fa-check-circle mr-1"></i> Proses
+                                                                            </button>
+                                                                        ` : `
+                                                                            <span class="text-gray-400">
+                                                                                <i class="fas fa-check mr-1"></i> Sudah ditangani
+                                                                            </span>
+                                                                        `}
                                     </div>
                                 </td>
                             `;

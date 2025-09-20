@@ -106,13 +106,13 @@
                                     <span class="text-gray-600">Kelas:</span>
                                     <span class="font-medium">{{ $siswa->kelas->nama ?? '-' }}</span>
                                 </div>
-                                <div class="flex justify-between">
+                                {{-- <div class="flex justify-between">
                                     <span class="text-gray-600">Status Pembayaran:</span>
                                     <span
                                         class="px-2 py-1 text-xs font-semibold rounded-full {{ $siswa->status_badge['class'] ?? 'bg-gray-100 text-gray-800' }}">
                                         {{ $siswa->status_pembayaran }}
                                     </span>
-                                </div>
+                                </div> --}}
                             </div>
                         </div>
                     </div>
@@ -152,7 +152,7 @@
                                     </div>
                                     <!-- Mata Pelajaran Cards -->
                                     <div class="border-t pt-3">
-                                        <span class="text-gray-600 text-sm mb-2 block">Mata Pelajaran Aktif Hari
+                                        <span class="text-gray-600 text-sm mb-2 block">Jadwal Ujian Aktif Hari
                                             Ini:</span>
 
                                         @if ($activeMapels->count() > 0)
@@ -180,34 +180,28 @@
                                                                         </span>
                                                                     @endif
                                                                 </div>
+                                                                <div class="text-xs text-gray-500 mt-1">
+                                                                    <i class="fas fa-door-open mr-1"></i>
+                                                                    {{ $mapel['sesi_ruangan'] }}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </a>
                                                 @endforeach
                                             </div>
                                         @else
-                                            @if ($currentEnrollment->status_enrollment === 'enrolled' || $currentEnrollment->status_enrollment === 'active')
-                                                @if (now()->lt(\Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)))
-                                                    <div class="text-center text-gray-600 p-3">
-                                                        <i class="fas fa-clock mr-2"></i>
-                                                        Ujian belum dimulai
-                                                        <div class="text-sm mt-1">
-                                                            Mulai:
-                                                            {{ \Carbon\Carbon::parse($sesi->tanggal . ' ' . $sesi->waktu_mulai)->format('d M Y H:i') }}
-                                                        </div>
-                                                    </div>
-                                                @else
-                                                    <div class="text-center text-gray-600 p-3">
-                                                        <i class="fas fa-info-circle mr-2"></i>
-                                                        Tidak ada mata pelajaran aktif untuk saat ini
-                                                    </div>
-                                                @endif
-                                            @else
-                                                <div class="text-center text-blue-600 p-3">
-                                                    <i class="fas fa-check-circle mr-2"></i>
-                                                    Ujian selesai
-                                                </div>
-                                            @endif
+                                            <div class="text-center text-gray-600 p-6">
+                                                <i class="fas fa-exclamation-circle text-4xl mb-3 text-gray-300"></i>
+                                                <h4 class="font-semibold text-gray-700 mb-2">Tidak Ada Ujian Hari Ini
+                                                </h4>
+                                                <p class="text-sm text-gray-500">
+                                                    Anda belum terdaftar dalam jadwal ujian hari ini atau belum ada
+                                                    jadwal ujian yang aktif.
+                                                </p>
+                                                <p class="text-xs text-gray-400 mt-2">
+                                                    Silahkan hubungi pengawas atau admin jika ada kesalahan.
+                                                </p>
+                                            </div>
                                         @endif
                                     </div>
                                 </div>

@@ -128,112 +128,117 @@
             @endif
 
             @if ($selectedJadwal && $sesiRuangans->count() > 0)
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto max-h-[600px]">
-                    @foreach ($sesiRuangans->groupBy(fn($s) => $s->ruangan->nama_ruangan ?? 'Unknown') as $ruanganNama => $sesiList)
-                        <div class="bg-white shadow-md rounded-xl border">
-                            {{-- Header Card --}}
-                            <div class="bg-gray-100 flex items-center gap-3 py-3 px-4">
-                                <input type="checkbox"
-                                    class="select-all-ruangan rounded border-gray-300 text-blue-600 shadow-sm focus:ring focus:ring-blue-200"
-                                    data-ruangan="{{ Str::slug($ruanganNama, '-') }}">
-                                <h2 class="text-lg font-semibold text-gray-700">
-                                    {{ $ruanganNama }}
-                                </h2>
-
-                            </div>
-
-                            {{-- Daftar Sesi --}}
-                            <div class="space-y-1">
-                                @foreach ($sesiList as $sesi)
-                                    <div class="p-4  hover:bg-gray-50 transition">
-                                        <div class="flex items-center justify-between">
-                                            {{-- Kiri: Info sesi --}}
-                                            <div class="flex items-start space-x-3">
-                                                <input type="checkbox" name="session_ids[]" value="{{ $sesi->id }}"
-                                                    class="session-checkbox session-ruangan-{{ Str::slug($ruanganNama, '-') }} mt-1 rounded border-gray-300 text-blue-600 shadow-sm focus:ring focus:ring-blue-200">
-
-                                                <div>
-                                                    <div class="flex items-center space-x-2">
-                                                        <span class="font-semibold text-gray-900">
-                                                            {{ $sesi->nama_sesi }}
-                                                        </span>
-
-                                                        @php
-                                                            $statusColor = 'gray';
-                                                            switch ($sesi->status) {
-                                                                case 'belum_mulai':
-                                                                    $statusColor = 'blue';
-                                                                    $statusText = 'Belum Mulai';
-                                                                    break;
-                                                                case 'berlangsung':
-                                                                    $statusColor = 'green';
-                                                                    $statusText = 'Berlangsung';
-                                                                    break;
-                                                                case 'selesai':
-                                                                    $statusColor = 'gray';
-                                                                    $statusText = 'Selesai';
-                                                                    break;
-                                                                case 'dibatalkan':
-                                                                    $statusColor = 'red';
-                                                                    $statusText = 'Dibatalkan';
-                                                                    break;
-                                                                default:
-                                                                    $statusText = 'Unknown';
-                                                            }
-                                                        @endphp
-
-                                                        <span
-                                                            class="px-2 py-0.5 text-xs font-semibold rounded-full bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800">
-                                                            {{ $statusText }}
-                                                        </span>
-                                                    </div>
-
-                                                    <p class="text-sm text-gray-600 mt-0.5">
-                                                        {{ substr($sesi->waktu_mulai, 0, 5) }} -
-                                                        {{ substr($sesi->waktu_selesai, 0, 5) }}
-                                                    </p>
-
-                                                    {{-- Info Pengawas --}}
-                                                    <div id="pengawas-display-{{ $sesi->id }}" class="mt-1">
-                                                        @if ($sesi->pengawas_for_jadwal)
-                                                            <p class="text-sm text-green-700 font-medium">
-                                                                {{ $sesi->pengawas_for_jadwal->nama }}
-                                                            </p>
-                                                        @else
-                                                            <p class="text-sm text-red-600 italic">Belum ditugaskan</p>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {{-- Kanan: Tombol Aksi --}}
-                                            <div class="flex flex-col space-y-2">
-                                                <button type="button"
-                                                    class="assign-pengawas px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                                                    data-sesi-id="{{ $sesi->id }}"
-                                                    data-jadwal-id="{{ $selectedJadwal->id }}"
-                                                    data-sesi-nama="{{ $sesi->nama_sesi }}"
-                                                    data-ruangan="{{ $sesi->ruangan->nama_ruangan ?? 'Unknown' }}"
-                                                    data-waktu="{{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}">
-                                                    <i class="fa-solid fa-user-plus"></i>
-                                                </button>
-
-                                                @if ($sesi->pengawas_for_jadwal)
-                                                    <button type="button"
-                                                        class="remove-pengawas px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                                                        data-sesi-id="{{ $sesi->id }}"
-                                                        data-jadwal-id="{{ $selectedJadwal->id }}">
-                                                        <i class="fa-solid fa-user-minus"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" id="select-all"
+                                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                        <span class="ml-2">Sesi</span>
                                     </div>
-                                @endforeach
-                            </div>
+                                </th>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ruangan</th>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Waktu</th>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Pengawas</th>
+                                <th
+                                    class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach ($sesiRuangans as $sesi)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="session_ids[]" value="{{ $sesi->id }}"
+                                                class="session-checkbox rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                            <span class="ml-2">{{ $sesi->nama_sesi }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">{{ $sesi->ruangan->nama_ruangan ?? 'Unknown' }}
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        {{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        @php
+                                            $statusColor = 'gray';
+                                            switch ($sesi->status) {
+                                                case 'belum_mulai':
+                                                    $statusColor = 'blue';
+                                                    $statusText = 'Belum Mulai';
+                                                    break;
+                                                case 'berlangsung':
+                                                    $statusColor = 'green';
+                                                    $statusText = 'Berlangsung';
+                                                    break;
+                                                case 'selesai':
+                                                    $statusColor = 'gray';
+                                                    $statusText = 'Selesai';
+                                                    break;
+                                                case 'dibatalkan':
+                                                    $statusColor = 'red';
+                                                    $statusText = 'Dibatalkan';
+                                                    break;
+                                                default:
+                                                    $statusText = 'Unknown';
+                                            }
+                                        @endphp
+                                        <span
+                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800">
+                                            {{ $statusText }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div id="pengawas-display-{{ $sesi->id }}">
+                                            @if ($sesi->pengawas_for_jadwal)
+                                                <div class="flex items-center">
+                                                    <span
+                                                        class="font-medium text-gray-900">{{ $sesi->pengawas_for_jadwal->nama }}</span>
+                                                </div>
+                                            @else
+                                                <span class="text-gray-500 italic">Belum ditugaskan</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                        <div class="flex space-x-2">
+                                            <button type="button"
+                                                class="assign-pengawas px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                data-sesi-id="{{ $sesi->id }}"
+                                                data-jadwal-id="{{ $selectedJadwal->id }}"
+                                                data-sesi-nama="{{ $sesi->nama_sesi }}"
+                                                data-ruangan="{{ $sesi->ruangan->nama_ruangan ?? 'Unknown' }}"
+                                                data-waktu="{{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}">
+                                                <i class="fa-solid fa-user-plus"></i>
+                                            </button>
 
-                        </div>
-                    @endforeach
+                                            @if ($sesi->pengawas_for_jadwal)
+                                                <button type="button"
+                                                    class="remove-pengawas px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                                                    data-sesi-id="{{ $sesi->id }}"
+                                                    data-jadwal-id="{{ $selectedJadwal->id }}">
+                                                    <i class="fa-solid fa-user-minus"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             @elseif($selectedJadwal)
                 <div class="bg-yellow-50 p-4 rounded-md">
@@ -244,7 +249,6 @@
                     <p class="text-yellow-800">Silakan pilih jadwal ujian untuk melihat daftar sesi ruangan.</p>
                 </div>
             @endif
-
         </div>
     </div>
 
@@ -345,8 +349,6 @@
     </div>
 @endsection
 
-
-
 @section('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -382,17 +384,6 @@
                     updateSelectedCount();
                 });
             }
-
-            // Select All per ruangan
-            document.querySelectorAll('.select-all-ruangan').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const ruangan = this.dataset.ruangan;
-                    document.querySelectorAll('.session-ruangan-' + ruangan).forEach(cb => {
-                        cb.checked = this.checked;
-                    });
-                });
-            });
-
 
             // Individual checkboxes
             document.querySelectorAll('.session-checkbox').forEach(checkbox => {
