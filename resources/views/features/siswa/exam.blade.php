@@ -567,6 +567,37 @@
         // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+        // Safe system notification function (doesn't trigger violation detection)
+        function showSystemNotification(message, type = 'info', duration = 3000) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 text-sm';
+
+            // Set color based on type
+            switch (type) {
+                case 'success':
+                    notification.className += ' bg-green-500 text-white';
+                    break;
+                case 'warning':
+                    notification.className += ' bg-yellow-500 text-white';
+                    break;
+                case 'error':
+                    notification.className += ' bg-red-500 text-white';
+                    break;
+                default:
+                    notification.className += ' bg-blue-500 text-white';
+            }
+
+            notification.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+
+            // Auto remove after duration
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, duration);
+        }
+
         // Mobile sidebar functionality
         const mobileSidebar = document.getElementById('question-sidebar');
         const mobileNavToggle = document.getElementById('mobile-nav-toggle');
@@ -600,10 +631,10 @@
             if (index >= 0 && index < questions.length) {
                 saveCurrentAnswer().then(() => {
                     window.location.href =
-                        `{{ route('siswa.exam') }}?question=${index}&jadwal_id={{ $examData['jadwalUjianId'] ?? '' }}`;
+                        `{{ route('ujian.exam', ['jadwal_id' => $examData['jadwalUjianId'] ?? 0]) }}?question=${index}`;
                 }).catch(() => {
                     window.location.href =
-                        `{{ route('siswa.exam') }}?question=${index}&jadwal_id={{ $examData['jadwalUjianId'] ?? '' }}`;
+                        `{{ route('ujian.exam', ['jadwal_id' => $examData['jadwalUjianId'] ?? 0]) }}?question=${index}`;
                 });
             }
         }
@@ -676,7 +707,7 @@
             if (!selectedAnswer) return Promise.resolve();
 
             try {
-                const response = await fetch('{{ route('siswa.exam.save-answer') }}', {
+                const response = await fetch('{{ route('ujian.save-answer') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -694,7 +725,8 @@
                 const result = await response.json();
                 return result;
             } catch (error) {
-                console.error('Error saving answer:', error);
+                // Error saving answer - show system notification
+                showSystemNotification('Gagal menyimpan jawaban', 'error');
                 return Promise.reject(error);
             }
         }
@@ -726,7 +758,7 @@
                 if (currentQuestionIndex < questions.length - 1) {
                     navigateQuestion('next');
                 } else {
-                    // alert('Semua soal sudah dijawab!');
+                    showSystemNotification('Semua soal sudah dijawab!');
                 }
             }
         }
@@ -738,15 +770,18 @@
                     navigateQuestion('next');
                 } else {
                     // Last question, could show submit confirmation
-                    // alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
+                    showSystemNotification(
+                        'Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
                 }
             }).catch((error) => {
-                console.error('Save failed:', error);
+                // Error in save operation
+                showSystemNotification('Gagal menyimpan data', 'error');
                 // Even if save fails, still proceed to next question
                 if (currentQuestionIndex < questions.length - 1) {
                     navigateQuestion('next');
                 } else {
-                    // alert('Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
+                    showSystemNotification(
+                        'Ini adalah soal terakhir. Gunakan tombol "Selesai" untuk mengumpulkan ujian.');
                 }
             });
         }
@@ -900,7 +935,7 @@
             // Save current answer before submitting
             saveCurrentAnswer().then(() => {
                 // Submit exam formally via the submit API endpoint
-                fetch('{{ route('siswa.exam.submit') }}', {
+                fetch('{{ route('ujian.submit') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -930,7 +965,7 @@
             const currentQuestion = questions[currentQuestionIndex];
             if (!currentQuestion) return;
 
-            fetch('{{ route('siswa.exam.flag-question') }}', {
+            fetch('{{ route('ujian.flag-question') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -970,7 +1005,8 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error toggling flag:', error);
+                    // Error toggling flag
+                    showSystemNotification('Gagal mengubah flag', 'error');
                     alert('Gagal mengubah status tandai soal');
                 });
         }
@@ -982,7 +1018,7 @@
                 // Save current answer first
                 saveCurrentAnswer().then(() => {
                     // Submit exam
-                    fetch('{{ route('siswa.exam.submit') }}', {
+                    fetch('{{ route('ujian.submit') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -1004,11 +1040,13 @@
                             }
                         })
                         .catch(error => {
-                            console.error('Error submitting exam:', error);
+                            // Error submitting exam
+                            showSystemNotification('Gagal mengirim ujian', 'error');
                             alert('Terjadi kesalahan saat mengumpulkan ujian');
                         });
                 }).catch(error => {
-                    console.error('Error saving answer before submit:', error);
+                    // Error saving answer before submit
+                    showSystemNotification('Gagal menyimpan jawaban terakhir', 'error');
                     // Still try to submit even if save fails
                     if (confirm('Gagal menyimpan jawaban terakhir. Tetap lanjutkan mengumpulkan ujian?')) {
                         window.location.href = '{{ route('siswa.dashboard') }}';
@@ -1024,7 +1062,8 @@
 
             // If auto-logout is disabled, don't set up the detection
             if (!autoLogoutEnabled) {
-                console.log('Auto-logout disabled by exam supervisor');
+                // Show notification that monitoring is disabled
+                showSystemNotification('Monitoring pelanggaran ujian dinonaktifkan oleh pengawas', 'info');
                 return;
             }
 
@@ -1036,11 +1075,11 @@
 
             // Grace period: Don't start detection immediately (3 seconds after page load)
             const gracePeriod = 2000; // 2 seconds
-            console.log('Violation detection will start in 2 seconds...');
+            showSystemNotification('Sistem monitoring akan aktif dalam 2 detik...', 'info');
 
             setTimeout(() => {
                 isDetectionActive = true;
-                console.log('Violation detection is now active');
+                showSystemNotification('Sistem monitoring ujian telah aktif', 'success');
 
                 // Show one-time notification to student
                 const notification = document.createElement('div');
@@ -1101,13 +1140,13 @@
             function handleUserLeftPage() {
                 if (!isDetectionActive) return; // Skip during grace period
 
-                console.log('User left page detected');
+                // System log: User left page detected (using internal logging)
                 lastFocusTime = Date.now();
 
                 // Only increment warnings for actual visibility changes (not just focus changes)
                 if (document.visibilityState === 'hidden') {
                     visibilityWarnings++;
-                    console.log(`Violation count: ${visibilityWarnings}`);
+                    // Internal tracking: violation count increased
 
                     if (visibilityWarnings > maxWarnings) {
                         // Automatically logout
@@ -1125,7 +1164,7 @@
                 const leftTime = localStorage.getItem('examLeftPageTime');
                 if (leftTime) {
                     const timeAway = Date.now() - parseInt(leftTime);
-                    console.log(`User was away for ${Math.floor(timeAway/1000)} seconds`);
+                    // Internal tracking: User returned after ${Math.floor(timeAway/1000)} seconds
 
                     // Only show warning if away for more than 5 seconds (increased threshold)
                     if (timeAway > 5000) {
@@ -1140,7 +1179,7 @@
                             );
                         }
                     } else {
-                        console.log('Quick focus change detected, ignoring...');
+                        // Internal tracking: Quick focus change detected, ignoring
                     }
 
                     // Remove stored time
@@ -1157,7 +1196,7 @@
                 localStorage.setItem('violationCount', violationCount);
 
                 // Mark this exam attempt as a violation
-                fetch('{{ route('siswa.exam.logout') }}', {
+                fetch('{{ route('ujian.logout') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1221,7 +1260,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error recording violation:', error);
+                        // Error recording violation - show user-friendly modal
                         showViolationModal(
                             'KESALAHAN SISTEM',
                             'Terjadi kesalahan saat merekam pelanggaran. Silakan lanjutkan ujian dan laporkan ke pengawas jika masalah berlanjut.',
@@ -1310,8 +1349,8 @@
                     currentQuestion.focus();
                 }
 
-                // Log that student acknowledged the violation
-                console.log('Student acknowledged violation and continued exam');
+                // Log that student acknowledged the violation (internal tracking)
+                // Student acknowledged violation and continued exam
             };
 
             continueBtn.addEventListener('click', handleContinue);

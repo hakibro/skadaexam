@@ -7,6 +7,11 @@ use App\Models\Ruangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Illuminate\Support\Collection;
 
 class RuanganController extends Controller
 {
@@ -618,6 +623,50 @@ class RuanganController extends Controller
             new \App\Exports\ComprehensiveRuanganTemplateExport(),
             'template_import_ruangan_sesi_siswa.xlsx'
         );
+    }
+
+    public function downloadDataSiswa()
+    {
+        // Ambil data dari API
+        $response = Http::get('https://api.daruttaqwa.or.id/sisda/v1/exam/smk/uts1');
+        $data = $response->json()['data'] ?? [];
+
+        // Mapping data
+        $collection = collect($data)->map(function ($item) {
+            return [
+                'ID Person'      => $item['idperson'] ?? '',
+                'Nama'           => $item['nama'] ?? '',
+                'Kelas'          => $item['KelasFormal'] ?? '',
+                'AsramaPondok'   => $item['AsramaPondok'] ?? '',
+                'Kategori'       => $item['AsramaPondok'] ? 'Pondok' : 'Non Pondok',
+            ];
+        });
+
+        // Export ke Excel
+        return Excel::download(new class($collection) implements FromCollection, WithHeadings {
+            protected $collection;
+
+            public function __construct(Collection $collection)
+            {
+                $this->collection = $collection;
+            }
+
+            public function collection()
+            {
+                return $this->collection;
+            }
+
+            public function headings(): array
+            {
+                return [
+                    'ID Person',
+                    'Nama',
+                    'Kelas',
+                    'AsramaPondok',
+                    'Kategori'
+                ];
+            }
+        }, 'data_siswa_pondok_nonpondok.xlsx');
     }
 
     /**

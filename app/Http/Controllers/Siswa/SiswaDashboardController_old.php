@@ -1,60 +1,112 @@
 <?php
 
-namespace App\Http\Controllers\Features\Ujian;
+namespace App\Http\Controllers\Siswa;
 
 use App\Http\Controllers\Controller;
 use App\Models\EnrollmentUjian;
-use App\Models\SoalUjian;
-use App\Models\JawabanSiswa;
-use App\Models\HasilUjian;
-use App\Models\JadwalUjian;
-use App\Models\Soal;
-use App\Services\UjianService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class UjianController extends Controller
+class SiswaDashboardController extends Controller
 {
-    protected $ujianService;
-
-    public function __construct(UjianService $ujianService)
-    {
-        $this->ujianService = $ujianService;
-        $this->middleware('auth:siswa');
-        $this->middleware('ujian.active')->except(['exam', 'finish', 'result', 'examResult']);
-    }
-
-    /**
-     * Display the exam interface with questions and proper session handling
-     */
-    public function exam(Request $request, $jadwal_id = null)
+    public function index(Request $request)
     {
         $siswa = Auth::guard('siswa')->user();
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
-        $jadwalId = $jadwal_id;
 
-        // If no enrollment ID in session but jadwal_id is provided, find the enrollment
-        if (!$enrollmentId && $jadwalId) {
-            $enrollment = EnrollmentUjian::with(['sesiRuangan.jadwalUjians.mapel'])
+        $currentEnrollment = null;
+        if ($enrollmentId) {
+            $currentEnrollment = EnrollmentUjian::with([
+                'sesiRuangan.ruangan',
+                'sesiRuangan.jadwalUjians.mapel'
+            ])->find($enrollmentId);
+        }
+
+        // Fallback: if no session enrollment, find active enrollment for this siswa
+        if (!$currentEnrollment) {
+            $currentEnrollment = EnrollmentUjian::with([
+                'sesiRuangan.ruangan',
+                'sesiRuangan.jadwalUjians.mapel'
+            ])
                 ->where('siswa_id', $siswa->id)
-                ->whereHas('jadwalUjian', function ($query) use ($jadwalId) {
-                    $query->where('id', $jadwalId);
+                ->whereIn('status_enrollment', ['enrolled', 'active'])
+                ->whereHas('sesiRuangan', function ($query) {
+                    $query->whereIn('status', ['berlangsung', 'belum_mulai'])
+                        ->where('token_expired_at', '>', now());
                 })
+                ->latest()
                 ->first();
 
-            if ($enrollment) {
-                $enrollmentId = $enrollment->id;
-                $sesiRuanganId = $enrollment->sesi_ruangan_id;
-
-                // Set session variables for future use
-                $request->session()->put('current_enrollment_id', $enrollmentId);
-                $request->session()->put('current_sesi_ruangan_id', $sesiRuanganId);
+            // If found, update session
+            if ($currentEnrollment) {
+                $request->session()->put('current_enrollment_id', $currentEnrollment->id);
+                $request->session()->put('current_sesi_ruangan_id', $currentEnrollment->sesi_ruangan_id);
+                $sesiRuanganId = $currentEnrollment->sesi_ruangan_id;
             }
         }
+
+        // Get jadwal ujian that this student is enrolled in
+        $activeMapels = collect([]);
+        $today = Carbon::today();
+
+        // Get all enrollments for this student
+        $studentEnrollments = EnrollmentUjian::with(['jadwalUjian.mapel', 'sesiRuangan'])
+            ->where('siswa_id', $siswa->id)
+            ->whereIn('status_enrollment', ['enrolled', 'active'])
+            ->whereHas('jadwalUjian', function ($query) use ($today) {
+                $query->whereDate('tanggal', $today)
+                    ->where('status', 'aktif');
+            })
+            ->get();
+
+        if ($studentEnrollments->isNotEmpty()) {
+            // Transform to match view expectations
+            $activeMapels = $studentEnrollments->map(function ($enrollment) {
+                $jadwal = $enrollment->jadwalUjian;
+                return [
+                    'id' => $jadwal->id,
+                    'nama_mapel' => $jadwal->mapel ? $jadwal->mapel->nama_mapel : $jadwal->judul,
+                    'jadwal_id' => $jadwal->id,
+                    'judul' => $jadwal->judul,
+                    'status' => $jadwal->status,
+                    'durasi' => $jadwal->durasi_menit,
+                    'tanggal' => $jadwal->tanggal->format('d/m/Y'),
+                    'kode' => $jadwal->kode_ujian ?? '-',
+                    'can_start' => $jadwal->canStart(),
+                    'enrollment_id' => $enrollment->id,
+                    'sesi_ruangan' => $enrollment->sesiRuangan ? $enrollment->sesiRuangan->nama_sesi : 'Tidak ada sesi',
+                ];
+            });
+
+            Log::info('Active jadwal ujian for enrolled siswa', [
+                'siswa_id' => $siswa->id,
+                'enrollments_count' => $studentEnrollments->count(),
+                'active_jadwal_count' => $activeMapels->count(),
+                'jadwal_ujian_ids' => $activeMapels->pluck('id')->toArray()
+            ]);
+        } else {
+            Log::info('No active enrollments found for siswa', [
+                'siswa_id' => $siswa->id,
+                'date' => $today->format('Y-m-d')
+            ]);
+        }
+
+        return view('features.siswa.dashboard', compact(
+            'siswa',
+            'currentEnrollment',
+            'sesiRuanganId',
+            'activeMapels'
+        ));
+    }
+
+    public function exam(Request $request)
+    {
+        $siswa = Auth::guard('siswa')->user();
+        $enrollmentId = $request->session()->get('current_enrollment_id');
+        $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
+        $jadwalId = $request->input('jadwal_id');
 
         if (!$enrollmentId) {
             return redirect()->route('siswa.dashboard')->with('error', 'Sesi ujian tidak ditemukan.');
@@ -280,21 +332,9 @@ class UjianController extends Controller
             'violations_count' => $violationsCount
         ];
 
-        // Set session variables for ujian.active middleware
-        session([
-            'ujian_aktif' => true,
-            'hasil_ujian_id' => $hasilUjian->id,
-            'waktu_mulai' => $hasilUjian->waktu_mulai,
-            'durasi' => $jadwalUjian->durasi_menit
-        ]);
-
         return view('features.siswa.exam', compact('siswa', 'examData'));
     }
 
-
-    /**
-     * Save student's answer with proper validation and scoring
-     */
     public function saveAnswer(Request $request)
     {
         try {
@@ -388,9 +428,6 @@ class UjianController extends Controller
         }
     }
 
-    /**
-     * Flag or unflag a question
-     */
     public function flagQuestion(Request $request)
     {
         try {
@@ -430,114 +467,7 @@ class UjianController extends Controller
             return response()->json(['error' => 'Failed to flag question'], 500);
         }
     }
-    /**
-     * Toggle flag status of a question
-     */
-    public function toggleFlag(Request $request)
-    {
-        try {
-            $siswa = Auth::guard('siswa')->user();
 
-            $request->validate([
-                'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
-                'soal_ujian_id' => 'required|exists:soal,id'
-            ]);
-
-            // Verify hasil ujian belongs to current siswa
-            $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
-                ->where('siswa_id', $siswa->id)
-                ->first();
-
-            if (!$hasilUjian) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
-            // Get current flag status or create new record
-            $jawabanSiswa = JawabanSiswa::where('hasil_ujian_id', $request->hasil_ujian_id)
-                ->where('soal_ujian_id', $request->soal_ujian_id)
-                ->first();
-
-            $newFlagStatus = !($jawabanSiswa && $jawabanSiswa->is_flagged);
-
-            // Update or create jawaban siswa record for flagging
-            JawabanSiswa::updateOrCreate([
-                'hasil_ujian_id' => $request->hasil_ujian_id,
-                'soal_ujian_id' => $request->soal_ujian_id
-            ], [
-                'is_flagged' => $newFlagStatus
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'is_flagged' => $newFlagStatus
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error toggling flag', [
-                'error' => $e->getMessage(),
-                'siswa_id' => $siswa->id ?? null,
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json(['error' => 'Failed to toggle flag'], 500);
-        }
-    }
-
-    /**
-     * Display the question page
-     */
-    public function showSoal($soalIndex = 0)
-    {
-        $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
-
-        // Convert to zero-based index if not already
-        $soalIndex = (int) $soalIndex;
-
-        if ($hasilUjian->is_final) {
-            return redirect()->route('ujian.finish');
-        }
-
-        // Get all soal IDs from jawaban_siswa
-        $jawabanSiswa = $hasilUjian->jawaban_siswa;
-
-        if ($soalIndex < 0 || $soalIndex >= count($jawabanSiswa)) {
-            return redirect()->route('ujian.soal', 0);
-        }
-
-        // Get current soal details
-        $currentSoal = $jawabanSiswa[$soalIndex];
-        $soalId = $currentSoal['soal_id'];
-        $soal = Soal::findOrFail($soalId);
-
-        // Calculate progress
-        $totalSoal = count($jawabanSiswa);
-        $progress = [
-            'current' => $soalIndex + 1,
-            'total' => $totalSoal,
-            'percentage' => ($soalIndex + 1) / $totalSoal * 100,
-            'terjawab' => collect($jawabanSiswa)->filter(fn($j) => !is_null($j['jawaban']))->count(),
-            'belum_terjawab' => collect($jawabanSiswa)->filter(fn($j) => is_null($j['jawaban']))->count()
-        ];
-
-        // Calculate time remaining
-        $durasiUjian = session('durasi'); // in minutes
-        $waktuMulai = session('waktu_mulai');
-        $waktuSelesai = \Carbon\Carbon::parse($waktuMulai)->addMinutes($durasiUjian);
-        $sekarang = \Carbon\Carbon::now();
-        $sisaWaktu = $sekarang->diffInSeconds($waktuSelesai, false);
-
-        return view('ujian.soal', compact(
-            'hasilUjian',
-            'soal',
-            'soalIndex',
-            'progress',
-            'sisaWaktu',
-            'currentSoal'
-        ));
-    }
-
-    /**
-     * Submit the exam and calculate final scores
-     */
     public function submitExam(Request $request)
     {
         try {
@@ -610,12 +540,7 @@ class UjianController extends Controller
                 'sesi_ruangan_id' => $currentSesiRuanganId,
                 'status' => 'selesai',
                 'is_final' => true
-            ]);
-
-            // Clear exam session variables
-            session()->forget(['ujian_aktif', 'hasil_ujian_id', 'waktu_mulai', 'durasi']);
-
-            // Update enrollment status
+            ]);            // Update enrollment status
             $enrollment = EnrollmentUjian::where('siswa_id', $siswa->id)
                 ->where('sesi_ruangan_id', $request->session()->get('current_sesi_ruangan_id'))
                 ->first();
@@ -649,39 +574,6 @@ class UjianController extends Controller
         }
     }
 
-    /**
-     * Show confirmation page before finishing the exam
-     */
-    public function confirmFinish(Request $request)
-    {
-        $siswa = Auth::guard('siswa')->user();
-        $hasilUjianId = $request->input('hasil_ujian_id');
-
-        $hasilUjian = HasilUjian::where('id', $hasilUjianId)
-            ->where('siswa_id', $siswa->id)
-            ->first();
-
-        if (!$hasilUjian || $hasilUjian->is_final) {
-            return redirect()->route('siswa.dashboard');
-        }
-
-        $totalSoal = $hasilUjian->jumlah_soal;
-        $terjawab = JawabanSiswa::where('hasil_ujian_id', $hasilUjianId)
-            ->whereNotNull('jawaban')
-            ->count();
-        $belumTerjawab = $totalSoal - $terjawab;
-
-        return view('features.siswa.confirm-finish', compact(
-            'hasilUjian',
-            'totalSoal',
-            'terjawab',
-            'belumTerjawab'
-        ));
-    }
-
-    /**
-     * Show exam result page
-     */
     public function examResult(Request $request)
     {
         $siswa = Auth::guard('siswa')->user();
@@ -705,6 +597,116 @@ class UjianController extends Controller
         }
 
         return view('features.siswa.exam-result', compact('siswa', 'hasilUjian'));
+    }
+
+    private function calculateScore(HasilUjian $hasilUjian)
+    {
+        $jadwalUjian = $hasilUjian->jadwalUjian;
+
+        // Gunakan soals() sebagai pengganti soalUjians()
+        $soalUjians = $jadwalUjian->bankSoal ? SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)->get() : collect();
+
+        // Ambil jawaban siswa dan konversi ke key-value untuk pencarian lebih cepat
+        $jawabanSiswas = $hasilUjian->jawabanSiswas()->get()->keyBy('soal_ujian_id');
+
+        // Hitung jawaban yang benar-benar dijawab (tidak null jawaban)
+        $jawabanDijawab = $hasilUjian->jawabanSiswas()
+            ->whereNotNull('jawaban')
+            ->count();
+
+        $jumlahBenar = 0;
+        $jumlahSalah = 0;
+        $totalSkor = 0;
+
+        foreach ($soalUjians as $soal) {
+            $jawaban = $jawabanSiswas->get($soal->id);
+
+            if ($jawaban && $jawaban->jawaban) {
+                // Get the correct answer key considering randomization
+                $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
+
+                if ($jawaban->jawaban === $correctAnswer) {
+                    $jumlahBenar++;
+                    $totalSkor += $soal->bobot ?? 1;
+                } else {
+                    $jumlahSalah++;
+                }
+            } else {
+                // Soal tidak dijawab, tidak dihitung sebagai salah
+                // Hanya dihitung dalam "tidak dijawab"
+            }
+        }
+
+        // Jumlah soal yang benar-benar dijawab (tidak termasuk yang tidak dijawab)
+        $jumlahDijawab = $jawabanDijawab;
+
+        // Jumlah soal yang salah hanya yang dijawab tapi salah
+        $jumlahSalah = $jumlahDijawab - $jumlahBenar;
+
+        // Total soal adalah jumlah soal dari bank soal
+        $totalSoal = $soalUjians->count();
+
+        // Persentase dihitung dari jumlah benar dibagi total soal
+        $persentase = $totalSoal > 0 ? ($jumlahBenar / $totalSoal) * 100 : 0;
+
+        return [
+            'jumlah_benar' => $jumlahBenar,
+            'jumlah_salah' => $jumlahSalah,
+            'jumlah_dijawab' => $jumlahDijawab,
+            'jumlah_tidak_dijawab' => $totalSoal - $jumlahDijawab,
+            'total_skor' => $totalSkor,
+            'total_soal' => $totalSoal,
+            'persentase' => $persentase
+        ];
+    }
+
+    public function toggleFlag(Request $request)
+    {
+        try {
+            $siswa = Auth::guard('siswa')->user();
+
+            $request->validate([
+                'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
+                'soal_ujian_id' => 'required|exists:soal,id'
+            ]);
+
+            // Verify hasil ujian belongs to current siswa
+            $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
+                ->where('siswa_id', $siswa->id)
+                ->first();
+
+            if (!$hasilUjian) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Get current flag status or create new record
+            $jawabanSiswa = JawabanSiswa::where('hasil_ujian_id', $request->hasil_ujian_id)
+                ->where('soal_ujian_id', $request->soal_ujian_id)
+                ->first();
+
+            $newFlagStatus = !($jawabanSiswa && $jawabanSiswa->is_flagged);
+
+            // Update or create jawaban siswa record for flagging
+            JawabanSiswa::updateOrCreate([
+                'hasil_ujian_id' => $request->hasil_ujian_id,
+                'soal_ujian_id' => $request->soal_ujian_id
+            ], [
+                'is_flagged' => $newFlagStatus
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'is_flagged' => $newFlagStatus
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error toggling flag', [
+                'error' => $e->getMessage(),
+                'siswa_id' => $siswa->id ?? null,
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json(['error' => 'Failed to toggle flag'], 500);
+        }
     }
 
     /**
@@ -841,69 +843,7 @@ class UjianController extends Controller
             return response()->json(['error' => 'Failed to process logout'], 500);
         }
     }
-    /**
-     * Calculate exam scores with proper randomization handling
-     */
-    private function calculateScore(HasilUjian $hasilUjian)
-    {
-        $jadwalUjian = $hasilUjian->jadwalUjian;
 
-        // Gunakan soals() sebagai pengganti soalUjians()
-        $soalUjians = $jadwalUjian->bankSoal ? SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)->get() : collect();
-
-        // Ambil jawaban siswa dan konversi ke key-value untuk pencarian lebih cepat
-        $jawabanSiswas = $hasilUjian->jawabanSiswas()->get()->keyBy('soal_ujian_id');
-
-        // Hitung jawaban yang benar-benar dijawab (tidak null jawaban)
-        $jawabanDijawab = $hasilUjian->jawabanSiswas()
-            ->whereNotNull('jawaban')
-            ->count();
-
-        $jumlahBenar = 0;
-        $jumlahSalah = 0;
-        $totalSkor = 0;
-
-        foreach ($soalUjians as $soal) {
-            $jawaban = $jawabanSiswas->get($soal->id);
-
-            if ($jawaban && $jawaban->jawaban) {
-                // Get the correct answer key considering randomization
-                $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
-
-                if ($jawaban->jawaban === $correctAnswer) {
-                    $jumlahBenar++;
-                    $totalSkor += $soal->bobot ?? 1;
-                } else {
-                    $jumlahSalah++;
-                }
-            } else {
-                // Soal tidak dijawab, tidak dihitung sebagai salah
-                // Hanya dihitung dalam "tidak dijawab"
-            }
-        }
-
-        // Jumlah soal yang benar-benar dijawab (tidak termasuk yang tidak dijawab)
-        $jumlahDijawab = $jawabanDijawab;
-
-        // Jumlah soal yang salah hanya yang dijawab tapi salah
-        $jumlahSalah = $jumlahDijawab - $jumlahBenar;
-
-        // Total soal adalah jumlah soal dari bank soal
-        $totalSoal = $soalUjians->count();
-
-        // Persentase dihitung dari jumlah benar dibagi total soal
-        $persentase = $totalSoal > 0 ? ($jumlahBenar / $totalSoal) * 100 : 0;
-
-        return [
-            'jumlah_benar' => $jumlahBenar,
-            'jumlah_salah' => $jumlahSalah,
-            'jumlah_dijawab' => $jumlahDijawab,
-            'jumlah_tidak_dijawab' => $totalSoal - $jumlahDijawab,
-            'total_skor' => $totalSkor,
-            'total_soal' => $totalSoal,
-            'persentase' => $persentase
-        ];
-    }
     /**
      * Get the correct answer key for a student considering randomization
      */
@@ -942,79 +882,5 @@ class UjianController extends Controller
 
         mt_srand(); // Reset seed
         return $soal->kunci_jawaban; // Fallback to original
-    }
-    /**
-     * Auto-submit exam when time runs out
-     */
-    private function autoSubmitExam(HasilUjian $hasilUjian)
-    {
-        if ($hasilUjian->is_final) {
-            return;
-        }
-
-        $score = $this->calculateScore($hasilUjian);
-        $nilai = $hasilUjian->jumlah_soal > 0 ? ($score['jumlah_benar'] / $hasilUjian->jumlah_soal) * 100 : 0;
-        $kkm = 75;
-        $lulus = $nilai >= $kkm;
-
-        $hasilUjian->update([
-            'waktu_selesai' => now(),
-            'skor' => $score['total_skor'],
-            'jumlah_benar' => $score['jumlah_benar'],
-            'jumlah_salah' => $score['jumlah_salah'],
-            'jumlah_dijawab' => $score['jumlah_dijawab'],
-            'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
-            'nilai' => $nilai,
-            'lulus' => $lulus,
-            'status' => 'selesai',
-            'is_final' => true
-        ]);
-
-        Log::info('Exam auto-submitted due to time limit', [
-            'siswa_id' => $hasilUjian->siswa_id,
-            'hasil_ujian_id' => $hasilUjian->id
-        ]);
-    }
-
-    /**
-     * Finish the exam
-     */
-    public function finish(Request $request)
-    {
-        // If no active exam, redirect to dashboard
-        if (!session('ujian_aktif') || !session('hasil_ujian_id')) {
-            return redirect()->route('siswa.dashboard');
-        }
-
-        $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
-
-        if (!$hasilUjian->is_final) {
-            // Finalize the exam
-            $this->ujianService->finalizeUjian($hasilUjian);
-        }
-
-        // Clear exam session data
-        $request->session()->forget([
-            'ujian_aktif',
-            'waktu_mulai',
-            'durasi'
-        ]);
-
-        return redirect()->route('ujian.result', $hasilUjian->id);
-    }
-
-    /**
-     * Show the exam result
-     */
-    public function result($hasilId)
-    {
-        $hasilUjian = HasilUjian::findOrFail($hasilId);
-
-        // Make sure only the owner can see their result
-        if ($hasilUjian->siswa_id != Auth::guard('siswa')->id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        return view('ujian.result', compact('hasilUjian'));
     }
 }

@@ -8,6 +8,7 @@ use App\Models\SesiRuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class PelanggaranController extends Controller
 {
@@ -94,29 +95,70 @@ class PelanggaranController extends Controller
 
             // Validate the action
             $request->validate([
-                'action' => 'required|in:dismiss,finalize',
+                'action' => 'required|in:dismiss,warning,suspend,remove',
                 'tindakan' => 'nullable|string',
                 'catatan_pengawas' => 'nullable|string'
             ]);
 
             $supervisorName = $user->isAdmin() ? 'Administrator' : ($user->guru->nama ?? 'Pengawas');
 
-            if ($request->action === 'dismiss') {
-                $violation->update([
-                    'is_dismissed' => true,
-                    'catatan_pengawas' => 'Diabaikan oleh ' . $supervisorName
-                ]);
-            } else {
-                $violation->update([
-                    'is_finalized' => true,
-                    'tindakan' => $request->tindakan,
-                    'catatan_pengawas' => $request->catatan_pengawas
-                ]);
+            switch ($request->action) {
+                case 'dismiss':
+                    // Abaikan pelanggaran - siswa dapat melanjutkan ujian
+                    $violation->update([
+                        'is_dismissed' => true,
+                        'catatan_pengawas' => 'Diabaikan oleh ' . $supervisorName . ': ' . ($request->catatan_pengawas ?? 'Tidak ada catatan')
+                    ]);
+                    $message = 'Pelanggaran berhasil diabaikan. Siswa dapat melanjutkan ujian.';
+                    break;
+
+                case 'warning':
+                    // Beri peringatan - siswa dapat melanjutkan ujian
+                    $violation->update([
+                        'is_finalized' => true,
+                        'tindakan' => 'peringatan',
+                        'catatan_pengawas' => 'Peringatan dari ' . $supervisorName . ': ' . ($request->catatan_pengawas ?? 'Diberi peringatan untuk tidak mengulangi pelanggaran')
+                    ]);
+                    $message = 'Peringatan berhasil diberikan. Siswa dapat melanjutkan ujian.';
+                    break;
+
+                case 'suspend':
+                    // Hentikan sementara - logout siswa dari ujian
+                    $violation->update([
+                        'is_finalized' => true,
+                        'tindakan' => 'hentikan_sementara',
+                        'catatan_pengawas' => 'Dihentikan sementara oleh ' . $supervisorName . ': ' . ($request->catatan_pengawas ?? 'Siswa di-logout dari ujian')
+                    ]);
+
+                    // Logout siswa dari ujian
+                    $this->logoutStudent($violation->siswa_id);
+                    $message = 'Siswa berhasil di-logout dari ujian.';
+                    break;
+
+                case 'remove':
+                    // Keluarkan dari ujian - hapus enrollment
+                    $violation->update([
+                        'is_finalized' => true,
+                        'tindakan' => 'keluarkan',
+                        'catatan_pengawas' => 'Dikeluarkan dari ujian oleh ' . $supervisorName . ': ' . ($request->catatan_pengawas ?? 'Enrollment dihapus karena pelanggaran serius')
+                    ]);
+
+                    // Hapus enrollment dan logout siswa
+                    $this->removeStudentFromExam($violation);
+                    $message = 'Siswa berhasil dikeluarkan dari ujian dan enrollment dihapus.';
+                    break;
+
+                default:
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Action tidak valid'
+                    ], 400);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Violation processed successfully'
+                'message' => $message,
+                'action' => $request->action
             ]);
         } catch (\Exception $e) {
             Log::error('Error processing violation', [
@@ -130,6 +172,84 @@ class PelanggaranController extends Controller
                 'success' => false,
                 'message' => 'Failed to process violation'
             ], 500);
+        }
+    }
+
+    /**
+     * Logout student from exam
+     */
+    private function logoutStudent($siswaId)
+    {
+        try {
+            // Invalidate all sessions for this student
+            DB::table('sessions')
+                ->where('user_id', $siswaId)
+                ->where('guard', 'siswa')
+                ->delete();
+
+            // Clear any current enrollment session data
+            \App\Models\EnrollmentUjian::where('siswa_id', $siswaId)
+                ->where('status', 'aktif')
+                ->update(['status' => 'suspended_by_supervisor']);
+
+            Log::info('Student logged out by supervisor', [
+                'siswa_id' => $siswaId,
+                'supervisor_id' => Auth::id()
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error logging out student', [
+                'siswa_id' => $siswaId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Remove student from exam (delete enrollment)
+     */
+    private function removeStudentFromExam($violation)
+    {
+        try {
+            // First logout the student
+            $this->logoutStudent($violation->siswa_id);
+
+            // Find and delete the enrollment
+            $enrollment = \App\Models\EnrollmentUjian::where('siswa_id', $violation->siswa_id)
+                ->where('jadwal_ujian_id', $violation->jadwal_ujian_id)
+                ->where('sesi_ruangan_id', $violation->sesi_ruangan_id)
+                ->first();
+
+            if ($enrollment) {
+                // Mark hasil ujian as terminated if exists
+                \App\Models\HasilUjian::where('enrollment_ujian_id', $enrollment->id)
+                    ->where('siswa_id', $violation->siswa_id)
+                    ->update([
+                        'status' => 'terminated_by_supervisor',
+                        'is_final' => true,
+                        'waktu_selesai' => now()
+                    ]);
+
+                // Delete the enrollment
+                $enrollment->delete();
+
+                Log::info('Student enrollment removed by supervisor', [
+                    'siswa_id' => $violation->siswa_id,
+                    'enrollment_id' => $enrollment->id,
+                    'supervisor_id' => Auth::id()
+                ]);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error removing student from exam', [
+                'violation_id' => $violation->id,
+                'siswa_id' => $violation->siswa_id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 }

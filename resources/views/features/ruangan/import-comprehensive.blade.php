@@ -48,6 +48,7 @@
                         <p>• Jika kode ruangan sudah ada, data ruangan akan diperbarui</p>
                         <p>• Jika kode sesi sudah ada, data sesi akan diperbarui</p>
                         <p>• Siswa hanya ditambahkan ke sesi jika belum ada dalam sesi tersebut</p>
+                        <p>• Download data siswa dari SISDA berisi siswa pondok dan non pondok</p>
                     </div>
                 </div>
             </div>
@@ -116,47 +117,58 @@
 
                 <div class="p-6 space-y-6">
                     <div>
-                        <h4 class="font-medium text-gray-900 mb-3">Download Template</h4>
+                        <h4 class="font-medium text-gray-900 mb-3">Download Data Siswa</h4>
                         <div class="space-y-2">
-                            <a href="{{ route('ruangan.import.comprehensive.template') }}"
+                            <a href="{{ route('ruangan.download.data.siswa') }}"
                                 class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
                                 <i class="fa-solid fa-download text-green-500 mr-2"></i>
-                                Template Excel dengan Contoh Data
+                                Data Siswa dari SISDA
                             </a>
                         </div>
-                    </div>
-
-                    <div>
-                        <h4 class="font-medium text-gray-900 mb-3">Format Data yang Diperlukan</h4>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <ul class="list-disc list-inside text-sm space-y-1 text-gray-700">
-                                <li><strong>kode_ruangan</strong> - Kode unik untuk ruangan</li>
-                                <li><strong>nama_ruangan</strong> - Nama ruangan</li>
-                                <li><strong>kapasitas_ruangan</strong> - Kapasitas ruangan (angka)</li>
-                                <li><strong>lokasi_ruangan</strong> - Lokasi ruangan (opsional)</li>
-                                <li><strong>status_ruangan</strong> - Status ruangan: aktif, perbaikan, tidak_aktif</li>
-                                <li><strong>kode_sesi</strong> - Kode unik untuk sesi</li>
-                                <li><strong>nama_sesi</strong> - Nama sesi</li>
-                                <li><strong>waktu_mulai_sesi</strong> - Format: HH:MM</li>
-                                <li><strong>waktu_selesai_sesi</strong> - Format: HH:MM</li>
-                                <li><strong>status_sesi</strong> - Status sesi: belum_mulai, berlangsung, selesai,
-                                    dibatalkan</li>
-                                <li><strong>idyayasan</strong> - ID Yayasan siswa</li>
-                                <li><strong>nama_siswa</strong> - Nama siswa (referensi saja, tidak diimpor)</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fa-solid fa-lightbulb text-yellow-400"></i>
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-3">Download Template</h4>
+                            <div class="space-y-2">
+                                <a href="{{ route('ruangan.import.comprehensive.template') }}"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                                    <i class="fa-solid fa-download text-green-500 mr-2"></i>
+                                    Template Excel dengan Contoh Data
+                                </a>
                             </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-yellow-800">Tips</h3>
-                                <div class="mt-2 text-sm text-yellow-700">
-                                    <p>Siswa harus sudah terdaftar dalam sistem. Data siswa yang tidak ditemukan berdasarkan
-                                        idyayasan akan dilewati.</p>
+                        </div>
+
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-3">Format Data yang Diperlukan</h4>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <ul class="list-disc list-inside text-sm space-y-1 text-gray-700">
+                                    <li><strong>kode_ruangan</strong> - Kode unik untuk ruangan</li>
+                                    <li><strong>nama_ruangan</strong> - Nama ruangan</li>
+                                    <li><strong>kapasitas_ruangan</strong> - Kapasitas ruangan (angka)</li>
+                                    <li><strong>lokasi_ruangan</strong> - Lokasi ruangan (opsional)</li>
+                                    <li><strong>status_ruangan</strong> - Status ruangan: aktif, perbaikan, tidak_aktif</li>
+                                    <li><strong>kode_sesi</strong> - Kode unik untuk sesi</li>
+                                    <li><strong>nama_sesi</strong> - Nama sesi</li>
+                                    <li><strong>waktu_mulai_sesi</strong> - Format: HH:MM</li>
+                                    <li><strong>waktu_selesai_sesi</strong> - Format: HH:MM</li>
+                                    <li><strong>status_sesi</strong> - Status sesi: belum_mulai, berlangsung, selesai,
+                                        dibatalkan</li>
+                                    <li><strong>idyayasan</strong> - ID Yayasan siswa</li>
+                                    <li><strong>nama_siswa</strong> - Nama siswa (referensi saja, tidak diimpor)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fa-solid fa-lightbulb text-yellow-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-yellow-800">Tips</h3>
+                                    <div class="mt-2 text-sm text-yellow-700">
+                                        <p>Siswa harus sudah terdaftar dalam sistem. Data siswa yang tidak ditemukan
+                                            berdasarkan
+                                            idyayasan akan dilewati.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -164,23 +176,22 @@
                 </div>
             </div>
         </div>
-    </div>
-@endsection
+    @endsection
 
-@section('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fileInput = document.getElementById('import_file');
-            const fileLabel = document.getElementById('selected-file');
+    @section('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const fileInput = document.getElementById('import_file');
+                const fileLabel = document.getElementById('selected-file');
 
-            fileInput.addEventListener('change', function(e) {
-                if (this.files && this.files[0]) {
-                    fileLabel.textContent = 'File dipilih: ' + this.files[0].name;
-                    fileLabel.classList.remove('hidden');
-                } else {
-                    fileLabel.classList.add('hidden');
-                }
+                fileInput.addEventListener('change', function(e) {
+                    if (this.files && this.files[0]) {
+                        fileLabel.textContent = 'File dipilih: ' + this.files[0].name;
+                        fileLabel.classList.remove('hidden');
+                    } else {
+                        fileLabel.classList.add('hidden');
+                    }
+                });
             });
-        });
-    </script>
-@endsection
+        </script>
+    @endsection

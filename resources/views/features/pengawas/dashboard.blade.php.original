@@ -215,33 +215,32 @@
                     </span>
                 </h3>
                 <div class="flex space-x-3">
+                    <select id="monitoring_select" class="p-2 border border-gray-300 rounded-md text-sm">
+                        <option value="all">Semua Ruangan Hari Ini</option>
+                        @foreach ($assignments as $assignment)
+                            @php
+                                $mapelDisplay = implode(
+                                    ' + ',
+                                    $assignment->jadwalUjians
+                                        ->map(function ($jadwal) {
+                                            return $jadwal->mapel ? $jadwal->mapel->nama_mapel : 'Tidak ada mapel';
+                                        })
+                                        ->toArray(),
+                                );
 
-                    @role('admin|koordinator')
-                        {{-- Admin/Koordinator bisa pilih dropdown --}}
-                        <select id="monitoring_select" class="p-2 border border-gray-300 rounded-md text-sm">
-                            <option value="all">Semua Ruangan Hari Ini</option>
-                            @foreach ($assignments as $assignment)
-                                @php
-                                    $mapelDisplay = implode(
-                                        ' + ',
-                                        $assignment->jadwalUjians
-                                            ->map(fn($jadwal) => $jadwal->mapel?->nama_mapel ?? 'Tidak ada mapel')
-                                            ->toArray(),
-                                    );
-                                    $ruanganDisplay = $assignment->ruangan->nama_ruangan ?? 'Tidak ada ruangan';
-                                @endphp
-                                <option value="{{ $assignment->id }}">
-                                    {{ $ruanganDisplay }}: {{ $mapelDisplay }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @endrole
-
+                                $ruanganDisplay = $assignment->ruangan
+                                    ? $assignment->ruangan->nama_ruangan
+                                    : 'Tidak ada ruangan';
+                            @endphp
+                            <option value="{{ $assignment->id }}">
+                                {{ $ruanganDisplay }}: {{ $mapelDisplay }}
+                            </option>
+                        @endforeach
+                    </select>
                     <button id="refresh-violations" class="bg-blue-100 text-blue-700 p-2 rounded-md hover:bg-blue-200">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
-
             </div>
 
             <div id="violations-container" class="overflow-x-auto">
@@ -502,13 +501,13 @@
             });
 
             // Handle monitoring select change
-            if (monitoringSelect) {
-                monitoringSelect.addEventListener('change', loadViolations);
-            }
+            monitoringSelect.addEventListener('change', function() {
+                loadViolations();
+            });
 
             // Function to load violations
             function loadViolations() {
-                const sesiId = monitoringSelect ? monitoringSelect.value : '{{ $currentAssignment->id ?? '' }}';
+                const sesiId = monitoringSelect.value;
                 console.log('Loading violations for session:', sesiId);
 
                 // Show loading state
@@ -593,31 +592,31 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                                                                                                                                                                                                                        <button 
-                                                                                                                                                                                                                                                                            data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                            data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                            class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
-                                                                                                                                                                                                                                                                            <i class="fas fa-times-circle mr-1"></i> Abaikan
-                                                                                                                                                                                                                                                                        </button>
-                                                                                                                                                                                                                                                                        <button 
-                                                                                                                                                                                                                                                                            data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                            data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                            class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
-                                                                                                                                                                                                                                                                            <i class="fas fa-check-circle mr-1"></i> Proses
-                                                                                                                                                                                                                                                                        </button>
-                                                                                                                                                                                                                                                                    ` : `
-                                                                                                                                                                                                                                                                        <span class="text-gray-400">
-                                                                                                                                                                                                                                                                            <i class="fas fa-check mr-1"></i> Sudah ditangani
-                                                                                                                                                                                                                                                                        </span>
-                                                                                                                                                                                                                                                                    `}
+                                                                                                                                                                                                                                    <button 
+                                                                                                                                                                                                                                        data-violation-id="${violation.id}"
+                                                                                                                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                                                                                                                                        class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
+                                                                                                                                                                                                                                        <i class="fas fa-times-circle mr-1"></i> Abaikan
+                                                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                                                    <button 
+                                                                                                                                                                                                                                        data-violation-id="${violation.id}"
+                                                                                                                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                                                                                                                                        class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
+                                                                                                                                                                                                                                        <i class="fas fa-check-circle mr-1"></i> Proses
+                                                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                                                ` : `
+                                                                                                                                                                                                                                    <span class="text-gray-400">
+                                                                                                                                                                                                                                        <i class="fas fa-check mr-1"></i> Sudah ditangani
+                                                                                                                                                                                                                                    </span>
+                                                                                                                                                                                                                                `}
                                     </div>
                                 </td>
                             `;

@@ -193,29 +193,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
         }
     }
 
-    /**
-     * Format time string to HH:MM:SS format
-     */
-    // protected function formatTime($timeStr)
-    // {
-    //     try {
-    //         // Already in time format
-    //         if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $timeStr)) {
-    //             // Add seconds if not included
-    //             if (substr_count($timeStr, ':') === 1) {
-    //                 $timeStr .= ':00';
-    //             }
-    //             return $timeStr;
-    //         }
 
-    //         // Try to parse as a datetime string
-    //         $time = Carbon::parse($timeStr)->format('H:i:s');
-    //         return $time;
-    //     } catch (\Exception $e) {
-    //         // Default to 08:00:00 if parsing fails
-    //         return '08:00:00';
-    //     }
-    // }
 
     private function formatTime($time)
     {

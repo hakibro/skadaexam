@@ -28,14 +28,6 @@ Route::middleware('auth:web')->group(function () {
 // Student routes with siswa guard
 Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(function () {
     Route::get('/dashboard', [SiswaDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/exam', [SiswaDashboardController::class, 'exam'])->name('exam');
-
-    // Exam API routes
-    Route::post('/exam/save-answer', [SiswaDashboardController::class, 'saveAnswer'])->name('exam.save-answer');
-    Route::post('/exam/flag-question', [SiswaDashboardController::class, 'flagQuestion'])->name('exam.flag-question');
-    Route::post('/exam/submit', [SiswaDashboardController::class, 'submitExam'])->name('exam.submit');
-    Route::get('/exam/result', [SiswaDashboardController::class, 'examResult'])->name('exam.result');
-    Route::post('/exam/logout', [SiswaDashboardController::class, 'logoutFromExam'])->name('exam.logout');
 
     Route::post('/logout', [SiswaLoginController::class, 'logout'])->name('logout');
 });

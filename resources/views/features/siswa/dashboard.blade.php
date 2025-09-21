@@ -158,7 +158,7 @@
                                         @if ($activeMapels->count() > 0)
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                                                 @foreach ($activeMapels as $mapel)
-                                                    <a href="{{ route('siswa.exam', ['jadwal_id' => $mapel['id']]) }}"
+                                                    <a href="{{ route('ujian.exam', ['jadwal_id' => $mapel['jadwal_id']]) }}"
                                                         class="block bg-white border border-green-200 hover:border-green-400 hover:bg-green-50 rounded-lg shadow-sm p-3 transition-colors cursor-pointer">
                                                         <div class="flex items-start">
                                                             <div
@@ -167,22 +167,22 @@
                                                             </div>
                                                             <div>
                                                                 <h4 class="font-medium text-green-800">
-                                                                    {{ $mapel['nama_mapel'] }}</h4>
+                                                                    {{ $mapel['mapel_name'] }}</h4>
                                                                 <div class="text-sm text-gray-600 mt-1">
                                                                     <span class="inline-block mr-3">
                                                                         <i class="far fa-clock mr-1"></i>
-                                                                        {{ $mapel['durasi'] }} menit
+                                                                        {{ $mapel['durasi_menit'] }} menit
                                                                     </span>
-                                                                    @if ($mapel['kode'] != '-')
+                                                                    @if ($mapel['mapel_kode'] != '-')
                                                                         <span class="inline-block">
                                                                             <i class="fas fa-tag mr-1"></i>
-                                                                            {{ $mapel['kode'] }}
+                                                                            {{ $mapel['mapel_kode'] }}
                                                                         </span>
                                                                     @endif
                                                                 </div>
                                                                 <div class="text-xs text-gray-500 mt-1">
                                                                     <i class="fas fa-door-open mr-1"></i>
-                                                                    {{ $mapel['sesi_ruangan'] }}
+                                                                    {{ $mapel['sesi_ruangan_name'] }}
                                                                 </div>
                                                             </div>
                                                         </div>
