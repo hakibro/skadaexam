@@ -5,6 +5,9 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\HasilUjian;
+use App\Models\EnrollmentUjian;
+use Carbon\Carbon;
 
 class UjianActive
 {
@@ -23,6 +26,22 @@ class UjianActive
                 ->with('error', 'Tidak ada ujian yang sedang berlangsung');
         }
 
+        $hasilUjianId = session('hasil_ujian_id');
+        $hasilUjian = HasilUjian::find($hasilUjianId);
+
+        // Jika hasil ujian tidak ditemukan
+        if (!$hasilUjian) {
+            $this->forceLogout($request);
+            return redirect()->route('siswa.login')->with('error', 'Sesi ujian tidak valid.');
+        }
+
+        // Cek enrollment status
+        $enrollment = EnrollmentUjian::find($hasilUjian->enrollment_ujian_id);
+        if (!$enrollment || $enrollment->status_enrollment !== 'active') {
+            $this->forceLogout($request);
+            return redirect()->route('siswa.login')->with('error', 'Anda telah dikeluarkan dari ujian.');
+        }
+
         // Check if the exam has not expired
         $waktuMulai = session('waktu_mulai');
         $durasi = session('durasi'); // in minutes
@@ -36,5 +55,11 @@ class UjianActive
         }
 
         return $next($request);
+    }
+    private function forceLogout(Request $request)
+    {
+        Auth::guard('siswa')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

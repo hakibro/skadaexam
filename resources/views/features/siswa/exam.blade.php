@@ -885,18 +885,18 @@
 
                     // Warning when 5 minutes left
                     if (remainingTime === 300) {
-                        alert('⚠️ Perhatian: Waktu ujian tersisa 5 menit lagi!');
+                        showSystemNotification('⚠️ Perhatian: Waktu ujian tersisa 5 menit lagi!');
                     }
 
                     // Warning when 1 minute left
                     if (remainingTime === 60) {
-                        alert('⚠️ Perhatian: Waktu ujian tersisa 1 menit lagi!');
+                        showSystemNotification('⚠️ Perhatian: Waktu ujian tersisa 1 menit lagi!');
                     }
 
                 } else {
                     // Time's up!
                     clearInterval(timerInterval);
-                    alert('⏰ Waktu ujian habis! Ujian akan dikumpulkan otomatis.');
+                    showSystemNotification('⏰ Waktu ujian habis! Ujian akan dikumpulkan otomatis.');
                     autoSubmitExam();
                 }
             }, 1000);
@@ -1007,7 +1007,7 @@
                 .catch(error => {
                     // Error toggling flag
                     showSystemNotification('Gagal mengubah flag', 'error');
-                    alert('Gagal mengubah status tandai soal');
+                    showSystemNotification('Gagal mengubah status tandai soal');
                 });
         }
 
@@ -1032,17 +1032,18 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                alert('Ujian berhasil dikumpulkan!');
+                                showSystemNotification('Ujian berhasil dikumpulkan!');
                                 window.location.href = '{{ route('siswa.dashboard') }}';
                             } else {
-                                alert('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
+                                showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data
+                                    .error ||
                                     'Unknown error'));
                             }
                         })
                         .catch(error => {
                             // Error submitting exam
                             showSystemNotification('Gagal mengirim ujian', 'error');
-                            alert('Terjadi kesalahan saat mengumpulkan ujian');
+                            showSystemNotification('Terjadi kesalahan saat mengumpulkan ujian');
                         });
                 }).catch(error => {
                     // Error saving answer before submit
@@ -1147,7 +1148,7 @@
                 if (document.visibilityState === 'hidden') {
                     visibilityWarnings++;
                     // Internal tracking: violation count increased
-
+                    localStorage.setItem('violationCount', visibilityWarnings);
                     if (visibilityWarnings > maxWarnings) {
                         // Automatically logout
                         logoutDueToCheating();
@@ -1158,34 +1159,81 @@
                 }
             }
 
+            // function handleUserReturnedToPage() {
+            //     if (!isDetectionActive) return; // Skip during grace period
+
+            //     const leftTime = localStorage.getItem('examLeftPageTime');
+            //     if (leftTime) {
+            //         const timeAway = Date.now() - parseInt(leftTime);
+
+            //         // Only show warning if away for more than 5 seconds (increased threshold)
+            //         if (timeAway > 5000) {
+            //             if (visibilityWarnings >= maxWarnings) {
+            //                 logoutDueToCheating();
+            //             } else {
+            //                 const violationCount = parseInt(localStorage.getItem('violationCount') || '0');
+            //                 // Show violation modal instead of alert
+            //                 showViolationModal(
+            //                     `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
+            //                     `Peringatan ${violationCount} dari ${maxWarnings}`,
+            //                     violationCount
+            //                 );
+            //             }
+            //         } else {
+            //             // Internal tracking: Quick focus change detected, ignoring
+            //         }
+
+            //         // Remove stored time
+            //         localStorage.removeItem('examLeftPageTime');
+            //     }
+            // }
             function handleUserReturnedToPage() {
-                if (!isDetectionActive) return; // Skip during grace period
+                if (!isDetectionActive) return;
 
                 const leftTime = localStorage.getItem('examLeftPageTime');
                 if (leftTime) {
                     const timeAway = Date.now() - parseInt(leftTime);
-                    // Internal tracking: User returned after ${Math.floor(timeAway/1000)} seconds
 
-                    // Only show warning if away for more than 5 seconds (increased threshold)
                     if (timeAway > 5000) {
-                        if (visibilityWarnings >= maxWarnings) {
-                            logoutDueToCheating();
-                        } else {
-                            // Show violation modal instead of alert
-                            showViolationModal(
-                                `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
-                                `Peringatan ${visibilityWarnings} dari ${maxWarnings}`,
-                                visibilityWarnings
-                            );
-                        }
-                    } else {
-                        // Internal tracking: Quick focus change detected, ignoring
+                        // Catat ke server
+                        fetch('{{ route('ujian.record-violation') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken
+                                },
+                                body: JSON.stringify({
+                                    hasil_ujian_id: hasilUjianId,
+                                    reason: 'tab_switching'
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    if (data.force_logout) {
+                                        logoutDueToCheating();
+                                    } else {
+                                        showViolationModal(
+                                            `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
+                                            `Peringatan ${data.violations_count} dari ${maxWarnings}. Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas.`,
+                                            data.violations_count
+                                        );
+                                    }
+                                }
+                            })
+                            .catch(() => {
+                                showViolationModal(
+                                    'KESALAHAN SISTEM',
+                                    'Gagal merekam pelanggaran. Silakan lanjutkan ujian, laporkan ke pengawas.',
+                                    0
+                                );
+                            });
                     }
 
-                    // Remove stored time
                     localStorage.removeItem('examLeftPageTime');
                 }
             }
+
 
             function logoutDueToCheating() {
                 // Save any answers
@@ -1242,7 +1290,7 @@
                             }
                         } else {
                             // If server decides to log student out anyway
-                            alert(
+                            showSystemNotification(
                                 'Anda telah melakukan pelanggaran berulang kali. Sistem akan logout otomatis.'
                             );
 
@@ -1270,6 +1318,8 @@
             }
         }
 
+
+
         // Function to show violation modal (uncloseable)
         function showViolationModal(title, message, violationCount = 0) {
             const modal = document.getElementById('violation-modal');
@@ -1278,13 +1328,15 @@
             const modalViolationCount = document.getElementById('modal-violation-count');
             const continueBtn = document.getElementById('continue-exam-btn');
 
+            let count = violationCount !== null ? violationCount : parseInt(localStorage.getItem('violationCount') || '0');
+            modalViolationCount.textContent = count;
+
             // Update modal content
-            if (title.includes('Peringatan')) {
+            if (title.includes('Peringatan') || title.includes('Pelanggaran')) {
                 modalTitle.innerHTML = `⚠️ ${title}`;
             } else {
                 modalTitle.innerHTML = '⚠️ PELANGGARAN TERDETEKSI';
             }
-
             // Update message
             const messageLines = message.split('. ');
             modalMessage.innerHTML = '';

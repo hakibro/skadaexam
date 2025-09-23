@@ -194,7 +194,7 @@
                         </div>
                     </div>
 
-                    <!-- Finalisasi -->
+                    {{-- <!-- Finalisasi -->
                     <div class="border-t border-gray-200 pt-6 mt-6">
                         <div class="flex items-start">
                             <div class="flex items-center h-5">
@@ -207,7 +207,7 @@
                                 <p class="text-gray-500">Berita acara yang sudah difinalisasi tidak dapat diubah lagi.</p>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
                     <!-- Submit Buttons -->
                     <div class="flex justify-end space-x-3 border-t border-gray-200 pt-6 mt-6">

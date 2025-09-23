@@ -163,7 +163,7 @@
                             </span>
                         </div>
 
-                        <div>
+                        {{-- <div>
                             @if ($beritaAcara->is_final)
                                 <span class="font-medium text-gray-700">Difinalisasi pada:</span>
                                 <span
@@ -180,7 +180,7 @@
                                     </button>
                                 </form>
                             @endif
-                        </div>
+                        </div> --}}
                     </div>
                 </div>
 

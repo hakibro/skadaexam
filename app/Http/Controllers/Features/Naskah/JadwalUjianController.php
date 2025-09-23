@@ -622,7 +622,7 @@ class JadwalUjianController extends Controller
             $jadwalDate = $jadwal->tanggal->format('Y-m-d');
 
             // Since sesi ruangan no longer has tanggal field, we'll match based on other criteria
-            $matchingSessions = \App\Models\SesiRuangan::whereDoesntHave('jadwalUjians', function ($query) use ($jadwal) {
+            $matchingSessions = SesiRuangan::whereDoesntHave('jadwalUjians', function ($query) use ($jadwal) {
                 $query->where('jadwal_ujian_id', $jadwal->id);
             })
                 ->get();

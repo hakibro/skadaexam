@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class GuruLoginController extends Controller
 {
@@ -28,6 +29,11 @@ class GuruLoginController extends Controller
         // Login menggunakan guard web
         if (Auth::guard('web')->attempt($credentials)) {
             $request->session()->regenerate();
+            DB::table('sessions')
+                ->where('id', $request->session()->getId())
+                ->update([
+                    'guard' => 'web',
+                ]);
 
             $user = Auth::guard('web')->user();
 

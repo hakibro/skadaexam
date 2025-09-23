@@ -32,8 +32,6 @@ class UjianController extends Controller
      */
     public function exam(Request $request, $jadwal_id = null)
     {
-
-
         $siswa = Auth::guard('siswa')->user();
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
@@ -51,11 +49,7 @@ class UjianController extends Controller
             if ($enrollment) {
                 $enrollmentId = $enrollment->id;
                 $sesiRuanganId = $enrollment->sesi_ruangan_id;
-                // Validasi status enrollment sebelum menambahkan session siswa
-                if (!in_array($enrollment->status_enrollment, ['enrolled', 'active'])) {
-                    return redirect()->route('siswa.dashboard')
-                        ->with('error', 'Anda tidak dapat melanjutkan ujian karena sesi telah dibatalkan.');
-                }
+
                 // Set session variables for future use
                 $request->session()->put('current_enrollment_id', $enrollmentId);
                 $request->session()->put('current_sesi_ruangan_id', $sesiRuanganId);
@@ -66,9 +60,6 @@ class UjianController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Sesi ujian tidak ditemukan.');
         }
 
-        // $enrollment = EnrollmentUjian::with([
-        //     'sesiRuangan.jadwalUjians.mapel'
-        // ])->find($enrollmentId);
         $enrollment = EnrollmentUjian::with([
             'sesiRuangan.jadwalUjians.mapel'
         ])->find($enrollmentId);
@@ -77,41 +68,18 @@ class UjianController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Enrollment tidak ditemukan.');
         }
 
-
-
         // Get the requested jadwal ujian or the first one
         if ($jadwalId) {
             $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians()
                 ->where('jadwal_ujian.id', $jadwalId) // Specify the table name to avoid ambiguity
                 ->first();
-
-            // Validasi status enrollment
-            if (!in_array($enrollment->status_enrollment, ['enrolled', 'active'])) {
-                return redirect()->route('siswa.dashboard')
-                    ->with('error', 'Status ujian tidak valid atau sudah selesai.');
-            }
-            // Jika masih enrolled, ubah ke active
-            if ($jadwalUjian && $enrollment->status_enrollment !== 'active') {
-                $enrollment->jadwal_ujian_id = $jadwalUjian->id;
-                $enrollment->status_enrollment = 'active';
-                $enrollment->last_login_at = Carbon::now();
-                $enrollment->waktu_mulai_ujian = $enrollment->waktu_mulai_ujian ?? Carbon::now();
-                $enrollment->waktu_selesai_ujian = $enrollment->waktu_selesai_ujian
-                    ?? $enrollment->waktu_mulai_ujian->copy()->addMinutes(
-                        $jadwalUjian->durasi_menit ?? 0
-                    );
-                $enrollment->save();
-            }
         } else {
             $jadwalUjian = $enrollment->sesiRuangan->jadwalUjians()->first();
         }
 
-
         if (!$jadwalUjian) {
             return redirect()->route('siswa.dashboard')->with('error', 'Jadwal ujian tidak ditemukan.');
         }
-
-
 
         // Check if exam is active
         $now = Carbon::now();
@@ -144,7 +112,6 @@ class UjianController extends Controller
             'batas_waktu' => $jadwalUjian->durasi_menit ?? 0, // in minutes
             'aktifkan_auto_logout' => $jadwalUjian->aktifkan_auto_logout ?? true, // Default to true for backward compatibility
         ];
-        //exam end time
 
         // Get or create hasil ujian record
         $hasilUjian = HasilUjian::firstOrCreate([
@@ -164,15 +131,6 @@ class UjianController extends Controller
             'is_final' => false,
             'status' => 'berlangsung'
         ]);
-
-
-        // Kalau hasil ujian sudah ada, update waktunya biar sinkron
-        if ($hasilUjian->wasRecentlyCreated === false) {
-            $hasilUjian->update([
-                'waktu_mulai' => $enrollment->waktu_mulai_ujian,
-                'durasi_menit' => $jadwalUjian->durasi_menit
-            ]);
-        }
 
         // Get questions from bank_soal instead of jadwal_ujian relationship
         $soals = SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)
@@ -319,7 +277,7 @@ class UjianController extends Controller
             'examSettings' => $examSettings,
             'hasilUjianId' => $hasilUjian->id,
             'jadwalUjianId' => $jadwalUjian->id,
-            'violations_count' => $violationsCount,
+            'violations_count' => $violationsCount
         ];
 
         // Set session variables for ujian.active middleware
@@ -747,60 +705,6 @@ class UjianController extends Controller
         }
 
         return view('features.siswa.exam-result', compact('siswa', 'hasilUjian'));
-    }
-
-    public function recordViolation(Request $request)
-    {
-        $siswa = Auth::guard('siswa')->user();
-
-        $request->validate([
-            'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
-            'reason' => 'required|string'
-        ]);
-
-        // Pastikan hasil ujian milik siswa ini
-        $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
-            ->where('siswa_id', $siswa->id)
-            ->firstOrFail();
-
-        // Cegah duplikasi pelanggaran dalam 60 detik terakhir
-        $recentViolation = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
-            ->where('jenis_pelanggaran', $request->reason)
-            ->where('waktu_pelanggaran', '>', now()->subSeconds(60))
-            ->first();
-
-        if (!$recentViolation) {
-            // Catat pelanggaran
-            \App\Models\PelanggaranUjian::create([
-                'siswa_id' => $siswa->id,
-                'hasil_ujian_id' => $hasilUjian->id,
-                'jadwal_ujian_id' => $hasilUjian->jadwal_ujian_id,
-                'sesi_ruangan_id' => $hasilUjian->sesi_ruangan_id,
-                'jenis_pelanggaran' => $request->reason,
-                'deskripsi' => 'Pelanggaran: ' . $request->reason,
-                'waktu_pelanggaran' => now(),
-                'is_dismissed' => false,
-                'is_finalized' => false
-            ]);
-        }
-
-        // Hitung ulang total
-        $violationsCount = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count();
-
-        // Update hasil ujian
-        $hasilUjian->update([
-            'violations_count' => $violationsCount
-        ]);
-
-        $maxViolations = 3;
-        $continueExam = $violationsCount < $maxViolations;
-
-        return response()->json([
-            'success' => true,
-            'violations_count' => $violationsCount,
-            'continue_exam' => $continueExam,
-            'force_logout' => !$continueExam
-        ]);
     }
 
     /**

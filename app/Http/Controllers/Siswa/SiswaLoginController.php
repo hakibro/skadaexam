@@ -8,6 +8,7 @@ use App\Models\EnrollmentUjian;
 use App\Models\SesiRuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -124,9 +125,9 @@ class SiswaLoginController extends Controller
             }
 
             // Mark enrollment as active if exists (optional, for tracking purposes)
-            if ($enrollment) {
-                $enrollment->startExam();
-            }
+            // if ($enrollment) {
+            //     $enrollment->startExam();
+            // }
 
             // Log successful authentication
             Log::info('Student login successful', [
@@ -144,6 +145,7 @@ class SiswaLoginController extends Controller
             // Login student using siswa guard
             Auth::guard('siswa')->login($siswa, true);
             $request->session()->regenerate();
+
 
             // Store enrollment info in session for exam context (if exists)
             if ($enrollment) {

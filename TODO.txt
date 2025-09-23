@@ -1,25 +1,59 @@
-TODO:
-
-Naskah Management:
-- Jadwal -> setelah siswa ditambahkan ke sesi ruangan mengapa jadwal ujian tidak langsung ada di sesi ruangan?
+Naskah:
 
 
-Ruangan Management:
-- Sesi
--- assign siswa ke ruangan tanpa filter lunas.
--- tampilkan kode sesi pada create dan edit
--- sekarang buat agar sesi ruangan bisa memiliki banyak jadwal ujian
--- otomatis ubah status = berlangsung/selesai jika tanggal dan waktu sesi = sekarang.
+Pengawas:
 
 
-- Import excel
-saya ingin impor data sekaligus pada ruangan management (ruangan, sesi, assign siswa ke sesi) jadi satu. jika kode_ruangan atau field lain belum ada tambahkan baru. jadi nanti format impor data excel:
-kode_ruangan, nama_ruangan, kapasitas_ruangan, lokasi_ruangan, status_ruangan, kode_sesi, nama_sesi, waktu_mulai_sesi, waktu_selesai_sesi, status_sesi, idyayasan, nama_siswa.
+Soal:
+
+
+Ujian:
 
 
 
 
+Ruangan:
 
-DONE:
-Naskah Management:
-- jadwal ujian - show -> hapus tombol dan fungsi dari terapkan ke sesi dan tambah sesi, dan tambahkan tombol edit 
+
+Berita Acara:
+- rekap absen siswa per kelas
+
+Koordinator: 
+- kembangkan format berita acara agar memenuhi kebutuhan.
+- absen pengawas
+- fungsikan monitoring
+- not important -- penugasan pengawas:
+  - konsep : update konsep penugasan jika pengawas ditetapkan untuk sesi ruangan di tanggal tersebut maka tetapkan untuk semua jadwal di sesi ruangan tersebut
+  - rewrite: ajax search manajemen penugasan pengawas 
+  - cek: berita acara menampilkan jadwal ujian yang berbeda?
+
+Ujian:
+- redirect siswa ke login siswa jika siswa di logout oleh pengawas
+- tampilkan siswa di manage-enrollment
+
+
+Enrollment:
+create masih error
+
+
+Sesi ruangan:
+- validasi ? otomatis ubah status = berlangsung/selesai jika tanggal dan waktu sesi = sekarang.
+
+- not important 
+  -- tambahkan cetak ruangan, berisi sesi dan siswa yg ada di ruangan.
+
+
+Siswa:
+- tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
+
+--------------------------------------------------------
+PERLU TIDAK PENTING:
+enrollment: 
+sudah auto enroll siswa sesuai jurusan ketika membuat jadwal baru.
+- kembangkan tampilan yang ada agar memudahkan user untuk enrollment siswa
+
+Ujian:
+- waktu pengerjaan ambil batas waktu dari enrollment.waktu_selesai_ujian
+
+
+

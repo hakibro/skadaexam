@@ -50,10 +50,10 @@
                             class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-150">
                             <i class="fa-solid fa-plus mr-2"></i> Tambah Jadwal
                         </a>
-                        <a href="{{ route('naskah.jadwal.batch-update-kelas-target') }}"
+                        {{-- <a href="{{ route('naskah.jadwal.batch-update-kelas-target') }}"
                             class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
                             <i class="fa-solid fa-sync mr-2"></i> Update Kelas Target
-                        </a>
+                        </a> --}}
                     </div>
                 </div>
             </div>

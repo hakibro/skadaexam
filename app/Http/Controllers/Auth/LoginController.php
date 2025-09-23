@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LoginController extends Controller
 {
     // COMMENT middleware untuk testing
     public function __construct()
     {
-        $this->middleware('guest')->except('logout');
+        $this->middleware('guest:siswa')->except('logout');
     }
 
     public function showLoginForm()
@@ -27,8 +28,9 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
+
 
             // Simple redirect ke admin dashboard
             return redirect()->intended(route('admin.dashboard'));
@@ -41,7 +43,7 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');

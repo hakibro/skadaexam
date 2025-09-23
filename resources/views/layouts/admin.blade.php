@@ -35,11 +35,9 @@
 
             <!-- Logo -->
             <div class="flex items-center space-x-2 px-4">
-                <div class="bg-purple-600 p-2 rounded">
-                    <i class="fa-solid fa-graduation-cap text-xl"></i>
-                </div>
+                <img src="{{ asset('assets/logo-compressed.png') }}" alt="SKADA Exam Logo" class="h-8 w-8">
                 <div>
-                    <h2 class="text-xl font-bold">SKADA Exam</h2>
+                    <h2 class="text-xl font-bold">SkadaExam</h2>
                     <p class="text-gray-400 text-sm">Admin Panel</p>
                 </div>
             </div>
@@ -70,15 +68,15 @@
 
                 <!-- Admin Panel -->
                 @if ($isAdmin)
-                    <div class="px-4 py-2 text-gray-500 uppercase text-xs font-semibold tracking-wide">
+                    {{-- <div class="px-4 py-2 text-gray-500 uppercase text-xs font-semibold tracking-wide">
                         Admin Panel
-                    </div>
+                    </div> --}}
 
-                    <a href="{{ route('admin.users.index') }}"
+                    {{-- <a href="{{ route('admin.users.index') }}"
                         class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.users.*') ? 'bg-purple-600 text-white' : '' }}">
                         <i class="fa-solid fa-users"></i>
                         <span>Manage Users</span>
-                    </a>
+                    </a> --}}
                 @endif
 
                 <!-- Feature Modules -->
@@ -91,8 +89,10 @@
                     <div class="space-y-1">
                         <a href="{{ route('data.dashboard') }}"
                             class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('data.dashboard') ? 'bg-blue-600 text-white' : '' }}">
+
                             <i class="fa-solid fa-database"></i>
                             <span>Data Management</span>
+                            </button>
                         </a>
                         <a href="{{ route('data.guru.index') }}"
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('data.guru.*') ? 'bg-blue-600 text-white' : '' }}">
@@ -369,6 +369,19 @@
                 }, 5000);
             });
         });
+        // Dropdown toggle function
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            const icon = document.getElementById("icon-" + id);
+
+            if (dropdown.classList.contains("hidden")) {
+                dropdown.classList.remove("hidden");
+                icon.classList.add("rotate-180"); // animasi chevron
+            } else {
+                dropdown.classList.add("hidden");
+                icon.classList.remove("rotate-180");
+            }
+        }
     </script>
 
     <!-- Additional Scripts -->

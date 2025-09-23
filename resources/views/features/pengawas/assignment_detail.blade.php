@@ -128,7 +128,9 @@
                                         </td>
                                         <td class="border border-gray-300 px-4 py-2">
                                             @if ($sesiSiswa->siswa)
-                                                {{ $sesiSiswa->siswa->nama ?: 'Nama tidak tersedia' }}
+                                                {{ $sesiSiswa->siswa->nama ?: 'Nama tidak tersedia' }} -
+                                                <span
+                                                    class="text-sm font-bold @if ($sesiSiswa->siswa->status_pembayaran === 'Lunas') text-green-600 @else text-red-600 @endif">{{ $sesiSiswa->siswa->status_pembayaran ?: 'Status pembayaran tidak tersedia' }}</span>
                                             @else
                                                 <span class="text-red-500">Data siswa tidak ditemukan</span>
                                             @endif

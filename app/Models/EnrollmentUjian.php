@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 
 class EnrollmentUjian extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'enrollment_ujian';
 
@@ -27,6 +28,8 @@ class EnrollmentUjian extends Model
         'catatan'
     ];
 
+    protected $dates = ['deleted_at'];
+
     protected $casts = [
         'waktu_mulai_ujian' => 'datetime',
         'waktu_selesai_ujian' => 'datetime',
@@ -34,6 +37,8 @@ class EnrollmentUjian extends Model
         'last_logout_at' => 'datetime',
         'status_enrollment' => 'string', // enum('enrolled','completed','cancelled')
     ];
+
+
 
     /**
      * Get the session room for this enrollment.

@@ -35,6 +35,9 @@ Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(functi
     Route::post('/submit', [UjianController::class, 'submitExam'])->name('submit');
     Route::get('/confirm-finish', [UjianController::class, 'confirmFinish'])->name('confirm-finish');
     Route::get('/result', [UjianController::class, 'examResult'])->name('result');
+    // Catat pelanggaran (tanpa langsung logout)
+    Route::post('record-violation', [UjianController::class, 'recordViolation'])
+        ->name('record-violation');
     Route::post('/logout', [UjianController::class, 'logoutFromExam'])->name('logout');
 
     // Legacy routes for backward compatibility

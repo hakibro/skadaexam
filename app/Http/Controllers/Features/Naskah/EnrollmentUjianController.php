@@ -562,4 +562,32 @@ class EnrollmentUjianController extends Controller
     {
         return view('features.naskah.enrollment_ujian.print-qr', compact('enrollmentUjian'));
     }
+
+    public function manageCancelledEnrollments($sesiRuanganId)
+    {
+        $siswaCancelled = EnrollmentUjian::with('siswa')
+            ->where('sesi_ruangan_id', $sesiRuanganId)
+            ->where('status_enrollment', 'cancelled')
+            ->get();
+
+        // Jika ingin menampilkan siswa yang dihapus (soft delete), pastikan model menggunakan SoftDeletes
+        $siswaDeleted = EnrollmentUjian::withTrashed()
+            ->with('siswa')
+            ->where('sesi_ruangan_id', $sesiRuanganId)
+            ->onlyTrashed()
+            ->get();
+
+        return view('features.pengawas.manage-enrollment', compact('siswaCancelled', 'siswaDeleted'));
+    }
+
+    public function restoreEnrollment($enrollmentId)
+    {
+        $enrollment = EnrollmentUjian::withTrashed()->findOrFail($enrollmentId);
+
+        $enrollment->restore(); // jika soft delete
+        $enrollment->status_enrollment = 'active';
+        $enrollment->save();
+
+        return redirect()->back()->with('success', 'Siswa berhasil diaktifkan kembali.');
+    }
 }

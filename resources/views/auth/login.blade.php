@@ -14,12 +14,10 @@
 
             <!-- Header -->
             <div class="text-center mb-6">
-                <div
-                    class="bg-purple-100 text-purple-600 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                <div class="mx-auto mb-4 flex items-center justify-center">
+                    <img class="w-28 h-12" src="{{ asset('assets/pusmendik.svg') }}" alt="SKADA Exam Logo">
                 </div>
-                <h2 class="text-2xl font-bold text-gray-800">Login Admin</h2>
-                <p class="text-gray-600 mt-2">Panel Administrasi SKADA Exam</p>
+                <p class="text-gray-600 mt-2"> Login Panel Administrasi SKADA Exam</p>
             </div>
 
             <!-- Error Messages -->
@@ -84,7 +82,7 @@
             <div class="mt-6 p-4 bg-gray-50 rounded-md">
                 <p class="text-xs text-gray-600 text-center">
                     <strong>Test Credentials:</strong><br>
-                    Email: admin@test.com | Password: password
+                    Email: admin@skadaexam.test <br> Password: password123
                 </p>
             </div>
         </div>

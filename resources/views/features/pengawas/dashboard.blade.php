@@ -184,6 +184,10 @@
                                                 class="text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-md">
                                                 <i class="fa-solid fa-clipboard mr-1"></i> Berita Acara
                                             </a>
+                                            <a href="{{ route('pengawas.manage-enrollment', $assignment->id) }}"
+                                                class="text-white bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded-md">
+                                                <i class="fa-solid fa-user-cog mr-1"></i> Enrollment
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -438,7 +442,7 @@
                             <input type="radio" name="violation-action" value="suspend" class="mr-3 text-orange-600">
                             <div>
                                 <div class="font-medium text-orange-700">Hentikan Sementara</div>
-                                <div class="text-sm text-gray-500">Logout siswa dari ujian saat ini</div>
+                                <div class="text-sm text-gray-500">Batalkan enrollment siswa dari ujian saat ini</div>
                             </div>
                         </label>
                         <label
@@ -476,9 +480,7 @@
         </div>
     </div>
     </div>
-@endsection
 
-@section('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const generateTokenBtn = document.getElementById('generate_token_btn');
@@ -489,7 +491,10 @@
             const refreshViolationsBtn = document.getElementById('refresh-violations');
             const violationsBody = document.getElementById('violations-body');
             const violationCounter = document.getElementById('violation-counter');
-
+            const dismissBtn = document.getElementById('dismiss-violation-btn');
+            const processBtn = document.getElementById('process-violation-btn');
+            const closeModalBtn = document.getElementById('close-violation-modal');
+            const modal = document.getElementById('violation-action-modal');
             // Load violations initially
             loadViolations();
 
@@ -500,10 +505,72 @@
             refreshViolationsBtn.addEventListener('click', function() {
                 loadViolations();
             });
+            // Close modal handlers
+            const closeModal = () => {
+                modal.classList.add('hidden');
+            };
 
             // Handle monitoring select change
             if (monitoringSelect) {
                 monitoringSelect.addEventListener('change', loadViolations);
+            }
+
+            // Tambahkan di awal script (sekali saja)
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', closeModal);
+            }
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', handleDismissViolation);
+            }
+            if (processBtn) {
+                processBtn.addEventListener('click', handleProcessViolation);
+            }
+
+
+
+            // Handler dismiss
+            function handleDismissViolation() {
+                const violationId = this.dataset.violationId;
+                const notes = document.getElementById('violation-notes').value;
+                processViolation(violationId, 'dismiss', null, notes);
+                closeModal();
+            }
+
+            // Handler process
+            function handleProcessViolation() {
+                const violationId = this.dataset.violationId;
+                const selectedAction = document.querySelector('input[name="violation-action"]:checked');
+                const notes = document.getElementById('violation-notes').value;
+
+                if (!selectedAction) {
+                    showToast('Pilih tindakan terlebih dahulu', 'warning');
+                    return;
+                }
+
+                // Show confirmation based on action severity
+                let confirmMessage = '';
+                switch (selectedAction.value) {
+                    case 'dismiss':
+                        confirmMessage =
+                            'Abaikan pelanggaran ini dan lanjutkan ujian tanpa konsekuensi?';
+                        break;
+                    case 'warning':
+                        confirmMessage = 'Berikan peringatan kepada siswa dan lanjutkan ujian?';
+                        break;
+                    case 'suspend':
+                        confirmMessage = 'Hentikan sementara siswa dari ujian saat ini?';
+                        break;
+                    case 'remove':
+                        confirmMessage =
+                            'KELUARKAN siswa dari ujian dan hapus enrollment? Tindakan ini tidak dapat dibatalkan!';
+                        break;
+                }
+                console.log('Confirm message:', confirmMessage, violationId, selectedAction.value, notes);
+
+                if (confirm(confirmMessage)) {
+                    processViolation(violationId, selectedAction.value, null, notes);
+                    closeModal();
+                }
             }
 
             // Function to load violations
@@ -593,31 +660,31 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                                                                                                                                                                                                                        <button 
-                                                                                                                                                                                                                                                                            data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                            data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                            class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
-                                                                                                                                                                                                                                                                            <i class="fas fa-times-circle mr-1"></i> Abaikan
-                                                                                                                                                                                                                                                                        </button>
-                                                                                                                                                                                                                                                                        <button 
-                                                                                                                                                                                                                                                                            data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                            data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                            data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                            data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                            class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
-                                                                                                                                                                                                                                                                            <i class="fas fa-check-circle mr-1"></i> Proses
-                                                                                                                                                                                                                                                                        </button>
-                                                                                                                                                                                                                                                                    ` : `
-                                                                                                                                                                                                                                                                        <span class="text-gray-400">
-                                                                                                                                                                                                                                                                            <i class="fas fa-check mr-1"></i> Sudah ditangani
-                                                                                                                                                                                                                                                                        </span>
-                                                                                                                                                                                                                                                                    `}
+                                                                                            <button 
+                                                                                                data-violation-id="${violation.id}"
+                                                                                                data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
+                                                                                                <i class="fas fa-times-circle mr-1"></i> Abaikan
+                                                                                            </button>
+                                                                                            <button 
+                                                                                                data-violation-id="${violation.id}"
+                                                                                                data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
+                                                                                                <i class="fas fa-check-circle mr-1"></i> Proses
+                                                                                            </button>
+                                                                                        ` : `
+                                                                                            <span class="text-gray-400">
+                                                                                                <i class="fas fa-check mr-1"></i> Sudah ditangani
+                                                                                            </span>
+                                                                                        `}
                                     </div>
                                 </td>
                             `;
@@ -723,7 +790,7 @@
                     payload.catatan_pengawas = catatan;
                 }
 
-                fetch(`{{ url('/features/pengawas/process-violation') }}/${violationId}`, {
+                fetch(`/features/pengawas/process-violation/${violationId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -746,17 +813,7 @@
                     });
             }
 
-            // Helper function to format violation type
-            function formatViolationType(type) {
-                const typeMap = {
-                    'tab_switching': 'Pindah Tab',
-                    'window_blur': 'Keluar Window',
-                    'refresh': 'Refresh Halaman',
-                    'copy_paste': 'Copy Paste',
-                    'right_click': 'Klik Kanan'
-                };
-                return typeMap[type] || type;
-            }
+
 
             // Helper function to format date
             function formatDate(dateString) {
@@ -918,8 +975,6 @@
             // Function to show violation action modal
             function showViolationActionModal(violationId, studentName, violationType, violationTime, subjectName,
                 violationDescription, defaultAction = 'process') {
-                const modal = document.getElementById('violation-action-modal');
-
                 // Populate modal with violation data
                 document.getElementById('modal-student-name').textContent = studentName;
                 document.getElementById('modal-violation-time').textContent = violationTime;
@@ -958,64 +1013,16 @@
                         processBtn.click();
                     }
                 };
+                // Simpan ID pelanggaran ke tombol submit
+                processBtn.dataset.violationId = violationId;
 
                 // Setup modal event listeners
-                const closeBtn = document.getElementById('close-violation-modal');
-                const dismissBtn = document.getElementById('dismiss-violation-btn');
-                const processBtn = document.getElementById('process-violation-btn');
-
-                // Close modal handlers
-                const closeModal = () => {
-                    modal.classList.add('hidden');
-                    document.removeEventListener('keydown', handleKeyDown);
-                };
+                closeModalBtn.dataset.violationId = violationId;;
+                dismissBtn.dataset.violationId = violationId;;
+                processBtn.dataset.violationId = violationId;;
 
                 document.addEventListener('keydown', handleKeyDown);
-                closeBtn.addEventListener('click', closeModal);
 
-                // Dismiss violation
-                dismissBtn.addEventListener('click', () => {
-                    if (confirm('Yakin ingin mengabaikan pelanggaran ini tanpa tindakan?')) {
-                        const notes = document.getElementById('violation-notes').value;
-                        processViolation(violationId, 'dismiss', null, notes);
-                        closeModal();
-                    }
-                });
-
-                // Process violation
-                processBtn.addEventListener('click', () => {
-                    const selectedAction = document.querySelector('input[name="violation-action"]:checked');
-                    const notes = document.getElementById('violation-notes').value;
-
-                    if (!selectedAction) {
-                        showToast('Pilih tindakan terlebih dahulu', 'warning');
-                        return;
-                    }
-
-                    // Show confirmation based on action severity
-                    let confirmMessage = '';
-                    switch (selectedAction.value) {
-                        case 'dismiss':
-                            confirmMessage =
-                                'Abaikan pelanggaran ini dan lanjutkan ujian tanpa konsekuensi?';
-                            break;
-                        case 'warning':
-                            confirmMessage = 'Berikan peringatan kepada siswa dan lanjutkan ujian?';
-                            break;
-                        case 'suspend':
-                            confirmMessage = 'Hentikan sementara dan logout siswa dari ujian saat ini?';
-                            break;
-                        case 'remove':
-                            confirmMessage =
-                                'KELUARKAN siswa dari ujian dan hapus enrollment? Tindakan ini tidak dapat dibatalkan!';
-                            break;
-                    }
-
-                    if (confirm(confirmMessage)) {
-                        processViolation(violationId, selectedAction.value, null, notes);
-                        closeModal();
-                    }
-                });
 
                 // Close modal when clicking outside
                 modal.addEventListener('click', (e) => {
@@ -1024,19 +1031,6 @@
                     }
                 });
 
-                // Add visual feedback for action selection
-                document.querySelectorAll('input[name="violation-action"]').forEach(radio => {
-                    radio.addEventListener('change', () => {
-                        const labels = document.querySelectorAll(
-                            'label:has(input[name="violation-action"])');
-                        labels.forEach(label => {
-                            label.classList.remove('ring-2', 'ring-blue-500');
-                        });
-
-                        const selectedLabel = radio.closest('label');
-                        selectedLabel.classList.add('ring-2', 'ring-blue-500');
-                    });
-                });
             }
 
             // Function to show toast notification

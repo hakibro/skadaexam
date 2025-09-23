@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Features\Naskah\EnrollmentUjianController;
 use App\Http\Controllers\Features\Pengawas\DashboardController;
 use App\Http\Controllers\Features\Pengawas\BeritaAcaraController;
 use App\Http\Controllers\Features\Pengawas\TokenController;
+use \App\Http\Controllers\Features\Pengawas\PelanggaranController;
+use App\Models\EnrollmentUjian;
 use Illuminate\Support\Facades\Route;
 
 // Pengawas Routes - All routes related to the pengawas panel
@@ -33,7 +36,12 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
     Route::post('/berita-acara/{id}/finalize', [BeritaAcaraController::class, 'finalize'])->name('berita-acara.finalize');
 
     // Pelanggaran / Violations Monitoring
-    Route::get('/get-violations', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'getViolations'])->name('get-violations');
-    Route::get('/get-violations/{id}', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'getViolations'])->name('get-violations.by-session');
-    Route::post('/process-violation/{id}', [\App\Http\Controllers\Pengawas\PelanggaranController::class, 'processViolation'])->name('process-violation');
+    Route::get('/get-violations', [PelanggaranController::class, 'getViolations'])->name('get-violations');
+    Route::get('/get-violations/{id}', [PelanggaranController::class, 'getViolations'])->name('get-violations.by-session');
+    Route::post('/process-violation/{id}', [PelanggaranController::class, 'processViolation'])->name('process-violation');
+
+    // Enrollment Management
+    Route::get('/manage-enrollment/{ujianId}', [EnrollmentUjianController::class, 'manageCancelledEnrollments'])->name('manage-enrollment');
+
+    Route::post('/manage-enrollment/{id}/restore', [EnrollmentUjianController::class, 'restoreEnrollment'])->name('manage-enrollment.restore');
 });

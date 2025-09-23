@@ -146,6 +146,14 @@ if (app()->environment(['local', 'development'])) {
             'violations' => $violations
         ]);
     })->name('test.direct.violations');
+
+    // Test answer saving functionality
+    Route::get('/test-answer-saving', function () {
+        return view('test_answer_saving');
+    })->name('test.answer.saving');
+
+    // Include test authentication routes
+    require __DIR__ . '/test_auth.php';
 }
 
 /*
