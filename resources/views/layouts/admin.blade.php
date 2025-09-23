@@ -30,7 +30,7 @@
     <div class="flex h-screen bg-gray-100">
 
         <!-- Sidebar -->
-        <div class="bg-gray-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out overflow-y-auto h-screen"
+        <div class="bg-gray-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out overflow-y-auto h-screen z-50"
             id="sidebar">
 
             <!-- Logo -->
@@ -41,6 +41,10 @@
                     <p class="text-gray-400 text-sm">Admin Panel</p>
                 </div>
             </div>
+            <!-- Tombol Close (hanya mobile) -->
+            <button class="absolute top-4 right-4 md:hidden text-gray-400 hover:text-white" onclick="toggleSidebar()">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
 
             <!-- Navigation Menu -->
             <nav class="mt-8">
@@ -260,6 +264,10 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
 
+            <!-- Overlay untuk mobile -->
+            <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden md:hidden z-40"
+                onclick="toggleSidebar()">
+            </div>
             <!-- Top Header -->
             <header class="bg-white shadow-sm">
                 <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -329,6 +337,7 @@
                     <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 relative" role="alert">
                         <p class="font-bold">Error!</p>
                         <p>{{ session('error') }}</p>
+                        @stack('flash-action')
                         <button onclick="this.parentElement.style.display='none'"
                             class="absolute top-0 right-0 mt-4 mr-4 text-red-700">
                             <i class="fa-solid fa-times"></i>
@@ -357,7 +366,19 @@
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('-translate-x-full');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+
+            if (isOpen) {
+                // Tutup sidebar
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            } else {
+                // Buka sidebar
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            }
         }
 
         // Auto-hide flash messages after 5 seconds

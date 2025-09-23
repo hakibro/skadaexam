@@ -83,6 +83,11 @@ class HasilUjian extends Model
         return $this->belongsTo(Siswa::class);
     }
 
+    public function pelanggaranUjian()
+    {
+        return $this->hasMany(PelanggaranUjian::class, 'hasil_ujian_id');
+    }
+
     /**
      * Get the enrollment record associated with this result.
      *

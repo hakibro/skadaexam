@@ -42,6 +42,10 @@
                                     class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                                     <i class="fa-solid fa-trash mr-2"></i> Hapus Terpilih
                                 </button>
+                                <button type="button" onclick="bulkForceDelete()"
+                                    class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                    <i class="fa-solid fa-skull-crossbones mr-2"></i> Hapus Paksa Terpilih
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -165,7 +169,6 @@
                                         <div><i class="fa-solid fa-calendar-day mr-1"></i>
                                             {{ $jadwal->tanggal->format('d M Y') }}</div>
                                         <div class="text-sm text-gray-500"><i class="fa-solid fa-clock mr-1"></i>
-                                            {{ $jadwal->tanggal->format('H:i') }}
                                             ({{ $jadwal->durasi_menit }} menit)
                                         </div>
                                     </td>
@@ -359,6 +362,33 @@
             }
         }
 
+        function bulkForceDelete() {
+            const checkedBoxes = document.querySelectorAll('.jadwal-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('Pilih minimal satu jadwal ujian');
+                return;
+            }
+
+            if (confirm(
+                    `Apakah Anda yakin ingin menghapus paksa ${checkedBoxes.length} jadwal ujian beserta hasil ujiannya? Aksi ini tidak dapat dibatalkan.`
+                )) {
+                const form = document.getElementById('bulk-action-form');
+                document.getElementById('bulk-action-type').value = 'force_delete';
+
+                // Add selected jadwal IDs to form
+                checkedBoxes.forEach(checkbox => {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'jadwal_ids[]';
+                    hiddenInput.value = checkbox.value;
+                    form.appendChild(hiddenInput);
+                });
+
+                form.submit();
+            }
+        }
+
+
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const dropdown = document.getElementById('bulk-action-dropdown');
@@ -370,6 +400,21 @@
         });
     </script>
 @endsection
+
+@push('flash-action')
+    @if (session('delete_failed'))
+        <form action="{{ route('naskah.jadwal.force-destroy', session('delete_failed')) }}" method="POST"
+            class="mt-2 inline-block"
+            onsubmit="return confirm('Yakin ingin menghapus paksa jadwal ini beserta hasil ujiannya?')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                <i class="fa-solid fa-skull-crossbones mr-1"></i> Hapus Paksa
+            </button>
+        </form>
+    @endif
+@endpush
+
 
 @section('scripts')
     <script>

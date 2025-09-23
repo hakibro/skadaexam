@@ -405,43 +405,39 @@ class JadwalUjianController extends Controller
      */
     public function destroy(JadwalUjian $jadwal)
     {
-        // Check if there are any results associated with this exam
-        // if ($jadwal->hasilUjian()->count() > 0) {
-        //     return redirect()->route('naskah.jadwal.index')
-        //         ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian');
-        // }
 
-        // $jadwal->delete();
-
-        // return redirect()->route('naskah.jadwal.index')
-        //     ->with('success', 'Jadwal ujian berhasil dihapus');
-
-        // Cek apakah sudah ada hasil ujian
-        if ($jadwal->hasilUjian()->count() > 0) {
-            return redirect()->route('naskah.jadwal.index')
-                ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian');
-        }
-
-        // Ambil semua sesi ruangan yang terkait
-        $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
-
-        // Lepaskan relasi jadwal <-> sesi
-        $jadwal->sesiRuangans()->detach();
-
-        // Cek setiap sesi, apakah masih dipakai jadwal lain
-        foreach ($sesiIds as $sesiId) {
-            $sesi = SesiRuangan::find($sesiId);
-            if ($sesi && $sesi->jadwalUjians()->count() === 0) {
-                // Kalau sesi sudah tidak dipakai jadwal lain, hapus
-                $sesi->delete();
+        try {
+            // Cek apakah sudah ada hasil ujian
+            if ($jadwal->hasilUjian()->count() > 0) {
+                return redirect()->route('naskah.jadwal.index')
+                    ->with('error', 'Jadwal ujian tidak dapat dihapus karena sudah memiliki hasil ujian')
+                    ->with('delete_failed', $jadwal->id); // penting agar tombol muncul
             }
+
+            // Ambil semua sesi ruangan yang terkait
+            $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+
+            // Lepaskan relasi jadwal <-> sesi
+            $jadwal->sesiRuangans()->detach();
+
+            // Cek setiap sesi, apakah masih dipakai jadwal lain
+            foreach ($sesiIds as $sesiId) {
+                $sesi = SesiRuangan::find($sesiId);
+                if ($sesi && $sesi->jadwalUjians()->count() === 0) {
+                    // Kalau sesi sudah tidak dipakai jadwal lain, hapus
+                    $sesi->delete();
+                }
+            }
+
+            // Hapus jadwal
+            $jadwal->delete();
+
+            return redirect()->route('naskah.jadwal.index')
+                ->with('success', 'Jadwal ujian berhasil dihapus beserta sesi ruangan yang tidak terpakai');
+        } catch (\Exception $e) {
+            return redirect()->route('naskah.jadwal.index')
+                ->with('error', 'Terjadi kesalahan saat menghapus jadwal: ' . $e->getMessage());
         }
-
-        // Hapus jadwal
-        $jadwal->delete();
-
-        return redirect()->route('naskah.jadwal.index')
-            ->with('success', 'Jadwal ujian berhasil dihapus beserta sesi ruangan yang tidak terpakai');
     }
 
     /**
@@ -450,7 +446,7 @@ class JadwalUjianController extends Controller
     public function bulkAction(Request $request)
     {
         $request->validate([
-            'action' => 'required|in:delete,status_change',
+            'action' => 'required|in:delete,force_delete,status_change',
             'jadwal_ids' => 'required|array|min:1',
             'jadwal_ids.*' => 'exists:jadwal_ujian,id',
             'new_status' => 'nullable|in:draft,aktif,nonaktif,selesai'
@@ -471,6 +467,10 @@ class JadwalUjianController extends Controller
                     $count = $this->bulkStatusChange($jadwalIds, $newStatus);
                     return redirect()->route('naskah.jadwal.index')
                         ->with('success', "Berhasil mengubah status {$count} jadwal ujian menjadi {$newStatus}");
+                case 'force_delete':
+                    $count = $this->bulkForceDelete($jadwalIds);
+                    return redirect()->route('naskah.jadwal.index')
+                        ->with('success', "Berhasil menghapus paksa {$count} jadwal ujian");
 
                 default:
                     return redirect()->route('naskah.jadwal.index')
@@ -506,6 +506,76 @@ class JadwalUjianController extends Controller
 
         if (!empty($errors)) {
             session()->flash('warning', implode(', ', $errors));
+        }
+
+        return $count;
+    }
+
+    public function forceDestroy(JadwalUjian $jadwal)
+    {
+        // Hapus semua pelanggaran ujian terkait hasil ujian
+        foreach ($jadwal->hasilUjian as $hasil) {
+            $hasil->pelanggaranUjian()->delete();
+        }
+
+        // Hapus semua hasil ujian terkait
+        $jadwal->hasilUjian()->delete();
+
+        // Ambil semua sesi ruangan yang terkait
+        $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+
+        // Lepaskan relasi jadwal <-> sesi
+        $jadwal->sesiRuangans()->detach();
+
+        // Cek setiap sesi, apakah masih dipakai jadwal lain
+        foreach ($sesiIds as $sesiId) {
+            $sesi = SesiRuangan::find($sesiId);
+            if ($sesi && $sesi->jadwalUjians()->count() === 0) {
+                $sesi->delete();
+            }
+        }
+
+        // Hapus jadwal
+        $jadwal->delete();
+
+        return redirect()->route('naskah.jadwal.index')
+            ->with('success', 'Jadwal ujian dan seluruh data terkait berhasil dihapus secara paksa');
+    }
+
+    private function bulkForceDelete($jadwalIds)
+    {
+        $count = 0;
+
+        foreach ($jadwalIds as $id) {
+            $jadwal = JadwalUjian::find($id);
+
+            if ($jadwal) {
+                // Hapus semua pelanggaran ujian terkait hasil ujian
+                foreach ($jadwal->hasilUjian as $hasil) {
+                    $hasil->pelanggaranUjian()->delete();
+                }
+
+                // Hapus semua hasil ujian
+                $jadwal->hasilUjian()->delete();
+
+                // Ambil semua sesi ruangan yang terkait
+                $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+
+                // Lepaskan relasi jadwal <-> sesi
+                $jadwal->sesiRuangans()->detach();
+
+                // Cek setiap sesi, apakah masih dipakai jadwal lain
+                foreach ($sesiIds as $sesiId) {
+                    $sesi = SesiRuangan::find($sesiId);
+                    if ($sesi && $sesi->jadwalUjians()->count() === 0) {
+                        $sesi->delete();
+                    }
+                }
+
+                // Hapus jadwal
+                $jadwal->delete();
+                $count++;
+            }
         }
 
         return $count;

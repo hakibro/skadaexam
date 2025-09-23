@@ -1,20 +1,3 @@
-Naskah:
-
-
-Pengawas:
-
-
-Soal:
-
-
-Ujian:
-
-
-
-
-Ruangan:
-
-
 Berita Acara:
 - rekap absen siswa per kelas
 
@@ -30,6 +13,8 @@ Koordinator:
 Ujian:
 - redirect siswa ke login siswa jika siswa di logout oleh pengawas
 - tampilkan siswa di manage-enrollment
+- tampilkan jawaban siswa untuk review sebelum submit ujian
+- setelah siswa completed satu jadwal, di dashboard kenapa tampil 2 ujian yang sama yang completed?
 
 
 Enrollment:

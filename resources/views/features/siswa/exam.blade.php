@@ -131,7 +131,7 @@
 
 <body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-lg border-b-4 border-indigo-500 sticky top-0 z-50">
+    <header class="bg-white shadow-lg border-b-4 border-indigo-500 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-wrap justify-between items-center py-4">
                 <div class="flex flex-wrap items-center space-x-2 md:space-x-4 mb-2 sm:mb-0">
@@ -140,10 +140,9 @@
                         <i class="fas fa-bars text-xl"></i>
                     </button>
 
-                    <h1 class="text-lg sm:text-xl font-bold text-gray-800">
-                        <i class="fas fa-brain text-indigo-500 mr-2"></i>
-                        <span class="hidden xs:inline">{{ $examData['title'] ?? 'Ujian' }}</span>
-                        <span class="xs:hidden">Ujian</span>
+                    <h1 class="text-lg sm:text-xl uppercase font-bold text-gray-800">
+                        <span class="xs:inline">{{ $examData['title'] ?? 'Ujian' }}</span>
+                        {{-- <span class="xs:hidden">Ujian</span> --}}
                     </h1>
                     <div class="text-xs sm:text-sm text-gray-600 truncate max-w-[120px] sm:max-w-none">
                         <i class="fas fa-user mr-1"></i>
@@ -212,7 +211,7 @@
     </header>
 
     <!-- Sidebar Overlay -->
-    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="sidebar-overlay" class="sidebar-overlay z-50"></div>
 
     <!-- Violation Warning Panel -->
     <div id="violation-warning"
@@ -347,7 +346,7 @@
                         </div>
 
                         <!-- Legend -->
-                        <div class="text-xs space-y-2">
+                        <div class="text-xs grid grid-cols-2 gap-2">
                             <div class="flex items-center space-x-2">
                                 <div class="w-3 h-3 bg-indigo-500 rounded"></div>
                                 <span>Soal saat ini</span>
@@ -487,7 +486,7 @@
                                 <span>Sebelumnya</span>
                             </button>
 
-                            <div class="flex space-x-2 sm:space-x-3">
+                            {{-- <div class="flex space-x-2 sm:space-x-3">
                                 <button
                                     class="px-3 sm:px-6 py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors text-xs sm:text-base"
                                     onclick="skipQuestion()">
@@ -503,7 +502,7 @@
                                     <span class="hidden xs:inline">Simpan & Lanjut</span>
                                     <span class="xs:hidden">Simpan</span>
                                 </button>
-                            </div>
+                            </div> --}}
 
                             <button id="nextBtn"
                                 class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-indigo-500 hover:bg-indigo-600 
