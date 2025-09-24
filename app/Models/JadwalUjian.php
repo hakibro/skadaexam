@@ -109,6 +109,12 @@ class JadwalUjian extends Model
             ->get();
     }
 
+
+    public function pelanggaranUjians()
+    {
+        return $this->hasMany(PelanggaranUjian::class, 'jadwal_ujian_id');
+    }
+
     /**
      * Get all unique pengawas assigned to this jadwal ujian.
      */

@@ -48,6 +48,18 @@ class Mapel extends Model
         return $this->hasMany(JadwalUjian::class);
     }
 
+    public function pelanggaranUjians()
+    {
+        return $this->hasManyThrough(
+            PelanggaranUjian::class,
+            JadwalUjian::class,
+            'mapel_id',       // foreign key di JadwalUjian
+            'jadwal_ujian_id', // foreign key di PelanggaranUjian
+            'id',             // local key di Mapel
+            'id'              // local key di JadwalUjian
+        );
+    }
+
     /**
      * Get all siswa enrolled in this mapel.
      */
@@ -57,7 +69,7 @@ class Mapel extends Model
             ->withPivot('status_enrollment', 'tanggal_daftar', 'enrolled_by')
             ->withTimestamps();
     }
-    
+
     /**
      * Get all enrolled students.
      */

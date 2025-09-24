@@ -183,13 +183,18 @@ class MapelController extends Controller
         }
 
         DB::transaction(function () use ($mapel, $forceDelete) {
-            // hapus semua jadwal ujian + sesi terkait
+            // pastikan relasi sudah dimuat
+            $mapel->load(['bankSoals.soals', 'jadwalUjians.sesiRuangans']);
+
+            // hapus semua jadwal ujian, sesi, pelanggaran
             foreach ($mapel->jadwalUjians as $jadwal) {
                 if (!$forceDelete && $jadwal->hasilUjian()->count() > 0) {
                     throw new \Exception("Jadwal ujian tidak dapat dihapus karena sudah ada hasil ujian");
                 }
 
-                $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
+                $jadwal->pelanggaranUjians()->delete();
+
+                $sesiIds = $jadwal->sesiRuangans->pluck('id')->toArray();
                 $jadwal->sesiRuangans()->detach();
                 $forceDelete ? $jadwal->forceDelete() : $jadwal->delete();
 
@@ -202,13 +207,8 @@ class MapelController extends Controller
                 $bankSoal->delete();
             }
 
+            // terakhir hapus mapel
             $forceDelete ? $mapel->forceDelete() : $mapel->delete();
-
-            Log::info('Mapel deleted', [
-                'mapel_id' => $mapel->id,
-                'mapel_name' => $mapel->nama_mapel,
-                'force' => $forceDelete
-            ]);
         });
 
         return redirect()->route('naskah.mapel.index')
@@ -276,6 +276,9 @@ class MapelController extends Controller
                         if (!$mapel) continue;
 
                         foreach ($mapel->jadwalUjians as $jadwal) {
+                            // Hapus pelanggaran ujian terkait
+                            $jadwal->pelanggaranUjians()->delete();
+
                             $sesiIds = $jadwal->sesiRuangans()->pluck('sesi_ruangan.id')->toArray();
                             $jadwal->sesiRuangans()->detach();
                             $jadwal->forceDelete();
@@ -288,11 +291,14 @@ class MapelController extends Controller
                             $bankSoal->delete();
                         }
 
+                        // Hapus pelanggaran ujian terkait mapel
+                        $mapel->pelanggaranUjians()->delete();
+
                         $mapel->forceDelete();
                         $count++;
                     }
                 });
-                $message = "Berhasil menghapus paksa {$count} mata pelajaran beserta jadwal ujian, sesi ruangan, bank soal, dan soal terkait";
+                $message = "Berhasil menghapus paksa {$count} mata pelajaran beserta jadwal ujian, sesi ruangan, bank soal, soal, dan pelanggaran ujian terkait";
                 break;
 
             case 'status_aktif':

@@ -16,20 +16,21 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center py-4">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <h1 class="text-2xl font-bold text-white">
-                                <i class="fas fa-graduation-cap mr-2"></i>
-                                {{ config('app.name') }}
-                            </h1>
+                        <div class="flex items-center justify-center font-bold text-white">
+                            <i class="text-2xl fas fa-graduation-cap mr-2"></i>
+                            <div class="flex flex-col">
+                                <h1 class="text-2xl leading-5">
+                                    {{ config('app.name') }}
+                                </h1>
+                                <span class="text-sm opacity-75">Dashboard Siswa</span>
+                            </div>
                         </div>
-                        <div class="ml-6 text-white">
-                            <span class="text-sm opacity-75">Dashboard Siswa</span>
-                        </div>
+
                     </div>
 
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-4 ">
                         <!-- Current Time -->
-                        <div class="text-white text-sm">
+                        <div class="hidden md:flex text-white text-sm">
                             <i class="fas fa-clock mr-1"></i>
                             <span id="current-time">{{ now()->format('H:i:s') }}</span>
                         </div>
@@ -40,7 +41,8 @@
                                 <div class="text-sm font-medium">{{ $siswa->nama }}</div>
                                 <div class="text-xs opacity-75">{{ $siswa->idyayasan }}</div>
                             </div>
-                            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <div
+                                class="w-8 h-8 bg-white bg-opacity-20 rounded-full hidden md:flex items-center justify-center">
                                 <i class="fas fa-user text-sm"></i>
                             </div>
                         </div>
