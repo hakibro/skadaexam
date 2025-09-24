@@ -88,6 +88,11 @@ class User extends Authenticatable
         return $this->hasRole('guru');
     }
 
+    public function isSiswa()
+    {
+        return $this->hasRole('siswa');
+    }
+
     public function canManageData()
     {
         return $this->hasRole('data');
@@ -191,7 +196,6 @@ class User extends Authenticatable
         } elseif ($this->isGuru()) {
             return 'guru.dashboard';
         }
-
         // Default route
         return 'home';
     }

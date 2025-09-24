@@ -79,12 +79,12 @@
             </div>
 
             <!-- Test Credentials Info -->
-            <div class="mt-6 p-4 bg-gray-50 rounded-md">
+            {{-- <div class="mt-6 p-4 bg-gray-50 rounded-md">
                 <p class="text-xs text-gray-600 text-center">
                     <strong>Test Credentials:</strong><br>
                     Email: admin@skadaexam.test <br> Password: password123
                 </p>
-            </div>
+            </div> --}}
         </div>
     </div>
 

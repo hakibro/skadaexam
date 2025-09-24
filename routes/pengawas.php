@@ -43,5 +43,5 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
     // Enrollment Management
     Route::get('/manage-enrollment/{ujianId}', [EnrollmentUjianController::class, 'manageCancelledEnrollments'])->name('manage-enrollment');
 
-    Route::post('/manage-enrollment/{id}/restore', [EnrollmentUjianController::class, 'restoreEnrollment'])->name('manage-enrollment.restore');
+    Route::patch('/manage-enrollment/{id}/restore', [EnrollmentUjianController::class, 'restoreEnrollment'])->name('manage-enrollment.restore');
 });

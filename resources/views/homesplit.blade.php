@@ -39,7 +39,7 @@
             </a>
 
             <!-- Guru Section -->
-            <a href="{{ route('login.guru') }}"
+            <a href="{{ route('login') }}"
                 class="flex-1 flex flex-col items-center justify-center bg-green-600 text-white hover:bg-green-700 transition-all duration-300 group">
                 <div class="text-center">
                     <div class="text-6xl mb-4 transform group-hover:scale-110 transition-transform">

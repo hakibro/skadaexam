@@ -1,3 +1,10 @@
+View administrasi ujian:
+Perlu Dijadikan responsif
+
+Pengawas:
+kembalikan siswa dari hapus enrollment masih error:
+- absen tidak otomatis terisi jika siswa mengerjakan ujian (ambil dari login siswa saja)
+
 Berita Acara:
 - rekap absen siswa per kelas
 
@@ -5,16 +12,14 @@ Koordinator:
 - kembangkan format berita acara agar memenuhi kebutuhan.
 - absen pengawas
 - fungsikan monitoring
-- not important -- penugasan pengawas:
-  - konsep : update konsep penugasan jika pengawas ditetapkan untuk sesi ruangan di tanggal tersebut maka tetapkan untuk semua jadwal di sesi ruangan tersebut
-  - rewrite: ajax search manajemen penugasan pengawas 
-  - cek: berita acara menampilkan jadwal ujian yang berbeda?
+
+  
 
 Ujian:
 - redirect siswa ke login siswa jika siswa di logout oleh pengawas
 - tampilkan siswa di manage-enrollment
-- tampilkan jawaban siswa untuk review sebelum submit ujian
-- setelah siswa completed satu jadwal, di dashboard kenapa tampil 2 ujian yang sama yang completed?
+- tampilkan jawaban siswa untuk review sebelum submit ujian (pengganti alert agar tidak dianggap sebagai pelanggaran)
+
 
 
 Enrollment:
@@ -40,5 +45,10 @@ sudah auto enroll siswa sesuai jurusan ketika membuat jadwal baru.
 Ujian:
 - waktu pengerjaan ambil batas waktu dari enrollment.waktu_selesai_ujian
 
+Pengawas:
+- penugasan pengawas:
+update konsep penugasan jika pengawas ditetapkan untuk sesi ruangan di tanggal tersebut maka tetapkan untuk semua jadwal di sesi ruangan tersebut
+- rewrite: ajax search manajemen penugasan pengawas
+- cek: berita acara menampilkan jadwal ujian yang berbeda?
 
 

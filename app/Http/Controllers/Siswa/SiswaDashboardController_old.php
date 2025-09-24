@@ -559,7 +559,7 @@ class SiswaDashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'score' => $score,
-                'redirect_url' => route('siswa.exam.result', ['hasil' => $hasilUjian->id])
+                'redirect_url' => route('ujian.result', ['hasil' => $hasilUjian->id])
             ]);
         } catch (\Exception $e) {
             Log::error('Error submitting exam', [

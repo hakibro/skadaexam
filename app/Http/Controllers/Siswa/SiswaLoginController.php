@@ -147,6 +147,29 @@ class SiswaLoginController extends Controller
             $request->session()->regenerate();
 
 
+            // Update status kehadiran di pivot sesi_ruangan_siswa
+            try {
+                $sesiRuangan->siswa()->updateExistingPivot($siswa->id, [
+                    'status_kehadiran' => 'hadir',
+                    'keterangan' => 'Login ' . now()->format('d-m-Y H:i:s'),
+                    'updated_at' => now(),
+                ]);
+
+                Log::info('Kehadiran siswa tercatat', [
+                    'siswa_id' => $siswa->id,
+                    'sesi_ruangan_id' => $sesiRuangan->id,
+                    'status_kehadiran' => 'hadir',
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal update status kehadiran siswa', [
+                    'siswa_id' => $siswa->id,
+                    'sesi_ruangan_id' => $sesiRuangan->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+
+
             // Store enrollment info in session for exam context (if exists)
             if ($enrollment) {
                 $request->session()->put('current_enrollment_id', $enrollment->id);

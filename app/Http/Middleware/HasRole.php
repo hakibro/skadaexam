@@ -15,11 +15,21 @@ class HasRole
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        // Cek di semua guard yang aktif (web & guru)
-        $user = Auth::user() ?? Auth::guard('guru')->user();
+        // Cek di semua guard yang aktif (web & siswa)
+        $user = Auth::guard('siswa')->user() ?? Auth::guard('web')->user();
 
         if (!$user) {
-            return redirect()->route('login')->with('error', 'Please login first');
+            if (Auth::guard('siswa')->check() === false) {
+                Log::info('Redirecting to siswa login');
+                return redirect()->route('login.siswa');
+            }
+
+            if (Auth::guard('web')->check() === false) {
+                Log::info('Redirecting to guru login');
+                return redirect()->route('login');
+            }
+            Log::info('Redirecting to login');
+            return redirect()->route('login.siswa');
         }
 
         // Jika user adalah admin → akses full

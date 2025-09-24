@@ -25,7 +25,7 @@
                     <tr>
                         <th class="py-2 px-4 border-b">No</th>
                         <th class="py-2 px-4 border-b">Nama Siswa</th>
-                        <th class="py-2 px-4 border-b">Email</th>
+                        <th class="py-2 px-4 border-b">Jadwal Ujian</th>
                         <th class="py-2 px-4 border-b">Status</th>
                         <th class="py-2 px-4 border-b">Aksi</th>
                     </tr>
@@ -36,13 +36,13 @@
                         <tr class="border-b hover:bg-gray-50">
                             <td class="py-2 px-4">{{ $no++ }}</td>
                             <td class="py-2 px-4">{{ $enrollment->siswa->nama }}</td>
-                            <td class="py-2 px-4">{{ $enrollment->siswa->email }}</td>
+                            <td class="py-2 px-4">{{ $enrollment->jadwalUjian->judul ?? '-' }}</td>
                             <td class="py-2 px-4 text-red-600 font-semibold">{{ $enrollment->status_enrollment }}</td>
                             <td class="py-2 px-4">
                                 <form action="{{ route('pengawas.manage-enrollment.restore', $enrollment->id) }}"
                                     method="POST">
                                     @csrf
-                                    @method('POST')
+                                    @method('PATCH')
                                     <button type="submit"
                                         class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
                                         Aktifkan Kembali

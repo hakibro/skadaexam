@@ -29,12 +29,12 @@
                             <select name="bank_soal_id" id="bank_soal_id" required
                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Pilih Bank Soal</option>
-                                @foreach ($bankSoals as $bank)
-                                    <option value="{{ $bank->id }}"
-                                        {{ old('bank_soal_id', $soal->bank_soal_id) == $bank->id ? 'selected' : '' }}>
-                                        {{ $bank->judul }} ({{ $bank->total_soal }} soal)
-                                    </option>
-                                @endforeach
+                                {{-- @foreach ($bankSoals as $bank) --}}
+                                <option value="{{ $bank->id }}"
+                                    {{ old('bank_soal_id', $soal->bank_soal_id) == $bank->id ? 'selected' : '' }}>
+                                    {{ $bank->judul }} ({{ $bank->total_soal }} soal)
+                                </option>
+                                {{-- @endforeach --}}
                             </select>
                             @error('bank_soal_id')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

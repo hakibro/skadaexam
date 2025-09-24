@@ -11,16 +11,6 @@ use App\Http\Controllers\Auth\UjianLoginController;
 |--------------------------------------------------------------------------
 */
 
-// Token-based authentication routes for students
-Route::get('/ujian/login', [UjianLoginController::class, 'showTokenForm'])
-    ->name('ujian.token');
-
-Route::post('/ujian/login', [UjianLoginController::class, 'loginWithToken'])
-    ->name('ujian.login');
-
-Route::post('/ujian/logout', [UjianLoginController::class, 'logout'])
-    ->name('ujian.logout');
-
 // Main exam routes for students - moved from auth_extended.php
 Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(function () {
     // Main exam interface - EXPLICIT PARAMETER
@@ -32,9 +22,11 @@ Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(functi
     Route::post('/save-answer', [UjianController::class, 'saveAnswer'])->name('save-answer');
     Route::post('/flag-question', [UjianController::class, 'flagQuestion'])->name('flag-question');
     Route::post('/toggle-flag', [UjianController::class, 'toggleFlag'])->name('toggle-flag');
+
     Route::post('/submit', [UjianController::class, 'submitExam'])->name('submit');
     Route::get('/confirm-finish', [UjianController::class, 'confirmFinish'])->name('confirm-finish');
     Route::get('/result', [UjianController::class, 'examResult'])->name('result');
+
     // Catat pelanggaran (tanpa langsung logout)
     Route::post('record-violation', [UjianController::class, 'recordViolation'])
         ->name('record-violation');
