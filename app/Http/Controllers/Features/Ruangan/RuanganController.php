@@ -638,6 +638,7 @@ class RuanganController extends Controller
                 'Nama'           => $item['nama'] ?? '',
                 'Kelas'          => $item['KelasFormal'] ?? '',
                 'AsramaPondok'   => $item['AsramaPondok'] ?? '',
+                'KelasPondok'   => $item['KelasPondok'] ?? '',
                 'Kategori'       => $item['AsramaPondok'] ? 'Pondok' : 'Non Pondok',
             ];
         });
@@ -663,6 +664,7 @@ class RuanganController extends Controller
                     'Nama',
                     'Kelas',
                     'AsramaPondok',
+                    'KelasPondok',
                     'Kategori'
                 ];
             }

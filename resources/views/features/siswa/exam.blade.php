@@ -184,7 +184,18 @@
                     </div>
 
                     <!-- Timer -->
-                    @if (isset($examData['timeLimit']) && $examData['timeLimit'] > 0)
+                    <div
+                        class="bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md">
+                        <div class="flex items-center space-x-1 sm:space-x-2">
+                            <i class="fas fa-clock"></i>
+                            <span id="timer" class="font-mono font-bold text-sm sm:text-lg">
+
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Old method display time limit, variable still there --}}
+                    {{-- @if (isset($examData['timeLimit']) && $examData['timeLimit'] > 0)
                         <div
                             class="bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md">
                             <div class="flex items-center space-x-1 sm:space-x-2">
@@ -194,7 +205,7 @@
                                 </span>
                             </div>
                         </div>
-                    @endif
+                    @endif --}}
 
                     <!-- Submit Button -->
                     <button id="submitExam" onclick="submitExam()"
@@ -559,12 +570,21 @@
         let answers = @json($examData['answers'] ?? []);
         let flaggedQuestions = @json($examData['flaggedQuestions'] ?? []);
         let hasilUjianId = {{ $examData['hasilUjianId'] ?? 0 }};
-        let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
-        let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
         let examSettings = @json($examData['examSettings'] ?? []);
+
+        // Update time limit to realtime
+        let timeLimit = {{ $examData['examEndTime'] ?? '' }};
+        let remainingTime = Math.floor((timeLimit - Date.now()) / 1000);;
+        console.log(timeLimit, remainingTime);
+        // let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
+        // let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
+
+
+
 
         // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
 
         // Safe system notification function (doesn't trigger violation detection)
         function showSystemNotification(message, type = 'info', duration = 3000) {
@@ -903,6 +923,7 @@
 
         // Update timer display
         function updateTimerDisplay() {
+
             const hours = Math.floor(remainingTime / 3600);
             const minutes = Math.floor((remainingTime % 3600) / 60);
             const seconds = remainingTime % 60;
