@@ -5,6 +5,30 @@
 @section('page-description', 'Informasi jadwal ujian dan sesi ruangan')
 
 @section('content')
+    <!-- Top Navigation -->
+    <div class="mb-6 flex items-center justify-between">
+        <div class="flex space-x-2">
+            <a href="{{ route('naskah.jadwal.index') }}"
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-arrow-left mr-2"></i> Kembali ke Daftar
+            </a>
+            <a href="{{ route('naskah.dashboard') }}"
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-home mr-2"></i> Dashboard
+            </a>
+        </div>
+
+        @if (auth()->user()->can('delete', $jadwal) && ($jadwal->status == 'draft' || $jadwal->status == 'dibatalkan'))
+            <form action="{{ route('naskah.jadwal.destroy', $jadwal) }}" method="POST" class="inline-block"
+                onsubmit="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini?')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
+                    <i class="fas fa-trash mr-2"></i> Hapus Jadwal
+                </button>
+            </form>
+        @endif
+    </div>
     <div class="bg-white shadow rounded-lg p-6">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold">Detail Jadwal Ujian</h1>
@@ -451,30 +475,7 @@
             </div>
         </div>
 
-        <!-- Footer Navigation -->
-        <div class="mt-6 flex items-center justify-between">
-            <div class="flex space-x-2">
-                <a href="{{ route('naskah.jadwal.index') }}"
-                    class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    <i class="fas fa-arrow-left mr-2"></i> Kembali ke Daftar
-                </a>
-                <a href="{{ route('naskah.dashboard') }}"
-                    class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    <i class="fas fa-home mr-2"></i> Dashboard
-                </a>
-            </div>
 
-            @if (auth()->user()->can('delete', $jadwal) && ($jadwal->status == 'draft' || $jadwal->status == 'dibatalkan'))
-                <form action="{{ route('naskah.jadwal.destroy', $jadwal) }}" method="POST" class="inline-block"
-                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
-                        <i class="fas fa-trash mr-2"></i> Hapus Jadwal
-                    </button>
-                </form>
-            @endif
-        </div>
     </div>
 
     <!-- Modal section removed -->

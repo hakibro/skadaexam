@@ -13,13 +13,14 @@
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
                 </a>
+
+            </div>
+
+            <div class="flex space-x-2">
                 <a href="{{ route('naskah.mapel.edit', $mapel->id) }}"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100">
                     <i class="fa-solid fa-edit mr-2"></i> Edit
                 </a>
-            </div>
-
-            <div class="flex space-x-2">
                 <form action="{{ route('naskah.mapel.status', $mapel->id) }}" method="post">
                     @csrf
                     @method('PUT')

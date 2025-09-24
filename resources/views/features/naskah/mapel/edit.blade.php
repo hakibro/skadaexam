@@ -41,18 +41,17 @@
 
                         <!-- Tingkat -->
                         <div>
-                            <label for="tingkat" class="block text-sm font-medium text-gray-700">Tingkat Kelas <span
+                            <label for="tingkat" class="block text-sm font-medium text-gray-700">Tingkat <span
                                     class="text-red-500">*</span></label>
-                            <select name="tingkat" id="tingkat"
-                                class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm @error('tingkat') border-red-500 @else border-gray-300 @enderror rounded-md"
-                                required>
+                            <select name="tingkat" id="tingkat" required
+                                class="mt-1 form-select block w-full @error('tingkat') border-red-500 @enderror">
                                 <option value="">-- Pilih Tingkat --</option>
-                                <option value="10" {{ old('tingkat', $mapel->tingkat) == '10' ? 'selected' : '' }}>Kelas
-                                    10</option>
-                                <option value="11" {{ old('tingkat', $mapel->tingkat) == '11' ? 'selected' : '' }}>Kelas
-                                    11</option>
-                                <option value="12" {{ old('tingkat', $mapel->tingkat) == '12' ? 'selected' : '' }}>Kelas
-                                    12</option>
+                                @foreach ($tingkatList as $tingkat)
+                                    <option value="{{ $tingkat }}"
+                                        {{ old('tingkat', $mapel->tingkat ?? '') == $tingkat ? 'selected' : '' }}>
+                                        {{ $tingkat }}
+                                    </option>
+                                @endforeach
                             </select>
                             @error('tingkat')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -63,19 +62,18 @@
                         <div>
                             <label for="jurusan" class="block text-sm font-medium text-gray-700">Jurusan</label>
                             <select name="jurusan" id="jurusan"
-                                class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                                <option value="">-- Semua Jurusan --</option>
-                                <option value="IPA" {{ old('jurusan', $mapel->jurusan) == 'IPA' ? 'selected' : '' }}>IPA
-                                </option>
-                                <option value="IPS" {{ old('jurusan', $mapel->jurusan) == 'IPS' ? 'selected' : '' }}>IPS
-                                </option>
-                                <option value="Bahasa" {{ old('jurusan', $mapel->jurusan) == 'Bahasa' ? 'selected' : '' }}>
-                                    Bahasa</option>
-                                <option value="Agama" {{ old('jurusan', $mapel->jurusan) == 'Agama' ? 'selected' : '' }}>
-                                    Agama</option>
+                                class="mt-1 form-select block w-full @error('jurusan') border-red-500 @enderror">
+                                <option value="">-- Pilih Jurusan --</option>
+                                @foreach ($jurusanList as $jurusan)
+                                    <option value="{{ $jurusan }}"
+                                        {{ old('jurusan', $mapel->jurusan ?? '') == $jurusan ? 'selected' : '' }}>
+                                        {{ $jurusan }}
+                                    </option>
+                                @endforeach
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">Kosongkan jika mata pelajaran berlaku untuk semua jurusan
-                            </p>
+                            @error('jurusan')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <!-- Status -->

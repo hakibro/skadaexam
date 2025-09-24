@@ -117,7 +117,11 @@ class MapelController extends Controller
      */
     public function edit(Mapel $mapel)
     {
-        return view('features.naskah.mapel.edit', compact('mapel'));
+        $mapel = Mapel::find($mapel->id);
+        $tingkatList = Kelas::pluck('tingkat')->unique();
+        $jurusanList = Kelas::pluck('jurusan')->unique();
+
+        return view('features.naskah.mapel.edit', compact('mapel', 'tingkatList', 'jurusanList'));
     }
 
     /**
