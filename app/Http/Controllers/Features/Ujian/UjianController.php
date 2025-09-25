@@ -524,55 +524,55 @@ class UjianController extends Controller
     /**
      * Display the question page
      */
-    // public function showSoal($soalIndex = 0)
-    // {
-    //     $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
+    public function showSoal($soalIndex = 0)
+    {
+        $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
 
-    //     // Convert to zero-based index if not already
-    //     $soalIndex = (int) $soalIndex;
+        // Convert to zero-based index if not already
+        $soalIndex = (int) $soalIndex;
 
-    //     if ($hasilUjian->is_final) {
-    //         return redirect()->route('ujian.finish');
-    //     }
+        if ($hasilUjian->is_final) {
+            return redirect()->route('ujian.finish');
+        }
 
-    //     // Get all soal IDs from jawaban_siswa
-    //     $jawabanSiswa = $hasilUjian->jawaban_siswa;
+        // Get all soal IDs from jawaban_siswa
+        $jawabanSiswa = $hasilUjian->jawaban_siswa;
 
-    //     if ($soalIndex < 0 || $soalIndex >= count($jawabanSiswa)) {
-    //         return redirect()->route('ujian.soal', 0);
-    //     }
+        if ($soalIndex < 0 || $soalIndex >= count($jawabanSiswa)) {
+            return redirect()->route('ujian.soal', 0);
+        }
 
-    //     // Get current soal details
-    //     $currentSoal = $jawabanSiswa[$soalIndex];
-    //     $soalId = $currentSoal['soal_id'];
-    //     $soal = Soal::findOrFail($soalId);
+        // Get current soal details
+        $currentSoal = $jawabanSiswa[$soalIndex];
+        $soalId = $currentSoal['soal_id'];
+        $soal = Soal::findOrFail($soalId);
 
-    //     // Calculate progress
-    //     $totalSoal = count($jawabanSiswa);
-    //     $progress = [
-    //         'current' => $soalIndex + 1,
-    //         'total' => $totalSoal,
-    //         'percentage' => ($soalIndex + 1) / $totalSoal * 100,
-    //         'terjawab' => collect($jawabanSiswa)->filter(fn($j) => !is_null($j['jawaban']))->count(),
-    //         'belum_terjawab' => collect($jawabanSiswa)->filter(fn($j) => is_null($j['jawaban']))->count()
-    //     ];
+        // Calculate progress
+        $totalSoal = count($jawabanSiswa);
+        $progress = [
+            'current' => $soalIndex + 1,
+            'total' => $totalSoal,
+            'percentage' => ($soalIndex + 1) / $totalSoal * 100,
+            'terjawab' => collect($jawabanSiswa)->filter(fn($j) => !is_null($j['jawaban']))->count(),
+            'belum_terjawab' => collect($jawabanSiswa)->filter(fn($j) => is_null($j['jawaban']))->count()
+        ];
 
-    //     // Calculate time remaining
-    //     $durasiUjian = session('durasi'); // in minutes
-    //     $waktuMulai = session('waktu_mulai');
-    //     $waktuSelesai = \Carbon\Carbon::parse($waktuMulai)->addMinutes($durasiUjian);
-    //     $sekarang = \Carbon\Carbon::now();
-    //     $sisaWaktu = $sekarang->diffInSeconds($waktuSelesai, false);
+        // Calculate time remaining
+        $durasiUjian = session('durasi'); // in minutes
+        $waktuMulai = session('waktu_mulai');
+        $waktuSelesai = \Carbon\Carbon::parse($waktuMulai)->addMinutes($durasiUjian);
+        $sekarang = \Carbon\Carbon::now();
+        $sisaWaktu = $sekarang->diffInSeconds($waktuSelesai, false);
 
-    //     return view('ujian.soal', compact(
-    //         'hasilUjian',
-    //         'soal',
-    //         'soalIndex',
-    //         'progress',
-    //         'sisaWaktu',
-    //         'currentSoal'
-    //     ));
-    // }
+        return view('ujian.soal', compact(
+            'hasilUjian',
+            'soal',
+            'soalIndex',
+            'progress',
+            'sisaWaktu',
+            'currentSoal'
+        ));
+    }
 
 
     /**

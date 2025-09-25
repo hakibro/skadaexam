@@ -916,6 +916,7 @@
                     // Time's up!
                     clearInterval(timerInterval);
                     showSystemNotification('⏰ Waktu ujian habis! Ujian akan dikumpulkan otomatis.');
+                    console.log('Waktu habis, mengumpulkan ujian...');
                     autoSubmitExam();
                 }
             }, 1000);
@@ -968,6 +969,7 @@
                     })
                     .then(() => {
                         // Redirect to dashboard after submission
+                        console.log('Ujian berhasil disubmit, mengarahkan ke Dashboard...');
                         window.location.href = '{{ route('siswa.dashboard') }}';
                     })
                     .catch(() => {
