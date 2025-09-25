@@ -10,7 +10,7 @@
         <p class="text-gray-600 mb-8">Monitor dan supervisi jalannya ujian online.</p> --}}
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-2  md:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
                 <div class="flex items-center gap-4">
                     <div class="bg-green-100 text-green-600 p-3 rounded-full">
@@ -76,91 +76,145 @@
             </h3>
 
             @if (count($assignments) > 0)
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach ($assignments as $assignment)
-                        @php
-                            $jadwalUjians = $assignment->jadwalUjians;
-                            $mapelNames = [];
-                            $kodeJadwals = [];
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Mata Pelajaran</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ruangan</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Waktu</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Jumlah Siswa</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Keamanan</th>
+                                <th
+                                    class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach ($assignments as $assignment)
+                                @php
+                                    $jadwalUjians = $assignment->jadwalUjians;
+                                    $mapelNames = [];
+                                    $kodeJadwals = [];
 
-                            foreach ($jadwalUjians as $jadwal) {
-                                $mapelNames[] = $jadwal->mapel->nama_mapel ?? 'Tidak ada mapel';
-                                $kodeJadwals[] = $jadwal->kode_jadwal ?? '-';
-                            }
+                                    foreach ($jadwalUjians as $jadwal) {
+                                        if ($jadwal->mapel) {
+                                            $mapelNames[] = $jadwal->mapel->nama_mapel;
+                                        } else {
+                                            $mapelNames[] = 'Tidak ada mapel';
+                                        }
+                                        $kodeJadwals[] = $jadwal->kode_jadwal ?? '-';
+                                    }
 
-                            $mapelDisplay = count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
-                            $kodeDisplay = count($kodeJadwals) > 0 ? implode(', ', $kodeJadwals) : '-';
-                        @endphp
+                                    $mapelDisplay =
+                                        count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
+                                    $kodeDisplay = count($kodeJadwals) > 0 ? implode(', ', $kodeJadwals) : '-';
+                                @endphp
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="font-medium text-gray-900">{{ $mapelDisplay }}</div>
+                                        <div class="text-sm text-gray-500">Kode: {{ $kodeDisplay }}</div>
+                                        @if (count($jadwalUjians) > 1)
+                                            <div class="text-xs text-blue-600 mt-1">{{ count($jadwalUjians) }} Ujian</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="font-medium text-gray-900">
+                                            {{ $assignment->ruangan ? $assignment->ruangan->nama_ruangan : 'Tidak ada ruangan' }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">{{ $assignment->nama_sesi }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ $assignment->waktu_mulai }} -
+                                            {{ $assignment->waktu_selesai }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span
+                                            class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            {{ $assignment->sesiRuanganSiswa->count() }} Siswa
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                            class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $assignment->status_badge_class }}">
+                                            {{ $assignment->status_label['text'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <!-- Tombol Setting -->
+                                        <button type="button" onclick="openSettingModal({{ $assignment->id }})"
+                                            class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md">
+                                            <i class="fa-solid fa-gear mr-1"></i> Setting
+                                        </button>
 
-                        <!-- Card -->
-                        <div class="border border-gray-200 rounded-lg shadow-sm bg-white p-4 flex flex-col justify-between">
-                            <div>
-                                <!-- Mapel -->
-                                <h4 class="font-semibold text-gray-900 text-lg">{{ $mapelDisplay }}</h4>
-                                <p class="text-sm text-gray-500">Kode: {{ $kodeDisplay }}</p>
-                                @if (count($jadwalUjians) > 1)
-                                    <p class="text-xs text-blue-600 mt-1">{{ count($jadwalUjians) }} Ujian</p>
-                                @endif
+                                        <!-- Modal untuk assignment ini -->
+                                        <div id="settingModal-{{ $assignment->id }}"
+                                            class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                                            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-4">
+                                                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                                                    <h2 class="text-lg font-semibold">Pengaturan Ujian</h2>
+                                                    <button onclick="closeSettingModal({{ $assignment->id }})"
+                                                        class="text-gray-500 hover:text-gray-700">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                </div>
 
-                                <!-- Ruangan -->
-                                <div class="mt-3">
-                                    <p class="font-medium text-gray-900">
-                                        {{ $assignment->ruangan->nama_ruangan ?? 'Tidak ada ruangan' }}
-                                    </p>
-                                    <p class="text-sm text-gray-500">{{ $assignment->nama_sesi }}</p>
-                                </div>
-
-                                <!-- Waktu -->
-                                <div class="mt-2 text-sm text-gray-900">
-                                    {{ $assignment->waktu_mulai }} - {{ $assignment->waktu_selesai }}
-                                </div>
-
-                                <!-- Jumlah siswa -->
-                                <div class="mt-2">
-                                    <span
-                                        class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        {{ $assignment->sesiRuanganSiswa->count() }} Siswa
-                                    </span>
-                                </div>
-
-                                <!-- Status -->
-                                <div class="mt-2">
-                                    <span
-                                        class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{ $assignment->status_badge_class }}">
-                                        {{ $assignment->status_label['text'] }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Tombol -->
-                            <div class="mt-4 space-y-2">
-                                <!-- Setting -->
-                                <button type="button" onclick="openSettingModal({{ $assignment->id }})"
-                                    class="w-full text-white bg-blue-500 hover:bg-blue-600 px-3 py-2 rounded-md flex items-center justify-center">
-                                    <i class="fa-solid fa-gear mr-1"></i> Setting
-                                </button>
-
-                                <div class="flex flex-wrap gap-2">
-                                    <a href="{{ route('pengawas.generate-token', $assignment->id) }}"
-                                        class="flex-1 text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md text-center">
-                                        <i class="fa-solid fa-key mr-1"></i> Token
-                                    </a>
-                                    <a href="{{ route('pengawas.assignment', $assignment->id) }}"
-                                        class="flex-1 text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-md text-center">
-                                        <i class="fa-solid fa-users mr-1"></i> Absen
-                                    </a>
-                                    <a href="{{ route('pengawas.berita-acara.show', $assignment->id) }}"
-                                        class="flex-1 text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-md text-center">
-                                        <i class="fa-solid fa-clipboard mr-1"></i> Berita Acara
-                                    </a>
-                                    <a href="{{ route('pengawas.manage-enrollment', $assignment->id) }}"
-                                        class="flex-1 text-white bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-md text-center">
-                                        <i class="fa-solid fa-user-cog mr-1"></i> Enrollment
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+                                                <div class="flex flex-col space-y-3">
+                                                    @foreach ($assignment->jadwalUjians as $jadwal)
+                                                        <div class="flex items-center justify-between">
+                                                            <span
+                                                                class="text-sm">{{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}</span>
+                                                            <button type="button" data-jadwal-id="{{ $jadwal->id }}"
+                                                                data-state="{{ $jadwal->aktifkan_auto_logout ?? true ? 'active' : 'inactive' }}"
+                                                                class="toggle-auto-logout inline-flex items-center rounded-md py-1 px-2 text-xs font-medium
+                                {{ $jadwal->aktifkan_auto_logout ?? true ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white' }}">
+                                                                <i
+                                                                    class="fa-solid {{ $jadwal->aktifkan_auto_logout ?? true ? 'fa-lock mr-1' : 'fa-unlock mr-1' }}"></i>
+                                                                {{ $jadwal->aktifkan_auto_logout ?? true ? 'Aktif' : 'Nonaktif' }}
+                                                            </button>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            <a href="{{ route('pengawas.generate-token', $assignment->id) }}"
+                                                class="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md">
+                                                <i class="fa-solid fa-key mr-1"></i> Token
+                                            </a>
+                                            <a href="{{ route('pengawas.assignment', $assignment->id) }}"
+                                                class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md">
+                                                <i class="fa-solid fa-users mr-1"></i> Absen
+                                            </a>
+                                            <a href="{{ route('pengawas.berita-acara.show', $assignment->id) }}"
+                                                class="text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-md">
+                                                <i class="fa-solid fa-clipboard mr-1"></i> Berita Acara
+                                            </a>
+                                            <a href="{{ route('pengawas.manage-enrollment', $assignment->id) }}"
+                                                class="text-white bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded-md">
+                                                <i class="fa-solid fa-user-cog mr-1"></i> Enrollment
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             @else
                 <div class="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
@@ -172,7 +226,6 @@
                 </div>
             @endif
         </div>
-
 
 
 
@@ -638,31 +691,31 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                                                                                    <button 
-                                                                                                                                        data-violation-id="${violation.id}"
-                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                        class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
-                                                                                                                                        <i class="fas fa-times-circle mr-1"></i> Abaikan
-                                                                                                                                    </button>
-                                                                                                                                    <button 
-                                                                                                                                        data-violation-id="${violation.id}"
-                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                        class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
-                                                                                                                                        <i class="fas fa-check-circle mr-1"></i> Proses
-                                                                                                                                    </button>
-                                                                                                                                ` : `
-                                                                                                                                    <span class="text-gray-400">
-                                                                                                                                        <i class="fas fa-check mr-1"></i> Sudah ditangani
-                                                                                                                                    </span>
-                                                                                                                                `}
+                                                                                                                    <button 
+                                                                                                                        data-violation-id="${violation.id}"
+                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                        class="dismiss-violation text-yellow-600 hover:text-yellow-800 px-2 py-1 rounded hover:bg-yellow-50">
+                                                                                                                        <i class="fas fa-times-circle mr-1"></i> Abaikan
+                                                                                                                    </button>
+                                                                                                                    <button 
+                                                                                                                        data-violation-id="${violation.id}"
+                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                        class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
+                                                                                                                        <i class="fas fa-check-circle mr-1"></i> Proses
+                                                                                                                    </button>
+                                                                                                                ` : `
+                                                                                                                    <span class="text-gray-400">
+                                                                                                                        <i class="fas fa-check mr-1"></i> Sudah ditangani
+                                                                                                                    </span>
+                                                                                                                `}
                                     </div>
                                 </td>
                             `;

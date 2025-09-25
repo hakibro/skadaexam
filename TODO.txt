@@ -3,7 +3,7 @@ Perlu Dijadikan responsif
 
 Pengawas:
 kembalikan siswa dari hapus enrollment masih error:
-- absen tidak otomatis terisi jika siswa mengerjakan ujian (ambil dari login siswa saja)
+- 
 
 Berita Acara:
 - rekap absen siswa per kelas
@@ -20,7 +20,8 @@ Ujian:
 - tampilkan siswa di manage-enrollment
 - tampilkan jawaban siswa untuk review sebelum submit ujian (pengganti alert agar tidak dianggap sebagai pelanggaran)
 
-
+Naskah:
+- Soal edit tidak bisa simpan ketika pilihan jawaban bergambar. (harus pilih tipe soal?)
 
 Enrollment:
 create masih error

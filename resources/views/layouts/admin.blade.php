@@ -65,7 +65,11 @@
                     // Access permissions - admins get everything, teachers get basic access
                     $hasDataAccess = $isAdmin || $user->canManageData() || $isGuru; // Teachers need data access
                     $hasNaskahAccess = $isAdmin || $user->canManageNaskah() || $isGuru; // Teachers need naskah access
-                    $hasPengawasAccess = $isAdmin || $user->canSupervise() || ($user->guru && $user->guru->count() > 0); // Teachers can be pengawas
+                    $hasPengawasAccess =
+                        $isAdmin ||
+                        $user->canSupervise() ||
+                        ($user->guru && $user->guru->count() > 0) ||
+                        $user->canCoordinate(); // Teachers and Koordinator can access pengawas
                     $hasKoordinatorAccess = $isAdmin || $user->canCoordinate();
                     $hasRuanganAccess = $isAdmin || $user->canManageRuangan() || $user->canCoordinate();
                 @endphp
@@ -280,8 +284,8 @@
 
                     <!-- Page Title -->
                     <div>
-                        <h1 class="text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
-                        <p class="text-sm text-gray-600">@yield('page-description', 'Welcome to admin panel')</p>
+                        <h1 class="hidden md:inline text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
+                        <p class="hidden md:inline text-sm text-gray-600">@yield('page-description', 'Welcome to admin panel')</p>
                     </div>
 
                     <!-- User Menu -->
@@ -301,17 +305,13 @@
                                 {{ $displayRole }}
                             </p>
                         </div>
-                        <div class="relative">
-                            <button class="bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center">
-                                <i class="fa-solid fa-user text-gray-600"></i>
-                            </button>
-                        </div>
+
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"
                                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors">
                                 <i class="fa-solid fa-sign-out-alt mr-1"></i>
-                                Logout
+                                <span class="hidden md:inline">Logout</span>
                             </button>
                         </form>
                     </div>

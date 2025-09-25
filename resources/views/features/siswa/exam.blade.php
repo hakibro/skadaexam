@@ -149,13 +149,13 @@
                         {{ $siswa->nama }}
                     </div>
                     <!-- Violation Counter -->
-                    <div class="flex items-center">
+                    {{-- <div class="flex items-center">
                         <span id="violation-count"
                             class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full {{ isset($examData['violations_count']) && $examData['violations_count'] > 0 ? '' : 'hidden' }}">
                             {{ $examData['violations_count'] ?? 0 }}
                         </span>
                         <span class="ml-1 text-xs text-red-500">Pelanggaran</span>
-                    </div>
+                    </div> --}}
                 </div>
 
                 <!-- Timer & Progress -->
