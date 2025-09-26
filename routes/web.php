@@ -2,31 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Guru\GuruLoginController;
-use App\Http\Controllers\Siswa\SiswaLoginController;
-use App\Http\Controllers\ProfileController;
-
-// Dashboard controllers
-use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Features\Data\DashboardController as DataDashboard;
-use App\Http\Controllers\Features\Data\GuruController;
-use App\Http\Controllers\Features\Data\KelasController;
-use App\Http\Controllers\Features\Data\SiswaController;
-use App\Http\Controllers\Features\Naskah\DashboardController as NaskahDashboard;
-use App\Http\Controllers\Features\Pengawas\DashboardController as PengawasDashboard;
-use App\Http\Controllers\Features\Koordinator\DashboardController as KoordinatorDashboard;
-// Legacy AssignmentController has been removed
-use App\Http\Controllers\Features\Koordinator\MonitoringController;
-use App\Http\Controllers\Features\Koordinator\LaporanController;
-use App\Http\Controllers\Guru\DashboardController as GuruDashboard;
-use App\Http\Controllers\Siswa\DashboardController as SiswaDashboard;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,32 +26,33 @@ require __DIR__ . '/auth_extended.php';
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', function () {
-    // Pastikan user terautentikasi
-    if (!auth()->check()) {
+    $user = Auth::guard('web')->user() ?? Auth::guard('siswa')->user();
+
+    if (!$user) {
         return redirect()->route('login');
     }
 
-    $user = auth()->user();
+    // Tentukan redirect route dari helper di model
+    if (method_exists($user, 'getRedirectRoute')) {
+        $redirectRoute = $user->getRedirectRoute();
 
-    // Debug log untuk melihat apa yang terjadi
-    Log::info('Dashboard redirect attempt', [
-        'user_id' => $user->id ?? null,
-        'user_email' => $user->email ?? null,
-        'roles' => $user->roles->pluck('name')->toArray() ?? []
-    ]);
-
-    // Use the getRedirectRoute helper method to determine where to redirect
-    $redirectRoute = $user->getRedirectRoute();
-
-    // Check if the route exists before redirecting
-    if (Route::has($redirectRoute)) {
-        return redirect()->route($redirectRoute);
+        if (Route::has($redirectRoute)) {
+            return redirect()->route($redirectRoute);
+        }
     }
 
-    // Fallback jika route tidak ditemukan
-    auth()->logout();
-    return redirect()->route('login')->with('error', 'Dashboard not found for role: ' . $user->role);
-})->middleware('auth:web')->name('dashboard');
+    // fallback: logout user & kembali ke login
+    if (Auth::guard('web')->check()) {
+        Auth::guard('web')->logout();
+    } elseif (Auth::guard('siswa')->check()) {
+        Auth::guard('siswa')->logout();
+    }
+
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect()->route('login')->with('error', 'Dashboard not found.');
+})->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------

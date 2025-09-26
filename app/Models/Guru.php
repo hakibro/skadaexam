@@ -47,7 +47,13 @@ class Guru extends Model
      */
     public function sesiRuanganPengawas()
     {
-        return $this->hasMany(SesiRuangan::class, 'pengawas_id');
+        return $this->belongsToMany(
+            SesiRuangan::class,
+            'jadwal_ujian_sesi_ruangan', // nama pivot table
+            'pengawas_id',               // foreign key guru di pivot
+            'sesi_ruangan_id'            // foreign key sesi di pivot
+        )->withPivot('jadwal_ujian_id')
+            ->withTimestamps();
     }
 
     /**

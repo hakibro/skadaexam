@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 use App\Services\EnrollmentService;
 use App\Services\UjianService;
 use App\Services\SoalImageService;
+use App\Models\SesiRuangan;
+use App\Observers\SesiRuanganObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,12 +40,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
 
+
+
         $dirs = [
             'soal/pertanyaan',
             'soal/pilihan',
             'soal/pembahasan',
             'bank-soal/sources'
         ];
+
+
 
         foreach ($dirs as $dir) {
             if (!Storage::disk('public')->exists($dir)) {
@@ -54,5 +60,8 @@ class AppServiceProvider extends ServiceProvider
         // Load the ujian.php routes file
         Route::middleware('web')
             ->group(base_path('routes/ujian.php'));
+
+        // === Tambahkan observer disini ===
+        SesiRuangan::observe(SesiRuanganObserver::class);
     }
 }

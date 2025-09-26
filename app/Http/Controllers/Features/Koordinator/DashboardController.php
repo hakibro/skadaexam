@@ -9,6 +9,7 @@ use App\Models\BeritaAcaraUjian;
 use App\Models\Ruangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -188,5 +189,23 @@ class DashboardController extends Controller
         $activities = $activities->concat($recentBeritaAcara);
 
         return $activities->sortByDesc('timestamp')->take(10)->values()->toArray();
+    }
+
+    public function showUploadForm()
+    {
+
+        return view('features.koordinator.upload-tata-tertib');
+    }
+
+    public function uploadTataTertib(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:pdf|max:2048', // hanya PDF, max 2MB
+        ]);
+
+        // Simpan dengan nama seragam
+        $request->file('file')->move(public_path('storage'), 'tata_tertib.pdf');
+
+        return back()->with('success', 'Tata Tertib berhasil diupload!');
     }
 }

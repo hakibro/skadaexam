@@ -153,6 +153,20 @@
                     Unduh Laporan
                 </a>
             </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center mb-4">
+                    <div class="bg-green-100 rounded-lg p-3">
+                        <i class="fa-solid fa-file-export text-green-600 text-xl"></i>
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900">Upload Tata Tertib</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Buat dan kelola tata tertib ujian</p>
+                <a href="{{ route('koordinator.upload-form') }}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+                    <i class="fa-solid fa-file-download mr-2"></i>
+                    Upload Tata Tertib
+                </a>
+            </div>
         </div>
 
         <!-- Recent Activities & Quick Overview -->

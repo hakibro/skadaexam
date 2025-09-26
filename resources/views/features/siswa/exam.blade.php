@@ -208,10 +208,10 @@
                     @endif --}}
 
                     <!-- Submit Button -->
-                    <button id="submitExam" onclick="submitExam()"
-                        class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
-                               text-white px-3 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-300 
-                               transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base">
+                    <button id="submitExam"
+                        class="hidden bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
+           text-white px-3 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-300 
+           transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base">
                         <i class="fas fa-check mr-1 sm:mr-2"></i>
                         <span class="hidden xs:inline">Selesai</span>
                         <span class="xs:hidden">Selesai</span>
@@ -220,6 +220,35 @@
             </div>
         </div>
     </header>
+    <!-- Submit Exam Modal -->
+    <div id="submitExamModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+        <div class="bg-white rounded-xl shadow-lg w-11/12 max-w-md sm:max-w-md p-6 relative">
+            <!-- Close Button -->
+            <button id="closeModal"
+                class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full transition">
+            </button>
+
+            <!-- Modal Content -->
+            <h3 class="text-lg font-semibold mb-4 text-center">Konfirmasi Pengumpulan</h3>
+            <p class="mb-6 text-sm text-gray-700 text-center">
+                Apakah Anda yakin ingin mengumpulkan ujian? Ujian yang sudah dikumpulkan tidak dapat diubah lagi.
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-center space-x-3">
+                <button id="cancelSubmitExam"
+                    class="px-4 py-2 text-red-600 bg-red-100 hover:bg-red-300 rounded-lg transition items-center justify-center">
+                    <i class="fas fa-times text-lg"></i>
+                    Batal
+                </button>
+                <button id="confirmSubmitExam"
+                    class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                    Ya, Kumpulkan
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Sidebar Overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay z-50"></div>
@@ -261,7 +290,8 @@
                             meminimalkan browser!</p>
                         <p class="text-xs sm:text-sm">Pelanggaran ini telah dicatat dan dilaporkan ke pengawas ujian.
                         </p>
-                        <p class="text-xs sm:text-sm font-medium">Harap tetap fokus pada halaman ujian untuk menghindari
+                        <p class="text-xs sm:text-sm font-medium">Harap tetap fokus pada halaman ujian untuk
+                            menghindari
                             pelanggaran lebih lanjut.</p>
                     </div>
 
@@ -579,6 +609,27 @@
         // let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
         // let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
 
+        // Submit Exam
+        const submitExamBtn = document.getElementById('submitExam');
+        const modal = document.getElementById('submitExamModal');
+        const cancelBtn = document.getElementById('cancelSubmitExam');
+        const confirmBtn = document.getElementById('confirmSubmitExam');
+        const closeBtn = document.getElementById('closeModal');
+
+        // Tampilkan modal saat klik tombol
+        submitExamBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+
+        // Tutup modal saat klik batal atau X
+        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+        // Konfirmasi submit
+        confirmBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            submitExam(); // panggil fungsi submit
+        });
 
 
 
@@ -933,6 +984,7 @@
                 `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
             const timerElement = document.getElementById('timer');
+            // const submitBtn = document.getElementById('submitExamBtn');
             if (timerElement) {
                 timerElement.textContent = timeString;
 
@@ -941,6 +993,7 @@
                 if (remainingTime <= 300) { // 5 minutes
                     timerParent.className =
                         'bg-gradient-to-r from-red-500 to-red-600 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md pulse';
+                    if (submitExamBtn) submitExamBtn.classList.remove('hidden'); // tampilkan tombol
                 } else if (remainingTime <= 600) { // 10 minutes  
                     timerParent.className =
                         'bg-gradient-to-r from-orange-400 to-orange-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
@@ -979,6 +1032,44 @@
             }).catch(() => {
                 // Even if save fails, still redirect
                 window.location.href = '{{ route('siswa.dashboard') }}';
+            });
+        }
+
+
+
+        // Fungsi submit exam (tetap pakai fetch)
+        function submitExam() {
+            saveCurrentAnswer().then(() => {
+                fetch('{{ route('ujian.submit') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                                'content')
+                        },
+                        body: JSON.stringify({
+                            hasil_ujian_id: hasilUjianId
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSystemNotification('Ujian berhasil dikumpulkan!');
+                            window.location.href = '{{ route('siswa.dashboard') }}';
+                        } else {
+                            showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
+                                'Unknown error'));
+                        }
+                    })
+                    .catch(err => {
+                        showSystemNotification('Terjadi kesalahan saat mengumpulkan ujian', 'error');
+                    });
+            }).catch(err => {
+                showSystemNotification('Gagal menyimpan jawaban terakhir', 'error');
+                // Optional: tanya user tetap submit
+                if (confirm('Gagal menyimpan jawaban terakhir. Tetap lanjutkan mengumpulkan ujian?')) {
+                    window.location.href = '{{ route('siswa.dashboard') }}';
+                }
             });
         }
 
@@ -1031,51 +1122,6 @@
                     showSystemNotification('Gagal mengubah flag', 'error');
                     showSystemNotification('Gagal mengubah status tandai soal');
                 });
-        }
-
-        // Submit exam
-        function submitExam() {
-            if (confirm(
-                    'Apakah Anda yakin ingin mengumpulkan ujian? Ujian yang sudah dikumpulkan tidak dapat diubah lagi.')) {
-                // Save current answer first
-                saveCurrentAnswer().then(() => {
-                    // Submit exam
-                    fetch('{{ route('ujian.submit') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                                    'content')
-                            },
-                            body: JSON.stringify({
-                                hasil_ujian_id: hasilUjianId
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                showSystemNotification('Ujian berhasil dikumpulkan!');
-                                window.location.href = '{{ route('siswa.dashboard') }}';
-                            } else {
-                                showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data
-                                    .error ||
-                                    'Unknown error'));
-                            }
-                        })
-                        .catch(error => {
-                            // Error submitting exam
-                            showSystemNotification('Gagal mengirim ujian', 'error');
-                            showSystemNotification('Terjadi kesalahan saat mengumpulkan ujian');
-                        });
-                }).catch(error => {
-                    // Error saving answer before submit
-                    showSystemNotification('Gagal menyimpan jawaban terakhir', 'error');
-                    // Still try to submit even if save fails
-                    if (confirm('Gagal menyimpan jawaban terakhir. Tetap lanjutkan mengumpulkan ujian?')) {
-                        window.location.href = '{{ route('siswa.dashboard') }}';
-                    }
-                });
-            }
         }
 
         // Set up detection for browser tab switching or minimizing

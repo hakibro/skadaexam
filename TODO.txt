@@ -1,47 +1,40 @@
 View administrasi ujian:
 Perlu Dijadikan responsif
+Done: pengawas
 
 Pengawas:
-kembalikan siswa dari hapus enrollment masih error:
-- 
+
 
 Berita Acara:
-- rekap absen siswa per kelas
+- rekap absen siswa per sesi
 
 Koordinator: 
 - kembangkan format berita acara agar memenuhi kebutuhan.
 - absen pengawas
 - fungsikan monitoring
 
-  
-
 Ujian:
-- redirect siswa ke login siswa jika siswa di logout oleh pengawas
-- tampilkan siswa di manage-enrollment
-- tampilkan jawaban siswa untuk review sebelum submit ujian (pengganti alert agar tidak dianggap sebagai pelanggaran)
+
 
 Naskah:
-- Soal edit tidak bisa simpan ketika pilihan jawaban bergambar. (harus pilih tipe soal?)
-
-Enrollment:
-create masih error
-
-
-Sesi ruangan:
-- validasi ? otomatis ubah status = berlangsung/selesai jika tanggal dan waktu sesi = sekarang.
-
-- not important 
-  -- tambahkan cetak ruangan, berisi sesi dan siswa yg ada di ruangan.
 
 
 Siswa:
 - tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
 
+
+
+
+
+
+
 --------------------------------------------------------
 PERLU TIDAK PENTING:
+
 enrollment: 
 sudah auto enroll siswa sesuai jurusan ketika membuat jadwal baru.
 - kembangkan tampilan yang ada agar memudahkan user untuk enrollment siswa
+- create masih error
 
 Ujian:
 - waktu pengerjaan ambil batas waktu dari enrollment.waktu_selesai_ujian
@@ -51,5 +44,8 @@ Pengawas:
 update konsep penugasan jika pengawas ditetapkan untuk sesi ruangan di tanggal tersebut maka tetapkan untuk semua jadwal di sesi ruangan tersebut
 - rewrite: ajax search manajemen penugasan pengawas
 - cek: berita acara menampilkan jadwal ujian yang berbeda?
+
+Sesi ruangan:
+- tambahkan cetak ruangan, berisi sesi dan siswa yg ada di ruangan.
 
 

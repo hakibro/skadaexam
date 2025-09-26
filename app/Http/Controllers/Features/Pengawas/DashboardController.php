@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
 use App\Models\SesiRuanganSiswa;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -243,6 +244,18 @@ class DashboardController extends Controller
 
         return redirect()->back()->with('success', 'Kehadiran siswa berhasil diperbarui');
     }
+
+    public function tataTertib()
+    {
+        $path = storage_path('app/public/tata_tertib.pdf');
+
+        if (!file_exists($path)) {
+            abort(404, 'File Tata Tertib tidak ditemukan.');
+        }
+
+        return response()->file($path); // tampilkan langsung di browser
+    }
+
 
     /**
      * Debug page to help diagnose assignment issues

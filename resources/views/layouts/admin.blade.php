@@ -283,7 +283,7 @@
                     </button>
 
                     <!-- Page Title -->
-                    <div>
+                    <div class="flex flex-col">
                         <h1 class="hidden md:inline text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
                         <p class="hidden md:inline text-sm text-gray-600">@yield('page-description', 'Welcome to admin panel')</p>
                     </div>

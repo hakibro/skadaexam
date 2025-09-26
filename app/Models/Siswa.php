@@ -384,4 +384,8 @@ class Siswa extends Authenticatable
     {
         return $idyayasan . '@smkdata.sch.id';
     }
+    public function getRedirectRoute()
+    {
+        return 'siswa.dashboard';
+    }
 }

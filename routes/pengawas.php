@@ -7,6 +7,7 @@ use App\Http\Controllers\Features\Pengawas\TokenController;
 use \App\Http\Controllers\Features\Pengawas\PelanggaranController;
 use App\Models\EnrollmentUjian;
 use Illuminate\Support\Facades\Route;
+use SebastianBergmann\CodeCoverage\Report\Html\Dashboard;
 
 // Pengawas Routes - All routes related to the pengawas panel
 // Allow access from web guard with pengawas role
@@ -14,6 +15,7 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
     // Dashboard
     // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tata-tertib', [DashboardController::class, 'tataTertib'])->name('tata-tertib');
     Route::get('/debug', [DashboardController::class, 'debug'])->name('debug');
 
     // Toggle auto-logout feature

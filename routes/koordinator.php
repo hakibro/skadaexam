@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'role:admin|koordinator'])->prefix('koordinator')->name('koordinator.')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/upload-tata-tertib', [DashboardController::class, 'showUploadForm'])->name('upload-form');
+    Route::post('/upload-tata-tertib', [DashboardController::class, 'uploadTataTertib'])->name('upload');
 
     // Old Assignment Management routes have been removed
     // Use PengawasAssignmentController functionality instead

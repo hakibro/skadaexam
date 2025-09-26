@@ -14,7 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register route middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\HasRole::class,
-            'guru.role' => \App\Http\Middleware\GuruRole::class,
             'siswa.role' => \App\Http\Middleware\SiswaRole::class,
             'ujian.active' => \App\Http\Middleware\UjianActive::class,
         ]);

@@ -59,8 +59,14 @@ class HasRole
         }
 
         // Redirect ke dashboard sesuai role pertama user
-        $userRole = $user->roles->pluck('name')->first() ?? 'guest';
-        return redirect()->route($userRole . '.dashboard')
-            ->with('warning', 'Anda tidak memiliki akses ke fitur yang diminta. Dibutuhkan role: ' . implode(', ', $roles));
+        $userRole = $user->roles->pluck('name')->first();
+
+        if ($userRole) {
+            return redirect()->route($userRole . '.dashboard')
+                ->with('warning', 'Anda tidak memiliki akses ke fitur yang diminta. Dibutuhkan role: ' . implode(', ', $roles));
+        } else {
+            return redirect()->route('siswa.dashboard') // atau route default lain
+                ->with('warning', 'Anda tidak memiliki role. Dialihkan ke dashboard.');
+        }
     }
 }

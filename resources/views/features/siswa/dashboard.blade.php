@@ -100,10 +100,7 @@
                                     <span class="text-gray-600">ID Yayasan:</span>
                                     <span class="font-medium">{{ $siswa->idyayasan }}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">NIS:</span>
-                                    <span class="font-medium">{{ $siswa->nis ?? '-' }}</span>
-                                </div>
+
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Kelas:</span>
                                     <span class="font-medium">{{ $siswa->kelas->nama ?? '-' }}</span>
@@ -244,10 +241,7 @@
                                 <ul class="space-y-1">
                                     <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Jangan menutup
                                         browser/tab</li>
-                                    <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Jangan refresh
-                                        halaman</li>
-                                    <li><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Simpan jawaban
-                                        secara berkala</li>
+
                                 </ul>
                             </div>
                         </div>

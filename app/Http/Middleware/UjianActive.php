@@ -52,11 +52,12 @@ class UjianActive
                 'user_id' => Auth::guard('siswa')->id(),
             ]);
             // $this->forceLogout($request);
-            Log::info('Redirecting to login.siswa after forceLogout', [
-                'route' => 'login.siswa',
-                'user_id' => Auth::guard('siswa')->id(),
-            ]);
-            return redirect()->route('login.siswa');
+            // Log::info('Redirecting to login.siswa after forceLogout', [
+            //     'route' => 'login.siswa',
+            //     'user_id' => Auth::guard('siswa')->id(),
+            // ]);
+            return redirect()->route('siswa.dashboard')
+                ->with('error', 'Status enrollment tidak aktif. Ujian dihentikan.');
         }
 
         // Check if the exam has not expired
@@ -67,13 +68,12 @@ class UjianActive
 
         if ($sekarang->gt($waktuSelesai)) {
             // Time's up, finish the exam automatically
-            Log::info('Exam time expired, redirecting to finish', [
-                'hasil_ujian_id' => $hasilUjianId,
-                'user_id' => Auth::guard('siswa')->id(),
-                'waktu_selesai' => $waktuSelesai->toDateTimeString(),
-                'sekarang' => $sekarang->toDateTimeString(),
-            ]);
-            return redirect()->route('ujian.finish')
+
+            $enrollment->status_enrollment = 'completed';
+            $enrollment->catatan = 'Ujian selesai otomatis karena waktu habis.';
+            $enrollment->save();
+
+            return redirect()->route('siswa.dashboard')
                 ->with('warning', 'Waktu ujian telah habis');
         }
 

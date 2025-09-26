@@ -426,19 +426,17 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            @if ($sesi->status == 'aktif')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Aktif</span>
-                                            @elseif($sesi->status == 'draft')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Draft</span>
-                                            @elseif($sesi->status == 'selesai')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Selesai</span>
-                                            @else
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ $sesi->status }}</span>
-                                            @endif
+
+                                            <span @class([
+                                                'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full',
+                                                'bg-yellow-100 text-yellow-800' => $sesi->status == 'belum_mulai',
+                                                'bg-green-100 text-green-800' => $sesi->status == 'berlangsung',
+                                                'bg-gray-100 text-gray-800' => $sesi->status == 'selesai',
+                                                'bg-red-100 text-red-800' => $sesi->status == 'dibatalkan',
+                                            ])>
+                                                {{ $sesi->status }}
+                                            </span>
+
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center">
                                             <div class="text-sm font-medium">{{ $sesi->sesiRuanganSiswa->count() ?? '0' }}
