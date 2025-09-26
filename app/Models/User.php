@@ -74,48 +74,48 @@ class User extends Authenticatable
     // Role checking methods
     public function isAdmin()
     {
-        return $this->hasRole('admin');
+        return $this->hasRole('admin', 'web');
     }
 
     public function isKoordinator()
     {
-        return $this->hasRole('koordinator');
+        return $this->hasRole('koordinator', 'web');
     }
 
     // Guru role checking methods
     public function isGuru()
     {
-        return $this->hasRole('guru');
+        return $this->hasRole('guru', 'web');
     }
 
     public function isSiswa()
     {
-        return $this->hasRole('siswa');
+        return $this->hasRole('siswa', 'siswa');
     }
 
     public function canManageData()
     {
-        return $this->hasRole('data');
+        return $this->hasRole('data', 'web');
     }
 
     public function canManageNaskah()
     {
-        return $this->hasRole('naskah');
+        return $this->hasRole('naskah', 'web');
     }
 
     public function canManageRuangan()
     {
-        return $this->hasRole('ruangan');
+        return $this->hasRole('ruangan', 'web');
     }
 
     public function canSupervise()
     {
-        return $this->hasRole('pengawas');
+        return $this->hasRole('pengawas', 'web');
     }
 
     public function canCoordinate()
     {
-        return $this->hasRole('koordinator');
+        return $this->hasRole('koordinator', 'web');
     }
 
     // Admin permissions

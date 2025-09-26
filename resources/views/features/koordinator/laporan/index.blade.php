@@ -398,6 +398,10 @@
                                             class="text-gray-600 hover:text-gray-900" title="Download PDF">
                                             <i class="fa-solid fa-download"></i>
                                         </a>
+                                        <a href="{{ route('koordinator.laporan.pdf') }}"
+                                            class="text-gray-600 hover:text-gray-900" title="Download PDF">
+                                            <i class="fa-solid fa-file-pdf"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach

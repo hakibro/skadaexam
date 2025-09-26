@@ -17,6 +17,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 | AUTHENTICATION ROUTES
 |--------------------------------------------------------------------------
 */
+// require __DIR__ . '/auth.php';
 // Authentication routes moved to routes/auth_extended.php
 require __DIR__ . '/auth_extended.php';
 

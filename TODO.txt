@@ -10,6 +10,8 @@ Berita Acara:
 
 Koordinator: 
 - kembangkan format berita acara agar memenuhi kebutuhan.
+(install npm puppeteer dan composer spatie/laravel-pdf)
+
 - absen pengawas
 - fungsikan monitoring
 

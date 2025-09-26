@@ -29,7 +29,7 @@ class HasRole
                 return redirect()->route('login');
             }
             Log::info('Redirecting to login');
-            return redirect()->route('login.siswa');
+            return redirect('/');
         }
 
         // Jika user adalah admin → akses full

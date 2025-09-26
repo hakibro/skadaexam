@@ -42,8 +42,7 @@ Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(functi
 
 -   Ensure all protected routes have the correct guard middleware
 -   Use `auth:siswa` for student routes
--   Use `auth:web` for admin routes
--   Use `auth:guru` for teacher routes
+-   Use `auth:web` for admin and guru routes
 
 ### 3. Proper redirect handling
 

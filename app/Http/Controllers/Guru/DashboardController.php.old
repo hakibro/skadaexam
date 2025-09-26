@@ -9,7 +9,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user) abort(403, 'Unauthorized');
 
@@ -18,7 +18,7 @@ class DashboardController extends Controller
 
     public function pengawasDashboard()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user || $user->role !== 'pengawas') {
             abort(403, 'Unauthorized');
@@ -28,7 +28,7 @@ class DashboardController extends Controller
     }
     public function ruanganDashboard()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user || $user->role !== 'ruangan') {
             abort(403, 'Unauthorized');
@@ -38,7 +38,7 @@ class DashboardController extends Controller
     }
     public function koordinatorDashboard()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user || $user->role !== 'koordinator') {
             abort(403, 'Unauthorized');
@@ -48,7 +48,7 @@ class DashboardController extends Controller
     }
     public function naskahDashboard()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user || $user->role !== 'naskah') {
             abort(403, 'Unauthorized');
@@ -58,7 +58,7 @@ class DashboardController extends Controller
     }
     public function dataDashboard()
     {
-        $user = Auth::guard('guru')->user();
+        $user = Auth::guard('web')->user();
 
         if (!$user || $user->role !== 'data') {
             abort(403, 'Unauthorized');

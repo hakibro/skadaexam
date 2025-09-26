@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Features\Koordinator;
 
 use App\Http\Controllers\Controller;
 use App\Models\BeritaAcaraUjian;
+use Spatie\LaravelPdf\Facades\Pdf;
 use App\Models\SesiRuangan;
 use App\Models\Guru;
 use Illuminate\Http\Request;
@@ -393,5 +394,21 @@ class LaporanController extends Controller
                 'to' => $dateTo
             ]
         ]);
+    }
+    public function downloadPDF()
+    {
+        $berita = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'pengawas'])->latest()->first();
+
+        if (!$berita) {
+            return redirect()->back()->with('error', 'Belum ada berita acara ujian.');
+        }
+
+        $filename = 'berita_acara_' . $berita->id . '.pdf';
+        $path = storage_path('app/public/' . $filename);
+
+        Pdf::html(view('features.koordinator.laporan.pdf', compact('berita'))->render())
+            ->save($path);
+
+        return response()->file($path); // ini akan menampilkan PDF di browser
     }
 }

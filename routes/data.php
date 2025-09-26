@@ -70,6 +70,6 @@ Route::middleware(['auth:web', 'role:guru'])->prefix('guru')->name('guru.')->gro
 });
 
 // Guru Portal Routes (separate authentication)
-Route::middleware('auth:guru')->prefix('guru-portal')->name('guru.portal.')->group(function () {
+Route::middleware('auth:web', 'role:guru')->prefix('guru-portal')->name('guru.portal.')->group(function () {
     Route::get('/dashboard', [GuruDashboard::class, 'portalIndex'])->name('dashboard');
 });

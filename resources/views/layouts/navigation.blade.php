@@ -21,7 +21,7 @@
                     @endif
 
                     {{-- Guru-specific menu --}}
-                    @if (Auth::guard('guru')->check())
+                    {{-- @if (Auth::guard('guru')->check())
                         @php $user = Auth::guard('guru')->user(); @endphp
 
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
@@ -39,7 +39,7 @@
                         @if ($user->hasRole('naskah'))
                             <x-nav-link href="#" :active="false">{{ __('Naskah') }}</x-nav-link>
                         @endif
-                    @endif
+                    @endif --}}
 
 
                 </div>
