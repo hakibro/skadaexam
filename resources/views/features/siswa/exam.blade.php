@@ -993,10 +993,11 @@
                 if (remainingTime <= 300) { // 5 minutes
                     timerParent.className =
                         'bg-gradient-to-r from-red-500 to-red-600 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md pulse';
-                    if (submitExamBtn) submitExamBtn.classList.remove('hidden'); // tampilkan tombol
                 } else if (remainingTime <= 600) { // 10 minutes  
                     timerParent.className =
                         'bg-gradient-to-r from-orange-400 to-orange-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
+                    if (submitExamBtn) submitExamBtn.classList.remove('hidden'); // tampilkan tombol
+
                 } else {
                     timerParent.className =
                         'bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
