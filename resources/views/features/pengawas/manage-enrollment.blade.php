@@ -71,6 +71,26 @@
                             </td>
                         </tr>
                     @endforeach
+                    @foreach ($siswaCompleted as $enrollment)
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="py-2 px-4">{{ $no++ }}</td>
+                            <td class="py-2 px-4">{{ $enrollment->siswa->nama }}</td>
+                            <td class="py-2 px-4">{{ $enrollment->jadwalUjian->judul ?? '-' }}</td>
+                            <td class="py-2 px-4 text-red-600 font-semibold">{{ $enrollment->status_enrollment }}</td>
+                            <td class="py-2 px-4">
+                                <form action="{{ route('pengawas.manage-enrollment.restore', $enrollment->id) }}"
+                                    method="POST">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit"
+                                        class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                                        Aktifkan Kembali
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+
 
                 </tbody>
             </table>
