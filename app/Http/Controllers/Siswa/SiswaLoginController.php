@@ -76,6 +76,16 @@ class SiswaLoginController extends Controller
                 ])->withInput();
             }
 
+            $enrollmentPivot = $sesiRuangan->siswa()
+                ->where('siswa_id', $siswa->id)
+                ->exists();
+
+            if (!$enrollmentPivot) {
+                return back()->withErrors([
+                    'token' => 'Token tidak berlaku untuk siswa ini. Silahkan hubungi pengawas.'
+                ])->withInput();
+            }
+
             // Optional: Find enrollment if exists (for context only, not required for login)
             $enrollment = EnrollmentUjian::with(['sesiRuangan', 'siswa'])
                 ->where('siswa_id', $siswa->id)

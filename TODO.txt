@@ -1,12 +1,37 @@
+
+
+
+------------------  !!!! VERY IMPORTANT  ------------------
+Ujian:
+- Update sistem pelanggaran siswa, modal tidak akan tertutup jika belum mendapatkan aksi dari pengawas.
+- Menangani Siswa salah klik Mapel 
+- TELAT - Tombol Kembali ke dashboard tampilkan 20 menit akhir
+
+
+Dashboard siswa:
+ambil data jadwal ujian jika status jadwal ujian aktif
+
+
+Pengawas:
+- Berita Acara:
+  - non aktifkan absen siswa (gunakan ajax refresh)
+
+Naskah:
+- Jadwal ujian:
+  - fungsikan status jadwal ujian
+
+Siswa:
+- tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
+
+
+
+-----------------------------------------------------------------
+
 View administrasi ujian:
 Perlu Dijadikan responsif
 Done: pengawas
 
-Pengawas:
 
-
-Berita Acara:
-- rekap absen siswa per sesi
 
 Koordinator: 
 - kembangkan format berita acara agar memenuhi kebutuhan.
@@ -14,17 +39,6 @@ Koordinator:
 
 - absen pengawas
 - fungsikan monitoring
-
-Ujian:
-
-
-Naskah:
-
-
-Siswa:
-- tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
-
-
 
 
 

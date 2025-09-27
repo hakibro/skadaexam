@@ -169,6 +169,24 @@
 
 
                                 <div class="flex flex-wrap gap-2">
+                                    <form action="{{ route('pengawas.toggle-submit', $assignment->id) }}" method="POST"
+                                        class="inline-block">
+                                        @csrf
+                                        <button type="submit" name="tampilkan"
+                                            value="{{ $assignment->tampilkan_tombol_submit ? 0 : 1 }}"
+                                            class="flex items-center px-3 py-2 rounded-lg shadow-sm border transition 
+               {{ $assignment->tampilkan_tombol_submit
+                   ? 'bg-green-100 border-green-300 hover:bg-green-200'
+                   : 'bg-gray-100 border-gray-300 hover:bg-gray-200' }}">
+                                            <i
+                                                class="fas {{ $assignment->tampilkan_tombol_submit ? 'fa-toggle-on text-green-600' : 'fa-toggle-off text-gray-500' }} text-2xl"></i>
+                                            <span
+                                                class="ml-2 font-semibold {{ $assignment->tampilkan_tombol_submit ? 'text-green-700' : 'text-gray-700' }}">
+                                                {{ $assignment->tampilkan_tombol_submit ? 'Tombol Submit Aktif' : 'Tombol Submit Nonaktif' }}
+                                            </span>
+                                        </button>
+                                    </form>
+
                                     <a href="{{ route('pengawas.generate-token', $assignment->id) }}"
                                         class="flex-1 text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
                                         <i class="fa-solid fa-key mr-2"></i> Token
@@ -249,46 +267,6 @@
             </div>
 
 
-            {{-- <div id="violations-container" class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Waktu</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Siswa</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Mata Pelajaran</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ruangan</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Jenis Pelanggaran</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status</th>
-                            <th
-                                class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="violations-body" class="bg-white divide-y divide-gray-200">
-                        <tr id="no-violations-row">
-                            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                <div class="flex flex-col items-center justify-center">
-                                    <i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i>
-                                    <p class="text-lg font-medium">Tidak ada pelanggaran yang terdeteksi</p>
-                                    <p class="text-sm mt-1">Semua siswa mengikuti ujian dengan tertib</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div> --}}
 
             <div id="violations-container" class="flex flex-col space-y-4">
                 <div id="no-violations" class="text-center text-gray-500 p-6">
@@ -595,151 +573,6 @@
                 }
             }
 
-            // Function to load violations
-            // function loadViolations() {
-            //     const sesiId = monitoringSelect ? monitoringSelect.value : '{{ $currentAssignment->id ?? '' }}';
-            //     console.log('Loading violations for session:', sesiId);
-
-            //     // Show loading state
-            //     violationsBody.innerHTML = `
-        //         <tr>
-        //             <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-        //                 <div class="flex flex-col items-center justify-center">
-        //                     <i class="fas fa-spinner fa-spin text-blue-500 text-4xl mb-3"></i>
-        //                     <p class="text-lg font-medium">Memuat data pelanggaran...</p>
-        //                 </div>
-        //             </td>
-        //         </tr>
-        //     `;
-
-            //     const url =
-            //         `{{ url('/features/pengawas/get-violations') }}${sesiId !== 'all' ? '/' + sesiId : ''}`;
-            //     console.log('Fetching violations from:', url);
-
-            //     // Fetch violations data
-            //     fetch(url, {
-            //             method: 'GET',
-            //             headers: {
-            //                 'Content-Type': 'application/json',
-            //                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            //             }
-            //         })
-            //         .then(response => {
-            //             console.log('Response status:', response.status);
-            //             return response.json();
-            //         })
-            //         .then(data => {
-            //             console.log('Response data:', data);
-            //             if (data.success && data.violations.length > 0) {
-            //                 // Update violation counter
-            //                 violationCounter.textContent = data.violations.length;
-
-            //                 // Clear existing rows
-            //                 violationsBody.innerHTML = '';
-
-            //                 // Add each violation row
-            //                 data.violations.forEach(violation => {
-            //                     const row = document.createElement('tr');
-            //                     row.className = violation.is_dismissed ? 'bg-gray-50' : '';
-            //                     row.innerHTML = `
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <div class="text-sm text-gray-900">${formatDate(violation.waktu_pelanggaran)}</div>
-        //                         <div class="text-xs text-gray-500">${timeSince(violation.waktu_pelanggaran)}</div>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <div class="font-medium text-gray-900">${violation.siswa.nama}</div>
-        //                         <div class="text-xs text-gray-500">ID YYS: ${violation.siswa.idyayasan || '-'}</div>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <div class="text-sm text-gray-900">${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak ada mapel'}</div>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <div class="text-sm text-gray-900">${(violation.sesi_ruangan && violation.sesi_ruangan.ruangan) ? violation.sesi_ruangan.ruangan.nama_ruangan : 'Tidak ada ruangan'}</div>
-        //                         <div class="text-xs text-gray-500">Sesi: ${violation.sesi_ruangan ? violation.sesi_ruangan.nama_sesi : '-'}</div>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-        //                             ${formatViolationType(violation.jenis_pelanggaran)}
-        //                         </span>
-        //                         <div class="text-xs text-gray-500 mt-1">${violation.deskripsi}</div>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap">
-        //                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-        //                             ${violation.is_dismissed 
-        //                                 ? 'bg-gray-100 text-gray-800' 
-        //                                 : (violation.is_finalized 
-        //                                     ? 'bg-blue-100 text-blue-800' 
-        //                                     : 'bg-yellow-100 text-yellow-800')
-        //                             }">
-        //                             ${violation.is_dismissed 
-        //                                 ? 'Diabaikan' 
-        //                                 : (violation.is_finalized 
-        //                                     ? 'Diproses: ' + (violation.tindakan || 'Tidak ada tindakan') 
-        //                                     : 'Belum Diproses')
-        //                             }
-        //                         </span>
-        //                     </td>
-        //                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-        //                         <div class="flex space-x-2">
-        //                             ${!violation.is_dismissed && !violation.is_finalized ? `
-
-            //                 <button 
-            //                     data-violation-id="${violation.id}"
-            //                     data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-            //                     data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-            //                     data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-            //                     data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-            //                     data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-            //                     class="process-violation text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">
-            //                     <i class="fas fa-check-circle mr-1"></i> Proses
-            //                 </button>
-            //             ` : `
-            //                 <span class="text-gray-400">
-            //                     <i class="fas fa-check mr-1"></i> Sudah ditangani
-            //                 </span>
-            //             `}
-        //                         </div>
-        //                     </td>
-        //                 `;
-            //                     violationsBody.appendChild(row);
-            //                 });
-
-            //                 // Add event listeners for action buttons
-            //                 setupViolationActionButtons();
-            //             } else {
-            //                 // Show no violations message
-            //                 violationsBody.innerHTML = `
-        //                 <tr id="no-violations-row">
-        //                     <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-        //                         <div class="flex flex-col items-center justify-center">
-        //                             <i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i>
-        //                             <p class="text-lg font-medium">Tidak ada pelanggaran yang terdeteksi</p>
-        //                             <p class="text-sm mt-1">Semua siswa mengikuti ujian dengan tertib</p>
-        //                         </div>
-        //                     </td>
-        //                 </tr>
-        //             `;
-
-            //                 // Update counter to 0
-            //                 violationCounter.textContent = '0';
-            //             }
-            //         })
-            //         .catch(error => {
-            //             console.error('Error fetching violations:', error);
-            //             violationsBody.innerHTML = `
-        //             <tr>
-        //                 <td colspan="7" class="px-6 py-10 text-center text-red-500">
-        //                     <div class="flex flex-col items-center justify-center">
-        //                         <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
-        //                         <p class="text-lg font-medium">Gagal memuat data pelanggaran</p>
-        //                         <p class="text-sm mt-1">Silakan coba memuat ulang data</p>
-        //                     </div>
-        //                 </td>
-        //             </tr>
-        //         `;
-            //         });
-            // }
-
             function loadViolations() {
                 const sesiId = monitoringSelect ? monitoringSelect.value : '{{ $currentAssignment->id ?? '' }}';
                 console.log('Loading violations for session:', sesiId);
@@ -821,21 +654,21 @@
 
         <div>
             ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                                                                                                                                                                                                                                    <button 
-                                                                                                                                                                                                                                                                                        data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                                        class="process-violation bg-blue-600 text-white hover:bg-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-                                                                                                                                                                                                                                                                                        <i class="fas fa-check-circle"></i> Proses
-                                                                                                                                                                                                                                                                                    </button>
-                                                                                                                                                                                                                                                                                    ` : `
-                                                                                                                                                                                                                                                                                    <span class="text-gray-400 text-xs flex items-center gap-1">
-                                                                                                                                                                                                                                                                                        <i class="fas fa-check"></i> Sudah ditangani
-                                                                                                                                                                                                                                                                                    </span>
-                                                                                                                                                                                                                                                                                    `}
+                                                                                                                                                                                                                                                                                                                                    <button 
+                                                                                                                                                                                                                                                                                                                                        data-violation-id="${violation.id}"
+                                                                                                                                                                                                                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                                                                                                                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                                                                                                                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                                                                                                                                                                                                                                        class="process-violation bg-blue-600 text-white hover:bg-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                                                                                                                                                                                                                                                                                                                                        <i class="fas fa-check-circle"></i> Proses
+                                                                                                                                                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                                                                                                                                                    ` : `
+                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-400 text-xs flex items-center gap-1">
+                                                                                                                                                                                                                                                                                                                                        <i class="fas fa-check"></i> Sudah ditangani
+                                                                                                                                                                                                                                                                                                                                    </span>
+                                                                                                                                                                                                                                                                                                                                    `}
         </div>
     </div>
 </div>

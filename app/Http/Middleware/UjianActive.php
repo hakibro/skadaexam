@@ -68,10 +68,24 @@ class UjianActive
 
         if ($sekarang->gt($waktuSelesai)) {
             // Time's up, finish the exam automatically
+            Log::info('Exam time expired, redirecting to finish', [
+                'hasil_ujian_id' => $hasilUjianId,
+                'user_id' => Auth::guard('siswa')->id(),
+                'waktu_selesai' => $waktuSelesai->toDateTimeString(),
+                'sekarang' => $sekarang->toDateTimeString(),
+            ]);
+
 
             $enrollment->status_enrollment = 'completed';
             $enrollment->catatan = 'Ujian selesai otomatis karena waktu habis.';
             $enrollment->save();
+
+            Log::info('Marking enrollment as completed due to time expiry', [
+                'enrollment_id' => $enrollment->id,
+                'user_id' => Auth::guard('siswa')->id(),
+                'status_enrollment' => $enrollment->status_enrollment,
+                'waktu_selesai' => $waktuSelesai->toDateTimeString(),
+            ]);
 
             return redirect()->route('siswa.dashboard')
                 ->with('warning', 'Waktu ujian telah habis');

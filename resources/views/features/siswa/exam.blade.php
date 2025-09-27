@@ -209,13 +209,14 @@
 
                     <!-- Submit Button -->
                     <button id="submitExam"
-                        class="hidden bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 
-           text-white px-3 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-300 
-           transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base">
-                        <i class="fas fa-check mr-1 sm:mr-2"></i>
+                        class="bg-gradient-to-r from-gray-400 to-gray-500 text-gray-400 px-3 sm:px-6 py-2 rounded-lg 
+           font-semibold transition-all duration-300 transform shadow-lg text-sm sm:text-base cursor-not-allowed"
+                        disabled>
+                        <i class="fas fa-ban mr-1 sm:mr-2"></i>
                         <span class="hidden xs:inline">Selesai</span>
                         <span class="xs:hidden">Selesai</span>
                     </button>
+
                 </div>
             </div>
         </div>
@@ -223,10 +224,6 @@
     <!-- Submit Exam Modal -->
     <div id="submitExamModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
         <div class="bg-white rounded-xl shadow-lg w-11/12 max-w-md sm:max-w-md p-6 relative">
-            <!-- Close Button -->
-            <button id="closeModal"
-                class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full transition">
-            </button>
 
             <!-- Modal Content -->
             <h3 class="text-lg font-semibold mb-4 text-center">Konfirmasi Pengumpulan</h3>
@@ -609,25 +606,39 @@
         // let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
         // let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
 
+        const alwaysShowSubmit = {{ $examData['tampilkan_tombol_submit'] ? 'true' : 'false' }};
+
+
+
         // Submit Exam
         const submitExamBtn = document.getElementById('submitExam');
-        const modal = document.getElementById('submitExamModal');
-        const cancelBtn = document.getElementById('cancelSubmitExam');
+        const modalSubmit = document.getElementById('submitExamModal');
+        const cancelSubmitBtn = document.getElementById('cancelSubmitExam');
         const confirmBtn = document.getElementById('confirmSubmitExam');
-        const closeBtn = document.getElementById('closeModal');
 
         // Tampilkan modal saat klik tombol
         submitExamBtn.addEventListener('click', () => {
-            modal.classList.remove('hidden');
+            modalSubmit.classList.remove('hidden');
         });
 
+        function showSubmitExamBtn() {
+            submitExamBtn.disabled = false;
+            submitExamBtn.className =
+                "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 " +
+                "text-white px-3 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-300 " +
+                "transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base cursor-pointer";
+
+            // ganti icon fa-ban -> fa-check
+            submitExamBtn.querySelector("i").classList.remove("fa-ban", "text-gray-400");
+            submitExamBtn.querySelector("i").classList.add("fa-check");
+        }
+
         // Tutup modal saat klik batal atau X
-        cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
-        closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        cancelSubmitBtn.addEventListener('click', () => modalSubmit.classList.add('hidden'));
 
         // Konfirmasi submit
         confirmBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
+            modalSubmit.classList.add('hidden');
             submitExam(); // panggil fungsi submit
         });
 
@@ -930,6 +941,14 @@
                 startTimer();
             }
 
+            if (alwaysShowSubmit) {
+                // langsung aktif
+                showSubmitExamBtn();
+
+            } else {
+                updateTimerDisplay();
+            }
+
             // Auto-save every 30 seconds
             setInterval(() => {
                 if (questions[currentQuestionIndex]) {
@@ -939,6 +958,18 @@
 
             // Set up visibility change detection
             setupVisibilityChangeDetection();
+
+            // Tambah 1 state baru saat halaman dimuat
+            history.pushState(null, null, window.location.href);
+
+            window.addEventListener("popstate", function(event) {
+                // Push lagi biar user tetap di halaman ini
+                history.pushState(null, null, window.location.href);
+
+                // Bisa tampilkan warning atau auto-submit ujian
+                showSystemNotification(
+                    "Anda tidak bisa menggunakan tombol kembali selama ujian berlangsung!");
+            });
         });
 
         // Countdown timer function
@@ -993,7 +1024,7 @@
                 if (remainingTime <= 300) { // 5 minutes
                     timerParent.className =
                         'bg-gradient-to-r from-red-500 to-red-600 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md pulse';
-                    if (submitExamBtn) submitExamBtn.classList.remove('hidden'); // tampilkan tombol
+                    showSubmitExamBtn(); // tampilkan tombol
 
                 } else if (remainingTime <= 600) { // 10 minutes  
                     timerParent.className =
@@ -1139,7 +1170,7 @@
             }
 
             let visibilityWarnings = 0;
-            const maxWarnings = 3; // Number of warnings before automatic logout
+            const maxWarnings = 120; // Number of warnings before automatic logout
             let lastFocusTime = Date.now();
             let isDetectionActive = false;
             let debounceTimer = null;

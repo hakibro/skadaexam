@@ -415,4 +415,16 @@ class SesiRuangan extends Model
 
         return $this;
     }
+
+    public function getTampilkanTombolSubmitAttribute()
+    {
+        return $this->pengaturan['tampilkan_tombol_submit'] ?? false;
+    }
+
+    public function setTampilkanTombolSubmitAttribute($value)
+    {
+        $pengaturan = $this->pengaturan ?? [];
+        $pengaturan['tampilkan_tombol_submit'] = (bool) $value;
+        $this->pengaturan = $pengaturan;
+    }
 }

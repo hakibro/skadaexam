@@ -52,14 +52,28 @@ class SiswaDashboardController extends Controller
         $studentEnrollments = EnrollmentUjian::with(['jadwalUjian.mapel', 'sesiRuangan'])
             ->where('siswa_id', $siswa->id)
             ->whereHas('jadwalUjian', function ($query) use ($today) {
-                $query->whereDate('tanggal', '>=', $today);
+                $query->whereDate('tanggal', '=', $today); // hanya hari ini
             })
+            ->orderBy('jadwal_ujian_id', 'asc') // langsung order dari query
             ->get();
 
         if ($studentEnrollments->isNotEmpty()) {
-            $activeMapels = $studentEnrollments->map(function ($enrollment) use ($today) {
+            $canAccessNext = true; // jadwal pertama pasti bisa
+
+            $activeMapels = $studentEnrollments->map(function ($enrollment) use (&$canAccessNext) {
                 $jadwal = $enrollment->jadwalUjian;
                 $sesi = $enrollment->sesiRuangan;
+
+                $canAccess = $canAccessNext;
+
+                // ambil status_enrollment dari DB
+                $status = strtolower(trim($enrollment->status_enrollment));
+
+                if (in_array($status, ['completed', 'selesai'])) {
+                    $canAccessNext = true;
+                } else {
+                    $canAccessNext = false;
+                }
 
                 return [
                     'jadwal_id' => $jadwal->id,
@@ -73,16 +87,19 @@ class SiswaDashboardController extends Controller
                     'ruangan' => $sesi->ruangan ?? 'Unknown',
                     'enrollment_id' => $enrollment->id,
                     'sesi_ruangan_id' => $enrollment->sesi_ruangan_id,
-                    'sesi_ruangan_name' => $enrollment->sesiRuangan->nama_sesi ?? 'Unknown',
-                    'is_today' => Carbon::parse($jadwal->tanggal)->isToday(),
-                    'is_active' => in_array($sesi->status, ['berlangsung', 'belum_mulai']) &&
-                        Carbon::parse($jadwal->tanggal)->isToday()
+                    'sesi_ruangan_name' => $sesi->nama_sesi ?? 'Unknown',
+                    'is_today' => true,
+                    'is_active' => in_array($sesi->status, ['berlangsung', 'belum_mulai']),
+                    'can_access' => $canAccess,
+                    'enrollment_status' => $enrollment->status_enrollment, // pakai ini
                 ];
             });
         } else {
-            // No enrollments found - student might need to be assigned to sessions
             $activeMapels = collect([]);
         }
+
+
+
 
         return view('features.siswa.dashboard', compact(
             'siswa',

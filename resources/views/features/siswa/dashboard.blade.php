@@ -116,103 +116,73 @@
                         </div>
                     </div>
 
-                    <!-- Current Session Card -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-lg">
-                        <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
-                            <h2 class="text-lg font-semibold text-white">
-                                <i class="fas fa-clipboard-check mr-2"></i>
-                                Sesi Ujian Aktif
-                            </h2>
-                        </div>
-                        <div class="px-6 py-4">
-                            @if ($currentEnrollment && $currentEnrollment->sesiRuangan)
-                                @php
-                                    $sesi = $currentEnrollment->sesiRuangan;
-                                    $jadwals = $sesi->jadwalUjians;
-                                @endphp
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Sesi:</span>
-                                        <span class="font-medium">{{ $sesi->nama_sesi }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Ruangan:</span>
-                                        <span class="font-medium">{{ $sesi->ruangan->nama_ruangan ?? 'N/A' }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Tanggal:</span>
-                                        <span
-                                            class="font-medium">{{ \Carbon\Carbon::parse($sesi->tanggal)->format('d M Y') }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Waktu:</span>
-                                        <span class="font-medium">{{ $sesi->waktu_mulai }} -
-                                            {{ $sesi->waktu_selesai }}</span>
-                                    </div>
-                                    <!-- Mata Pelajaran Cards -->
-                                    <div class="border-t pt-3">
-                                        <span class="text-gray-600 text-sm mb-2 block">Jadwal Ujian Aktif Hari
-                                            Ini:</span>
 
-                                        @if ($activeMapels->count() > 0)
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                                                @foreach ($activeMapels as $mapel)
-                                                    <a href="{{ route('ujian.exam', ['jadwal_id' => $mapel['jadwal_id']]) }}"
-                                                        class="block bg-white border border-green-200 hover:border-green-400 hover:bg-green-50 rounded-lg shadow-sm p-3 transition-colors cursor-pointer">
-                                                        <div class="flex items-start">
-                                                            <div
-                                                                class="rounded-full bg-green-100 text-green-600 p-2 mr-3">
-                                                                <i class="fas fa-book"></i>
-                                                            </div>
-                                                            <div>
-                                                                <h4 class="font-medium text-green-800">
-                                                                    {{ $mapel['mapel_name'] }}</h4>
-                                                                <div class="text-sm text-gray-600 mt-1">
-                                                                    <span class="inline-block mr-3">
-                                                                        <i class="far fa-clock mr-1"></i>
-                                                                        {{ $mapel['durasi_menit'] }} menit
-                                                                    </span>
-                                                                    @if ($mapel['mapel_kode'] != '-')
-                                                                        <span class="inline-block">
-                                                                            <i class="fas fa-tag mr-1"></i>
-                                                                            {{ $mapel['mapel_kode'] }}
-                                                                        </span>
-                                                                    @endif
-                                                                </div>
-                                                                <div class="text-xs text-gray-500 mt-1">
-                                                                    <i class="fas fa-door-open mr-1"></i>
-                                                                    {{ $mapel['sesi_ruangan_name'] }}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                @endforeach
+                    <!-- active mapels -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        @foreach ($activeMapels as $mapel)
+                            @if ($mapel['can_access'])
+                                <a href="{{ route('ujian.exam', ['jadwal_id' => $mapel['jadwal_id']]) }}"
+                                    class="block bg-white border border-green-200 hover:border-green-400 hover:bg-green-50 
+                       rounded-lg shadow-sm p-3 transition-colors cursor-pointer">
+                                    <div class="flex items-start">
+                                        <div class="rounded-full bg-green-100 text-green-600 p-2 mr-3">
+                                            <i class="fas fa-book"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-green-800">{{ $mapel['mapel_name'] }}</h4>
+                                            <div class="text-sm text-gray-600 mt-1">
+                                                <span class="inline-block mr-3">
+                                                    <i class="far fa-clock mr-1"></i>
+                                                    {{ $mapel['durasi_menit'] }} menit
+                                                </span>
+                                                @if ($mapel['mapel_kode'] != '-')
+                                                    <span class="inline-block">
+                                                        <i class="fas fa-tag mr-1"></i>
+                                                        {{ $mapel['mapel_kode'] }}
+                                                    </span>
+                                                @endif
                                             </div>
-                                        @else
-                                            <div class="text-center text-gray-600 p-6">
-                                                <i class="fas fa-exclamation-circle text-4xl mb-3 text-gray-300"></i>
-                                                <h4 class="font-semibold text-gray-700 mb-2">Tidak Ada Ujian Hari Ini
-                                                </h4>
-                                                <p class="text-sm text-gray-500">
-                                                    Anda belum terdaftar dalam jadwal ujian hari ini atau belum ada
-                                                    jadwal ujian yang aktif.
-                                                </p>
-                                                <p class="text-xs text-gray-400 mt-2">
-                                                    Silahkan hubungi pengawas atau admin jika ada kesalahan.
-                                                </p>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                <i class="fas fa-door-open mr-1"></i>
+                                                {{ $mapel['sesi_ruangan_name'] }}
                                             </div>
-                                        @endif
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             @else
-                                <div class="text-center text-gray-500 py-4">
-                                    <i class="fas fa-exclamation-circle text-4xl mb-3 text-gray-300"></i>
-                                    <p>Tidak ada sesi ujian aktif</p>
-                                    <p class="text-sm">Silahkan hubungi pengawas jika ada masalah</p>
+                                <div
+                                    class="block bg-gray-100 border border-gray-200 rounded-lg shadow-sm p-3 
+                       opacity-60 cursor-not-allowed">
+                                    <div class="flex items-start">
+                                        <div class="rounded-full bg-gray-200 text-gray-500 p-2 mr-3">
+                                            <i class="fas fa-lock"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-600">{{ $mapel['mapel_name'] }}</h4>
+                                            <div class="text-sm text-gray-500 mt-1">
+                                                <span class="inline-block mr-3">
+                                                    <i class="far fa-clock mr-1"></i>
+                                                    {{ $mapel['durasi_menit'] }} menit
+                                                </span>
+                                                @if ($mapel['mapel_kode'] != '-')
+                                                    <span class="inline-block">
+                                                        <i class="fas fa-tag mr-1"></i>
+                                                        {{ $mapel['mapel_kode'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="text-xs text-gray-400 mt-1">
+                                                <i class="fas fa-lock mr-1"></i>
+                                                Jadwal terkunci (selesaikan ujian sebelumnya)
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
-                        </div>
+                        @endforeach
                     </div>
+
+
                 </div>
 
                 <!-- Instructions Card -->

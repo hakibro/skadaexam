@@ -20,6 +20,7 @@ Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawa
 
     // Toggle auto-logout feature
     Route::post('/toggle-auto-logout/{jadwalUjianId}', [DashboardController::class, 'toggleAutoLogout'])->name('toggle-auto-logout');
+    Route::post('/toggle-submit/{id}', [DashboardController::class, 'toggleSubmitButton'])->name('toggle-submit');
 
     // Assignment details and attendance management
     Route::get('/assignment/{id}', [DashboardController::class, 'showAssignment'])->name('assignment');

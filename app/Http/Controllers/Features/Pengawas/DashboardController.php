@@ -256,6 +256,16 @@ class DashboardController extends Controller
         return response()->file($path); // tampilkan langsung di browser
     }
 
+    public function toggleSubmitButton(Request $request, $sesiId)
+    {
+        $sesi = SesiRuangan::findOrFail($sesiId);
+        $sesi->tampilkan_tombol_submit = $request->input('tampilkan', false);
+        $sesi->save();
+
+        return back()->with('success', 'Pengaturan tombol submit berhasil diubah.');
+    }
+
+
 
     /**
      * Debug page to help diagnose assignment issues

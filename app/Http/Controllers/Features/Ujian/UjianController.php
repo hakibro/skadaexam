@@ -312,6 +312,7 @@ class UjianController extends Controller
             'timeLimit' => $examSettings['batas_waktu'] * 60, // in seconds
             'remainingTime' => (int) $remainingTime,
             'examSettings' => $examSettings,
+            'tampilkan_tombol_submit' => $enrollment->sesiRuangan->tampilkan_tombol_submit,
             'hasilUjianId' => $hasilUjian->id,
             'jadwalUjianId' => $jadwalUjian->id,
             'violations_count' => $violationsCount,
@@ -764,10 +765,10 @@ class UjianController extends Controller
             ->where('siswa_id', $siswa->id)
             ->firstOrFail();
 
-        // Cegah duplikasi pelanggaran dalam 60 detik terakhir
+        // Cegah duplikasi pelanggaran dalam 30 detik terakhir
         $recentViolation = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
             ->where('jenis_pelanggaran', $request->reason)
-            ->where('waktu_pelanggaran', '>', now()->subSeconds(60))
+            ->where('waktu_pelanggaran', '>', now()->subSeconds(30))
             ->first();
 
         if (!$recentViolation) {
