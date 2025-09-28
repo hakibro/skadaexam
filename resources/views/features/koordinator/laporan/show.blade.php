@@ -227,7 +227,7 @@
                                         Nama Siswa</th>
                                     <th
                                         class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        NISN</th>
+                                        Kelas</th>
                                     <th
                                         class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status</th>
@@ -242,7 +242,7 @@
                                             <td class="px-4 py-3 text-sm font-medium text-gray-900">
                                                 {{ $siswaSession->siswa->nama ?? 'N/A' }}</td>
                                             <td class="px-4 py-3 text-sm text-gray-500">
-                                                {{ $siswaSession->siswa->nisn ?? 'N/A' }}</td>
+                                                {{ $siswaSession->siswa->Kelas->nama_kelas ?? 'N/A' }}</td>
                                             <td class="px-4 py-3 text-sm">
                                                 <span
                                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $siswaSession->status_badge_class }}">
