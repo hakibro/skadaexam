@@ -13,93 +13,117 @@
         </div>
 
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-2xl font-bold text-green-700 mb-4">Detail Jadwal Pengawasan</h2>
+            <h2 class="text-2xl font-bold text-green-700 mb-6">Detail Jadwal Pengawasan</h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <table class="w-full">
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Mata Pelajaran</td>
-                            <td class="py-2 font-bold">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {{-- Bagian Kiri: Detail Jadwal --}}
+                <div class="space-y-6">
+                    {{-- Detail Utama --}}
+                    <div class="bg-gray-50 rounded-xl shadow p-5 space-y-4">
+                        <div class="flex justify-between">
+                            <p class="text-sm font-medium text-gray-600">Mata Pelajaran</p>
+                            <p class="text-base font-bold text-right">
                                 @if ($sesiRuangan->jadwalUjians->count() > 1)
                                     @php
                                         $mapelNames = $sesiRuangan->jadwalUjians
-                                            ->filter(function ($jadwal) {
-                                                return $jadwal->mapel !== null;
-                                            })
-                                            ->map(function ($jadwal) {
-                                                return $jadwal->mapel->nama_mapel;
-                                            })
+                                            ->filter(fn($jadwal) => $jadwal->mapel !== null)
+                                            ->map(fn($jadwal) => $jadwal->mapel->nama_mapel)
                                             ->unique();
                                     @endphp
                                     @if ($mapelNames->count() > 0)
                                         {{ $mapelNames->implode(' + ') }}
-                                        @if ($mapelNames->count() != $sesiRuangan->jadwalUjians->count())
-                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} dari
-                                                {{ $sesiRuangan->jadwalUjians->count() }} mapel)</span>
-                                        @else
-                                            <span class="text-sm text-gray-500">({{ $mapelNames->count() }} mapel)</span>
-                                        @endif
+                                        <span class="block text-sm text-gray-500">
+                                            ({{ $mapelNames->count() }} dari {{ $sesiRuangan->jadwalUjians->count() }}
+                                            mapel)
+                                        </span>
                                     @else
                                         <span class="text-red-500">Tidak ada mapel tersedia</span>
-                                        <span class="text-sm text-gray-500">({{ $sesiRuangan->jadwalUjians->count() }}
-                                            jadwal)</span>
                                     @endif
                                 @elseif($sesiRuangan->jadwalUjians->count() == 1)
-                                    @php
-                                        $jadwal = $sesiRuangan->jadwalUjians->first();
-                                    @endphp
-                                    @if ($jadwal->mapel)
-                                        {{ $jadwal->mapel->nama_mapel }}
-                                    @else
-                                        <span class="text-red-500">Mapel tidak tersedia</span>
-                                        <span class="text-sm text-gray-500">(ID: {{ $jadwal->id }}, Mapel ID:
-                                            {{ $jadwal->mapel_id ?? 'NULL' }})</span>
-                                    @endif
+                                    @php $jadwal = $sesiRuangan->jadwalUjians->first(); @endphp
+                                    {{ $jadwal->mapel->nama_mapel ?? 'Mapel tidak tersedia' }}
                                 @else
                                     <span class="text-red-500">Tidak ada jadwal</span>
                                 @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Tanggal</td>
-                            <td class="py-2 font-bold">
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <p class="text-sm font-medium text-gray-600">Tanggal</p>
+                            <p class="text-base font-bold">
                                 @if ($sesiRuangan->jadwalUjians->count() > 0)
                                     {{ $sesiRuangan->jadwalUjians->first()->tanggal->format('d M Y') }}
                                 @else
                                     N/A
                                 @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Waktu</td>
-                            <td class="py-2 font-bold">{{ $sesiRuangan->waktu_mulai }} - {{ $sesiRuangan->waktu_selesai }}
-                            </td>
-                        </tr>
-                    </table>
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <p class="text-sm font-medium text-gray-600">Waktu</p>
+                            <p class="text-base font-bold">
+                                {{ $sesiRuangan->waktu_mulai }} - {{ $sesiRuangan->waktu_selesai }}
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Detail Tambahan --}}
+                    <div class="bg-gray-50 rounded-xl shadow p-5 space-y-4">
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Ruangan</span>
+                            <span class="font-bold">{{ $sesiRuangan->ruangan->nama_ruangan ?? 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Sesi</span>
+                            <span class="font-bold">{{ $sesiRuangan->nama_sesi }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-medium text-gray-600">Jumlah Siswa</span>
+                            <span class="font-bold">{{ $sesiRuangan->siswa->count() }} siswa</span>
+                        </div>
+                    </div>
                 </div>
+
+                {{-- Bagian Kanan: Informasi Kehadiran --}}
                 <div>
-                    <table class="w-full">
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Ruangan</td>
-                            <td class="py-2 font-bold">
-                                {{ $sesiRuangan->ruangan ? $sesiRuangan->ruangan->nama_ruangan : 'N/A' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Sesi</td>
-                            <td class="py-2 font-bold">{{ $sesiRuangan->nama_sesi }}</td>
-                        </tr>
-                        <tr>
-                            <td class="py-2 font-medium text-gray-600">Jumlah Siswa</td>
-                            <td class="py-2 font-bold">{{ $sesiRuangan->siswa->count() }} siswa</td>
-                        </tr>
-                    </table>
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Informasi Kehadiran</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-5 rounded-lg text-center shadow">
+                            <div class="text-3xl font-bold text-blue-700">
+                                {{ $sesiRuangan->sesiRuanganSiswa->count() }}
+                            </div>
+                            <div class="text-sm text-blue-600">Total Siswa</div>
+                        </div>
+
+                        <div class="bg-green-50 p-5 rounded-lg text-center shadow">
+                            <div class="text-3xl font-bold text-green-700">
+                                {{ $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count() }}
+                            </div>
+                            <div class="text-sm text-green-600">Siswa Hadir</div>
+                        </div>
+
+                        <div class="bg-red-50 p-5 rounded-lg text-center shadow">
+                            <div class="text-3xl font-bold text-red-700">
+                                {{ $sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])->count() }}
+                            </div>
+                            <div class="text-sm text-red-600">Tidak Hadir</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
+
+
         <div class="bg-white rounded-lg shadow-lg p-6">
-            <h2 class="text-2xl font-bold text-green-700 mb-4">Daftar Kehadiran Siswa</h2>
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-green-700 mb-4">Daftar Kehadiran Siswa</h2>
+                <button onclick="window.location.reload()"
+                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fa-solid fa-refresh mr-2"></i>
+                    Refresh
+                </button>
+            </div>
 
             <form action="{{ route('pengawas.update-attendance', $sesiRuangan->id) }}" method="POST">
                 @csrf
@@ -147,26 +171,30 @@
                                         <td class="border border-gray-300 px-4 py-2 text-center">
                                             <div class="flex justify-center space-x-4">
                                                 <label class="inline-flex items-center">
-                                                    <input type="radio" name="attendance[{{ $sesiSiswa->siswa_id }}]"
-                                                        value="hadir" class="form-radio text-green-600"
+                                                    <input type="radio" disabled
+                                                        name="attendance[{{ $sesiSiswa->siswa_id }}]" value="hadir"
+                                                        class="form-radio text-green-600"
                                                         {{ $sesiSiswa->status_kehadiran === 'hadir' ? 'checked' : '' }}>
                                                     <span class="ml-2">Hadir</span>
                                                 </label>
                                                 <label class="inline-flex items-center">
-                                                    <input type="radio" name="attendance[{{ $sesiSiswa->siswa_id }}]"
-                                                        value="tidak_hadir" class="form-radio text-red-600"
+                                                    <input type="radio" disabled
+                                                        name="attendance[{{ $sesiSiswa->siswa_id }}]" value="tidak_hadir"
+                                                        class="form-radio text-red-600"
                                                         {{ $sesiSiswa->status_kehadiran === 'tidak_hadir' ? 'checked' : '' }}>
                                                     <span class="ml-2">Tidak Hadir</span>
                                                 </label>
                                                 <label class="inline-flex items-center">
-                                                    <input type="radio" name="attendance[{{ $sesiSiswa->siswa_id }}]"
-                                                        value="sakit" class="form-radio text-yellow-600"
+                                                    <input type="radio" disabled
+                                                        name="attendance[{{ $sesiSiswa->siswa_id }}]" value="sakit"
+                                                        class="form-radio text-yellow-600"
                                                         {{ $sesiSiswa->status_kehadiran === 'sakit' ? 'checked' : '' }}>
                                                     <span class="ml-2">Sakit</span>
                                                 </label>
                                                 <label class="inline-flex items-center">
-                                                    <input type="radio" name="attendance[{{ $sesiSiswa->siswa_id }}]"
-                                                        value="izin" class="form-radio text-blue-600"
+                                                    <input type="radio" disabled
+                                                        name="attendance[{{ $sesiSiswa->siswa_id }}]" value="izin"
+                                                        class="form-radio text-blue-600"
                                                         {{ $sesiSiswa->status_kehadiran === 'izin' ? 'checked' : '' }}>
                                                     <span class="ml-2">Izin</span>
                                                 </label>
@@ -185,10 +213,10 @@
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <button type="submit"
-                        class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                    {{-- <button type="submit" disabled
+                        class="bg-gray-200 text-gray-400 px-6 py-2 rounded-lg hover:bg-green-700 transition">
                         <i class="fa-solid fa-save mr-2"></i> Simpan Kehadiran
-                    </button>
+                    </button> --}}
                 </div>
             </form>
         </div>

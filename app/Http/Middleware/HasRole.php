@@ -10,63 +10,66 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HasRole
 {
-    /**
-     * Handle an incoming request.
-     */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        // Cek di semua guard yang aktif (web & siswa)
+        // Cek user dari guard siswa atau web
         $user = Auth::guard('siswa')->user() ?? Auth::guard('web')->user();
 
         if (!$user) {
-            if (Auth::guard('siswa')->check() === false) {
-                Log::info('Redirecting to siswa login');
+            if (!Auth::guard('siswa')->check()) {
                 return redirect()->route('login.siswa');
             }
-
-            if (Auth::guard('web')->check() === false) {
-                Log::info('Redirecting to guru login');
+            if (!Auth::guard('web')->check()) {
                 return redirect()->route('login');
             }
-            Log::info('Redirecting to login');
             return redirect('/');
         }
 
-        // Jika user adalah admin → akses full
+        // Ambil role pertama user
+        $userRole = $user->roles->pluck('name')->first();
+
+        // ✅ Admin bypass: akses semua route
         if ($user->hasRole('admin')) {
             return $next($request);
         }
 
-        // Jika cocok salah satu role yang diminta → lanjut
-        foreach ($roles as $role) {
-            if ($user->hasRole($role)) {
-                return $next($request);
+        Log::info('Middleware check', [
+            'user_id' => $user->id,
+            'user_role' => $userRole,
+            'all_roles' => $user->roles->pluck('name')->toArray(),
+            'route' => $request->route()->getName(),
+        ]);
+
+        // // ✅ Koordinator boleh akses semua route pengawas
+        // if ($userRole === 'koordinator' && $request->routeIs('pengawas.*')) {
+        //     return $next($request);
+        // }
+
+        // Cek apakah user punya salah satu role yang diminta
+        if (!empty($roles)) {
+            foreach ($roles as $role) {
+                if ($user->hasRole($role)) {
+                    return $next($request);
+                }
             }
         }
 
         // Log untuk debugging
         Log::warning('Role access denied', [
-            'user_id' => $user->id,
+            'user_id'        => $user->id,
             'required_roles' => implode(',', $roles),
-            'user_roles' => $user->roles->pluck('name')->implode(','),
-            'url' => $request->fullUrl(),
+            'user_roles'     => $user->roles->pluck('name')->implode(', '),
+            'url'            => $request->fullUrl(),
         ]);
 
-        // Response untuk akses ditolak
+        // Jika request AJAX/JSON → abort 403
         if ($request->ajax() || $request->wantsJson()) {
-            abort(403, 'Access denied. Required roles: ' . implode(', ', $roles) .
-                '. Your roles: ' . $user->roles->pluck('name')->implode(', '));
+            abort(403, 'Access denied. Dibutuhkan role: ' . implode(', ', $roles) .
+                '. Role Anda: ' . $user->roles->pluck('name')->implode(', '));
         }
 
-        // Redirect ke dashboard sesuai role pertama user
-        $userRole = $user->roles->pluck('name')->first();
-
-        if ($userRole) {
-            return redirect()->route($userRole . '.dashboard')
-                ->with('warning', 'Anda tidak memiliki akses ke fitur yang diminta. Dibutuhkan role: ' . implode(', ', $roles));
-        } else {
-            return redirect()->route('siswa.dashboard') // atau route default lain
-                ->with('warning', 'Anda tidak memiliki role. Dialihkan ke dashboard.');
-        }
+        // Jika tidak boleh akses → redirect ke dashboard sesuai role pertama user
+        return redirect()->route($userRole . '.dashboard')
+            ->with('warning', 'Anda tidak memiliki akses ke fitur ini. Dibutuhkan role: ' . implode(', ', $roles));
     }
 }

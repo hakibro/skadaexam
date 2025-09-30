@@ -7,15 +7,20 @@ use App\Http\Controllers\Features\Koordinator\LaporanController;
 use App\Http\Controllers\Features\Koordinator\PengawasAssignmentController;
 use Illuminate\Support\Facades\Route;
 
+
 // Koordinator Routes
 Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')->name('koordinator.')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Upload Tata Tertib
     Route::get('/upload-tata-tertib', [DashboardController::class, 'showUploadForm'])->name('upload-form');
     Route::post('/upload-tata-tertib', [DashboardController::class, 'uploadTataTertib'])->name('upload');
 
-    // Old Assignment Management routes have been removed
-    // Use PengawasAssignmentController functionality instead
+    // Pengumuman Ujian
+    Route::get('/pengumuman', [DashboardController::class, 'indexPengumuman'])->name('pengumuman.index');
+    Route::post('/pengumuman/update', [DashboardController::class, 'updatePengumuman'])->name('pengumuman.update');
+    Route::delete('/pengumuman/delete', [DashboardController::class, 'deletePengumuman'])->name('pengumuman.delete');
 
     // New Pengawas Assignment Management
     Route::prefix('pengawas-assignment')->name('pengawas-assignment.')->group(function () {

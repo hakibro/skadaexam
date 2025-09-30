@@ -13,8 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Register route middleware
         $middleware->alias([
+            // 'role' => \Spatie\Permission\Middleware\RoleMiddleware::class, // ✅ balik ke Spatie
+            // 'hasrole' => \App\Http\Middleware\HasRole::class,
             'role' => \App\Http\Middleware\HasRole::class,
             'siswa.role' => \App\Http\Middleware\SiswaRole::class,
+            'siswa.force_logout' => \App\Http\Middleware\ForceLogoutSiswa::class,
             'ujian.active' => \App\Http\Middleware\UjianActive::class,
         ]);
     })

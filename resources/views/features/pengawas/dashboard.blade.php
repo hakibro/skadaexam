@@ -6,10 +6,6 @@
 
 @section('content')
     <div>
-        {{-- <h1 class="hidden md:flex text-3xl font-bold mb-4 text-green-700">Dashboard Pengawas</h1>
-        <p class="text-gray-600 mb-8">Monitor dan supervisi jalannya ujian online.</p> --}}
-        <!-- Tombol buka modal -->
-
 
         <!-- Modal -->
         <div id="tataTertibModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -90,135 +86,138 @@
 
 
         <!-- Today's Assignments -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">
-                <i class="fa-solid fa-calendar-day text-green-600 mr-2"></i>
-                Jadwal Pengawasan Hari Ini
-            </h3>
+        @php
+            // Urutkan dulu assignments berdasarkan ruangan + waktu_mulai
+            $sortedAssignments = $assignments->sortBy(function ($assignment) {
+                $ruanganId = $assignment->ruangan->id ?? 0;
+                $waktuMulai = $assignment->waktu_mulai ?? '00:00:00';
+                return sprintf('%03d_%s', $ruanganId, $waktuMulai);
+            });
 
-            @if (count($assignments) > 0)
-                <div class="flex flex-wrap gap-6">
-                    @foreach ($assignments as $assignment)
-                        @php
-                            $jadwalUjians = $assignment->jadwalUjians;
-                            $mapelNames = [];
-                            $kodeJadwals = [];
+            // Group assignments berdasarkan ruangan_id
+            $groupedByRuangan = $sortedAssignments->groupBy(function ($assignment) {
+                return $assignment->ruangan->id ?? 0;
+            });
+        @endphp
 
-                            foreach ($jadwalUjians as $jadwal) {
-                                $mapelNames[] = $jadwal->mapel->nama_mapel ?? 'Tidak ada mapel';
-                                $kodeJadwals[] = $jadwal->kode_jadwal ?? '-';
-                            }
+        @if (count($groupedByRuangan) > 0)
+            @foreach ($groupedByRuangan as $ruanganId => $assignmentsInRuangan)
+                @php
+                    $ruanganName = $assignmentsInRuangan->first()->ruangan->nama_ruangan ?? 'Tidak ada ruangan';
+                @endphp
+                <!-- Card per Ruangan -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <h4 class="font-bold text-lg text-gray-800 mb-4">
+                        <i class="fa-solid fa-door-open text-green-600 mr-2"></i>
+                        Ruangan: {{ $ruanganName }}
+                    </h4>
 
-                            $mapelDisplay = count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
-                        @endphp
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        @foreach ($assignmentsInRuangan as $assignment)
+                            @php
+                                $jadwalUjians = $assignment->jadwalUjians->sortBy('kode_jadwal');
+                                $mapelNames = [];
+                                foreach ($jadwalUjians as $jadwal) {
+                                    $mapelNames[] = $jadwal->mapel->nama_mapel ?? 'Tidak ada mapel';
+                                }
+                                $mapelDisplay =
+                                    count($mapelNames) > 0 ? implode(' + ', $mapelNames) : 'Tidak ada jadwal';
+                            @endphp
 
-                        <!-- Card -->
-                        <div
-                            class="border border-gray-200 rounded-lg shadow-sm bg-white p-6 flex flex-col md:flex-row justify-between">
-                            <div class="flex flex-col items-start justify-center w-full gap-4">
+                            <!-- Sesi Assignment -->
+                            <div
+                                class="border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center md:items-center {{ $assignment->status_badge_class }} gap-4">
 
-                                <!-- Ruangan & Siswa Section -->
-                                <div class="flex flex-col w-full space-y-2 items-center md:items-start">
-                                    <h4 class="font-semibold text-gray-900 text-lg">
-                                        {{ $assignment->ruangan->nama_ruangan ?? 'Tidak ada ruangan' }}
-                                    </h4>
-
-                                    <div class="flex">
+                                <!-- Info Sesi -->
+                                <div class="flex-1 flex flex-col gap-2 text-center md:text-left">
+                                    <!-- Nama Sesi & Status -->
+                                    <div class="font-semibold text-gray-900 text-lg md:text-xl flex items-center gap-2">
+                                        {{ $assignment->nama_sesi }}
                                         <span
-                                            class="inline-flex grow-0 text-sm font-semibold px-3 py-1 bg-yellow-100 rounded-full">
-                                            {{ $assignment->sesiRuanganSiswa->count() }} Siswa
-                                        </span>
-                                        <span
-                                            class="px-3 py-1 text-sm font-semibold rounded-full {{ $assignment->status_badge_class }}">
+                                            class="inline-flex items-center justify-center text-xs md:text-sm px-2 py-1 font-semibold rounded-full
+            {{ $assignment->status_label['text'] === 'Berlangsung' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-800' }}">
                                             {{ $assignment->status_label['text'] }}
                                         </span>
 
                                     </div>
-                                </div>
+                                    <!-- Waktu Sesi -->
+                                    <div class="flex items-center gap-1">
+                                        <i class="fa-solid fa-clock text-blue-500"></i>
+                                        <span>{{ $assignment->waktu_mulai }} - {{ $assignment->waktu_selesai }}</span>
+                                    </div>
 
-                                <!-- Sesi, Waktu, Mapel, Ujian Section -->
-                                <div class="flex flex-col w-full space-y-2">
-                                    <!-- Sesi and Waktu Section in One Row -->
-                                    <div
-                                        class="flex flex-col sm:flex-row sm:space-x-4 sm:items-center w-full space-y-2 sm:space-y-0">
-                                        <h4
-                                            class="text-white text-sm px-3 py-1 bg-blue-600 rounded-md sm:w-auto w-full text-center sm:text-left">
-                                            {{ $assignment->nama_sesi }}
-                                        </h4>
-                                        <div class="text-sm text-gray-900 sm:w-auto w-full text-center sm:text-left">
-                                            {{ $assignment->waktu_mulai }} - {{ $assignment->waktu_selesai }}
+                                    <!-- Info Grid -->
+                                    <div class="flex gap-2 text-sm md:text-base text-gray-600">
+                                        <!-- Jumlah Siswa -->
+                                        <div class="flex items-center gap-1">
+                                            <i class="fa-solid fa-user-group text-green-500"></i>
+                                            <span>{{ $assignment->sesiRuanganSiswa->count() }} Siswa</span>
+                                        </div>
+
+                                        <!-- Mapel -->
+                                        <div class="flex items-center gap-1">
+                                            <i class="fa-solid fa-book text-yellow-500"></i>
+                                            <span>{{ $mapelDisplay }}</span>
                                         </div>
                                     </div>
-
-                                    <!-- Mapel & Ujian Section -->
-                                    <div class="flex flex-col sm:flex-row sm:space-x-4 w-full space-y-2 sm:space-y-0">
-                                        <p class="text-sm text-gray-500 sm:w-auto w-full text-center sm:text-left">Mapel:
-                                            {{ $mapelDisplay }}</p>
-                                        @if (count($jadwalUjians) > 1)
-                                            <p class="text-sm text-blue-600 text-center"> {{ count($jadwalUjians) }} Ujian
-                                            </p>
-                                        @endif
-                                    </div>
                                 </div>
 
-                            </div>
 
 
-                            <!-- Tombol Actions -->
-                            <div class="mt-6 space-y-4 w-full">
 
-
-                                <div class="flex flex-wrap gap-2">
-                                    <form action="{{ route('pengawas.toggle-submit', $assignment->id) }}" method="POST"
-                                        class="inline-block">
-                                        @csrf
-                                        <button type="submit" name="tampilkan"
-                                            value="{{ $assignment->tampilkan_tombol_submit ? 0 : 1 }}"
-                                            class="flex items-center px-3 py-2 rounded-lg shadow-sm border transition 
-               {{ $assignment->tampilkan_tombol_submit
-                   ? 'bg-green-100 border-green-300 hover:bg-green-200'
-                   : 'bg-gray-100 border-gray-300 hover:bg-gray-200' }}">
-                                            <i
-                                                class="fas {{ $assignment->tampilkan_tombol_submit ? 'fa-toggle-on text-green-600' : 'fa-toggle-off text-gray-500' }} text-2xl"></i>
-                                            <span
-                                                class="ml-2 font-semibold {{ $assignment->tampilkan_tombol_submit ? 'text-green-700' : 'text-gray-700' }}">
-                                                {{ $assignment->tampilkan_tombol_submit ? 'Tombol Submit Aktif' : 'Tombol Submit Nonaktif' }}
-                                            </span>
-                                        </button>
-                                    </form>
+                                <!-- Tombol Actions -->
+                                <div class="flex-1 flex flex-wrap gap-2 w-full md:w-auto mt-4 md:mt-0">
+                                    @hasanyrole('admin|koordinator')
+                                        <form action="{{ route('pengawas.toggle-submit', $assignment->id) }}" method="POST"
+                                            class="inline-block flex-1 whitespace-nowrap">
+                                            @csrf
+                                            <button type="submit" name="tampilkan"
+                                                value="{{ $assignment->tampilkan_tombol_submit ? 0 : 1 }}"
+                                                class="flex items-center justify-center px-3 py-2 rounded-lg shadow-sm border transition
+                        {{ $assignment->tampilkan_tombol_submit
+                            ? 'bg-green-100 border-green-300 hover:bg-green-200'
+                            : 'bg-gray-100 border-gray-300 hover:bg-gray-200' }}">
+                                                <i
+                                                    class="fas {{ $assignment->tampilkan_tombol_submit ? 'fa-toggle-on text-green-600' : 'fa-toggle-off text-gray-500' }} text-2xl"></i>
+                                                <span
+                                                    class="ml-2 font-semibold {{ $assignment->tampilkan_tombol_submit ? 'text-green-700' : 'text-gray-700' }}">
+                                                    {{ $assignment->tampilkan_tombol_submit ? 'Tombol Submit Aktif' : 'Tombol Submit Nonaktif' }}
+                                                </span>
+                                            </button>
+                                        </form>
+                                    @endhasanyrole
 
                                     <a href="{{ route('pengawas.generate-token', $assignment->id) }}"
-                                        class="flex-1 text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
+                                        class="flex-1 min-w-[120px] text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
                                         <i class="fa-solid fa-key mr-2"></i> Token
                                     </a>
                                     <a href="{{ route('pengawas.assignment', $assignment->id) }}"
-                                        class="flex-1 text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
+                                        class="flex-1 min-w-[120px] text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
                                         <i class="fa-solid fa-users mr-2"></i> Absen
                                     </a>
                                     <a href="{{ route('pengawas.manage-enrollment', $assignment->id) }}"
-                                        class="flex-1 text-white bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
+                                        class="flex-1 min-w-[120px] text-white bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
                                         <i class="fa-solid fa-user-cog mr-2"></i> Enrollment
                                     </a>
                                     <a href="{{ route('pengawas.berita-acara.show', $assignment->id) }}"
-                                        class="flex-1 text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
+                                        class="flex-1 min-w-[120px] text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md text-center whitespace-nowrap">
                                         <i class="fa-solid fa-clipboard mr-2"></i> Berita Acara
                                     </a>
-
                                 </div>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="inline-block p-4 rounded-full bg-yellow-100 mb-4">
-                        <i class="fa-solid fa-calendar-times text-yellow-600 text-2xl"></i>
+                        @endforeach
                     </div>
-                    <h3 class="text-lg font-medium text-gray-700">Tidak Ada Jadwal Pengawasan Hari Ini</h3>
-                    <p class="text-gray-500 mt-1">Anda tidak memiliki tugas pengawasan untuk hari ini.</p>
                 </div>
-            @endif
-        </div>
+            @endforeach
+        @else
+            <div class="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="inline-block p-4 rounded-full bg-yellow-100 mb-4">
+                    <i class="fa-solid fa-calendar-times text-yellow-600 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-700">Tidak Ada Jadwal Pengawasan Hari Ini</h3>
+                <p class="text-gray-500 mt-1">Anda tidak memiliki tugas pengawasan untuk hari ini.</p>
+            </div>
+        @endif
 
 
 
@@ -654,21 +653,21 @@
 
         <div>
             ${!violation.is_dismissed && !violation.is_finalized ? `
-                                                                                                                                                                                                                                                                                                                                    <button 
-                                                                                                                                                                                                                                                                                                                                        data-violation-id="${violation.id}"
-                                                                                                                                                                                                                                                                                                                                        data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                                                                                        data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
-                                                                                                                                                                                                                                                                                                                                        data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
-                                                                                                                                                                                                                                                                                                                                        data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
-                                                                                                                                                                                                                                                                                                                                        data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
-                                                                                                                                                                                                                                                                                                                                        class="process-violation bg-blue-600 text-white hover:bg-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-                                                                                                                                                                                                                                                                                                                                        <i class="fas fa-check-circle"></i> Proses
-                                                                                                                                                                                                                                                                                                                                    </button>
-                                                                                                                                                                                                                                                                                                                                    ` : `
-                                                                                                                                                                                                                                                                                                                                    <span class="text-gray-400 text-xs flex items-center gap-1">
-                                                                                                                                                                                                                                                                                                                                        <i class="fas fa-check"></i> Sudah ditangani
-                                                                                                                                                                                                                                                                                                                                    </span>
-                                                                                                                                                                                                                                                                                                                                    `}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <button 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-violation-id="${violation.id}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-student-name="${violation.siswa ? violation.siswa.nama : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-violation-type="${formatViolationType(violation.jenis_pelanggaran)}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-violation-time="${formatDate(violation.waktu_pelanggaran)}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-subject-name="${(violation.jadwal_ujian && violation.jadwal_ujian.mapel) ? violation.jadwal_ujian.mapel.nama_mapel : 'Tidak diketahui'}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                data-violation-description="${violation.deskripsi || 'Tidak ada deskripsi'}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                class="process-violation bg-blue-600 text-white hover:bg-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <i class="fas fa-check-circle"></i> Proses
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </button>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ` : `
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span class="text-gray-400 text-xs flex items-center gap-1">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <i class="fas fa-check"></i> Sudah ditangani
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </span>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            `}
         </div>
     </div>
 </div>

@@ -20,7 +20,6 @@ Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(functi
 
     // Exam API routes
     Route::post('/save-answer', [UjianController::class, 'saveAnswer'])->name('save-answer');
-    Route::post('/flag-question', [UjianController::class, 'flagQuestion'])->name('flag-question');
     Route::post('/toggle-flag', [UjianController::class, 'toggleFlag'])->name('toggle-flag');
 
     Route::post('/submit', [UjianController::class, 'submitExam'])->name('submit');

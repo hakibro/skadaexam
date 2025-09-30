@@ -169,7 +169,7 @@
                 @endif
 
                 <!-- Pengawas Panel -->
-                @if ($hasPengawasAccess)
+                @if ($hasPengawasAccess || $hasKoordinatorAccess)
                     <a href="{{ route('pengawas.dashboard') }}"
                         class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('pengawas.*') ? 'bg-purple-600 text-white' : '' }}">
                         <i class="fa-solid fa-eye"></i>

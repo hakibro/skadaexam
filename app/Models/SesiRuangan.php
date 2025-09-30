@@ -3,9 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\UjianService;
+use App\Models\EnrollmentUjian;
+use App\Models\HasilUjian;
+use App\Models\Siswa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 
 class SesiRuangan extends Model
 {
@@ -409,8 +417,33 @@ class SesiRuangan extends Model
             $tanggalStr == now()->toDateString() &&
             now()->format('H:i:s') >= $this->waktu_selesai
         ) {
+            Log::info('set selesai sesi ruangan itu.');
             $this->status = 'selesai';
             $this->save();
+
+            // Auto finalize semua peserta
+            $enrollments = EnrollmentUjian::where('sesi_ruangan_id', $this->id)
+                ->where('status_enrollment', '=', 'active')
+                ->get();
+
+            $ujianService = app(UjianService::class);
+
+            foreach ($enrollments as $enrollment) {
+                $hasil = HasilUjian::where('enrollment_ujian_id', $enrollment->id)
+                    ->where('is_final', false)
+                    ->first();
+
+                if ($hasil) {
+                    Log::info('autosubmit untuk siswa.', ['ID Siswa' => $enrollment->siswa->id]);
+                    $ujianService->autoSubmitHasilUjian($hasil);
+                }
+
+                $enrollment->status_enrollment = 'completed';
+                $enrollment->waktu_selesai_ujian = now();
+                $enrollment->save();
+            }
+            SesiRuanganSiswa::where('sesi_ruangan_id', $this->id)
+                ->update(['keterangan' => 'force_logout']);
         }
 
         return $this;

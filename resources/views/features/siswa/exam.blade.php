@@ -1111,7 +1111,7 @@
             const currentQuestion = questions[currentQuestionIndex];
             if (!currentQuestion) return;
 
-            fetch('{{ route('ujian.flag-question') }}', {
+            fetch('{{ route('ujian.toggle-flag') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

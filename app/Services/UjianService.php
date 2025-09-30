@@ -184,4 +184,129 @@ class UjianService
 
         return $hasilUjian->finalize();
     }
+    /**
+     * Auto-submit a HasilUjian when exam time is over
+     */
+    public function autoSubmitHasilUjian(HasilUjian $hasilUjian)
+    {
+        if ($hasilUjian->is_final) {
+            return;
+        }
+
+        // Hitung skor
+        $score = $this->calculateScore($hasilUjian);
+
+        // Nilai dalam persentase
+        $nilai = $hasilUjian->jumlah_soal > 0 ? ($score['jumlah_benar'] / $score['total_soal']) * 100 : 0;
+
+        // Standar KKM (default 75, bisa ambil dari pengaturan jadwal)
+        $kkm = $hasilUjian->jadwalUjian->pengaturan['kkm'] ?? 75;
+        $lulus = $nilai >= $kkm;
+
+        // Update hasil ujian
+        $hasilUjian->update([
+            'waktu_selesai' => now(),
+            'skor' => $score['total_skor'],
+            'jumlah_benar' => $score['jumlah_benar'],
+            'jumlah_salah' => $score['jumlah_salah'],
+            'jumlah_dijawab' => $score['jumlah_dijawab'],
+            'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
+            'nilai' => $nilai,
+            'lulus' => $lulus,
+            'status' => 'selesai',
+            'is_final' => true
+        ]);
+
+        // Update enrollment jika ada
+        $enrollment = EnrollmentUjian::where('id', $hasilUjian->enrollment_ujian_id)->first();
+        if ($enrollment) {
+            $enrollment->update([
+                'status_enrollment' => 'completed',
+                'waktu_selesai_ujian' => now()
+            ]);
+        }
+
+        Log::info('Auto-submitted exam', [
+            'hasil_ujian_id' => $hasilUjian->id,
+            'siswa_id' => $hasilUjian->siswa_id
+        ]);
+    }
+
+    /**
+     * Reuse existing calculateScore() logic
+     */
+    private function calculateScore(HasilUjian $hasilUjian)
+    {
+        // Ambil logika yang sudah ada di controller sebelumnya
+        $jadwalUjian = $hasilUjian->jadwalUjian;
+        $soals = $jadwalUjian->bankSoal ? $jadwalUjian->bankSoal->soals : collect();
+        $jawabanSiswas = $hasilUjian->jawabanSiswas()->get()->keyBy('soal_ujian_id');
+
+        $jumlahBenar = 0;
+        $jumlahSalah = 0;
+        $totalSkor = 0;
+        $jumlahDijawab = 0;
+
+        foreach ($soals as $soal) {
+            $jawaban = $jawabanSiswas->get($soal->id);
+            if ($jawaban && $jawaban->jawaban) {
+                $jumlahDijawab++;
+                $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
+                if ($jawaban->jawaban === $correctAnswer) {
+                    $jumlahBenar++;
+                    $totalSkor += $soal->bobot ?? 1;
+                } else {
+                    $jumlahSalah++;
+                }
+            }
+        }
+        Log::info('Hasil Ujian', [
+            'jumlah_benar' => $jumlahBenar,
+            'jumlah_salah' => $jumlahSalah,
+            'jumlah_dijawab' => $jumlahDijawab,
+            'jumlah_tidak_dijawab' => $soals->count() - $jumlahDijawab,
+            'total_skor' => $totalSkor,
+            'total_soal' => $soals->count()
+        ]);
+        return [
+            'jumlah_benar' => $jumlahBenar,
+            'jumlah_salah' => $jumlahSalah,
+            'jumlah_dijawab' => $jumlahDijawab,
+            'jumlah_tidak_dijawab' => $soals->count() - $jumlahDijawab,
+            'total_skor' => $totalSkor,
+            'total_soal' => $soals->count()
+        ];
+    }
+
+    /**
+     * Reuse randomization logic
+     */
+    private function getCorrectAnswerForStudent($soal, $siswa, $jadwalUjian)
+    {
+        if (!$jadwalUjian->acak_jawaban) {
+            return $soal->kunci_jawaban;
+        }
+
+        $options = [];
+        foreach (['A', 'B', 'C', 'D', 'E'] as $key) {
+            $teks = $soal->{"pilihan_{$key}_teks"};
+            $gambar = $soal->{"pilihan_{$key}_gambar"};
+            if ($teks || $gambar) $options[$key] = $teks;
+        }
+
+        $seed = $siswa->id * 1000 + $soal->id;
+        mt_srand($seed);
+        $keys = array_keys($options);
+        shuffle($keys);
+
+        foreach ($keys as $i => $originalKey) {
+            if ($originalKey === $soal->kunci_jawaban) {
+                mt_srand(); // reset
+                return chr(65 + $i);
+            }
+        }
+
+        mt_srand();
+        return $soal->kunci_jawaban;
+    }
 }

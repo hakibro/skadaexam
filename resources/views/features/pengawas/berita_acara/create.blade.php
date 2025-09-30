@@ -157,7 +157,7 @@
                                     Jumlah Terdaftar <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" id="jumlah_peserta_terdaftar" name="jumlah_peserta_terdaftar"
-                                    value="{{ old('jumlah_peserta_terdaftar', $totalStudents) }}" min="0" required
+                                    value="{{ $sesiRuangan->sesiRuanganSiswa->count() }}" min="0" readonly
                                     class="block w-full rounded-md @error('jumlah_peserta_terdaftar') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                 @error('jumlah_peserta_terdaftar')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -170,7 +170,8 @@
                                     Jumlah Hadir <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" id="jumlah_peserta_hadir" name="jumlah_peserta_hadir"
-                                    value="{{ old('jumlah_peserta_hadir', $presentStudents) }}" min="0" required
+                                    value="{{ $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count() }}"
+                                    min="0" readonly
                                     class="block w-full rounded-md @error('jumlah_peserta_hadir') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                 @error('jumlah_peserta_hadir')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -184,8 +185,8 @@
                                     Jumlah Tidak Hadir <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" id="jumlah_peserta_tidak_hadir" name="jumlah_peserta_tidak_hadir"
-                                    value="{{ old('jumlah_peserta_tidak_hadir', $absentStudents) }}" min="0"
-                                    required
+                                    value="{{ $sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin'])->count() }}"
+                                    min="0" readonly
                                     class="block w-full rounded-md @error('jumlah_peserta_tidak_hadir') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                                 @error('jumlah_peserta_tidak_hadir')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

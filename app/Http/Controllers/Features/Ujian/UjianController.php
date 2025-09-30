@@ -113,11 +113,11 @@ class UjianController extends Controller
         $examEnd = Carbon::parse($examDate . ' ' . $enrollment->sesiRuangan->waktu_selesai);
 
         if ($now->lt($examStart)) {
-            return redirect()->route('siswa.dashboard')->with('error', 'Ujian belum dimulai.');
+            return redirect()->route('siswa.dashboard')->with('error', 'Sesi Ujian belum dimulai.');
         }
 
         if ($now->gt($examEnd)) {
-            return redirect()->route('siswa.dashboard')->with('error', 'Waktu ujian telah berakhir.');
+            return redirect()->route('siswa.dashboard')->with('error', 'Sesi Ujian telah berakhir.');
         }
 
         // Debug info for randomization settings
@@ -431,48 +431,6 @@ class UjianController extends Controller
     /**
      * Flag or unflag a question
      */
-    public function flagQuestion(Request $request)
-    {
-        try {
-            $siswa = Auth::guard('siswa')->user();
-
-            $request->validate([
-                'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
-                'soal_ujian_id' => 'required|exists:soal,id',
-                'is_flagged' => 'required|boolean'
-            ]);
-
-            // Verify hasil ujian belongs to current siswa
-            $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
-                ->where('siswa_id', $siswa->id)
-                ->first();
-
-            if (!$hasilUjian) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
-            // Update or create jawaban siswa record for flagging
-            JawabanSiswa::updateOrCreate([
-                'hasil_ujian_id' => $request->hasil_ujian_id,
-                'soal_ujian_id' => $request->soal_ujian_id
-            ], [
-                'is_flagged' => $request->is_flagged
-            ]);
-
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            Log::error('Error flagging question', [
-                'error' => $e->getMessage(),
-                'siswa_id' => $siswa->id ?? null,
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json(['error' => 'Failed to flag question'], 500);
-        }
-    }
-    /**
-     * Toggle flag status of a question
-     */
     public function toggleFlag(Request $request)
     {
         try {
@@ -480,10 +438,10 @@ class UjianController extends Controller
 
             $request->validate([
                 'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
-                'soal_ujian_id' => 'required|exists:soal,id'
+                'soal_ujian_id'  => 'required|exists:soal,id'
             ]);
 
-            // Verify hasil ujian belongs to current siswa
+            // Pastikan hasil ujian milik siswa yang login
             $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
                 ->where('siswa_id', $siswa->id)
                 ->first();
@@ -492,35 +450,31 @@ class UjianController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // Get current flag status or create new record
-            $jawabanSiswa = JawabanSiswa::where('hasil_ujian_id', $request->hasil_ujian_id)
-                ->where('soal_ujian_id', $request->soal_ujian_id)
-                ->first();
-
-            $newFlagStatus = !($jawabanSiswa && $jawabanSiswa->is_flagged);
-
-            // Update or create jawaban siswa record for flagging
-            JawabanSiswa::updateOrCreate([
+            // Ambil jawaban siswa (atau buat baru)
+            $jawaban = JawabanSiswa::firstOrCreate([
                 'hasil_ujian_id' => $request->hasil_ujian_id,
-                'soal_ujian_id' => $request->soal_ujian_id
-            ], [
-                'is_flagged' => $newFlagStatus
+                'soal_ujian_id'  => $request->soal_ujian_id
             ]);
 
+            // Toggle flag
+            $jawaban->is_flagged = !$jawaban->is_flagged;
+            $jawaban->save();
+
             return response()->json([
-                'success' => true,
-                'is_flagged' => $newFlagStatus
+                'success'    => true,
+                'is_flagged' => $jawaban->is_flagged
             ]);
         } catch (\Exception $e) {
             Log::error('Error toggling flag', [
-                'error' => $e->getMessage(),
-                'siswa_id' => $siswa->id ?? null,
+                'error'        => $e->getMessage(),
+                'siswa_id'     => $siswa->id ?? null,
                 'request_data' => $request->all()
             ]);
 
             return response()->json(['error' => 'Failed to toggle flag'], 500);
         }
     }
+
 
     /**
      * Display the question page
@@ -773,7 +727,7 @@ class UjianController extends Controller
 
         if (!$recentViolation) {
             // Catat pelanggaran
-            \App\Models\PelanggaranUjian::create([
+            PelanggaranUjian::create([
                 'siswa_id' => $siswa->id,
                 'hasil_ujian_id' => $hasilUjian->id,
                 'jadwal_ujian_id' => $hasilUjian->jadwal_ujian_id,
@@ -794,14 +748,14 @@ class UjianController extends Controller
             'violations_count' => $violationsCount
         ]);
 
-        $maxViolations = 3;
-        $continueExam = $violationsCount < $maxViolations;
+        // $maxViolations = 3;
+        // $continueExam = $violationsCount < $maxViolations;
 
         return response()->json([
             'success' => true,
             'violations_count' => $violationsCount,
-            'continue_exam' => $continueExam,
-            'force_logout' => !$continueExam
+            // 'continue_exam' => $continueExam,
+            // 'force_logout' => !$continueExam
         ]);
     }
 
@@ -948,26 +902,23 @@ class UjianController extends Controller
     {
         $jadwalUjian = $hasilUjian->jadwalUjian;
 
-        // Gunakan soals() sebagai pengganti soalUjians()
-        $soalUjians = $jadwalUjian->bankSoal ? SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)->get() : collect();
+        $soalUjians = $jadwalUjian->bankSoal
+            ? SoalUjian::where('bank_soal_id', $jadwalUjian->bank_soal_id)->get()
+            : collect();
 
-        // Ambil jawaban siswa dan konversi ke key-value untuk pencarian lebih cepat
         $jawabanSiswas = $hasilUjian->jawabanSiswas()->get()->keyBy('soal_ujian_id');
-
-        // Hitung jawaban yang benar-benar dijawab (tidak null jawaban)
-        $jawabanDijawab = $hasilUjian->jawabanSiswas()
-            ->whereNotNull('jawaban')
-            ->count();
 
         $jumlahBenar = 0;
         $jumlahSalah = 0;
+        $jumlahDijawab = 0;
         $totalSkor = 0;
 
         foreach ($soalUjians as $soal) {
             $jawaban = $jawabanSiswas->get($soal->id);
 
-            if ($jawaban && $jawaban->jawaban) {
-                // Get the correct answer key considering randomization
+            if ($jawaban && !empty($jawaban->jawaban)) { // pastikan bukan null/empty
+                $jumlahDijawab++;
+
                 $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
 
                 if ($jawaban->jawaban === $correctAnswer) {
@@ -976,34 +927,24 @@ class UjianController extends Controller
                 } else {
                     $jumlahSalah++;
                 }
-            } else {
-                // Soal tidak dijawab, tidak dihitung sebagai salah
-                // Hanya dihitung dalam "tidak dijawab"
             }
         }
 
-        // Jumlah soal yang benar-benar dijawab (tidak termasuk yang tidak dijawab)
-        $jumlahDijawab = $jawabanDijawab;
-
-        // Jumlah soal yang salah hanya yang dijawab tapi salah
-        $jumlahSalah = $jumlahDijawab - $jumlahBenar;
-
-        // Total soal adalah jumlah soal dari bank soal
         $totalSoal = $soalUjians->count();
-
-        // Persentase dihitung dari jumlah benar dibagi total soal
+        $jumlahTidakDijawab = $totalSoal - $jumlahDijawab;
         $persentase = $totalSoal > 0 ? ($jumlahBenar / $totalSoal) * 100 : 0;
 
         return [
             'jumlah_benar' => $jumlahBenar,
             'jumlah_salah' => $jumlahSalah,
             'jumlah_dijawab' => $jumlahDijawab,
-            'jumlah_tidak_dijawab' => $totalSoal - $jumlahDijawab,
+            'jumlah_tidak_dijawab' => $jumlahTidakDijawab,
             'total_skor' => $totalSkor,
             'total_soal' => $totalSoal,
             'persentase' => $persentase
         ];
     }
+
     /**
      * Get the correct answer key for a student considering randomization
      */
@@ -1016,10 +957,19 @@ class UjianController extends Controller
 
         // Build original options
         $options = [];
-        $options['A'] = $soal->pilihan_a_teks;
-        $options['B'] = $soal->pilihan_b_teks;
-        $options['C'] = $soal->pilihan_c_teks;
-        $options['D'] = $soal->pilihan_d_teks;
+
+        if ($soal->pilihan_a_teks || $soal->pilihan_a_gambar) {
+            $options['A'] = $soal->pilihan_a_teks;
+        }
+        if ($soal->pilihan_b_teks || $soal->pilihan_b_gambar) {
+            $options['B'] = $soal->pilihan_b_teks;
+        }
+        if ($soal->pilihan_c_teks || $soal->pilihan_c_gambar) {
+            $options['C'] = $soal->pilihan_c_teks;
+        }
+        if ($soal->pilihan_d_teks || $soal->pilihan_d_gambar) {
+            $options['D'] = $soal->pilihan_d_teks;
+        }
         if ($soal->pilihan_e_teks || $soal->pilihan_e_gambar) {
             $options['E'] = $soal->pilihan_e_teks;
         }

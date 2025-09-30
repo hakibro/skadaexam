@@ -148,52 +148,6 @@
             </div>
         </div>
 
-        <!-- Bulk Actions -->
-        @if ($ruangans->count() > 0)
-            {{-- <div x-data="{ showBulkActions: false, selectedItems: [] }" class="mb-6"> --}}
-            <div x-data="bulkActions" class="mb-6">
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <div class="flex flex-wrap items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="select-all" x-on:change="selectAll($event)"
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="select-all" class="ml-2 text-sm text-gray-700">Pilih Semua</label>
-                            </div>
-                            <span x-text="selectedItems.length + ' ruangan dipilih'" x-show="selectedItems.length > 0"
-                                class="text-sm text-gray-600"></span>
-                        </div>
-
-
-                        <div x-show="selectedItems.length > 0" class="flex flex-wrap gap-2 mt-2 sm:mt-0">
-                            <button @click="confirmBulkAction('aktifkan')"
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                <i class="fa-solid fa-check-circle mr-2"></i> Aktifkan
-                            </button>
-                            <button @click="confirmBulkAction('nonaktifkan')"
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                <i class="fa-solid fa-times-circle mr-2"></i> Non-aktifkan
-                            </button>
-                            <button @click="confirmBulkAction('perbaikan')"
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                                <i class="fa-solid fa-tools mr-2"></i> Perbaikan
-                            </button>
-                            <button @click="confirmBulkAction('hapus')"
-                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                <i class="fa-solid fa-trash mr-2"></i> Hapus
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-
-                <form id="bulk-action-form" action="{{ route('ruangan.bulk-action') }}" method="POST" class="hidden">
-                    @csrf
-                    <input type="hidden" name="action" id="bulk-action">
-                    <input type="hidden" name="ids" id="bulk-ids">
-                </form>
-            </div>
-        @endif
 
         @if (session('error_with_force'))
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
@@ -223,48 +177,81 @@
                 <span class="text-sm text-gray-600">{{ $ruangans->total() }} ruangan ditemukan</span>
             </div>
 
-
             @if ($ruangans->count() > 0)
+                <!-- Bulk Actions Controls -->
+                <!-- Bulk Actions Controls -->
+                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 mb-2">
+                    <div class="flex flex-wrap items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="select-all"
+                                    class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                <label for="select-all" class="ml-2 text-sm text-gray-700">Pilih Semua</label>
+                            </div>
+                            <span id="selected-count" class="text-sm text-gray-600" style="display:none;">0 ruangan
+                                dipilih</span>
+                        </div>
+
+                        <div id="bulk-buttons" class="flex flex-wrap gap-2 mt-2 sm:mt-0" style="display:none;">
+                            <button onclick="confirmBulkAction('aktifkan')"
+                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                                <i class="fa-solid fa-check-circle mr-2"></i> Aktifkan
+                            </button>
+
+                            <button onclick="confirmBulkAction('nonaktifkan')"
+                                class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
+                                <i class="fa-solid fa-times-circle mr-2"></i> Non-aktifkan
+                            </button>
+
+                            <button onclick="confirmBulkAction('perbaikan')"
+                                class="inline-flex items-center px-3 py-1.5 bg-yellow-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition">
+                                <i class="fa-solid fa-tools mr-2"></i> Perbaikan
+                            </button>
+
+                            <button onclick="confirmBulkAction('hapus')"
+                                class="inline-flex items-center px-3 py-1.5 bg-gray-800 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
+                                <i class="fa-solid fa-trash mr-2"></i> Hapus
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <form id="bulk-action-form" action="{{ route('ruangan.bulk-action') }}" method="POST" class="hidden">
+                    @csrf
+                    <input type="hidden" name="action" id="bulk-action">
+                    <input type="hidden" name="ids" id="bulk-ids">
+                </form>
+
+                <!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-
-
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="w-12 px-6 py-3 text-left">
-                                    <span class="sr-only">Pilih</span>
-                                </th>
+                                <th class="w-12 px-6 py-3 text-left"><span class="sr-only">Pilih</span></th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Nama Ruangan
-                                </th>
+                                    Nama Ruangan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kode
-                                </th>
+                                    Kode</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kapasitas
-                                </th>
+                                    Kapasitas</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
-                                </th>
+                                    Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sesi
-                                </th>
+                                    Sesi</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sesi Hari Ini
-                                </th>
-                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                                    Aksi
-                                </th>
+                                    Sesi Hari Ini</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200" x-ref="roomsTable">
+                        <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($ruangans as $ruangan)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="selected_ids[]" value="{{ $ruangan->id }}"
-                                                class="room-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                x-on:change="updateSelected">
+                                                class="room-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded">
+
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
@@ -374,15 +361,11 @@
                 </div>
             @else
                 <div class="p-8 text-center">
-                    <div class="text-gray-400 mb-4">
-                        <i class="fa-solid fa-door-open text-5xl"></i>
-                    </div>
+                    <div class="text-gray-400 mb-4"><i class="fa-solid fa-door-open text-5xl"></i></div>
                     <h3 class="text-lg font-medium text-gray-900 mb-1">Belum ada ruangan yang ditambahkan</h3>
                     <p class="text-gray-500 mb-6">Mulailah dengan menambahkan ruangan pertama</p>
-                    <a href="{{ route('ruangan.create') }}"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fa-solid fa-plus mr-2"></i>
-                        Tambah Ruangan Sekarang
+                    <a href="{{ route('ruangan.create') }}" class="btn-blue">
+                        <i class="fa-solid fa-plus mr-2"></i> Tambah Ruangan Sekarang
                     </a>
                 </div>
             @endif
@@ -392,71 +375,57 @@
 
 @section('scripts')
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('bulkActions', () => ({
-                showBulkActions: false,
-                selectedItems: [],
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectAllCheckbox = document.getElementById('select-all');
+            const roomCheckboxes = document.querySelectorAll('.room-checkbox');
+            const selectedCount = document.getElementById('selected-count');
+            const bulkButtons = document.getElementById('bulk-buttons');
 
-                init() {
-                    this.updateSelected();
-                },
+            function updateSelected() {
+                const selected = Array.from(roomCheckboxes).filter(cb => cb.checked);
+                selectedCount.textContent = `${selected.length} ruangan dipilih`;
 
-                selectAll(e) {
-                    const checkboxes = document.querySelectorAll('.room-checkbox');
-                    checkboxes.forEach(checkbox => {
-                        checkbox.checked = e.target.checked;
-                    });
-                    this.updateSelected();
-                },
-
-                updateSelected() {
-                    const checkboxes = document.querySelectorAll('.room-checkbox:checked');
-                    this.selectedItems = Array.from(checkboxes).map(checkbox => checkbox.value);
-                    this.showBulkActions = this.selectedItems.length > 0;
-                },
-
-                confirmBulkAction(action) {
-                    let message = 'Apakah Anda yakin ingin ';
-
-                    switch (action) {
-                        case 'aktifkan':
-                            message += 'mengaktifkan';
-                            break;
-                        case 'nonaktifkan':
-                            message += 'menonaktifkan';
-                            break;
-                        case 'perbaikan':
-                            message += 'mengubah status menjadi perbaikan untuk';
-                            break;
-                        case 'hapus':
-                            message += 'menghapus';
-                            break;
-                    }
-
-                    message += ` ${this.selectedItems.length} ruangan yang dipilih?`;
-
-                    if (action === 'hapus') {
-                        message +=
-                            ' Semua sesi ruangan dan data terkait akan ikut terhapus. Tindakan ini tidak dapat dibatalkan!';
-                    }
-
-                    if (confirm(message)) {
-                        document.getElementById('bulk-action').value = action;
-                        document.getElementById('bulk-ids').value = this.selectedItems.join(',');
-                        document.getElementById('bulk-action-form').submit();
-                    }
+                if (selected.length > 0) {
+                    selectedCount.style.display = 'inline';
+                    bulkButtons.style.display = 'flex';
+                } else {
+                    selectedCount.style.display = 'none';
+                    bulkButtons.style.display = 'none';
                 }
-            }));
-        });
 
-        // Status filter live change
-        document.getElementById('status').addEventListener('change', function() {
-            this.form.submit();
-        });
+                // Sync select-all checkbox
+                selectAllCheckbox.checked = selected.length === roomCheckboxes.length;
+            }
 
-        // Sort filter live change
-        document.getElementById('sort').addEventListener('change', function() {
-            this.form.submit();
+            // Select All checkbox
+            selectAllCheckbox.addEventListener('change', (e) => {
+                roomCheckboxes.forEach(cb => cb.checked = e.target.checked);
+                updateSelected();
+            });
+
+            // Individual checkboxes
+            roomCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateSelected);
+            });
+
+            // Bulk action
+            window.confirmBulkAction = function(action) {
+                const selected = Array.from(roomCheckboxes).filter(cb => cb.checked);
+                if (!selected.length) return;
+
+                let message = `Apakah Anda yakin ingin ${action} ${selected.length} ruangan?`;
+                if (action === 'hapus') {
+                    message +=
+                        ' Semua sesi ruangan dan data terkait akan ikut terhapus. Tindakan ini tidak dapat dibatalkan!';
+                }
+
+                if (confirm(message)) {
+                    document.getElementById('bulk-action').value = action;
+                    document.getElementById('bulk-ids').value = selected.map(cb => cb.value).join(',');
+                    document.getElementById('bulk-action-form').submit();
+                }
+            };
         });
     </script>
+
 @endsection

@@ -110,7 +110,7 @@ class User extends Authenticatable
 
     public function canSupervise()
     {
-        return $this->hasRole('pengawas', 'web');
+        return $this->hasRole(['pengawas', 'koordinator'], 'web');
     }
 
     public function canCoordinate()
@@ -196,9 +196,10 @@ class User extends Authenticatable
         } elseif ($this->isGuru()) {
             return 'guru.dashboard';
         }
-        // Default route
+
         return 'home';
     }
+
 
     /**
      * Get current role name for display

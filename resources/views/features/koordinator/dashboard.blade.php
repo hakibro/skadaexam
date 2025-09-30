@@ -167,6 +167,19 @@
                     Upload Tata Tertib
                 </a>
             </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center mb-4">
+                    <div class="bg-yellow-100 rounded-lg p-3">
+                        📢
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900">Buat Pengumuman Ujian</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Buat dan kelola pengumuman ujian</p>
+                <a href="{{ route('koordinator.pengumuman.index') }}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-gray-800 bg-yellow-100 hover:bg-yellow-300">
+                    📢 Buat Pengumuman Ujian
+                </a>
+            </div>
         </div>
 
         <!-- Recent Activities & Quick Overview -->

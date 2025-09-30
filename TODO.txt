@@ -1,20 +1,19 @@
 
-
-
 ------------------  !!!! VERY IMPORTANT  ------------------
 Ujian:
 - Update sistem pelanggaran siswa, modal tidak akan tertutup jika belum mendapatkan aksi dari pengawas.
-- Menangani Siswa salah klik Mapel 
-- TELAT - Tombol Kembali ke dashboard tampilkan 20 menit akhir
-
+- Set auto submit jika waktu Sesi Habis dan hapus session berhasil tapi jawaban siswa kosong karena jawaban tidak tersimpan di tabel hasil ujian.
 
 Dashboard siswa:
-ambil data jadwal ujian jika status jadwal ujian aktif
-
+- Update dashboard siswa dengan tampilan baru
+  - Pengumuman
+  - Stats
+  - Modal Status Pembayaran Rekom
 
 Pengawas:
 - Berita Acara:
   - non aktifkan absen siswa (gunakan ajax refresh)
+- Tombol submit pidah ke koordinator (batasi menggunakan @role di view)
 
 Naskah:
 - Jadwal ujian:
@@ -22,7 +21,6 @@ Naskah:
 
 Siswa:
 - tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
-
 
 
 -----------------------------------------------------------------
@@ -39,9 +37,6 @@ Koordinator:
 
 - absen pengawas
 - fungsikan monitoring
-
-
-
 
 
 --------------------------------------------------------

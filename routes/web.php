@@ -42,15 +42,20 @@ Route::get('/dashboard', function () {
         }
     }
 
-    // fallback: logout user & kembali ke login
+    // fallback: logout user & kembali ke login sesuai guard
     if (Auth::guard('web')->check()) {
         Auth::guard('web')->logout();
-    } elseif (Auth::guard('siswa')->check()) {
-        Auth::guard('siswa')->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+        return redirect()->route('login')->with('error', 'Dashboard not found.');
     }
 
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
+    if (Auth::guard('siswa')->check()) {
+        Auth::guard('siswa')->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+        return redirect()->route('login.siswa')->with('error', 'Dashboard not found.');
+    }
 
     return redirect()->route('login')->with('error', 'Dashboard not found.');
 })->name('dashboard');

@@ -59,7 +59,7 @@ class DashboardController extends Controller
         }
 
         $today = Carbon::today();
-        $isAdmin = $user->isAdmin();
+        $isAdmin = $user->isAdmin() || $user->isKoordinator();
 
         // Base query
         $baseQuery = SesiRuangan::query()

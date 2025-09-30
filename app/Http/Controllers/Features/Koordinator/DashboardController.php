@@ -10,6 +10,7 @@ use App\Models\Ruangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use League\CommonMark\CommonMarkConverter;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -207,5 +208,53 @@ class DashboardController extends Controller
         $request->file('file')->move(public_path('storage'), 'tata_tertib.pdf');
 
         return back()->with('success', 'Tata Tertib berhasil diupload!');
+    }
+
+    /**
+     * Tampilkan index pengumuman (create/edit/show/delete dalam 1 halaman)
+     */
+    public function indexPengumuman()
+    {
+        $filePath = 'announcements/pengumuman.md';
+
+        $exists = Storage::disk('local')->exists($filePath);
+        $content = $exists ? Storage::disk('local')->get($filePath) : '';
+
+        $converter = new CommonMarkConverter();
+        $html = $content ? $converter->convert($content)->getContent() : null;
+
+        return view('features.koordinator.pengumuman', compact('exists', 'content', 'html'));
+    }
+
+    /**
+     * Simpan atau update pengumuman
+     */
+    public function updatePengumuman(Request $request)
+    {
+        $filePath = 'announcements/pengumuman.md';
+
+        $request->validate([
+            'konten' => 'required|string',
+        ]);
+
+        Storage::disk('local')->put($filePath, $request->konten);
+
+        return redirect()->route('koordinator.pengumuman.index')
+            ->with('success', 'Pengumuman berhasil disimpan.');
+    }
+
+    /**
+     * Hapus pengumuman
+     */
+    public function deletePengumuman()
+    {
+        $filePath = 'announcements/pengumuman.md';
+
+        if (Storage::disk('local')->exists($filePath)) {
+            Storage::disk('local')->delete($filePath);
+            return back()->with('success', 'Pengumuman berhasil dihapus.');
+        }
+
+        return back()->with('error', 'Tidak ada pengumuman untuk dihapus.');
     }
 }

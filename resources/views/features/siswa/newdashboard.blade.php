@@ -26,22 +26,22 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-
+                    <div class="relative">
+                        <button
+                            class="bg-gray-100 p-2 rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-200 transition-colors">
+                            🔔
+                        </button>
+                        <span
+                            class="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                    </div>
                     <div class="flex items-center space-x-3">
+                        <div
+                            class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            A
+                        </div>
                         <span class="text-gray-700 font-medium">{{ $siswa->nama }}</span>
                     </div>
-
-                    <form method="POST" action="{{ route('siswa.logout') }}" class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                            onclick="return confirm('Yakin ingin logout dari sistem ujian?')">
-                            <i class="fas fa-sign-out-alt mr-1"></i>
-                            Logout
-                        </button>
-                    </form>
                 </div>
-
             </div>
         </div>
     </header>
@@ -196,15 +196,25 @@
                                     <span class="text-blue-400 text-lg">⏰</span>
                                 </div>
                                 <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-blue-800">Submit Ujian</h4>
-                                    <p class="text-sm text-blue-700 mt-1">Tombol submit ujian akan muncul ketika durasi
-                                        ujian <b> dibawah 5 menit</b>
-                                    </p>
+                                    <h4 class="text-sm font-semibold text-blue-800">Waktu Ujian</h4>
+                                    <p class="text-sm text-blue-700 mt-1">Durasi ujian 90 menit. Timer akan otomatis
+                                        berjalan saat ujian dimulai</p>
                                 </div>
                             </div>
                         </div>
 
-
+                        <div class="p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="text-green-400 text-lg">💾</span>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-semibold text-green-800">Penyimpanan Otomatis</h4>
+                                    <p class="text-sm text-green-700 mt-1">Jawaban tersimpan otomatis setiap 30 detik.
+                                        Tidak perlu khawatir kehilangan data</p>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
                             <div class="flex items-start">
@@ -239,7 +249,7 @@
                                 </div>
                                 <div class="ml-3">
                                     <h4 class="text-sm font-semibold text-red-800">Peringatan</h4>
-                                    <p class="text-sm text-red-700 mt-1">Jangan menutup browser atau berpindah tab
+                                    <p class="text-sm text-red-700 mt-1">Jangan menutup browser atau refresh halaman
                                         selama ujian berlangsung</p>
                                 </div>
                             </div>
@@ -321,7 +331,67 @@
 
                 <div class="p-6 overflow-y-auto max-h-96">
                     <div class="space-y-4">
-                        {{-- <div class="p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
+                        <div class="p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="text-red-400 text-lg">🚨</span>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-semibold text-red-800">Perubahan Jadwal Ujian</h4>
+                                    <p class="text-sm text-red-700 mt-1">Ujian Matematika dipindah ke Senin, 25 Des
+                                        2024 pukul 08:00 WIB. Harap persiapkan diri dengan baik!</p>
+                                    <p class="text-xs text-red-600 mt-2 font-medium">📅 Dipublikasi: 2 jam yang lalu
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="text-blue-400 text-lg">ℹ️</span>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-semibold text-blue-800">Hasil Ujian Tersedia</h4>
+                                    <p class="text-sm text-blue-700 mt-1">Hasil ujian Biologi sudah dapat dilihat di
+                                        menu Hasil Ujian. Selamat untuk yang mendapat nilai memuaskan!</p>
+                                    <p class="text-xs text-blue-600 mt-2 font-medium">📅 Dipublikasi: 5 jam yang lalu
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="text-green-400 text-lg">✅</span>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-semibold text-green-800">Pembaruan Sistem</h4>
+                                    <p class="text-sm text-green-700 mt-1">Fitur timer ujian telah diperbaiki dan
+                                        berfungsi normal. Sistem backup otomatis juga telah diaktifkan.</p>
+                                    <p class="text-xs text-green-600 mt-2 font-medium">📅 Dipublikasi: 1 hari yang lalu
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="text-yellow-400 text-lg">⚠️</span>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-semibold text-yellow-800">Maintenance Terjadwal</h4>
+                                    <p class="text-sm text-yellow-700 mt-1">Maintenance server dijadwalkan Minggu, 24
+                                        Des pukul 02:00-04:00 WIB. Sistem tidak dapat diakses selama periode ini.</p>
+                                    <p class="text-xs text-yellow-600 mt-2 font-medium">📅 Dipublikasi: 2 hari yang
+                                        lalu</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
                             <div class="flex items-start">
                                 <div class="flex-shrink-0">
                                     <span class="text-purple-400 text-lg">🎉</span>
@@ -334,16 +404,7 @@
                                         lalu</p>
                                 </div>
                             </div>
-                        </div> --}}
-
-                        @if ($announcementHtml)
-                            <div class="prose max-w-none">
-                                {!! $announcementHtml !!}
-                            </div>
-                        @else
-                            <p class="text-gray-500 italic">Belum ada pengumuman.</p>
-                        @endif
-
+                        </div>
                     </div>
                 </div>
 
@@ -408,24 +469,15 @@
                 });
             }
         });
+
+        // Add notification functionality
+        document.querySelector('button[class*="bg-gray-100"]').addEventListener('click', function() {
+            alert(
+                'Notifikasi:\n• Ujian Matematika dalam 2 hari\n• Hasil Biologi sudah keluar\n• Pengumuman jadwal baru'
+            );
+        });
     </script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const modalPengumuman = document.getElementById("announcementModal");
-            const closeButtons = [document.getElementById("closeModal"), document.getElementById("closeModalBtn")];
-
-            @if ($announcementHtml)
-                modalPengumuman.classList.remove("hidden");
-            @endif
-
-            closeButtons.forEach(btn => {
-                if (btn) {
-                    btn.addEventListener("click", () => {
-                        modal.classList.add("hidden");
-                    });
-                }
-            });
-        });
         (function() {
             function c() {
                 var b = a.contentDocument || a.contentWindow.document;

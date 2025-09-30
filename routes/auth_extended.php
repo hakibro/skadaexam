@@ -23,8 +23,9 @@ Route::middleware('auth:web')->group(function () {
 });
 
 // Student routes with siswa guard
-Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(function () {
+Route::middleware(['auth:siswa', 'siswa.force_logout'])->prefix('siswa')->name('siswa.')->group(function () {
     Route::get('/dashboard', [SiswaDashboardController::class, 'index'])->name('dashboard');
+    // Route::get('/new-dashboard', [SiswaDashboardController::class, 'newDashboard'])->name('new-dashboard');
 
     Route::post('/logout', [SiswaLoginController::class, 'logout'])->name('logout');
 });

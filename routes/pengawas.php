@@ -11,7 +11,7 @@ use SebastianBergmann\CodeCoverage\Report\Html\Dashboard;
 
 // Pengawas Routes - All routes related to the pengawas panel
 // Allow access from web guard with pengawas role
-Route::middleware(['auth:web', 'role:admin,pengawas'])->prefix('features/pengawas')->name('pengawas.')->group(function () {
+Route::middleware(['auth:web', 'role:admin,pengawas,koordinator'])->prefix('features/pengawas')->name('pengawas.')->group(function () {
     // Dashboard
     // Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
