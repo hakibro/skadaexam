@@ -24,9 +24,11 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::post('enrollment-ujian/generate-tokens', [EnrollmentUjianController::class, 'generateTokens'])->name('enrollment-ujian.generate-tokens');
     Route::post('enrollment-ujian/{enrollmentUjian}/generate-token', [EnrollmentUjianController::class, 'generateToken'])->name('enrollment-ujian.generate-token');
     Route::get('enrollment-ujian/{enrollmentUjian}/print-qr', [EnrollmentUjianController::class, 'printQR'])->name('enrollment-ujian.print-qr');
+
     Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [EnrollmentUjianController::class, 'updateStatus'])->name('enrollment-ujian.update-status');
     Route::resource('enrollment-ujian', EnrollmentUjianController::class);
 });
+
 
 // Ruangan-based automatic enrollment routes - now using the same controller
 Route::middleware(['auth:web', 'role:admin,koordinator'])->prefix('ruangan')->name('ruangan.')->group(function () {

@@ -35,7 +35,7 @@ class JadwalUjian extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'datetime',
+        'tanggal' => 'date',
         'kelas_target' => 'array',
         'tampilkan_hasil' => 'boolean',
         'durasi_menit' => 'integer',

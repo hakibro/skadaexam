@@ -148,14 +148,14 @@
                 </tr>
                 <tr>
                     <td>Waktu Ujian</td>
-                    <td>: {{ $enrollmentUjian->sesiRuangan->waktu_mulai->format('d M Y H:i') }} -
-                        {{ $enrollmentUjian->sesiRuangan->waktu_selesai->format('d M Y H:i') }}</td>
+                    <td>: {{ $enrollmentUjian->sesiRuangan->waktu_mulai }} -
+                        {{ $enrollmentUjian->sesiRuangan->waktu_selesai }}</td>
                 </tr>
             </table>
         </div>
 
         <div class="qr-container">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode(route('login.direct-token', $enrollmentUjian->sesiRuangan->token_ujian ?? '')) }}"
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode(route('naskah.enrollment-ujian.print-qr', $enrollmentUjian->sesiRuangan->token_ujian ?? '')) }}"
                 alt="QR Code for Login">
         </div>
 

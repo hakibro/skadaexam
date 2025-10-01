@@ -20,7 +20,7 @@ class EnrollmentUjianController extends Controller
 {
     protected $enrollmentService;
 
-    public function __construct(EnrollmentService $enrollmentService = null)
+    public function __construct(EnrollmentService $enrollmentService)
     {
         $this->enrollmentService = $enrollmentService;
     }
@@ -33,13 +33,11 @@ class EnrollmentUjianController extends Controller
 
         // Apply filters
         if ($request->filled('jadwal_id')) {
-            $query->whereHas('sesiRuangan.jadwalUjians', function ($q) use ($request) {
-                $q->where('jadwal_ujian.id', $request->jadwal_id);
-            });
+            $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
 
-        if ($request->filled('sesi_id')) {
-            $query->where('sesi_ruangan_id', $request->sesi_id);
+        if ($request->filled('sesi_ruangan_id')) {
+            $query->where('sesi_ruangan_id', $request->sesi_ruangan_id);
         }
 
         if ($request->filled('status')) {

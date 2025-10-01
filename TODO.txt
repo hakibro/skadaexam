@@ -2,25 +2,19 @@
 ------------------  !!!! VERY IMPORTANT  ------------------
 Ujian:
 - Update sistem pelanggaran siswa, modal tidak akan tertutup jika belum mendapatkan aksi dari pengawas.
-- Set auto submit jika waktu Sesi Habis dan hapus session berhasil tapi jawaban siswa kosong karena jawaban tidak tersimpan di tabel hasil ujian.
 
 Dashboard siswa:
 - Update dashboard siswa dengan tampilan baru
-  - Pengumuman
-  - Stats
   - Modal Status Pembayaran Rekom
 
 Pengawas:
-- Berita Acara:
-  - non aktifkan absen siswa (gunakan ajax refresh)
-- Tombol submit pidah ke koordinator (batasi menggunakan @role di view)
+- Pelanggaran Ujian: Ubah dropdown dari nama mapel menjadi nama ruang - sesi dengan kondisi status sesi berlangsung
+
 
 Naskah:
-- Jadwal ujian:
-  - fungsikan status jadwal ujian
+- Hasil ujian: detail jawaban siswa 
 
 Siswa:
-- tambahkan profil siswa (ada foto) untuk validasi pengawas (manual) siswa tersebut adalah siswa yang mengerjakan ujian.
 
 
 -----------------------------------------------------------------

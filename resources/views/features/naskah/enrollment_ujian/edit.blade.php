@@ -38,8 +38,8 @@
                                 @foreach ($sesiRuangans as $sesi)
                                     <option value="{{ $sesi->id }}"
                                         {{ old('sesi_ruangan_id', $enrollment->sesi_ruangan_id) == $sesi->id ? 'selected' : '' }}>
-                                        {{ $sesi->nama_sesi }} ({{ $sesi->waktu_mulai->format('d M Y H:i') }} -
-                                        {{ $sesi->waktu_selesai->format('d M Y H:i') }})
+                                        {{ $sesi->nama_sesi }} ({{ $sesi->waktu_mulai }} -
+                                        {{ $sesi->waktu_selesai }})
                                     </option>
                                 @endforeach
                             </select>
@@ -51,9 +51,9 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">NIS</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ID Yayasan</label>
                             <input type="text" class="form-input w-full rounded-md shadow-sm bg-gray-50"
-                                value="{{ $enrollment->siswa->nis }}" readonly>
+                                value="{{ $enrollment->siswa->idyayasan }}" readonly>
                         </div>
 
                         <div>

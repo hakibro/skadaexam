@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\SesiRuangan;
 
 class LoginController extends Controller
 {
@@ -40,6 +41,19 @@ class LoginController extends Controller
             'email' => 'The provided credentials do not match our records.',
         ])->onlyInput('email');
     }
+
+    public function directTokenLogin($token)
+    {
+        $sesi = SesiRuangan::where('token_ujian', $token)->first();
+
+        if (! $sesi) {
+            abort(404, 'Token tidak valid.');
+        }
+
+        // misalnya redirect ke halaman login ujian
+        return redirect()->route('ujian.login', ['sesiRuangan' => $sesi->id]);
+    }
+
 
     public function logout(Request $request)
     {

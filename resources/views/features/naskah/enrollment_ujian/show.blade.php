@@ -17,8 +17,8 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <tbody class="divide-y divide-gray-200">
                             <tr>
-                                <th class="py-3 text-left text-sm font-medium text-gray-900 w-1/3">NIS</th>
-                                <td class="py-3 text-sm text-gray-700">{{ $enrollment->siswa->nis }}</td>
+                                <th class="py-3 text-left text-sm font-medium text-gray-900 w-1/3">ID Yayasan</th>
+                                <td class="py-3 text-sm text-gray-700">{{ $enrollment->siswa->idyayasan }}</td>
                             </tr>
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Nama</th>
@@ -28,10 +28,7 @@
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Kelas</th>
                                 <td class="py-3 text-sm text-gray-700">{{ $enrollment->siswa->kelas->nama ?? 'N/A' }}</td>
                             </tr>
-                            <tr>
-                                <th class="py-3 text-left text-sm font-medium text-gray-900">Email</th>
-                                <td class="py-3 text-sm text-gray-700">{{ $enrollment->siswa->email ?? 'N/A' }}</td>
-                            </tr>
+
                         </tbody>
                     </table>
                 </div>
@@ -65,12 +62,12 @@
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Waktu Mulai</th>
                                 <td class="py-3 text-sm text-gray-700">
-                                    {{ $enrollment->sesiRuangan->waktu_mulai->format('d M Y H:i') }}</td>
+                                    {{ $enrollment->sesiRuangan->waktu_mulai }}</td>
                             </tr>
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Waktu Selesai</th>
                                 <td class="py-3 text-sm text-gray-700">
-                                    {{ $enrollment->sesiRuangan->waktu_selesai->format('d M Y H:i') }}</td>
+                                    {{ $enrollment->sesiRuangan->waktu_selesai }}</td>
                             </tr>
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Durasi</th>

@@ -27,7 +27,7 @@
                     <div class="flex flex-wrap gap-4">
                         <div class="w-full md:w-auto">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Jadwal Ujian</label>
-                            <select name="jadwal_id"
+                            <select name="jadwal_id" id="jadwal_id"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Semua Jadwal</option>
                                 @foreach ($jadwalUjians as $jadwal)
@@ -40,7 +40,7 @@
                         </div>
                         <div class="w-full md:w-auto">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Sesi Ruangan</label>
-                            <select name="sesi_id"
+                            <select name="sesi_id" id="sesi_ruangan_id"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Semua Sesi</option>
                                 @foreach ($sesiRuangans as $sesi)
@@ -60,8 +60,6 @@
                                 </option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
                                 <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Selesai
-                                </option>
-                                <option value="absent" {{ request('status') == 'absent' ? 'selected' : '' }}>Tidak Hadir
                                 </option>
                                 <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>
                                     Dibatalkan
@@ -111,7 +109,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    NIS</th>
+                                    ID YYS</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Nama Siswa</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -120,8 +118,7 @@
                                     Jadwal Ujian</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Sesi</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Token</th>
+
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -132,7 +129,7 @@
                             @foreach ($enrollments as $enrollment)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="font-mono text-sm">{{ $enrollment->siswa->nis ?? 'N/A' }}</span>
+                                        <span class="font-mono text-sm">{{ $enrollment->siswa->idyayasan ?? 'N/A' }}</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {{ $enrollment->siswa->nama ?? 'N/A' }}
@@ -145,30 +142,13 @@
                                             {{ $enrollment->jadwalUjian->judul ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->judul ?? 'N/A') }}
                                         </div>
                                         <div class="text-sm text-gray-500">
-                                            {{ $enrollment->jadwalUjian->mapel->nama ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->mapel->nama ?? 'N/A') }}
+                                            {{ $enrollment->jadwalUjian->tanggal ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->tanggal ?? 'N/A') }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {{ $enrollment->sesiRuangan->nama_sesi ?? 'N/A' }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($enrollment->sesiRuangan && $enrollment->sesiRuangan->token_ujian)
-                                            @if (!$enrollment->sesiRuangan->token_expired_at || $enrollment->sesiRuangan->token_expired_at > now())
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                    {{ $enrollment->sesiRuangan->token_ujian }}
-                                                </span>
-                                            @else
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                    {{ $enrollment->sesiRuangan->token_ujian }}
-                                                    <span class="ml-1">(Expired)</span>
-                                                </span>
-                                            @endif
-                                        @else
-                                            <span class="text-gray-400">-</span>
-                                        @endif
-                                    </td>
+
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @switch($enrollment->status_enrollment)
                                             @case('enrolled')
@@ -242,14 +222,14 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                                        <div class="flex flex-col space-y-1 items-end">
+                                        <div class="flex gap-1 items-center justify-center">
                                             <a href="{{ route('naskah.enrollment-ujian.show', $enrollment->id) }}"
                                                 class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700">
-                                                <i class="fa-solid fa-eye mr-1"></i> Detail
+                                                <i class="fa-solid fa-eye mr-1"></i>
                                             </a>
                                             <a href="{{ route('naskah.enrollment-ujian.edit', $enrollment->id) }}"
                                                 class="inline-flex items-center px-3 py-1 bg-yellow-600 text-white text-xs rounded-md hover:bg-yellow-700">
-                                                <i class="fa-solid fa-edit mr-1"></i> Edit
+                                                <i class="fa-solid fa-edit mr-1"></i>
                                             </a>
                                             <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}"
                                                 method="POST" class="inline-block"
@@ -258,7 +238,7 @@
                                                 @method('DELETE')
                                                 <button type="submit"
                                                     class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">
-                                                    <i class="fa-solid fa-trash mr-1"></i> Hapus
+                                                    <i class="fa-solid fa-trash mr-1"></i>
                                                 </button>
                                             </form>
                                         </div>

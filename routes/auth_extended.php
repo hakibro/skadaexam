@@ -13,6 +13,8 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::get('/login/siswa', [SiswaLoginController::class, 'showLoginForm'])->name('login.siswa');
 Route::post('/login/siswa', [SiswaLoginController::class, 'login'])->name('login.siswa.submit');
+Route::get('/login/token/{token}', [LoginController::class, 'directTokenLogin'])
+    ->name('login.direct-token');
 
 // Profile routes
 Route::middleware('auth:web')->group(function () {
