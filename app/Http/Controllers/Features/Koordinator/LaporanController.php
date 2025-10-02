@@ -395,20 +395,27 @@ class LaporanController extends Controller
             ]
         ]);
     }
-    public function downloadPDF()
+    public function downloadPDF(BeritaAcaraUjian $beritaAcara)
     {
-        $berita = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'pengawas'])->latest()->first();
+        $beritaAcara->load([
+            'sesiRuangan.ruangan',
+            'sesiRuangan.jadwalUjian.mapel',
+            'sesiRuangan.sesiRuanganSiswa.siswa',
+            'pengawas'
+        ]);
 
-        if (!$berita) {
-            return redirect()->back()->with('error', 'Belum ada berita acara ujian.');
+        // Check if sesiRuangan exists
+        if (!$beritaAcara->sesiRuangan) {
+            abort(404, 'Data sesi ruangan tidak ditemukan untuk berita acara ini.');
         }
 
-        $filename = 'berita_acara_' . $berita->id . '.pdf';
+        $filename = 'berita_acara_' . $beritaAcara->id . '.pdf';
         $path = storage_path('app/public/' . $filename);
 
-        Pdf::html(view('features.koordinator.laporan.pdf', compact('berita'))->render())
+        Pdf::html(view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render())
             ->save($path);
 
         return response()->file($path); // ini akan menampilkan PDF di browser
+
     }
 }

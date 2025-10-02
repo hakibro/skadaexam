@@ -32,6 +32,7 @@ class EnrollmentUjianController extends Controller
         $query = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian', 'sesiRuanganSiswa']);
 
         // Apply filters
+
         if ($request->filled('jadwal_id')) {
             $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
@@ -47,6 +48,22 @@ class EnrollmentUjianController extends Controller
         if ($request->filled('kehadiran')) {
             $query->whereHas('sesiRuanganSiswa', function ($q) use ($request) {
                 $q->where('status_kehadiran', $request->kehadiran);
+            });
+        }
+        // Filter berdasarkan nama siswa atau ID yayasan
+        if ($request->filled('siswa_search')) {
+            $search = $request->siswa_search;
+            $query->whereHas('siswa', function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('idyayasan', 'like', "%{$search}%"); // pastikan kolom id_yayasan ada di tabel siswa
+            });
+        }
+
+        // Filter berdasarkan kelas
+        if ($request->filled('kelas_id')) {
+            $kelasId = $request->kelas_id;
+            $query->whereHas('siswa', function ($q) use ($kelasId) {
+                $q->where('kelas_id', $kelasId);
             });
         }
 
@@ -187,7 +204,7 @@ class EnrollmentUjianController extends Controller
     {
         $request->validate([
             'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
-            'status_enrollment' => 'required|in:enrolled,completed,absent,cancelled',
+            'status_enrollment' => 'required|in:enrolled,active,completed,cancelled',
             'catatan' => 'nullable|string'
         ]);
 
@@ -259,33 +276,27 @@ class EnrollmentUjianController extends Controller
      */
     public function getSesiOptions(Request $request)
     {
-        $jadwalId = $request->jadwal_id;
+        $jadwalId = $request->query('jadwal_id');
 
         if (!$jadwalId) {
             return response()->json([]);
         }
 
-        // Use the many-to-many relationship through jadwal_ujian_sesi_ruangan pivot table
-        $sesiList = SesiRuangan::whereHas('jadwalUjians', function ($query) use ($jadwalId) {
-            $query->where('jadwal_ujian.id', $jadwalId);
-        })
-            ->whereIn('status', ['belum_mulai', 'berlangsung'])
-            ->with(['jadwalUjians' => function ($query) use ($jadwalId) {
-                $query->where('jadwal_ujian.id', $jadwalId);
-            }])
-            ->get(['id', 'nama_sesi', 'waktu_mulai', 'waktu_selesai', 'status'])
-            ->map(function ($sesi) {
-                $jadwalUjian = $sesi->jadwalUjians->first();
-                $tanggal = $jadwalUjian ? $jadwalUjian->tanggal->format('d M Y') : 'N/A';
+        // Ambil sesi melalui relasi pivot jadwal_ujian_sesi_ruangan
+        $sesiRuangans = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($jadwalId) {
+            $q->where('jadwal_ujian_id', $jadwalId);
+        })->get();
 
-                return [
-                    'id' => $sesi->id,
-                    'text' => $sesi->nama_sesi . ' - ' . $tanggal . ' ' . $sesi->waktu_mulai . ' (' . ucfirst($sesi->status) . ')'
-                ];
-            });
+        $options = $sesiRuangans->map(function ($sesi) {
+            return [
+                'id' => $sesi->id,
+                'text' => $sesi->nama_sesi,
+            ];
+        });
 
-        return response()->json($sesiList);
+        return response()->json($options);
     }
+
 
     /**
      * Get all students from selected kelas (AJAX)
@@ -552,6 +563,39 @@ class EnrollmentUjianController extends Controller
             return redirect()->back()->with('error', 'Gagal menyinkronkan enrollment: ' . $e->getMessage());
         }
     }
+
+    public function bulkAction(Request $request)
+    {
+        $action = $request->action;
+        $ids = $request->ids;
+
+        if (!$action || empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Data atau aksi tidak valid']);
+        }
+
+        $enrollments = EnrollmentUjian::whereIn('id', $ids)->get();
+
+        foreach ($enrollments as $enrollment) {
+            switch ($action) {
+                case 'enrolled':
+                    $enrollment->status_enrollment = 'enrolled';
+                    $enrollment->save();
+
+                    break;
+                case 'cancelled':
+                    $enrollment->status_enrollment = 'cancelled';
+                    $enrollment->save();
+
+                    break;
+                case 'deleted':
+                    $enrollment->delete();
+                    break;
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
 
     /**
      * Print QR code for enrollment

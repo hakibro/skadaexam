@@ -4,7 +4,36 @@
 @section('page-title', 'Tambah Enrollment Ujian')
 @section('page-description', 'Mendaftarkan siswa pada ujian')
 
+@section('styles')
+    <style>
+        @keyframes slideIn {
+            0% {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease forwards;
+        }
+    </style>
+@endsection
+
 @section('content')
+    <!-- Modal Status -->
+    <div id="statusModal" class="fixed top-4 right-4 hidden z-50">
+        <div class="bg-red-600 text-white px-4 py-2 rounded shadow-md">
+            <p id="statusMessage" class="text-sm"></p>
+        </div>
+    </div>
+
+
+    <!-- Body -->
     <div class="space-y-6">
         <div class="bg-white shadow-md rounded-lg overflow-hidden">
             <div class="p-4 border-b">
@@ -46,13 +75,19 @@
                                 required disabled>
                                 <option value="">Pilih Sesi Ujian</option>
                                 @if (old('jadwal_ujian_id') && old('sesi_ruangan_id'))
-                                    <option value="{{ old('sesi_ruangan_id') }}" selected>
-                                        {{ App\Models\SesiRuangan::find(old('sesi_ruangan_id'))->nama_sesi }}</option>
+                                    @php
+                                        $sesi = App\Models\SesiRuangan::find(old('sesi_ruangan_id'));
+                                    @endphp
+                                    @if ($sesi)
+                                        <option value="{{ $sesi->id }}" selected>{{ $sesi->nama_sesi }}</option>
+                                    @endif
                                 @endif
                             </select>
+
                             @error('sesi_ruangan_id')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
+
                         </div>
                     </div>
 
@@ -129,6 +164,7 @@
 @endsection
 
 @section('scripts')
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -160,40 +196,55 @@
             const jadwalSelect = document.getElementById('jadwal_ujian_id');
             const sesiSelect = document.getElementById('sesi_ruangan_id');
 
-            if (jadwalSelect && sesiSelect) {
-                jadwalSelect.addEventListener('change', function() {
-                    const jadwalId = this.value;
-                    sesiSelect.disabled = true;
-                    sesiSelect.innerHTML = '<option value="">Pilih Sesi Ujian</option>';
+            jadwalSelect.addEventListener('change', function() {
+                const jadwalId = this.value;
+                sesiSelect.disabled = true;
+                sesiSelect.innerHTML = '<option value="">Pilih Sesi Ujian</option>';
 
-                    if (jadwalId) {
-                        fetch(
-                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.length > 0) {
-                                    data.forEach(item => {
-                                        const option = document.createElement('option');
-                                        option.value = item.id;
-                                        option.textContent = item.text;
-                                        sesiSelect.appendChild(option);
-                                    });
-                                    sesiSelect.disabled = false;
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error loading sesi options', error);
-                                alert('Gagal memuat sesi ujian');
-                            });
-                    }
-                });
+                if (jadwalId) {
+                    fetch(`{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.length > 0) {
+                                data.forEach(item => {
+                                    const option = document.createElement('option');
+                                    option.value = item.id;
+                                    option.textContent = item.text;
+                                    sesiSelect.appendChild(option);
+                                });
+                                sesiSelect.disabled = false;
 
-                // Trigger change if value already selected (for edit form)
-                if (jadwalSelect.value) {
-                    const event = new Event('change');
-                    jadwalSelect.dispatchEvent(event);
+                                // Pilih opsi pertama secara otomatis
+                                sesiSelect.selectedIndex = 1;
+                            } else {
+                                showModalError('Tidak ada sesi untuk jadwal ini.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading sesi options', error);
+                            showModalError('Gagal memuat sesi ujian.');
+                        });
                 }
+            });
+
+
+            function showModalError(messageText) {
+                const modal = document.getElementById("statusModal");
+                const message = document.getElementById("statusMessage");
+
+                message.textContent = messageText;
+                modal.classList.remove("hidden");
+
+                // Tambahkan animasi masuk
+                modal.classList.add("animate-slide-in");
+
+                // Auto hide setelah 2 detik
+                setTimeout(() => {
+                    modal.classList.add("hidden");
+                    modal.classList.remove("animate-slide-in");
+                }, 2000);
             }
+
 
             // Kelas filtering for siswa
             const kelasSelect = document.getElementById('kelas_id');

@@ -65,6 +65,9 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::get('hasil', [HasilUjianController::class, 'index'])->name('hasil.index');
     Route::get('hasil/{hasil}', [HasilUjianController::class, 'show'])->name('hasil.show');
     Route::delete('hasil/{hasil}', [HasilUjianController::class, 'destroy'])->name('hasil.destroy');
+    Route::get('hasil/{hasil}/print', [HasilUjianController::class, 'print'])->name('hasil.print');
+    Route::get('hasil/{hasil}/jawaban', [HasilUjianController::class, 'jawaban'])->name('hasil.jawaban');
+
 
     // ===== ENROLLMENT MANAGEMENT =====
     // Enrollment routes moved to routes/enrollment.php

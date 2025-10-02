@@ -50,7 +50,9 @@ Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')
         Route::get('/', [LaporanController::class, 'index'])->name('index');
         Route::post('/verify', [LaporanController::class, 'verify'])->name('verify');
         Route::post('/bulk-verify', [LaporanController::class, 'bulkVerify'])->name('bulk-verify');
-        Route::get('/pdf', [LaporanController::class, 'downloadPDF'])->name('pdf');
+
+        Route::get('/pdf/{beritaAcara}', [LaporanController::class, 'downloadPDF'])->name('pdf');
+
         Route::get('/{beritaAcara}', [LaporanController::class, 'show'])->name('show');
         Route::get('/{beritaAcara}/download', [LaporanController::class, 'download'])->name('download');
         Route::get('/{beritaAcara}/edit', [LaporanController::class, 'edit'])->name('edit');

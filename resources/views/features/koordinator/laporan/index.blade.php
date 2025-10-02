@@ -394,11 +394,15 @@
                                                 <i class="fa-solid fa-times"></i>
                                             </button>
                                         @endif
+                                        <a href="{{ route('koordinator.laporan.edit', $beritaAcara->id) }}"
+                                            class="text-yellow-600 hover:text-yellow-900" title="Edit">
+                                            <i class="fa-solid fa-edit"></i>
+                                        </a>
                                         <a href="{{ route('koordinator.laporan.download', $beritaAcara->id) }}"
                                             class="text-gray-600 hover:text-gray-900" title="Download PDF">
                                             <i class="fa-solid fa-download"></i>
                                         </a>
-                                        <a href="{{ route('koordinator.laporan.pdf') }}"
+                                        <a href="{{ route('koordinator.laporan.pdf', $beritaAcara->id) }}"
                                             class="text-gray-600 hover:text-gray-900" title="Download PDF">
                                             <i class="fa-solid fa-file-pdf"></i>
                                         </a>

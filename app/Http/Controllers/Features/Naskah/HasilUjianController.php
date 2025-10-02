@@ -115,11 +115,32 @@ class HasilUjianController extends Controller
      */
     public function show(HasilUjian $hasil)
     {
-        $hasil->load(['jadwalUjian.mapel', 'jadwalUjian.bankSoal', 'sesiRuangan', 'siswa.kelas']);
+        // Load relasi yang dibutuhkan
+        $hasil->load([
+            'jadwalUjian.mapel',
+            'jadwalUjian.bankSoal',
+            'sesiRuangan',
+            'siswa.kelas'
+        ]);
 
-        return view('features.naskah.hasil.show', compact('hasil'));
+        // Variabel tambahan untuk view
+        $mapel = $hasil->jadwalUjian->mapel;
+
+        // Analisis kategori jawaban (misal ada method di model HasilUjian)
+        $kategoriAnalisis = $hasil->getKategoriAnalisis() ?? [];
+
+        // Ambil hasil ujian lain dari siswa yang sama
+        $otherResults = HasilUjian::where('siswa_id', $hasil->siswa_id)
+            ->where('id', '!=', $hasil->id)
+            ->get();
+
+        return view('features.naskah.hasil.show', compact(
+            'hasil',
+            'mapel',
+            'kategoriAnalisis',
+            'otherResults'
+        ));
     }
-
     /**
      * Show results by jadwal ujian.
      */

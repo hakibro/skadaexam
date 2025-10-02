@@ -11,7 +11,7 @@
     <style>
         body {
             box-sizing: border-box;
-            width: 1000px;
+            width: 950px;
         }
 
         @media print {
@@ -42,12 +42,12 @@
     </style>
 </head>
 
-<body class="bg-gray-50 p-2 font-sans">
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-2 font-sans">
     <!-- Hero Section Header - Full Width -->
-    <div class="relative bg-white overflow-hidden w-full header-section print-container">
+    <div class="relative  overflow-hidden w-full header-section print-container">
         <!-- Background Pattern -->
         <div class="absolute inset-0">
-            <div class="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"></div>
+            <div class="absolute inset-0 "></div>
             <svg class="absolute inset-0 h-full w-full stroke-slate-200/50 [mask-image:radial-gradient(100%_100%_at_top_right,white,transparent)]"
                 aria-hidden="true">
                 <defs>
@@ -99,10 +99,10 @@
                     </svg>
                 </div>
 
-                <div class="relative px-6 py-8">
+                <div class="relative px-6 py-8 mt-12">
                     <div class="mx-auto max-w-4xl text-center">
                         <!-- Header Section - Two Columns -->
-                        <div class="mb-12">
+                        <div class="mb-8">
                             <div class="flex gap-8 items-center justify-center">
                                 <!-- Logo Section - Left Column -->
                                 <div class="flex justify-center">
@@ -155,37 +155,37 @@
                                         class="text-3xl font-bold tracking-tight text-slate-900 lg:text-4xl xl:text-5xl mb-3">
                                         <span class="block text-blue-600">SMK DARUT TAQWA</span>
                                     </h1>
-                                    <p class="text-lg leading-8 text-slate-600 font-medium">SENGONAGUNG PURWOSARI
+                                    <p class="text-lg leading-8 text-slate-600 ">SENGONAGUNG PURWOSARI
                                         PASURUAN</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Information Card -->
-                        <div class="mx-auto max-w-4xl mb-12">
+                        <div class="mx-auto max-w-4xl mb-4">
                             <div class="rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200">
-                                <div class="flex flex-col md:flex-row gap-6 text-left text-sm">
+                                <div class="flex items-center justify-center gap-6 text-left text-sm">
                                     <!-- Kolom 1 -->
-                                    <div class="md:w-1/3 space-y-2">
+                                    <div class="space-y-2">
                                         <div>
-                                            <span class="font-medium text-slate-600">NSS: </span>
+                                            <span class=" text-slate-600">NSS: </span>
                                             <span class="font-semibold text-slate-900">32.2.05.19.08.027</span>
                                         </div>
                                         <div>
-                                            <span class="font-medium text-slate-600">NPSN: </span>
+                                            <span class=" text-slate-600">NPSN: </span>
                                             <span class="font-semibold text-slate-900">20542535</span>
                                         </div>
                                     </div>
 
                                     <!-- Kolom 2 -->
-                                    <div class="md:w-2/3 space-y-2">
+                                    <div class="space-y-2">
                                         <div>
-                                            <span class="font-medium text-slate-600">Akte Notaris: </span>
+                                            <span class=" text-slate-600">Akte Notaris: </span>
                                             <span class="font-semibold text-slate-900">Sjariefuddin Pasuruan Jo Akhmad
                                                 Shohib, Sh No. 04 Tahun 2000</span>
                                         </div>
                                         <div>
-                                            <span class="font-medium text-slate-600">Alamat: </span>
+                                            <span class=" text-slate-600">Alamat: </span>
                                             <span class="font-semibold text-slate-900">Jl. Pesantren Ngalah No. 16
                                                 Pandean Sengonagung Purwosari Pasuruan</span>
                                         </div>
@@ -196,19 +196,19 @@
                                 <div class="mt-4 pt-4 border-t border-slate-200">
                                     <div class="flex flex-wrap justify-between items-center gap-y-1 text-xs">
                                         <div>
-                                            <span class="font-medium text-slate-600">Telepon: </span>
+                                            <span class=" text-slate-600">Telepon: </span>
                                             <span class="font-semibold text-slate-900">(0343) 612026</span>
                                         </div>
                                         <div>
-                                            <span class="font-medium text-slate-600">Kotak Pos: </span>
+                                            <span class=" text-slate-600">Kotak Pos: </span>
                                             <span class="font-semibold text-slate-900">Po. Box 04 Pas. 67162</span>
                                         </div>
                                         <div>
-                                            <span class="font-medium text-slate-600">Website: </span>
+                                            <span class=" text-slate-600">Website: </span>
                                             <span class="font-semibold text-slate-900">www.smkdata.sch.id</span>
                                         </div>
                                         <div>
-                                            <span class="font-medium text-slate-600">Email: </span>
+                                            <span class=" text-slate-600">Email: </span>
                                             <span class="font-semibold text-slate-900">info@smkdata.sch.id</span>
                                         </div>
                                     </div>
@@ -223,8 +223,8 @@
                             </div>
                             <div class="relative flex justify-center">
                                 <div
-                                    class="bg-gradient-to-r from-blue-600 to-indigo-600 px-12 py-6 rounded-2xl shadow-xl">
-                                    <h2 class="text-2xl font-bold text-white tracking-wide sm:text-3xl">
+                                    class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-4 rounded-2xl shadow-xl">
+                                    <h2 class="text-xl font-bold text-white tracking-wide">
                                         BERITA ACARA UJIAN
                                     </h2>
                                 </div>
@@ -239,26 +239,31 @@
         <div
             class="relative max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden -mt-4 p-6 space-y-6 content-section print-container">
             <!-- Informasi Dasar -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-lg">
+                <div class="flex-1 space-y-4">
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h3 class="font-semibold text-gray-700 mb-3">Informasi Ujian</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-center items-center">
+                        <div class="flex flex-col items-start space-y-2 text-sm">
+                            <div class="flex">
                                 <span class="text-gray-600">Tanggal:</span>
-                                <span class="font-medium ml-2">15 Maret 2024</span>
+                                <span
+                                    class=" ml-2">{{ $beritaAcara->sesiRuangan->jadwalUjians->first()
+                                        ? $beritaAcara->sesiRuangan->jadwalUjians->first()->tanggal->format('d F Y')
+                                        : 'N/A' }}</span>
                             </div>
-                            <div class="flex justify-center items-center">
+                            <div class="flex">
                                 <span class="text-gray-600">Ruangan:</span>
-                                <span class="font-medium ml-2">R.12A</span>
+                                <span
+                                    class=" ml-2">{{ $beritaAcara->sesiRuangan->ruangan->nama_ruangan ?? 'N/A' }}</span>
                             </div>
-                            <div class="flex justify-center items-center">
+                            <div class="flex">
                                 <span class="text-gray-600">Sesi:</span>
-                                <span class="font-medium ml-2">Sesi 1</span>
+                                <span class=" ml-2">{{ $beritaAcara->sesiRuangan->nama_sesi ?? 'N/A' }}</span>
                             </div>
-                            <div class="flex justify-center items-center">
+                            <div class="flex">
                                 <span class="text-gray-600">Waktu:</span>
-                                <span class="font-medium ml-2">08:00 - 10:00 WIB</span>
+                                <span class=" ml-2">{{ $beritaAcara->sesiRuangan->waktu_mulai ?? 'N/A' }} -
+                                    {{ $beritaAcara->sesiRuangan->waktu_selesai ?? 'N/A' }}</span>
                             </div>
                         </div>
                     </div>
@@ -269,7 +274,7 @@
                         <h3 class="font-semibold text-gray-700 mb-3">Status Pelaksanaan</h3>
                         <div class="flex items-center space-x-2">
                             <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm  bg-green-100 text-green-800">
                                 <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                                 Selesai Normal
                             </span>
@@ -280,15 +285,17 @@
                         <h3 class="font-semibold text-gray-700 mb-3">Jumlah Kehadiran</h3>
                         <div class="grid grid-cols-3 gap-2 text-center text-sm">
                             <div class="bg-blue-100 p-2 rounded">
-                                <div class="font-bold text-blue-800">32</div>
+                                <div class="font-bold text-blue-800">
+                                    {{ $beritaAcara->sesiRuangan->sesiRuanganSiswa->count() ?? 0 }}
+                                </div>
                                 <div class="text-blue-600">Terdaftar</div>
                             </div>
                             <div class="bg-green-100 p-2 rounded">
-                                <div class="font-bold text-green-800">30</div>
+                                <div class="font-bold text-green-800">{{ $beritaAcara->jumlah_hadir }}</div>
                                 <div class="text-green-600">Hadir</div>
                             </div>
                             <div class="bg-red-100 p-2 rounded">
-                                <div class="font-bold text-red-800">2</div>
+                                <div class="font-bold text-red-800">{{ $beritaAcara->jumlah_tidak_hadir }}</div>
                                 <div class="text-red-600">Tidak Hadir</div>
                             </div>
                         </div>
@@ -302,21 +309,21 @@
 
                 <div class="space-y-4">
                     <div class="bg-white p-4 rounded border-l-4 border-blue-500">
-                        <h4 class="font-medium text-blue-700 mb-2">📋 Catatan Pembukaan</h4>
+                        <h4 class=" text-blue-700 mb-2">📋 Catatan Pembukaan</h4>
                         <p class="text-sm text-gray-700">Ujian dimulai tepat waktu pukul 08:00 WIB. Semua peserta telah
                             diperiksa identitasnya dan ditempatkan sesuai nomor urut. Pengawas memberikan penjelasan
                             tata tertib ujian dan membagikan lembar soal.</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-green-500">
-                        <h4 class="font-medium text-green-700 mb-2">⏱️ Catatan Pelaksanaan</h4>
+                        <h4 class=" text-green-700 mb-2">⏱️ Catatan Pelaksanaan</h4>
                         <p class="text-sm text-gray-700">Ujian berlangsung lancar tanpa kendala berarti. Tidak ada
                             peserta yang melakukan kecurangan. Pada menit ke-90, ada 1 peserta yang mengalami sakit
                             ringan namun dapat melanjutkan ujian hingga selesai.</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-purple-500">
-                        <h4 class="font-medium text-purple-700 mb-2">✅ Catatan Penutupan</h4>
+                        <h4 class=" text-purple-700 mb-2">✅ Catatan Penutupan</h4>
                         <p class="text-sm text-gray-700">Ujian berakhir pukul 10:00 WIB. Semua lembar jawaban telah
                             dikumpulkan dan dihitung sesuai jumlah peserta hadir. Ruangan dikembalikan dalam kondisi
                             bersih dan rapi.</p>
@@ -324,20 +331,25 @@
                 </div>
             </div>
 
-            <!-- Break Line -->
-            <div class="border-t border-gray-300 my-6"></div>
+            <div class="page-break"></div>
 
             <!-- Daftar Hadir Siswa Title -->
-            <div class="text-center mb-6 page-break mt-12">
-                <h3 class="text-xl font-bold text-gray-800 mb-2">DAFTAR HADIR SISWA</h3>
-                <p class="text-sm text-gray-600">Ujian Tanggal 15 Maret 2024 - Ruang R.12A</p>
+            <div class="w-full flex items-center justify-center pt-12">
+                <div
+                    class="flex flex-col flex-none bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-4 rounded-2xl shadow-xl max-w-xl items-center justify-center self-center">
+                    <h2 class="text-xl font-bold text-white tracking-wide">
+                        DAFTAR HADIR SISWA
+                    </h2>
+                    <p class="text-sm text-white">Ujian Tanggal 15 Maret 2024 - Ruang R.12A</p>
+                </div>
             </div>
 
+
             <!-- Data Kehadiran -->
-            <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-6 text-md">
                 <!-- Siswa Hadir -->
                 <div class="bg-green-50 p-4 rounded-lg">
-                    <h3 class="font-semibold text-green-700 mb-4 flex items-center">
+                    <h3 class="font-semibold  text-green-700 mb-4 flex items-center">
                         <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
                         Siswa Hadir (30 orang)
                     </h3>
@@ -494,13 +506,13 @@
                     <div class="text-center">
                         <p class="text-sm text-gray-600 mb-24">Pengawas</p>
                         <div class="border-t border-gray-300 pt-2">
-                            <p class="font-medium">Dra. Sri Mulyani, M.Pd</p>
+                            <p class="">Dra. Sri Mulyani, M.Pd</p>
                         </div>
                     </div>
                     <div class="text-center">
                         <p class="text-sm text-gray-600 mb-24">Ketua Pelaksana</p>
                         <div class="border-t border-gray-300 pt-2">
-                            <p class="font-medium">Akhmad Barizi, M.Kom</p>
+                            <p class="">Akhmad Barizi, M.Kom</p>
                         </div>
                     </div>
                 </div>
@@ -508,7 +520,6 @@
 
 
         </div>
-    </div>
     </div>
 
 </body>

@@ -10,6 +10,12 @@
             <div class="flex justify-between items-center p-4 border-b">
                 <h3 class="text-lg font-medium text-gray-900">Daftar Enrollment Ujian</h3>
                 <div class="flex space-x-2">
+                    <div id="bulk-actions" class="flex gap-2 my-2" style="display:none;">
+                        <button type="button" class="bulk-action-btn" data-action="enrolled">Enroll Ulang</button>
+                        <button type="button" class="bulk-action-btn" data-action="cancelled">Batalkan</button>
+                        <button type="button" class="bulk-action-btn" data-action="delete">Hapus</button>
+
+                    </div>
                     <a href="{{ route('naskah.enrollment-ujian.create') }}"
                         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-150">
                         <i class="fa-solid fa-plus mr-2"></i> Tambah Enrollment
@@ -19,13 +25,39 @@
                         data-modal-toggle="bulkEnrollmentModal">
                         <i class="fa-solid fa-users mr-2"></i> Enrollment Massal
                     </button>
+
+
                 </div>
             </div>
 
+            <!-- Filter Form -->
             <div class="p-4 bg-gray-50">
                 <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form">
                     <div class="flex flex-wrap gap-4">
-                        <div class="w-full md:w-auto">
+                        <!-- Nama Siswa / ID Yayasan -->
+                        <div class="w-full lg:flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa / ID Yayasan</label>
+                            <input type="text" name="siswa_search" value="{{ request('siswa_search') }}"
+                                placeholder="Cari siswa atau ID yayasan"
+                                class="form-input w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Kelas Siswa -->
+                        <div class="w-full lg:flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                            <select name="kelas_id"
+                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Semua Kelas</option>
+                                @foreach ($kelasList as $kelas)
+                                    <option value="{{ $kelas->id }}"
+                                        {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>
+                                        {{ $kelas->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <!-- Jadwal Ujian -->
+                        <div class="w-full lg:flex-1">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Jadwal Ujian</label>
                             <select name="jadwal_id" id="jadwal_id"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -38,20 +70,24 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="w-full md:w-auto">
+
+                        <!-- Sesi Ruangan -->
+                        <div class="w-full lg:flex-1">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Sesi Ruangan</label>
-                            <select name="sesi_id" id="sesi_ruangan_id"
+                            <select name="sesi_ruangan_id" id="sesi_ruangan_id"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Semua Sesi</option>
                                 @foreach ($sesiRuangans as $sesi)
                                     <option value="{{ $sesi->id }}"
-                                        {{ request('sesi_id') == $sesi->id ? 'selected' : '' }}>
+                                        {{ request('sesi_ruangan_id') == $sesi->id ? 'selected' : '' }}>
                                         {{ $sesi->nama_sesi }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="w-full md:w-auto">
+
+                        <!-- Status Enrollment -->
+                        <div class="w-full lg:flex-1">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Status Enrollment</label>
                             <select name="status"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -66,7 +102,9 @@
                                 </option>
                             </select>
                         </div>
-                        <div class="w-full md:w-auto">
+
+                        <!-- Status Kehadiran -->
+                        <div class="w-full lg:flex-1">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
                             <select name="kehadiran"
                                 class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -79,6 +117,8 @@
                                     Tidak Hadir</option>
                             </select>
                         </div>
+
+                        <!-- Per Halaman & Tombol -->
                         <div class="w-full md:w-auto">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Per Halaman</label>
                             <select name="per_page"
@@ -89,6 +129,7 @@
                                 <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
                             </select>
                         </div>
+
                         <div class="w-full md:w-auto flex items-end">
                             <button type="submit"
                                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
@@ -103,11 +144,15 @@
                 </form>
             </div>
 
+
             <div class="overflow-x-auto">
                 @if (count($enrollments) > 0)
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-4 py-2">
+                                    <input type="checkbox" id="select_all">
+                                </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     ID YYS</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -121,15 +166,20 @@
 
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($enrollments as $enrollment)
                                 <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2">
+                                        <input type="checkbox" class="row_checkbox" value="{{ $enrollment->id }}">
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="font-mono text-sm">{{ $enrollment->siswa->idyayasan ?? 'N/A' }}</span>
+                                        <span
+                                            class="font-mono text-sm">{{ $enrollment->siswa->idyayasan ?? 'N/A' }}</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {{ $enrollment->siswa->nama ?? 'N/A' }}
@@ -142,7 +192,11 @@
                                             {{ $enrollment->jadwalUjian->judul ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->judul ?? 'N/A') }}
                                         </div>
                                         <div class="text-sm text-gray-500">
-                                            {{ $enrollment->jadwalUjian->tanggal ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->tanggal ?? 'N/A') }}
+                                            {{ (optional($enrollment->jadwalUjian)->tanggal
+                                                    ? $enrollment->jadwalUjian->tanggal->format('d M Y')
+                                                    : optional($enrollment->sesiRuangan->jadwalUjians->first())->tanggal)
+                                                ? $enrollment->sesiRuangan->jadwalUjians->first()->tanggal->format('d M Y')
+                                                : 'N/A' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -222,26 +276,32 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                                        <div class="flex gap-1 items-center justify-center">
+                                        <div class="flex gap-2 items-center justify-center">
+                                            <!-- Lihat -->
                                             <a href="{{ route('naskah.enrollment-ujian.show', $enrollment->id) }}"
-                                                class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700">
-                                                <i class="fa-solid fa-eye mr-1"></i>
+                                                class="flex items-center justify-center px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition">
+                                                <i class="fa-solid fa-eye"></i>
                                             </a>
+
+                                            <!-- Edit -->
                                             <a href="{{ route('naskah.enrollment-ujian.edit', $enrollment->id) }}"
-                                                class="inline-flex items-center px-3 py-1 bg-yellow-600 text-white text-xs rounded-md hover:bg-yellow-700">
-                                                <i class="fa-solid fa-edit mr-1"></i>
+                                                class="flex items-center justify-center px-3 py-1 bg-yellow-500 text-white text-xs rounded-md hover:bg-yellow-600 transition">
+                                                <i class="fa-solid fa-edit"></i>
                                             </a>
+
+                                            <!-- Hapus -->
                                             <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}"
                                                 method="POST" class="inline-block"
                                                 onsubmit="return confirm('Apakah Anda yakin ingin menghapus pendaftaran ini?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                    class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">
-                                                    <i class="fa-solid fa-trash mr-1"></i>
+                                                    class="flex items-center justify-center px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition">
+                                                    <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </form>
                                         </div>
+
                                     </td>
                                 </tr>
                             @endforeach
@@ -358,6 +418,77 @@
 @section('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Semua checkbox row
+            const rowCheckboxes = document.querySelectorAll('.row_checkbox');
+            const bulkActions = document.getElementById('bulk-actions');
+            const selectAll = document.getElementById('select_all');
+
+            // Toggle bulk action visibility
+            function toggleBulkActions() {
+                const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
+                bulkActions.style.display = anyChecked ? 'flex' : 'none';
+            }
+
+            // Toggle semua row checkbox saat header checkbox dicentang
+            selectAll.addEventListener('change', function() {
+                rowCheckboxes.forEach(cb => cb.checked = this.checked);
+                toggleBulkActions();
+            });
+
+            // Toggle individual row checkbox
+            rowCheckboxes.forEach(cb => {
+                cb.addEventListener('change', toggleBulkActions);
+            });
+
+            // Fungsi konfirmasi bulk action
+            function confirmBulkAction(action) {
+                const selectedIds = Array.from(rowCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+
+                if (selectedIds.length === 0) {
+                    alert('Pilih minimal 1 data');
+                    return;
+                }
+
+                if (!confirm(`Apakah yakin ingin melakukan "${action}" untuk ${selectedIds.length} data?`)) return;
+
+                fetch("{{ route('naskah.enrollment-ujian.bulk-action') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify({
+                            action: action,
+                            ids: selectedIds
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            alert('Bulk action berhasil!');
+                            location.reload();
+                        } else {
+                            alert('Terjadi kesalahan: ' + res.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Gagal melakukan bulk action.');
+                    });
+            }
+
+            // Bulk action buttons
+            document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const action = this.dataset.action;
+                    confirmBulkAction(action);
+                });
+            });
+
+
+            // start filter functions
             // Auto-submit filter form when selecting filters
             const autoSubmitElements = document.querySelectorAll('.enrollment-filter-form select');
             autoSubmitElements.forEach(element => {
@@ -515,6 +646,7 @@
                     }
                 });
             }
+
         });
     </script>
 @endsection

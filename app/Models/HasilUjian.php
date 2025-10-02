@@ -299,4 +299,47 @@ class HasilUjian extends Model
     {
         return $this->hasMany(JawabanSiswa::class);
     }
+    /**
+     * Mengembalikan analisis jawaban per kategori.
+     *
+     * Format return:
+     * [
+     *   'Kategori 1' => ['benar' => 3, 'total' => 5, 'persentase' => 60],
+     *   'Kategori 2' => ['benar' => 2, 'total' => 2, 'persentase' => 100],
+     * ]
+     *
+     * @return array
+     */
+    public function getKategoriAnalisis(): array
+    {
+        $hasilDetail = $this->hasil_detail ?? []; // pastikan array
+        $kategoriAnalisis = [];
+
+        foreach ($hasilDetail as $item) {
+            $kategori = $item['kategori'] ?? 'Umum';
+            $isCorrect = $item['is_correct'] ?? false;
+
+            if (!isset($kategoriAnalisis[$kategori])) {
+                $kategoriAnalisis[$kategori] = [
+                    'benar' => 0,
+                    'total' => 0,
+                    'persentase' => 0,
+                ];
+            }
+
+            $kategoriAnalisis[$kategori]['total'] += 1;
+            if ($isCorrect) {
+                $kategoriAnalisis[$kategori]['benar'] += 1;
+            }
+        }
+
+        // Hitung persentase
+        foreach ($kategoriAnalisis as $kategori => $data) {
+            $kategoriAnalisis[$kategori]['persentase'] = $data['total'] > 0
+                ? round(($data['benar'] / $data['total']) * 100, 2)
+                : 0;
+        }
+
+        return $kategoriAnalisis;
+    }
 }

@@ -65,11 +65,11 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
 });
 
 // Guru User Routes (for guru role)
-Route::middleware(['auth:web', 'role:guru'])->prefix('guru')->name('guru.')->group(function () {
-    Route::get('/', [GuruDashboard::class, 'index'])->name('dashboard');
-});
+// Route::middleware(['auth:web', 'role:guru'])->prefix('guru')->name('guru.')->group(function () {
+//     Route::get('/', [GuruDashboard::class, 'index'])->name('dashboard');
+// });
 
 // Guru Portal Routes (separate authentication)
-Route::middleware('auth:web', 'role:guru')->prefix('guru-portal')->name('guru.portal.')->group(function () {
-    Route::get('/dashboard', [GuruDashboard::class, 'portalIndex'])->name('dashboard');
-});
+// Route::middleware('auth:web', 'role:guru')->prefix('guru-portal')->name('guru.portal.')->group(function () {
+//     Route::get('/dashboard', [GuruDashboard::class, 'portalIndex'])->name('dashboard');
+// });

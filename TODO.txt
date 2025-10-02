@@ -7,6 +7,10 @@ Dashboard siswa:
 - Update dashboard siswa dengan tampilan baru
   - Modal Status Pembayaran Rekom
 
+Koordinator:
+- Absen Siswa per hari
+- Absen Pengawas per hari
+
 Pengawas:
 - Pelanggaran Ujian: Ubah dropdown dari nama mapel menjadi nama ruang - sesi dengan kondisi status sesi berlangsung
 

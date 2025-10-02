@@ -2,7 +2,7 @@
 
 @section('title', 'Detail Hasil Ujian')
 @section('page-title', 'Detail Hasil Ujian')
-@section('page-description', "{$hasilUjian->siswa->nama} - {$hasilUjian->jadwalUjian->judul}")
+@section('page-description', "{$hasil->siswa->nama} - {$hasil->jadwalUjian->judul}")
 
 @section('content')
     <div class="space-y-6">
@@ -16,13 +16,13 @@
             </div>
 
             <div class="flex space-x-2">
-                <a href="{{ route('naskah.hasil.print', $hasilUjian->id) }}" target="_blank"
+                <a href="{{ route('naskah.hasil.print', $hasil->id) }}" target="_blank"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <i class="fa-solid fa-print mr-2"></i> Cetak
                 </a>
 
-                @if ($hasilUjian->status === 'selesai')
-                    <a href="{{ route('naskah.hasil.jawaban', $hasilUjian->id) }}"
+                @if ($hasil->status === 'selesai')
+                    <a href="{{ route('naskah.hasil.jawaban', $hasil->id) }}"
                         class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                         <i class="fa-solid fa-list-check mr-2"></i> Lihat Jawaban
                     </a>
@@ -38,15 +38,15 @@
                     <h3 class="text-sm font-medium text-gray-500">Nilai Ujian</h3>
                 </div>
                 <div class="p-4 flex items-center justify-between">
-                    @if ($hasilUjian->status === 'selesai')
+                    @if ($hasil->status === 'selesai')
                         <div
-                            class="text-5xl font-bold {{ $hasilUjian->nilai >= ($mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($hasilUjian->nilai, 2) }}
+                            class="text-5xl font-bold {{ $hasil->nilai >= ($mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
+                            {{ number_format($hasil->nilai, 2) }}
                         </div>
                         <div class="text-right">
                             <div class="text-sm text-gray-500">Nilai KKM: {{ $mapel->kkm ?? '75.00' }}</div>
                             <div class="mt-1">
-                                @if ($hasilUjian->nilai >= ($mapel->kkm ?? 75))
+                                @if ($hasil->nilai >= ($mapel->kkm ?? 75))
                                     <span
                                         class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Lulus</span>
                                 @else
@@ -70,19 +70,19 @@
                     <div class="space-y-2">
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Mulai:</span>
-                            <span class="text-sm font-medium">{{ $hasilUjian->created_at->format('d M Y, H:i') }}</span>
+                            <span class="text-sm font-medium">{{ $hasil->created_at->format('d M Y, H:i') }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-gray-600">Selesai:</span>
                             <span class="text-sm font-medium">
-                                {{ $hasilUjian->waktu_selesai ? $hasilUjian->waktu_selesai->format('d M Y, H:i') : 'Belum selesai' }}
+                                {{ $hasil->waktu_selesai ? $hasil->waktu_selesai->format('d M Y, H:i') : 'Belum selesai' }}
                             </span>
                         </div>
-                        @if ($hasilUjian->waktu_selesai)
+                        @if ($hasil->waktu_selesai)
                             <div class="flex justify-between">
                                 <span class="text-sm text-gray-600">Durasi:</span>
                                 <span class="text-sm font-medium">
-                                    {{ $hasilUjian->waktu_selesai->diffForHumans($hasilUjian->created_at, ['parts' => 2, 'short' => true]) }}
+                                    {{ $hasil->waktu_selesai->diffForHumans($hasil->created_at, ['parts' => 2, 'short' => true]) }}
                                 </span>
                             </div>
                         @endif
@@ -96,27 +96,26 @@
                     <h3 class="text-sm font-medium text-gray-500">Statistik Jawaban</h3>
                 </div>
                 <div class="p-4">
-                    @if ($hasilUjian->status === 'selesai')
+                    @if ($hasil->status === 'selesai')
                         <div class="space-y-2">
                             <div class="flex justify-between">
                                 <span class="text-sm text-gray-600">Total Soal:</span>
-                                <span class="text-sm font-medium">{{ $hasilUjian->total_soal ?? $totalSoal }}</span>
+                                <span class="text-sm font-medium">{{ $hasil->jadwalUjian->bankSoal->soal ?? 'N/A' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-sm text-gray-600">Dijawab Benar:</span>
                                 <span
-                                    class="text-sm font-medium text-green-600">{{ $hasilUjian->jawaban_benar ?? $jawabanBenar }}</span>
+                                    class="text-sm font-medium text-green-600">{{ $hasil->jawaban_benar ?? 'N/A' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-sm text-gray-600">Dijawab Salah:</span>
-                                <span
-                                    class="text-sm font-medium text-red-600">{{ $hasilUjian->jawaban_salah ?? $jawabanSalah }}</span>
+                                <span class="text-sm font-medium text-red-600">{{ $hasil->jawaban_salah ?? 'N/A' }}</span>
                             </div>
-                            <div class="flex justify-between">
+                            {{-- <div class="flex justify-between">
                                 <span class="text-sm text-gray-600">Tidak Dijawab:</span>
                                 <span
-                                    class="text-sm font-medium text-gray-600">{{ ($hasilUjian->total_soal ?? $totalSoal) - ($hasilUjian->jawaban_benar + $hasilUjian->jawaban_salah) }}</span>
-                            </div>
+                                    class="text-sm font-medium text-gray-600">{{ ($hasil->total_soal ?? 'N/A') - ($hasil->jawaban_benar + $hasil->jawaban_salah) }}</span>
+                            </div> --}}
                         </div>
                     @else
                         <div class="text-sm text-gray-500 italic">Statistik akan tersedia setelah ujian selesai</div>
@@ -138,52 +137,53 @@
                         <dl>
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Nama Siswa</dt>
-                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $hasilUjian->siswa->nama }}
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    {{ $hasil->siswa->nama }}
                                 </dd>
                             </div>
                             <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">NIS / NISN</dt>
-                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $hasilUjian->siswa->nis }}
-                                    / {{ $hasilUjian->siswa->nisn }}</dd>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $hasil->siswa->nis }}
+                                    / {{ $hasil->siswa->nisn }}</dd>
                             </div>
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Kelas</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->siswa->kelas->nama_kelas }}</dd>
+                                    {{ $hasil->siswa->kelas->nama_kelas }}</dd>
                             </div>
                             <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Jadwal Ujian</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->jadwalUjian->judul }}
+                                    {{ $hasil->jadwalUjian->judul }}
                                     <div class="text-xs text-gray-500 mt-1">
-                                        {{ $hasilUjian->jadwalUjian->tanggal->format('d M Y') }} -
-                                        {{ $hasilUjian->jadwalUjian->tanggal_selesai->format('d M Y') }}</div>
+                                        {{ $hasil->jadwalUjian->tanggal }}
                                 </dd>
                             </div>
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Sesi Ujian</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->jadwalUjian->sesiRuangan->nama ?? 'Default' }}
-                                    @if ($hasilUjian->jadwalUjian->sesiRuangan)
+                                    {{ $hasil->sesiRuangan->nama_sesi ?? 'Default' }}
+                                    @if ($hasil->jadwalUjian->sesiRuangan)
                                         <div class="text-xs text-gray-500 mt-1">
-                                            Durasi: {{ $hasilUjian->jadwalUjian->sesiRuangan->durasi }} menit
+                                            Durasi: {{ $hasil->jadwalUjian->durasi }} menit
                                         </div>
                                     @endif
                                 </dd>
                             </div>
                             <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Mata Pelajaran</dt>
-                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $mapel->nama_mapel }}</dd>
+                                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    {{ $hasil->jadwalUjian->mapel->nama_mapel }}</dd>
                             </div>
                             <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Bank Soal</dt>
                                 <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    {{ $hasilUjian->jadwalUjian->sesiRuangan->bankSoal->judul }}</dd>
+                                    {{ $hasil->jadwalUjian->bankSoal->judul }}</dd>
                             </div>
                             <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
                                 <dt class="text-sm font-medium text-gray-500">Status</dt>
                                 <dd class="mt-1 sm:mt-0 sm:col-span-2">
-                                    @if ($hasilUjian->status === 'selesai')
+                                    @if ($hasil->status === 'selesai')
                                         <span
                                             class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Selesai</span>
                                     @else
@@ -193,18 +193,18 @@
                                     @endif
                                 </dd>
                             </div>
-                            @if ($hasilUjian->keterangan)
+                            @if ($hasil->keterangan)
                                 <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                     <dt class="text-sm font-medium text-gray-500">Keterangan</dt>
                                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                        {{ $hasilUjian->keterangan }}</dd>
+                                        {{ $hasil->keterangan }}</dd>
                                 </div>
                             @endif
                         </dl>
                     </div>
                 </div>
 
-                @if ($hasilUjian->status === 'selesai')
+                @if ($hasil->status === 'selesai')
                     <!-- Answer Analysis -->
                     <div class="mt-6 bg-white shadow-md rounded-lg overflow-hidden">
                         <div class="px-4 py-5 sm:px-6 border-b">
@@ -257,8 +257,8 @@
 
                     <div class="p-4">
                         <div class="flex items-center space-x-4 mb-4">
-                            @if ($hasilUjian->siswa->photo)
-                                <img src="{{ $hasilUjian->siswa->photo_url }}" alt="{{ $hasilUjian->siswa->nama }}"
+                            @if ($hasil->siswa->photo)
+                                <img src="{{ $hasil->siswa->photo_url }}" alt="{{ $hasil->siswa->nama }}"
                                     class="h-16 w-16 rounded-full object-cover">
                             @else
                                 <div
@@ -267,32 +267,32 @@
                                 </div>
                             @endif
                             <div>
-                                <h4 class="text-lg font-medium text-gray-900">{{ $hasilUjian->siswa->nama }}</h4>
-                                <p class="text-gray-600">NIS: {{ $hasilUjian->siswa->nis }}</p>
+                                <h4 class="text-lg font-medium text-gray-900">{{ $hasil->siswa->nama }}</h4>
+                                <p class="text-gray-600">NIS: {{ $hasil->siswa->nis }}</p>
                                 <p class="text-sm text-gray-500">
-                                    {{ $hasilUjian->siswa->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</p>
+                                    {{ $hasil->siswa->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-3 text-sm">
                             <div>
                                 <span class="text-gray-500">Kelas:</span>
-                                <span class="font-medium ml-2">{{ $hasilUjian->siswa->kelas->nama_kelas }}</span>
+                                <span class="font-medium ml-2">{{ $hasil->siswa->kelas->nama_kelas }}</span>
                             </div>
                             <div>
                                 <span class="text-gray-500">Angkatan:</span>
-                                <span class="font-medium ml-2">{{ $hasilUjian->siswa->tahun_masuk }}</span>
+                                <span class="font-medium ml-2">{{ $hasil->siswa->tahun_masuk }}</span>
                             </div>
-                            @if ($hasilUjian->siswa->telepon)
+                            @if ($hasil->siswa->telepon)
                                 <div>
                                     <span class="text-gray-500">Telepon:</span>
-                                    <span class="font-medium ml-2">{{ $hasilUjian->siswa->telepon }}</span>
+                                    <span class="font-medium ml-2">{{ $hasil->siswa->telepon }}</span>
                                 </div>
                             @endif
-                            @if ($hasilUjian->siswa->email)
+                            @if ($hasil->siswa->email)
                                 <div>
                                     <span class="text-gray-500">Email:</span>
-                                    <span class="font-medium ml-2">{{ $hasilUjian->siswa->email }}</span>
+                                    <span class="font-medium ml-2">{{ $hasil->siswa->email }}</span>
                                 </div>
                             @endif
                         </div>
@@ -313,22 +313,22 @@
                     <div class="p-4">
                         <ul class="space-y-2">
                             <li>
-                                <a href="{{ route('naskah.hasil.print', $hasilUjian->id) }}" target="_blank"
+                                <a href="{{ route('naskah.hasil.print', $hasil->id) }}" target="_blank"
                                     class="flex items-center p-2 rounded-md hover:bg-gray-100 text-sm text-gray-700">
                                     <i class="fa-solid fa-print w-5 h-5 mr-3 text-gray-400"></i>
                                     Cetak Hasil Ujian
                                 </a>
                             </li>
-                            @if ($hasilUjian->status === 'selesai')
+                            @if ($hasil->status === 'selesai')
                                 <li>
-                                    <a href="{{ route('naskah.hasil.jawaban', $hasilUjian->id) }}"
+                                    <a href="{{ route('naskah.hasil.jawaban', $hasil->id) }}"
                                         class="flex items-center p-2 rounded-md hover:bg-gray-100 text-sm text-gray-700">
                                         <i class="fa-solid fa-list-check w-5 h-5 mr-3 text-blue-500"></i>
                                         Lihat Detail Jawaban
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="{{ route('naskah.hasil.export.single', ['hasil' => $hasilUjian, 'format' => 'pdf']) }}"
+                                    <a href="{{ route('naskah.hasil.export.single', ['hasil' => $hasil, 'format' => 'pdf']) }}"
                                         class="flex items-center p-2 rounded-md hover:bg-gray-100 text-sm text-gray-700">
                                         <i class="fa-solid fa-file-pdf w-5 h-5 mr-3 text-red-500"></i>
                                         Export ke PDF
@@ -336,14 +336,14 @@
                                 </li>
                             @endif
                             <li>
-                                <a href="{{ route('naskah.jadwal.show', $hasilUjian->jadwalUjian->id) }}"
+                                <a href="{{ route('naskah.jadwal.show', $hasil->jadwalUjian->id) }}"
                                     class="flex items-center p-2 rounded-md hover:bg-gray-100 text-sm text-gray-700">
                                     <i class="fa-solid fa-calendar w-5 h-5 mr-3 text-indigo-500"></i>
                                     Lihat Jadwal Ujian
                                 </a>
                             </li>
                             <li>
-                                <form action="{{ route('naskah.hasil.destroy', $hasilUjian->id) }}" method="post"
+                                <form action="{{ route('naskah.hasil.destroy', $hasil->id) }}" method="post"
                                     onsubmit="return confirm('Apakah Anda yakin ingin menghapus hasil ujian ini? Tindakan ini tidak dapat dibatalkan.')">
                                     @csrf
                                     @method('DELETE')
@@ -398,7 +398,7 @@
                     </div>
                     @if (count($otherResults) > 0)
                         <div class="bg-gray-50 px-4 py-3 text-right border-t">
-                            <a href="{{ route('naskah.hasil.index', ['siswa_id' => $hasilUjian->siswa->id]) }}"
+                            <a href="{{ route('naskah.hasil.index', ['siswa_id' => $hasil->siswa->id]) }}"
                                 class="text-sm text-blue-600 hover:text-blue-900">
                                 Lihat Semua <i class="fa-solid fa-arrow-right ml-1"></i>
                             </a>
