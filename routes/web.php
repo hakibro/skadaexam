@@ -67,6 +67,7 @@ Route::get('/dashboard', function () {
 */
 
 // Load consolidated feature-specific routes
+require __DIR__ . '/api.php';
 require __DIR__ . '/admin.php';            // Admin routes
 require __DIR__ . '/data.php';             // Data management (guru, siswa, kelas) + Guru/Siswa user/portal routes
 require __DIR__ . '/naskah.php';           // Naskah management (mapel, banksoal, soal, jadwal, hasil, panduan)

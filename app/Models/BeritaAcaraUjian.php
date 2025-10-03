@@ -224,7 +224,7 @@ class BeritaAcaraUjian extends Model
      */
     public function getKejadianKhususAttribute()
     {
-        return $this->catatan_pelaksanaan;
+        return $this->catatan_pembukaan;
     }
 
     /**
@@ -232,8 +232,9 @@ class BeritaAcaraUjian extends Model
      */
     public function getCatatanKhususAttribute()
     {
-        return $this->catatan_penutupan;
+        return $this->catatan_pelaksanaan;
     }
+
 
     /**
      * Get saran_perbaikan attribute (placeholder)
@@ -241,6 +242,8 @@ class BeritaAcaraUjian extends Model
     public function getSaranPerbaikanAttribute()
     {
         // This could be derived from notes or be a separate field
+        return $this->catatan_penutupan;
+
         return null;
     }
 

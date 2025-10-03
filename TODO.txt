@@ -2,14 +2,16 @@
 ------------------  !!!! VERY IMPORTANT  ------------------
 Ujian:
 - Update sistem pelanggaran siswa, modal tidak akan tertutup jika belum mendapatkan aksi dari pengawas.
+- Tombol Punishment (ganti tombol enrollment)
+  - Hentikan sementara (single dan bulk)
 
 Dashboard siswa:
-- Update dashboard siswa dengan tampilan baru
-  - Modal Status Pembayaran Rekom
+
 
 Koordinator:
-- Absen Siswa per hari
-- Absen Pengawas per hari
+- Absen User
+  - Absen Pengawas (filter per ruangan, per sesi, per tanggal + download sesuai filter)
+  - Absen Siswa (filter per kelas, per ruangan, per tanggal + download sesuai filter)
 
 Pengawas:
 - Pelanggaran Ujian: Ubah dropdown dari nama mapel menjadi nama ruang - sesi dengan kondisi status sesi berlangsung
@@ -23,12 +25,6 @@ Siswa:
 
 -----------------------------------------------------------------
 
-View administrasi ujian:
-Perlu Dijadikan responsif
-Done: pengawas
-
-
-
 Koordinator: 
 - kembangkan format berita acara agar memenuhi kebutuhan.
 (install npm puppeteer dan composer spatie/laravel-pdf)
@@ -39,6 +35,11 @@ Koordinator:
 
 --------------------------------------------------------
 PERLU TIDAK PENTING:
+
+
+Dashboard siswa:
+- Modal Status Pembayaran Rekom
+- tampilkan sekali pengumuman (saat ini berkali-kali)
 
 enrollment: 
 sudah auto enroll siswa sesuai jurusan ketika membuat jadwal baru.

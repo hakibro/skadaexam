@@ -85,10 +85,10 @@
 
                 <!-- Form Fields -->
                 <div class="space-y-6">
-                    <!-- Catatan Pembukaan -->
+                    <!-- Kejadian Khusus -->
                     <div>
                         <label for="catatan_pembukaan" class="block text-sm font-medium text-gray-700 mb-1">
-                            Catatan Pembukaan <span class="text-gray-500">(opsional)</span>
+                            Kejadian Khusus <span class="text-gray-500">(opsional)</span>
                         </label>
                         <textarea id="catatan_pembukaan" name="catatan_pembukaan" rows="3"
                             class="block w-full rounded-md @error('catatan_pembukaan') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
@@ -98,10 +98,10 @@
                         @enderror
                     </div>
 
-                    <!-- Catatan Pelaksanaan -->
+                    <!-- Catatan Khusus -->
                     <div>
                         <label for="catatan_pelaksanaan" class="block text-sm font-medium text-gray-700 mb-1">
-                            Catatan Pelaksanaan <span class="text-gray-500">(opsional)</span>
+                            Catatan Khusus <span class="text-gray-500">(opsional)</span>
                         </label>
                         <textarea id="catatan_pelaksanaan" name="catatan_pelaksanaan" rows="3"
                             class="block w-full rounded-md @error('catatan_pelaksanaan') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
@@ -111,10 +111,10 @@
                         @enderror
                     </div>
 
-                    <!-- Catatan Penutupan -->
+                    <!-- Saran Perbaikan -->
                     <div>
                         <label for="catatan_penutupan" class="block text-sm font-medium text-gray-700 mb-1">
-                            Catatan Penutupan <span class="text-gray-500">(opsional)</span>
+                            Saran Perbaikan <span class="text-gray-500">(opsional)</span>
                         </label>
                         <textarea id="catatan_penutupan" name="catatan_penutupan" rows="3"
                             class="block w-full rounded-md @error('catatan_penutupan') border-red-300 @else border-gray-300 @enderror shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
