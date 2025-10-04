@@ -48,7 +48,13 @@ class Kelas extends Model
      */
     public static function getJurusanOptions(): array
     {
-        return ['IPA', 'IPS', 'MIPA', 'BAHASA', 'AGAMA', 'UMUM'];
+        // return ['BD', 'DPIB', 'DKV', 'TKJ', 'TSM', 'TKR', 'UMUM'];
+        return self::select('jurusan')
+            ->distinct()
+            ->pluck('jurusan')
+            ->filter()
+            ->values()
+            ->toArray();
     }
 
     /**
