@@ -33,6 +33,21 @@ class HasilUjianController extends Controller
                 $q->where('kelas_id', $kelasId);
             });
         }
+        // Filter by tingkat
+        if ($request->filled('tingkat')) {
+            $tingkat = $request->tingkat;
+            $query->whereHas('siswa.kelas', function ($q) use ($tingkat) {
+                $q->where('tingkat', $tingkat);
+            });
+        }
+
+        // Filter by jurusan
+        if ($request->filled('jurusan')) {
+            $jurusan = $request->jurusan;
+            $query->whereHas('siswa.kelas', function ($q) use ($jurusan) {
+                $q->where('jurusan', $jurusan);
+            });
+        }
 
         // Filter by sesi
         if ($request->has('sesi_id') && $request->sesi_id != '') {

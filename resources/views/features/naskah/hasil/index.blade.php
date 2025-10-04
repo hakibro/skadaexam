@@ -136,6 +136,36 @@
                         </select>
                     </div>
 
+                    <!-- Tingkat Filter -->
+                    <div>
+                        <label for="tingkat" class="block text-sm font-medium text-gray-700 mb-1">Tingkat</label>
+                        <select id="tingkat" name="tingkat"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                            <option value="">Semua Tingkat</option>
+                            @foreach (\App\Models\Kelas::getTingkatOptions() as $tingkat)
+                                <option value="{{ $tingkat }}"
+                                    {{ request('tingkat') == $tingkat ? 'selected' : '' }}>
+                                    {{ $tingkat }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Jurusan Filter -->
+                    <div>
+                        <label for="jurusan" class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+                        <select id="jurusan" name="jurusan"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                            <option value="">Semua Jurusan</option>
+                            @foreach (\App\Models\Kelas::getJurusanOptions() as $jurusan)
+                                <option value="{{ $jurusan }}"
+                                    {{ request('jurusan') == $jurusan ? 'selected' : '' }}>
+                                    {{ $jurusan }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <!-- Kelas Filter -->
                     <div>
                         <label for="kelas_id" class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
