@@ -261,25 +261,45 @@ class HasilUjianController extends Controller
             $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
 
+        // Filter by kelas
         if ($request->has('kelas_id') && $request->kelas_id != '') {
             $kelasId = $request->kelas_id;
             $query->whereHas('siswa', function ($q) use ($kelasId) {
                 $q->where('kelas_id', $kelasId);
             });
         }
-
-        if ($request->has('sesi_id') && $request->sesi_id != '') {
-            $query->where('sesi_ruangan_id', $request->sesi_id);
+        // Filter by tingkat
+        if ($request->filled('tingkat')) {
+            $tingkat = $request->tingkat;
+            $query->whereHas('siswa.kelas', function ($q) use ($tingkat) {
+                $q->where('tingkat', $tingkat);
+            });
         }
 
+        // Filter by jurusan
+        if ($request->filled('jurusan')) {
+            $jurusan = $request->jurusan;
+            $query->whereHas('siswa.kelas', function ($q) use ($jurusan) {
+                $q->where('jurusan', $jurusan);
+            });
+        }
+
+        // Filter by sesi
+        if ($request->has('sesi_id') && $request->sesi_id != '') {
+            $query->where('sesi_ujian_id', $request->sesi_id);
+        }
+
+        // Filter by status
         if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
         }
 
+        // Filter by lulus/tidak lulus
         if ($request->has('lulus') && $request->lulus != '') {
             $query->where('lulus', $request->lulus == 'yes');
         }
 
+        // Search by siswa name
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
             $query->whereHas('siswa', function ($q) use ($search) {
@@ -331,6 +351,85 @@ class HasilUjianController extends Controller
                 );
         }
     }
+    // public function export(Request $request)
+    // {
+    //     $query = HasilUjian::query();
+
+    //     // Apply filters just like in the index method
+    //     if ($request->has('jadwal_id') && $request->jadwal_id != '') {
+    //         $query->where('jadwal_ujian_id', $request->jadwal_id);
+    //     }
+
+    //     if ($request->has('kelas_id') && $request->kelas_id != '') {
+    //         $kelasId = $request->kelas_id;
+    //         $query->whereHas('siswa', function ($q) use ($kelasId) {
+    //             $q->where('kelas_id', $kelasId);
+    //         });
+    //     }
+
+    //     if ($request->has('sesi_id') && $request->sesi_id != '') {
+    //         $query->where('sesi_ruangan_id', $request->sesi_id);
+    //     }
+
+    //     if ($request->has('status') && $request->status != '') {
+    //         $query->where('status', $request->status);
+    //     }
+
+    //     if ($request->has('lulus') && $request->lulus != '') {
+    //         $query->where('lulus', $request->lulus == 'yes');
+    //     }
+
+    //     if ($request->has('search') && $request->search != '') {
+    //         $search = $request->search;
+    //         $query->whereHas('siswa', function ($q) use ($search) {
+    //             $q->where('nama', 'like', "%{$search}%")
+    //                 ->orWhere('nis', 'like', "%{$search}%");
+    //         });
+    //     }
+
+    //     // Get format (default to xlsx)
+    //     $format = strtolower($request->input('format', 'xlsx'));
+
+    //     // Generate filename with current datetime
+    //     $dateStr = now()->format('Ymd_His');
+    //     $filename = "hasil_ujian_{$dateStr}";
+
+    //     // Export based on requested format
+    //     switch ($format) {
+    //         case 'csv':
+    //             return Excel::download(
+    //                 new \App\Exports\HasilUjianExport($query),
+    //                 $filename . '.csv',
+    //                 \Maatwebsite\Excel\Excel::CSV
+    //             );
+
+    //         case 'pdf':
+    //             // Fallback to XLSX if PDF export fails
+    //             try {
+    //                 return Excel::download(
+    //                     new \App\Exports\HasilUjianPdfExport($query),
+    //                     $filename . '.pdf',
+    //                     \Maatwebsite\Excel\Excel::DOMPDF
+    //                 );
+    //             } catch (\Exception $e) {
+    //                 // Log the error
+    //                 \Illuminate\Support\Facades\Log::error('PDF export failed: ' . $e->getMessage());
+
+    //                 // Fallback to simple Excel export
+    //                 return Excel::download(
+    //                     new \App\Exports\HasilUjianSimpleExport($query),
+    //                     $filename . '.xlsx'
+    //                 );
+    //             }
+
+    //         default: // xlsx
+    //             return Excel::download(
+    //                 new \App\Exports\HasilUjianExport($query),
+    //                 $filename . '.xlsx',
+    //                 \Maatwebsite\Excel\Excel::XLSX
+    //             );
+    //     }
+    // }
 
     /**
      * Export a single result to PDF.
