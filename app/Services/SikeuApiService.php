@@ -12,7 +12,7 @@ class SikeuApiService
 
     public function __construct()
     {
-        $this->baseUrl = 'https://api.daruttaqwa.or.id/sikeu/pagu/v1/uts1/c98803b227e70b47c3c26a736d61b44c/20252026';
+        $this->baseUrl = 'https://api.daruttaqwa.or.id/sikeu/pagu/v1/uas1/c98803b227e70b47c3c26a736d61b44c/20252026';
         $this->timeout = 30;
     }
 

@@ -29,6 +29,9 @@ Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(functi
     // Catat pelanggaran (tanpa langsung logout)
     Route::post('record-violation', [UjianController::class, 'recordViolation'])
         ->name('record-violation');
+    // Ambil Pelanggaran terakhir siswa
+    Route::get('/last-violation/{hasil_ujian_id}', [UjianController::class, 'getLastViolation'])
+        ->name('last-violation');
     Route::post('/logout', [UjianController::class, 'logoutFromExam'])->name('logout');
 
     // Legacy routes for backward compatibility

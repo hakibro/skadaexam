@@ -151,8 +151,8 @@
                     <!-- Violation Counter -->
                     {{-- <div class="flex items-center">
                         <span id="violation-count"
-                            class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full {{ isset($examData['violations_count']) && $examData['violations_count'] > 0 ? '' : 'hidden' }}">
-                            {{ $examData['violations_count'] ?? 0 }}
+                            class="ml-2 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full {{ isset($examData['totalViolations']) && $examData['totalViolations'] > 0 ? '' : 'hidden' }}">
+                            {{ $examData['totalViolations'] ?? 0 }}
                         </span>
                         <span class="ml-1 text-xs text-red-500">Pelanggaran</span>
                     </div> --}}
@@ -932,9 +932,26 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             updateProgress();
             restoreSelectedAnswer(); // Restore the selected answer for current question
+
+            // CEK PELANGGARAN SAAT LOAD
+            const lastViolation = await getLastViolation();
+
+            console.log('Violation on load:', lastViolation);
+
+            if (
+                lastViolation &&
+                lastViolation.is_dismissed === false &&
+                lastViolation.tindakan === null
+            ) {
+                showViolationModal(
+                    'Pelanggaran Belum Ditindak',
+                    'Anda melakukan pelanggaran ujian. Silakan menunggu tindakan dari pengawas. Pelanggaran ini telah dicatat.',
+                    {{ $examData['totalViolations'] ?? 0 }}
+                );
+            }
 
             // Start timer if time limit is set
             if (timeLimit > 0 && remainingTime > 0) {
@@ -958,6 +975,10 @@
 
             // Set up visibility change detection
             setupVisibilityChangeDetection();
+
+
+            // ambil status pelanggaran dari server
+
 
             // Tambah 1 state baru saat halaman dimuat
             history.pushState(null, null, window.location.href);
@@ -1254,40 +1275,12 @@
                         // Automatically logout
                         logoutDueToCheating();
                     } else {
-                        // Store the time when user left the page
+                        // Store the time to local storage when user left the page
                         localStorage.setItem('examLeftPageTime', Date.now());
                     }
                 }
             }
 
-            // function handleUserReturnedToPage() {
-            //     if (!isDetectionActive) return; // Skip during grace period
-
-            //     const leftTime = localStorage.getItem('examLeftPageTime');
-            //     if (leftTime) {
-            //         const timeAway = Date.now() - parseInt(leftTime);
-
-            //         // Only show warning if away for more than 5 seconds (increased threshold)
-            //         if (timeAway > 5000) {
-            //             if (visibilityWarnings >= maxWarnings) {
-            //                 logoutDueToCheating();
-            //             } else {
-            //                 const violationCount = parseInt(localStorage.getItem('violationCount') || '0');
-            //                 // Show violation modal instead of alert
-            //                 showViolationModal(
-            //                     `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
-            //                     `Peringatan ${violationCount} dari ${maxWarnings}`,
-            //                     violationCount
-            //                 );
-            //             }
-            //         } else {
-            //             // Internal tracking: Quick focus change detected, ignoring
-            //         }
-
-            //         // Remove stored time
-            //         localStorage.removeItem('examLeftPageTime');
-            //     }
-            // }
             function handleUserReturnedToPage() {
                 if (!isDetectionActive) return;
 
@@ -1310,6 +1303,7 @@
                             })
                             .then(response => response.json())
                             .then(data => {
+                                console.log('Response JSON:', data); // 👈 lihat di DevTools
                                 if (data.success) {
                                     if (data.force_logout) {
                                         logoutDueToCheating();
@@ -1363,14 +1357,14 @@
                             showViolationModal(
                                 'Anda telah berpindah tab atau meminimalkan browser!',
                                 'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas. Anda dapat melanjutkan ujian.',
-                                data.violations_count
+                                data.totalViolations
                             );
 
                             // Update UI to show violation count if needed
-                            if (data.violations_count) {
+                            if (data.totalViolations) {
                                 const violationBadge = document.getElementById('violation-count');
                                 if (violationBadge) {
-                                    violationBadge.textContent = data.violations_count;
+                                    violationBadge.textContent = data.totalViolations;
                                     violationBadge.classList.remove('hidden');
                                 }
 
@@ -1487,24 +1481,37 @@
             document.addEventListener('keydown', handleKeyDown);
 
             // Handle continue button click
-            const handleContinue = () => {
-                // Hide modal
+            const handleContinue = async () => {
+
+                // Ambil status pelanggaran terbaru dari server
+                const lastViolation = await getLastViolation();
+
+                // ⛔ BELUM DITINDAK → JANGAN TUTUP MODAL
+                if (
+                    lastViolation &&
+                    lastViolation.is_dismissed === false &&
+                    lastViolation.tindakan === null
+                ) {
+                    showSystemNotification(
+                        'Pelanggaran belum ditindak oleh pengawas',
+                        'info'
+                    );
+                    return; // ⛔ STOP DI SINI
+                }
+
+                // ✅ SUDAH DITINDAK → BOLEH LANJUT
                 modal.classList.add('hidden');
                 document.body.style.overflow = 'auto';
 
-                // Remove event listeners
                 document.removeEventListener('keydown', handleKeyDown);
                 continueBtn.removeEventListener('click', handleContinue);
 
-                // Focus back on the exam content
-                const currentQuestion = document.querySelector('[data-question-index="' + currentQuestionIndex + '"]');
-                if (currentQuestion) {
-                    currentQuestion.focus();
-                }
-
-                // Log that student acknowledged the violation (internal tracking)
-                // Student acknowledged violation and continued exam
+                const currentQuestion = document.querySelector(
+                    '[data-question-index="' + currentQuestionIndex + '"]'
+                );
+                if (currentQuestion) currentQuestion.focus();
             };
+
 
             continueBtn.addEventListener('click', handleContinue);
 
@@ -1519,6 +1526,29 @@
             // Add visual indication that modal is uncloseable
             const modalContent = modal.querySelector('.bg-white');
             modalContent.classList.add('shadow-2xl', 'ring-4', 'ring-red-500', 'ring-opacity-50');
+        }
+
+        // ambil data pelanggaran terakhir
+        async function getLastViolation() {
+            try {
+                const res = await fetch('{{ route('ujian.last-violation', $examData['hasilUjianId']) }}', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!res.ok) return null;
+
+                const data = await res.json();
+
+                if (!data.success) return null;
+
+                lastViolation = data.last_violation;
+                return data.last_violation; // ⬅️ INI PENTING
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
         }
     </script>
 </body>

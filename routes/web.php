@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Features\Ujian\UjianController;
 
 /*
 |--------------------------------------------------------------------------
@@ -142,6 +143,6 @@ if (app()->environment(['local', 'development'])) {
 
 /*
 |--------------------------------------------------------------------------
-| DOCUMENTATION ROUTES
+| TEST ROUTES
 |--------------------------------------------------------------------------
 */

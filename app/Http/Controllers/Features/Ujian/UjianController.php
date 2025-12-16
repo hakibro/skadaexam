@@ -297,9 +297,6 @@ class UjianController extends Controller
             $remainingTime = max(0, $timeLimit - $elapsedTime);
         }
 
-        // Get violations count
-        $violationsCount = PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count();
-
         // Prepare exam data
         $examData = [
             'title' => $jadwalUjian->judul ?? 'Ujian',
@@ -315,7 +312,7 @@ class UjianController extends Controller
             'tampilkan_tombol_submit' => $enrollment->sesiRuangan->tampilkan_tombol_submit,
             'hasilUjianId' => $hasilUjian->id,
             'jadwalUjianId' => $jadwalUjian->id,
-            'violations_count' => $violationsCount,
+            'totalViolations' => PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count(),
             'examEndTime' => Carbon::parse($enrollment->waktu_selesai_ujian)->timestamp * 1000, // in milliseconds
 
         ];
@@ -438,7 +435,7 @@ class UjianController extends Controller
 
             $request->validate([
                 'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
-                'soal_ujian_id'  => 'required|exists:soal,id'
+                'soal_ujian_id' => 'required|exists:soal,id'
             ]);
 
             // Pastikan hasil ujian milik siswa yang login
@@ -453,7 +450,7 @@ class UjianController extends Controller
             // Ambil jawaban siswa (atau buat baru)
             $jawaban = JawabanSiswa::firstOrCreate([
                 'hasil_ujian_id' => $request->hasil_ujian_id,
-                'soal_ujian_id'  => $request->soal_ujian_id
+                'soal_ujian_id' => $request->soal_ujian_id
             ]);
 
             // Toggle flag
@@ -461,13 +458,13 @@ class UjianController extends Controller
             $jawaban->save();
 
             return response()->json([
-                'success'    => true,
+                'success' => true,
                 'is_flagged' => $jawaban->is_flagged
             ]);
         } catch (\Exception $e) {
             Log::error('Error toggling flag', [
-                'error'        => $e->getMessage(),
-                'siswa_id'     => $siswa->id ?? null,
+                'error' => $e->getMessage(),
+                'siswa_id' => $siswa->id ?? null,
                 'request_data' => $request->all()
             ]);
 
@@ -479,55 +476,55 @@ class UjianController extends Controller
     /**
      * Display the question page
      */
-    public function showSoal($soalIndex = 0)
-    {
-        $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
+    // public function showSoal($soalIndex = 0)
+    // {
+    //     $hasilUjian = HasilUjian::findOrFail(session('hasil_ujian_id'));
 
-        // Convert to zero-based index if not already
-        $soalIndex = (int) $soalIndex;
+    //     // Convert to zero-based index if not already
+    //     $soalIndex = (int) $soalIndex;
 
-        if ($hasilUjian->is_final) {
-            return redirect()->route('ujian.finish');
-        }
+    //     if ($hasilUjian->is_final) {
+    //         return redirect()->route('ujian.finish');
+    //     }
 
-        // Get all soal IDs from jawaban_siswa
-        $jawabanSiswa = $hasilUjian->jawaban_siswa;
+    //     // Get all soal IDs from jawaban_siswa
+    //     $jawabanSiswa = $hasilUjian->jawaban_siswa;
 
-        if ($soalIndex < 0 || $soalIndex >= count($jawabanSiswa)) {
-            return redirect()->route('ujian.soal', 0);
-        }
+    //     if ($soalIndex < 0 || $soalIndex >= count($jawabanSiswa)) {
+    //         return redirect()->route('ujian.soal', 0);
+    //     }
 
-        // Get current soal details
-        $currentSoal = $jawabanSiswa[$soalIndex];
-        $soalId = $currentSoal['soal_id'];
-        $soal = Soal::findOrFail($soalId);
+    //     // Get current soal details
+    //     $currentSoal = $jawabanSiswa[$soalIndex];
+    //     $soalId = $currentSoal['soal_id'];
+    //     $soal = Soal::findOrFail($soalId);
 
-        // Calculate progress
-        $totalSoal = count($jawabanSiswa);
-        $progress = [
-            'current' => $soalIndex + 1,
-            'total' => $totalSoal,
-            'percentage' => ($soalIndex + 1) / $totalSoal * 100,
-            'terjawab' => collect($jawabanSiswa)->filter(fn($j) => !is_null($j['jawaban']))->count(),
-            'belum_terjawab' => collect($jawabanSiswa)->filter(fn($j) => is_null($j['jawaban']))->count()
-        ];
+    //     // Calculate progress
+    //     $totalSoal = count($jawabanSiswa);
+    //     $progress = [
+    //         'current' => $soalIndex + 1,
+    //         'total' => $totalSoal,
+    //         'percentage' => ($soalIndex + 1) / $totalSoal * 100,
+    //         'terjawab' => collect($jawabanSiswa)->filter(fn($j) => !is_null($j['jawaban']))->count(),
+    //         'belum_terjawab' => collect($jawabanSiswa)->filter(fn($j) => is_null($j['jawaban']))->count()
+    //     ];
 
-        // Calculate time remaining
-        $durasiUjian = session('durasi'); // in minutes
-        $waktuMulai = session('waktu_mulai');
-        $waktuSelesai = \Carbon\Carbon::parse($waktuMulai)->addMinutes($durasiUjian);
-        $sekarang = \Carbon\Carbon::now();
-        $sisaWaktu = $sekarang->diffInSeconds($waktuSelesai, false);
+    //     // Calculate time remaining
+    //     $durasiUjian = session('durasi'); // in minutes
+    //     $waktuMulai = session('waktu_mulai');
+    //     $waktuSelesai = Carbon::parse($waktuMulai)->addMinutes($durasiUjian);
+    //     $sekarang = Carbon::now();
+    //     $sisaWaktu = $sekarang->diffInSeconds($waktuSelesai, false);
 
-        return view('ujian.soal', compact(
-            'hasilUjian',
-            'soal',
-            'soalIndex',
-            'progress',
-            'sisaWaktu',
-            'currentSoal'
-        ));
-    }
+    //     return view('ujian.soal', compact(
+    //         'hasilUjian',
+    //         'soal',
+    //         'soalIndex',
+    //         'progress',
+    //         'sisaWaktu',
+    //         'currentSoal'
+    //     ));
+    // }
 
 
     /**
@@ -650,60 +647,60 @@ class UjianController extends Controller
     /**
      * Show confirmation page before finishing the exam
      */
-    public function confirmFinish(Request $request)
-    {
-        $siswa = Auth::guard('siswa')->user();
-        $hasilUjianId = $request->input('hasil_ujian_id');
+    // public function confirmFinish(Request $request)
+    // {
+    //     $siswa = Auth::guard('siswa')->user();
+    //     $hasilUjianId = $request->input('hasil_ujian_id');
 
-        $hasilUjian = HasilUjian::where('id', $hasilUjianId)
-            ->where('siswa_id', $siswa->id)
-            ->first();
+    //     $hasilUjian = HasilUjian::where('id', $hasilUjianId)
+    //         ->where('siswa_id', $siswa->id)
+    //         ->first();
 
-        if (!$hasilUjian || $hasilUjian->is_final) {
-            return redirect()->route('siswa.dashboard');
-        }
+    //     if (!$hasilUjian || $hasilUjian->is_final) {
+    //         return redirect()->route('siswa.dashboard');
+    //     }
 
-        $totalSoal = $hasilUjian->jumlah_soal;
-        $terjawab = JawabanSiswa::where('hasil_ujian_id', $hasilUjianId)
-            ->whereNotNull('jawaban')
-            ->count();
-        $belumTerjawab = $totalSoal - $terjawab;
+    //     $totalSoal = $hasilUjian->jumlah_soal;
+    //     $terjawab = JawabanSiswa::where('hasil_ujian_id', $hasilUjianId)
+    //         ->whereNotNull('jawaban')
+    //         ->count();
+    //     $belumTerjawab = $totalSoal - $terjawab;
 
-        return view('features.siswa.confirm-finish', compact(
-            'hasilUjian',
-            'totalSoal',
-            'terjawab',
-            'belumTerjawab'
-        ));
-    }
+    //     return view('features.siswa.confirm-finish', compact(
+    //         'hasilUjian',
+    //         'totalSoal',
+    //         'terjawab',
+    //         'belumTerjawab'
+    //     ));
+    // }
 
     /**
      * Show exam result page
      */
-    public function examResult(Request $request)
-    {
-        $siswa = Auth::guard('siswa')->user();
-        $hasilUjianId = $request->get('hasil');
+    // public function examResult(Request $request)
+    // {
+    //     $siswa = Auth::guard('siswa')->user();
+    //     $hasilUjianId = $request->get('hasil');
 
-        $hasilUjian = HasilUjian::with([
-            'jadwalUjian.mapel',
-            'jawabanSiswas.soalUjian'
-        ])
-            ->where('id', $hasilUjianId)
-            ->where('siswa_id', $siswa->id)
-            ->first();
+    //     $hasilUjian = HasilUjian::with([
+    //         'jadwalUjian.mapel',
+    //         'jawabanSiswas.soalUjian'
+    //     ])
+    //         ->where('id', $hasilUjianId)
+    //         ->where('siswa_id', $siswa->id)
+    //         ->first();
 
-        if (!$hasilUjian) {
-            return redirect()->route('siswa.dashboard')->with('error', 'Hasil ujian tidak ditemukan.');
-        }
+    //     if (!$hasilUjian) {
+    //         return redirect()->route('siswa.dashboard')->with('error', 'Hasil ujian tidak ditemukan.');
+    //     }
 
-        // Check if results should be shown
-        if (!($hasilUjian->jadwalUjian->tampilkan_hasil ?? false)) {
-            return redirect()->route('siswa.dashboard')->with('success', 'Ujian berhasil dikumpulkan. Hasil akan diumumkan kemudian.');
-        }
+    //     // Check if results should be shown
+    //     if (!($hasilUjian->jadwalUjian->tampilkan_hasil ?? false)) {
+    //         return redirect()->route('siswa.dashboard')->with('success', 'Ujian berhasil dikumpulkan. Hasil akan diumumkan kemudian.');
+    //     }
 
-        return view('features.siswa.exam-result', compact('siswa', 'hasilUjian'));
-    }
+    //     return view('features.siswa.exam-result', compact('siswa', 'hasilUjian'));
+    // }
 
     public function recordViolation(Request $request)
     {
@@ -720,7 +717,7 @@ class UjianController extends Controller
             ->firstOrFail();
 
         // Cegah duplikasi pelanggaran dalam 30 detik terakhir
-        $recentViolation = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
+        $recentViolation = PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
             ->where('jenis_pelanggaran', $request->reason)
             ->where('waktu_pelanggaran', '>', now()->subSeconds(30))
             ->first();
@@ -741,7 +738,7 @@ class UjianController extends Controller
         }
 
         // Hitung ulang total
-        $violationsCount = \App\Models\PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count();
+        $violationsCount = PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count();
 
         // Update hasil ujian
         $hasilUjian->update([
@@ -758,6 +755,38 @@ class UjianController extends Controller
             // 'force_logout' => !$continueExam
         ]);
     }
+
+    public function getLastViolation($hasil_ujian_id)
+    {
+        $siswa = Auth::guard('siswa')->user();
+
+        $hasilUjian = HasilUjian::where('id', $hasil_ujian_id)
+            ->where('siswa_id', $siswa->id)
+            ->first();
+
+        if (!$hasilUjian) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hasil ujian tidak ditemukan atau bukan milik siswa'
+            ], 404);
+        }
+
+        $lastViolation = PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)
+            ->latest('waktu_pelanggaran')
+            ->first([
+                'id',
+                'jenis_pelanggaran',
+                'is_dismissed',
+                'tindakan',
+                'waktu_pelanggaran'
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'last_violation' => $lastViolation
+        ]);
+    }
+
 
     /**
      * Handle automatic logout when student changes tabs or minimizes browser
@@ -1056,15 +1085,15 @@ class UjianController extends Controller
     /**
      * Show the exam result
      */
-    public function result($hasilId)
-    {
-        $hasilUjian = HasilUjian::findOrFail($hasilId);
+    // public function result($hasilId)
+    // {
+    //     $hasilUjian = HasilUjian::findOrFail($hasilId);
 
-        // Make sure only the owner can see their result
-        if ($hasilUjian->siswa_id != Auth::guard('siswa')->id()) {
-            abort(403, 'Unauthorized action.');
-        }
+    //     // Make sure only the owner can see their result
+    //     if ($hasilUjian->siswa_id != Auth::guard('siswa')->id()) {
+    //         abort(403, 'Unauthorized action.');
+    //     }
 
-        return view('ujian.result', compact('hasilUjian'));
-    }
+    //     return view('ujian.result', compact('hasilUjian'));
+    // }
 }
