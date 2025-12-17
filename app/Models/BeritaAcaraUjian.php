@@ -34,6 +34,12 @@ class BeritaAcaraUjian extends Model
         'status_pelaksanaan' => 'string'
     ];
 
+
+    public function sesiRuanganSiswa()
+    {
+        return $this->hasMany(SesiRuanganSiswa::class, 'sesi_ruangan_id')
+            ->orderBy('id');
+    }
     /**
      * Get the sesi ruangan that this berita acara belongs to.
      */
@@ -211,60 +217,11 @@ class BeritaAcaraUjian extends Model
     }
 
     /**
-     * Get kendala_teknis attribute (from catatan_pelaksanaan)
-     */
-    public function getKendalaTeknisAttribute()
-    {
-        // Filter technical issues from general notes
-        return strpos($this->catatan_pelaksanaan, 'kendala') !== false ? $this->catatan_pelaksanaan : null;
-    }
-
-    /**
-     * Get kejadian_khusus attribute (from catatan_pelaksanaan)
-     */
-    public function getKejadianKhususAttribute()
-    {
-        return $this->catatan_pembukaan;
-    }
-
-    /**
-     * Get catatan_khusus attribute (from catatan_penutupan)
-     */
-    public function getCatatanKhususAttribute()
-    {
-        return $this->catatan_pelaksanaan;
-    }
-
-
-    /**
-     * Get saran_perbaikan attribute (placeholder)
-     */
-    public function getSaranPerbaikanAttribute()
-    {
-        // This could be derived from notes or be a separate field
-        return $this->catatan_penutupan;
-
-        return null;
-    }
-
-    /**
      * Get tanggal_verifikasi attribute (from waktu_finalisasi)
      */
     public function getTanggalVerifikasiAttribute()
     {
         return $this->waktu_finalisasi;
-    }
-
-    /**
-     * Get catatan_koordinator attribute (placeholder)
-     */
-    public function getCatatanKoordinatorAttribute()
-    {
-        // Extract coordinator notes from catatan_pembukaan if exists
-        if (strpos($this->catatan_pembukaan, 'Catatan Koordinator:') !== false) {
-            return substr($this->catatan_pembukaan, strpos($this->catatan_pembukaan, 'Catatan Koordinator:') + 20);
-        }
-        return null;
     }
 
     /**

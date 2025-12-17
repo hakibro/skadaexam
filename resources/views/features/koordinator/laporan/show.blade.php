@@ -163,53 +163,43 @@
                                     {{ $beritaAcara->waktu_selesai_aktual ? $beritaAcara->waktu_selesai_aktual->format('H:i') : 'Belum selesai' }}
                                 </p>
                             </div>
-                            @if ($beritaAcara->kendala_teknis)
-                                <div>
-                                    <label class="text-sm font-medium text-gray-500">Kendala Teknis</label>
-                                    <div class="bg-red-50 p-3 rounded border border-red-200 mt-1">
-                                        <p class="text-sm text-red-700 whitespace-pre-line">
-                                            {{ $beritaAcara->kendala_teknis }}</p>
-                                    </div>
-                                </div>
-                            @endif
+
                         </div>
                     </div>
 
                     <!-- Incidents and Notes -->
-                    @if ($beritaAcara->catatan_khusus || $beritaAcara->kejadian_khusus)
-                        <div class="mb-6">
-                            <h4 class="text-md font-medium text-gray-800 mb-3">Catatan dan Kejadian Khusus</h4>
-                            @if ($beritaAcara->kejadian_khusus)
-                                <div class="mb-4">
-                                    <label class="text-sm font-medium text-gray-500">Kejadian Khusus</label>
-                                    <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mt-1">
-                                        <p class="text-sm text-yellow-800 whitespace-pre-line">
-                                            {{ $beritaAcara->kejadian_khusus }}</p>
-                                    </div>
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium text-gray-800 mb-3">Catatan Pengawas</h4>
+                        @if ($beritaAcara->catatan_pembukaan)
+                            <div class="mb-4">
+                                <label class="text-sm font-medium text-gray-500">Catatan Pembukaan</label>
+                                <div class="bg-green-50 p-3 rounded border border-green-200 mt-1">
+                                    <p class="text-sm text-green-800 whitespace-pre-line">
+                                        {{ $beritaAcara->catatan_pembukaan }}</p>
                                 </div>
-                            @endif
-                            @if ($beritaAcara->catatan_khusus)
-                                <div>
-                                    <label class="text-sm font-medium text-gray-500">Catatan Khusus</label>
-                                    <div class="bg-blue-50 p-3 rounded border border-blue-200 mt-1">
-                                        <p class="text-sm text-blue-800 whitespace-pre-line">
-                                            {{ $beritaAcara->catatan_khusus }}</p>
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-
-                    <!-- Recommendations -->
-                    @if ($beritaAcara->saran_perbaikan)
-                        <div class="mb-6">
-                            <h4 class="text-md font-medium text-gray-800 mb-3">Saran Perbaikan</h4>
-                            <div class="bg-green-50 p-3 rounded border border-green-200">
-                                <p class="text-sm text-green-800 whitespace-pre-line">{{ $beritaAcara->saran_perbaikan }}
-                                </p>
                             </div>
-                        </div>
-                    @endif
+                        @endif
+                        @if ($beritaAcara->catatan_pelaksanaan)
+                            <div class="mb-4">
+                                <label class="text-sm font-medium text-gray-500">Catatan Pelaksanaan</label>
+                                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mt-1">
+                                    <p class="text-sm text-yellow-800 whitespace-pre-line">
+                                        {{ $beritaAcara->catatan_pelaksanaan }}</p>
+                                </div>
+                            </div>
+                        @endif
+                        @if ($beritaAcara->catatan_penutupan)
+                            <div>
+                                <label class="text-sm font-medium text-gray-500">Catatan Penutupan</label>
+                                <div class="bg-blue-50 p-3 rounded border border-blue-200 mt-1">
+                                    <p class="text-sm text-blue-800 whitespace-pre-line">
+                                        {{ $beritaAcara->catatan_penutupan }}</p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+
                 </div>
 
                 <!-- Student List -->
@@ -351,16 +341,11 @@
                                 Lihat Monitoring
                             </a>
                         @endif
-                        <a href="{{ route('koordinator.laporan.download', $beritaAcara->id) }}"
+                        <a href="{{ route('koordinator.laporan.pdf', $beritaAcara->id) }}"
                             class="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             <i class="fa-solid fa-download mr-2"></i>
                             Download PDF
                         </a>
-                        <button onclick="printReport()"
-                            class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                            <i class="fa-solid fa-print mr-2"></i>
-                            Cetak
-                        </button>
                     </div>
                 </div>
             </div>

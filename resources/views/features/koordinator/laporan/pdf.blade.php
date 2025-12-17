@@ -274,9 +274,8 @@
                         <h3 class="font-semibold text-gray-700 mb-3">Status Pelaksanaan</h3>
                         <div class="flex items-center space-x-2">
                             <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm  bg-green-100 text-green-800">
-                                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                Selesai Normal
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm {{ $beritaAcara->status_badge_class }}">
+                                {{ $beritaAcara->status_text ?? '-' }}
                             </span>
                         </div>
                     </div>
@@ -310,23 +309,17 @@
                 <div class="space-y-4">
                     <div class="bg-white p-4 rounded border-l-4 border-blue-500">
                         <h4 class=" text-blue-700 mb-2">📋 Catatan Pembukaan</h4>
-                        <p class="text-sm text-gray-700">Ujian dimulai tepat waktu pukul 08:00 WIB. Semua peserta telah
-                            diperiksa identitasnya dan ditempatkan sesuai nomor urut. Pengawas memberikan penjelasan
-                            tata tertib ujian dan membagikan lembar soal.</p>
+                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pembukaan ?? '-' }}</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-green-500">
                         <h4 class=" text-green-700 mb-2">⏱️ Catatan Pelaksanaan</h4>
-                        <p class="text-sm text-gray-700">Ujian berlangsung lancar tanpa kendala berarti. Tidak ada
-                            peserta yang melakukan kecurangan. Pada menit ke-90, ada 1 peserta yang mengalami sakit
-                            ringan namun dapat melanjutkan ujian hingga selesai.</p>
+                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pelaksanaan ?? '-' }}</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-purple-500">
                         <h4 class=" text-purple-700 mb-2">✅ Catatan Penutupan</h4>
-                        <p class="text-sm text-gray-700">Ujian berakhir pukul 10:00 WIB. Semua lembar jawaban telah
-                            dikumpulkan dan dihitung sesuai jumlah peserta hadir. Ruangan dikembalikan dalam kondisi
-                            bersih dan rapi.</p>
+                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_penutupan ?? '-' }}</p>
                     </div>
                 </div>
             </div>
@@ -340,7 +333,12 @@
                     <h2 class="text-xl font-bold text-white tracking-wide">
                         DAFTAR HADIR SISWA
                     </h2>
-                    <p class="text-sm text-white">Ujian Tanggal 15 Maret 2024 - Ruang R.12A</p>
+                    <p class="text-sm text-white">
+                        {{ $beritaAcara->sesiRuangan->jadwalUjians->first() ? $beritaAcara->sesiRuangan->jadwalUjians->first()->tanggal->format('d F Y') : 'N/A' }}
+                        -
+                        {{ $beritaAcara->sesiRuangan->ruangan->nama_ruangan ?? 'N/A' }}
+                        {{ $beritaAcara->sesiRuangan->nama_sesi ?? 'N/A' }}
+                    </p>
                 </div>
             </div>
 
@@ -349,155 +347,83 @@
             <div class="flex flex-col gap-6 text-md">
                 <!-- Siswa Hadir -->
                 <div class="bg-green-50 p-4 rounded-lg">
-                    <h3 class="font-semibold  text-green-700 mb-4 flex items-center">
+                    <h3 class="font-semibold text-green-700 mb-4 flex items-center text-lg">
                         <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                        Siswa Hadir (30 orang)
+                        {{ $beritaAcara->jumlah_peserta_hadir }} Siswa Hadir
                     </h3>
-                    <div class="space-y-2">
-                        <div class="grid grid-cols-2 bg-white gap-2 p-2 rounded-lg">
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <p>ANGGIES ANGGRAENI CAHYA BUNGA MAYCANTIQA - 245035
-                                </p>
-                                <span class="text-green-600 text-xs whitespace-nowrap">X BD 1</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>001 - Ahmad Rizki</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>001 - Ahmad Rizki</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>001 - Ahmad Rizki</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>001 - Ahmad Rizki</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>001 - Ahmad Rizki</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>002 - Siti Nurhaliza</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>003 - Budi Santoso</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>004 - Dewi Sartika</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
-                            <div class="px-2 rounded text-sm flex justify-between items-center">
-                                <span>005 - Eko Prasetyo</span>
-                                <span class="text-green-600 text-xs">✓</span>
-                            </div>
 
+                    @php
+                        $siswaHadir = $beritaAcara->sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir');
+                    @endphp
+
+                    @if ($siswaHadir->count())
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-white rounded-lg">
+                            @foreach ($beritaAcara->sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir') as $index => $siswaSession)
+                                <div class="px-3 py-1 rounded text-sm flex justify-between items-center">
+
+                                    {{-- Nama + NIS --}}
+                                    <p class="font-medium text-gray-900">
+                                        {{ $siswaSession->siswa->nama ?? 'N/A' }}
+
+                                    </p>
+
+                                    {{-- Kelas --}}
+                                    <span class="text-xs text-green-600 whitespace-nowrap">
+                                        {{ $siswaSession->siswa->kelas->nama_kelas ?? 'N/A' }}
+                                    </span>
+                                </div>
+                            @endforeach
                         </div>
-                    </div>
+                    @else
+                        <div class="py-4 text-center text-gray-500 text-sm">
+                            Tidak ada siswa hadir
+                        </div>
+                    @endif
                 </div>
+
 
                 <!-- Siswa Tidak Hadir -->
                 <div class="bg-red-50 p-4 rounded-lg">
-                    <h3 class="font-semibold text-red-700 mb-4 flex items-center">
+                    <h3 class="font-semibold text-red-700 mb-4 flex items-center text-lg">
                         <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-                        Siswa Tidak Hadir (2 orang)
+                        {{ $beritaAcara->jumlah_peserta_tidak_hadir }} Siswa Tidak Hadir
                     </h3>
-                    <div class="flex-none bg-white space-y-2 p-2 rounded-lg">
-                        <div class="px-2 rounded text-sm flex justify-between items-center">
-                            <span>015 - Rina Wati</span>
-                            <span class="text-red-600 text-xs">✗ Sakit</span>
+
+                    @php
+                        $siswaTidakHadir = $beritaAcara->sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', [
+                            'tidak_hadir',
+                            'sakit',
+                            'izin',
+                        ]);
+                    @endphp
+
+                    @if ($siswaTidakHadir->count())
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-white rounded-lg">
+                            @foreach ($beritaAcara->sesiRuangan->sesiRuanganSiswa->whereIn('status_kehadiran', ['tidak_hadir', 'sakit', 'izin']) as $index => $siswaSession)
+                                <div class="px-3 py-1 rounded text-sm flex justify-between items-center">
+
+                                    {{-- Nama + NIS --}}
+                                    <p class="font-medium text-gray-900">
+                                        {{ $siswaSession->siswa->nama ?? 'N/A' }}
+                                        <span class="text-gray-500">
+                                            - {{ $siswaSession->siswa->nis ?? '-' }}
+                                        </span>
+                                    </p>
+
+                                    {{-- Kelas --}}
+                                    <span class="text-xs text-red-600 whitespace-nowrap">
+                                        {{ $siswaSession->siswa->kelas->nama_kelas ?? 'N/A' }}
+                                    </span>
+                                </div>
+                            @endforeach
                         </div>
-                        <div class="px-2 rounded text-sm flex justify-between items-center">
-                            <span>028 - Joko Widodo</span>
-                            <span class="text-red-600 text-xs">✗ Izin</span>
+                    @else
+                        <div class="py-4 text-center text-gray-500 text-sm">
+                            Semua siswa hadir
                         </div>
-                    </div>
+                    @endif
                 </div>
+
             </div>
 
             <!-- Tanda Tangan -->
@@ -506,7 +432,7 @@
                     <div class="text-center">
                         <p class="text-sm text-gray-600 mb-24">Pengawas</p>
                         <div class="border-t border-gray-300 pt-2">
-                            <p class="">Dra. Sri Mulyani, M.Pd</p>
+                            <p class="">{{ $beritaAcara->pengawas->nama ?? 'N/A' }}</p>
                         </div>
                     </div>
                     <div class="text-center">

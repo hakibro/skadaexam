@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "buildpdf": "npx tailwindcss -i ./resources/css/pdf.css -o ./public/css/pdf.css --minify"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.2",
