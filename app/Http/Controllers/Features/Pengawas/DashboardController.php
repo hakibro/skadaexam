@@ -68,16 +68,20 @@ class DashboardController extends Controller
 
         // Hari ini
         $assignments = (clone $baseQuery)
-            ->with(['jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', $today)
-                    ->with('mapel')
-                    ->orderBy('tanggal', 'asc');
+            ->with([
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                    $q->whereDate('tanggal', $today)
+                        ->with('mapel')
+                        ->orderBy('tanggal', 'asc');
 
-                // Apply supervisor filter for non-admin users
-                if (!$isAdmin && $guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                }
-            }, 'ruangan', 'sesiRuanganSiswa'])
+                    // Apply supervisor filter for non-admin users
+                    if (!$isAdmin && $guru) {
+                        $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
+                    }
+                },
+                'ruangan',
+                'sesiRuanganSiswa'
+            ])
             ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
                 $q->whereDate('tanggal', $today);
 
@@ -90,16 +94,20 @@ class DashboardController extends Controller
 
         // Upcoming
         $upcomingAssignments = (clone $baseQuery)
-            ->with(['jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', '>', $today)
-                    ->with('mapel')
-                    ->orderBy('tanggal', 'asc');
+            ->with([
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                    $q->whereDate('tanggal', '>', $today)
+                        ->with('mapel')
+                        ->orderBy('tanggal', 'asc');
 
-                // Apply supervisor filter for non-admin users
-                if (!$isAdmin && $guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                }
-            }, 'ruangan', 'sesiRuanganSiswa'])
+                    // Apply supervisor filter for non-admin users
+                    if (!$isAdmin && $guru) {
+                        $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
+                    }
+                },
+                'ruangan',
+                'sesiRuanganSiswa'
+            ])
             ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
                 $q->whereDate('tanggal', '>', $today);
 
@@ -111,22 +119,27 @@ class DashboardController extends Controller
             ->get()
             ->sortBy(function ($sesiRuangan) {
                 $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                if (!$jadwalUjian) return '9999-12-31 23:59:59';
+                if (!$jadwalUjian)
+                    return '9999-12-31 23:59:59';
                 return $jadwalUjian->tanggal->format('Y-m-d') . ' ' . $sesiRuangan->waktu_mulai;
             });
 
         // Past
         $pastAssignments = (clone $baseQuery)
-            ->with(['jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', '<', $today)
-                    ->with('mapel')
-                    ->orderBy('tanggal', 'desc');
+            ->with([
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                    $q->whereDate('tanggal', '<', $today)
+                        ->with('mapel')
+                        ->orderBy('tanggal', 'desc');
 
-                // Apply supervisor filter for non-admin users
-                if (!$isAdmin && $guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                }
-            }, 'ruangan', 'sesiRuanganSiswa'])
+                    // Apply supervisor filter for non-admin users
+                    if (!$isAdmin && $guru) {
+                        $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
+                    }
+                },
+                'ruangan',
+                'sesiRuanganSiswa'
+            ])
             ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
                 $q->whereDate('tanggal', '<', $today);
 
@@ -138,7 +151,8 @@ class DashboardController extends Controller
             ->get()
             ->sortByDesc(function ($sesiRuangan) {
                 $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                if (!$jadwalUjian) return '0000-00-00 00:00:00';
+                if (!$jadwalUjian)
+                    return '0000-00-00 00:00:00';
                 return $jadwalUjian->tanggal->format('Y-m-d') . ' ' . $sesiRuangan->waktu_mulai;
             })
             ->take(10);
@@ -148,6 +162,8 @@ class DashboardController extends Controller
         foreach ($assignments as $assignment) {
             $totalSiswa += $assignment->sesiRuanganSiswa->count();
         }
+
+
 
         return view('features.pengawas.dashboard', compact(
             'guru',
