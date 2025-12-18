@@ -143,6 +143,20 @@ if (app()->environment(['local', 'development'])) {
 
 /*
 |--------------------------------------------------------------------------
-| TEST ROUTES
+| CRON ROUTES
 |--------------------------------------------------------------------------
 */
+
+Route::get('/cron/clear-keterangan-sesi-ruangan-siswa', function () {
+
+    \Log::info('Cron URL clear keterangan dijalankan');
+
+    \DB::table('sesi_ruangan_siswa')
+        ->whereNotNull('keterangan')
+        ->update(['keterangan' => null]);
+
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Kolom keterangan berhasil dikosongkan'
+    ]);
+});
