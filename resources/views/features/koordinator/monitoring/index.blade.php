@@ -93,7 +93,7 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center space-x-4">
-                    <div>
+                    {{-- <div>
                         <label for="filter-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                         <select id="filter-status"
                             class="border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
@@ -112,7 +112,7 @@
                                 <option value="{{ $room->id }}">{{ $room->nama }}</option>
                             @endforeach
                         </select>
-                    </div>
+                    </div> --}}
                     <div>
                         <label for="refresh-interval" class="block text-sm font-medium text-gray-700 mb-1">Auto
                             Refresh</label>
@@ -162,7 +162,8 @@
                             <div class="flex items-center space-x-2">
                                 <!-- Session status badge -->
                                 <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ is_string($session->status_badge_class) ? $session->status_badge_class : '' }}">
+                                    class="status-badge inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $session->status_badge_class }}">
+
                                     {{ is_string($session->status_label) ? $session->status_label : (is_array($session->status_label) ? $session->status_label['label'] ?? '' : '') }}
                                 </span>
                                 <button onclick="toggleSessionDetails({{ $session->id }})"
@@ -310,7 +311,7 @@
                 <i class="fa-solid fa-calendar-times text-6xl text-gray-400 mb-4"></i>
                 <h3 class="text-xl font-medium text-gray-900 mb-2">Tidak Ada Sesi Aktif</h3>
                 <p class="text-gray-600">Saat ini tidak ada sesi ujian yang sedang berlangsung.</p>
-                // TODO update koordinator.assignment.index link
+                {{-- // TODO update koordinator.assignment.index link --}}
                 <a href="#"
                     class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
                     <i class="fa-solid fa-plus mr-2"></i>
@@ -488,9 +489,9 @@
                 }
 
                 if (show) {
-                    session.closest('.lg\\:w-1\\/2, .w-full').classList.remove('hidden');
+                    session.classList.remove('hidden');
                 } else {
-                    session.closest('.lg\\:w-1\\/2, .w-full').classList.add('hidden');
+                    session.classList.add('hidden');
                 }
             });
         }

@@ -20,6 +20,7 @@ class MonitoringController extends Controller
      */
     public function index(Request $request)
     {
+
         // Get filter parameters
         $selectedDate = $request->get('date', Carbon::today()->format('Y-m-d'));
         $selectedStatus = $request->get('status', 'all');
@@ -87,7 +88,7 @@ class MonitoringController extends Controller
                         $tanggalCarbon = $tanggal instanceof Carbon ? $tanggal : Carbon::parse($tanggal);
 
                         $startTime = $tanggalCarbon->copy()->setTimeFromTimeString($session->waktu_mulai);
-                        $endTime   = $tanggalCarbon->copy()->setTimeFromTimeString($session->waktu_selesai);
+                        $endTime = $tanggalCarbon->copy()->setTimeFromTimeString($session->waktu_selesai);
                         $now = Carbon::now();
 
                         if ($now->between($startTime, $endTime)) {
@@ -117,6 +118,25 @@ class MonitoringController extends Controller
 
         // Get rooms for filter dropdown
         $rooms = Ruangan::where('status', 'aktif')->orderBy('nama_ruangan')->get();
+
+
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => $this->getMonitoringStats($selectedDate),
+                'sessions' => $activeSessions->map(function ($session) {
+                    return [
+                        'id' => $session->id,
+                        'status' => $session->status,
+                        'total_students' => $session->sesiRuanganSiswa->count(),
+                        'active_students' => $session->sesiRuanganSiswa
+                            ->where('status_kehadiran', 'hadir')->count(),
+                        'issues_count' => 0,
+                        'progress_percentage' => $session->progress_percentage ?? 0,
+                        'remaining_time' => $session->remaining_time ?? '',
+                    ];
+                }),
+            ]);
+        }
 
         return view('features.koordinator.monitoring.index', compact(
             'sessions',
