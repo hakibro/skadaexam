@@ -93,26 +93,7 @@
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center space-x-4">
-                    {{-- <div>
-                        <label for="filter-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select id="filter-status"
-                            class="border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
-                            <option value="">Semua Status</option>
-                            <option value="berlangsung">Berlangsung</option>
-                            <option value="belum_mulai">Belum Mulai</option>
-                            <option value="selesai">Selesai</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="filter-room" class="block text-sm font-medium text-gray-700 mb-1">Ruangan</label>
-                        <select id="filter-room"
-                            class="border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
-                            <option value="">Semua Ruangan</option>
-                            @foreach ($rooms as $room)
-                                <option value="{{ $room->id }}">{{ $room->nama }}</option>
-                            @endforeach
-                        </select>
-                    </div> --}}
+
                     <div>
                         <label for="refresh-interval" class="block text-sm font-medium text-gray-700 mb-1">Auto
                             Refresh</label>
@@ -131,11 +112,7 @@
                         <i class="fa-solid fa-sync-alt mr-2"></i>
                         Refresh Manual
                     </button>
-                    <button onclick="exportReport()"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
-                        <i class="fa-solid fa-download mr-2"></i>
-                        Export Laporan
-                    </button>
+
                 </div>
             </div>
         </div>
@@ -377,8 +354,7 @@
             setupAutoRefresh();
 
             // Filter event listeners
-            document.getElementById('filter-status').addEventListener('change', applyFilters);
-            document.getElementById('filter-room').addEventListener('change', applyFilters);
+
             document.getElementById('refresh-interval').addEventListener('change', function() {
                 refreshTimer = parseInt(this.value);
                 setupAutoRefresh();
@@ -466,35 +442,6 @@
             }
         }
 
-        function applyFilters() {
-            const status = document.getElementById('filter-status').value;
-            const room = document.getElementById('filter-room').value;
-
-            const sessions = document.querySelectorAll('[id^="session-"]');
-            sessions.forEach(session => {
-                let show = true;
-
-                // Apply status filter
-                if (status) {
-                    const sessionStatusEl = session.querySelector('.status-badge');
-                    if (sessionStatusEl && !sessionStatusEl.textContent.toLowerCase().includes(status)) {
-                        show = false;
-                    }
-                }
-
-                // Apply room filter
-                if (room && show) {
-                    // This would need to be implemented based on session data
-                    // For now, we'll skip this implementation
-                }
-
-                if (show) {
-                    session.classList.remove('hidden');
-                } else {
-                    session.classList.add('hidden');
-                }
-            });
-        }
 
         function sendMessage(sessionId) {
             document.getElementById('messageSessionId').value = sessionId;
@@ -533,16 +480,7 @@
                 });
         }
 
-        function exportReport() {
-            const filters = {
-                status: document.getElementById('filter-status').value,
-                room: document.getElementById('filter-room').value,
-                date: new Date().toISOString().split('T')[0]
-            };
 
-            const queryString = new URLSearchParams(filters).toString();
-            window.open(`{{ route('koordinator.monitoring.export') }}?${queryString}`, '_blank');
-        }
 
         // Toast notification function
         function showToast(message, type = 'info') {
