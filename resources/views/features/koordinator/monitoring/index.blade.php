@@ -310,7 +310,8 @@
                 <i class="fa-solid fa-calendar-times text-6xl text-gray-400 mb-4"></i>
                 <h3 class="text-xl font-medium text-gray-900 mb-2">Tidak Ada Sesi Aktif</h3>
                 <p class="text-gray-600">Saat ini tidak ada sesi ujian yang sedang berlangsung.</p>
-                <a href="{{ route('koordinator.assignment.index') }}"
+                // TODO update koordinator.assignment.index link
+                <a href="#"
                     class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
                     <i class="fa-solid fa-plus mr-2"></i>
                     Lihat Penjadwalan
