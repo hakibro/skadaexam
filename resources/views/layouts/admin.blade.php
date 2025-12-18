@@ -71,7 +71,7 @@
                         ($user->guru && $user->guru->count() > 0) ||
                         $user->canCoordinate(); // Teachers and Koordinator can access pengawas
                     $hasKoordinatorAccess = $isAdmin || $user->canCoordinate();
-                    $hasRuanganAccess = $isAdmin || $user->canManageRuangan() || $user->canCoordinate();
+                    $hasRuanganAccess = $isAdmin || $user->canManageRuangan();
                 @endphp
 
                 <!-- Admin Panel -->
@@ -178,8 +178,9 @@
                 @endif
 
                 <!-- Koordinator Panel -->
-                @if ($hasKoordinatorAccess)
-                    <div class="space-y-1">
+                <div class="space-y-1">
+
+                    @if ($hasKoordinatorAccess)
                         <a href="{{ route('koordinator.dashboard') }}"
                             class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.dashboard') ? 'bg-yellow-600 text-white' : '' }}">
                             <i class="fa-solid fa-bullseye"></i>
@@ -209,13 +210,18 @@
                             <i class="fa-solid fa-file-export text-sm"></i>
                             <span class="text-sm">Laporan Koordinasi</span>
                         </a>
+                    @endif
+
+                    @if ($hasKoordinatorAccess | $hasNaskahAccess)
                         <a href="{{ route('koordinator.kehadiran.index') }}"
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('koordinator.kehadiran.*') ? 'bg-yellow-600 text-white' : '' }}">
                             <i class="fa-solid fa-check text-sm"></i>
                             <span class="text-sm">Laporan Kehadiran</span>
                         </a>
-                    </div>
-                @endif
+                    @endif
+                </div>
+
+
 
                 <!-- Ruangan Management -->
                 @if ($hasRuanganAccess)

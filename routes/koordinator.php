@@ -18,8 +18,6 @@ Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')
     Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
         Route::get('/', [KehadiranController::class, 'index'])->name('index');
         Route::get('/download', [KehadiranController::class, 'download'])->name('download');
-
-
     });
 
     // Upload Tata Tertib
@@ -66,5 +64,14 @@ Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')
         Route::get('/{beritaAcara}/download', [LaporanController::class, 'download'])->name('download');
         Route::get('/{beritaAcara}/edit', [LaporanController::class, 'edit'])->name('edit');
         Route::put('/{beritaAcara}', [LaporanController::class, 'update'])->name('update');
+    });
+});
+
+Route::middleware(['auth:web', 'role:admin|koordinator|naskah'])->prefix('koordinator')->name('koordinator.')->group(function () {
+
+    // Kehadiran Siswa
+    Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
+        Route::get('/', [KehadiranController::class, 'index'])->name('index');
+        Route::get('/download', [KehadiranController::class, 'download'])->name('download');
     });
 });
