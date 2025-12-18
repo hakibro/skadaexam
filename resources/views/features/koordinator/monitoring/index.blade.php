@@ -149,10 +149,11 @@
                         <!-- Session Header -->
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900">{{ $session->nama_sesi }}</h3>
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                    {{ $session->ruangan->nama_ruangan ?? 'Ruangan tidak ditemukan' }}</h3>
                                 <div class="flex items-center text-sm text-gray-600 mt-1">
                                     <i class="fa-solid fa-door-open mr-1"></i>
-                                    <span>{{ $session->ruangan->nama }}</span>
+                                    <span>{{ $session->nama_sesi ?? 'Sesi tidak ditemukan' }}</span>
                                     <span class="mx-2">•</span>
                                     <i class="fa-solid fa-clock mr-1"></i>
                                     <span>{{ $session->waktu_mulai }} - {{ $session->waktu_selesai }}</span>
