@@ -180,6 +180,21 @@
                     📢 Buat Pengumuman Ujian
                 </a>
             </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center mb-4">
+                    <div class="bg-red-100 rounded-lg p-3">
+                        <i class="fa-solid fa-check mr-2 text-red-600 text-xl"></i>
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900">Laporan Kehadiran Siswa</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">Lihat Keseluruhan kehadiran siswa di ruangan</p>
+                <a href="{{ route('koordinator.kehadiran.index') }}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-800">
+                    <i class="fa-solid fa-check mr-2"></i>
+
+                    Lihat Kehadiran Siswa
+                </a>
+            </div>
         </div>
 
         <!-- Recent Activities & Quick Overview -->

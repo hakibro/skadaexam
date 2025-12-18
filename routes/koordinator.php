@@ -5,6 +5,7 @@ use App\Http\Controllers\Features\Koordinator\DashboardController;
 use App\Http\Controllers\Features\Koordinator\MonitoringController;
 use App\Http\Controllers\Features\Koordinator\LaporanController;
 use App\Http\Controllers\Features\Koordinator\PengawasAssignmentController;
+use App\Http\Controllers\Features\Koordinator\KehadiranController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -12,6 +13,14 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')->name('koordinator.')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Kehadiran Siswa
+    Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
+        Route::get('/', [KehadiranController::class, 'index'])->name('index');
+        Route::get('/download', [KehadiranController::class, 'download'])->name('download');
+
+
+    });
 
     // Upload Tata Tertib
     Route::get('/upload-tata-tertib', [DashboardController::class, 'showUploadForm'])->name('upload-form');
