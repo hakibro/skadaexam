@@ -10,6 +10,7 @@ use App\Models\Guru;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Spatie\Browsershot\Browsershot;
 use Carbon\Carbon;
 
 class LaporanController extends Controller
