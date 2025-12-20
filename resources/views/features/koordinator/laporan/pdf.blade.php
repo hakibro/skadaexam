@@ -284,17 +284,17 @@
 
                 <div class="space-y-4">
                     <div class="bg-white p-4 rounded border-l-4 border-blue-500">
-                        <h4 class=" text-blue-700 mb-2">📋 Catatan Pembukaan</h4>
+                        <h4 class=" text-blue-700 mb-2"><i class="fas fa-solid fa-note-sticky"> Catatan Pembukaan</h4>
                         <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pembukaan ?? '-' }}</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-green-500">
-                        <h4 class=" text-green-700 mb-2">⏱️ Catatan Pelaksanaan</h4>
+                        <h4 class=" text-green-700 mb-2"><i class="fas fa-solid fa-clock"> Catatan Pelaksanaan</h4>
                         <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pelaksanaan ?? '-' }}</p>
                     </div>
 
                     <div class="bg-white p-4 rounded border-l-4 border-purple-500">
-                        <h4 class=" text-purple-700 mb-2">✅ Catatan Penutupan</h4>
+                        <h4 class=" text-purple-700 mb-2"><i class="fas fa-solid fa-check"> Catatan Penutupan</h4>
                         <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_penutupan ?? '-' }}</p>
                     </div>
                 </div>
