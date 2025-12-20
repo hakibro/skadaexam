@@ -414,13 +414,14 @@ class LaporanController extends Controller
 
         // Pdf::html(view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render())
         //     ->save($path);
-        Pdf::html(view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render())
+
+        Pdf::html(
+            view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render()
+        )
             ->withBrowsershot(function (Browsershot $browsershot) {
                 $browsershot
-                    ->setChromePath(
-                        '/root/.cache/puppeteer/chrome/linux-143.0.7499.169/chrome-linux64/chrome'
-                    )
-                    ->noSandbox();
+                    ->setChromePath(config('services.chrome.path'))
+                    ->addChromiumArguments(config('services.chrome.args'));
             })
             ->save($path);
 

@@ -41,4 +41,8 @@ return [
         'retry_delay' => env('SISDA_API_RETRY_DELAY', 1000),
         'user_agent' => env('SISDA_USER_AGENT', 'SKADA-Exam-System/1.0'),
     ],
+    'chrome' => [
+        'path' => env('CHROME_PATH', '/usr/bin/google-chrome'),
+        'args' => array_filter(explode(',', env('CHROME_ARGS', '--no-sandbox'))),
+    ],
 ];
