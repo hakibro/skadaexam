@@ -143,11 +143,11 @@
                                     <!-- Kolom 1 -->
                                     <div class="space-y-2">
                                         <div>
-                                            <span class=" text-slate-600">NSS: </span>
+                                            <span class=" text-slate-600">NSS: </span> <br>
                                             <span class="font-semibold text-slate-900">32.2.05.19.08.027</span>
                                         </div>
                                         <div>
-                                            <span class=" text-slate-600">NPSN: </span>
+                                            <span class=" text-slate-600">NPSN: </span><br>
                                             <span class="font-semibold text-slate-900">20542535</span>
                                         </div>
                                     </div>
@@ -155,12 +155,12 @@
                                     <!-- Kolom 2 -->
                                     <div class="space-y-2">
                                         <div>
-                                            <span class=" text-slate-600">Akte Notaris: </span>
+                                            <span class=" text-slate-600">Akte Notaris: </span><br>
                                             <span class="font-semibold text-slate-900">Sjariefuddin Pasuruan Jo Akhmad
                                                 Shohib, Sh No. 04 Tahun 2000</span>
                                         </div>
                                         <div>
-                                            <span class=" text-slate-600">Alamat: </span>
+                                            <span class=" text-slate-600">Alamat: </span><br>
                                             <span class="font-semibold text-slate-900">Jl. Pesantren Ngalah No. 16
                                                 Pandean Sengonagung Purwosari Pasuruan</span>
                                         </div>
