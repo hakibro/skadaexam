@@ -7,7 +7,6 @@
     <title>Berita Acara Ujian</title>
     <link href="{{ public_path('css/pdf.css') }}" rel="stylesheet" type="text/css">
 
-
     <style>
         body {
             box-sizing: border-box;
@@ -284,19 +283,49 @@
 
                 <div class="space-y-4">
                     <div class="bg-white p-4 rounded border-l-4 border-blue-500">
-                        <h4 class=" text-blue-700 mb-2"><i class="fas fa-solid fa-note-sticky"> Catatan Pembukaan</h4>
-                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pembukaan ?? '-' }}</p>
+                        <h4 class="text-blue-700 mb-2 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current"
+                                viewBox="0 0 448 512">
+                                <path
+                                    d="M64 32C28.7 32 0 60.7 0 96v320c0 35.3 28.7 64 64 64h224c17 0 33.3-6.7 45.3-18.7l96-96c12-12 18.7-28.3 18.7-45.3V96c0-35.3-28.7-64-64-64H64z" />
+                            </svg>
+                            Catatan Pembukaan
+                        </h4>
+                        <p class="text-sm text-gray-700">
+                            {{ $beritaAcara->catatan_pembukaan ?? '-' }}
+                        </p>
                     </div>
+
 
                     <div class="bg-white p-4 rounded border-l-4 border-green-500">
-                        <h4 class=" text-green-700 mb-2"><i class="fas fa-solid fa-clock"> Catatan Pelaksanaan</h4>
-                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_pelaksanaan ?? '-' }}</p>
+                        <h4 class="text-green-700 mb-2 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current"
+                                viewBox="0 0 512 512">
+                                <path
+                                    d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm16-384v112l96 48-16 32-112-56V128h32z" />
+                            </svg>
+                            Catatan Pelaksanaan
+                        </h4>
+                        <p class="text-sm text-gray-700">
+                            {{ $beritaAcara->catatan_pelaksanaan ?? '-' }}
+                        </p>
                     </div>
 
+
                     <div class="bg-white p-4 rounded border-l-4 border-purple-500">
-                        <h4 class=" text-purple-700 mb-2"><i class="fas fa-solid fa-check"> Catatan Penutupan</h4>
-                        <p class="text-sm text-gray-700">{{ $beritaAcara->catatan_penutupan ?? '-' }}</p>
+                        <h4 class="text-purple-700 mb-2 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current"
+                                viewBox="0 0 512 512">
+                                <path
+                                    d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm120.3-286.6l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-70.6-70.6 22.6-22.6 64 64 124.7-124.7 22.6 22.6z" />
+                            </svg>
+                            Catatan Penutupan
+                        </h4>
+                        <p class="text-sm text-gray-700">
+                            {{ $beritaAcara->catatan_penutupan ?? '-' }}
+                        </p>
                     </div>
+
                 </div>
             </div>
 
