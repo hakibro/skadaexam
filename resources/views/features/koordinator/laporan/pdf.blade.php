@@ -104,62 +104,38 @@
                         <!-- Header Section - Two Columns -->
                         <div class="mb-8">
                             <div class="flex gap-8 items-center justify-center">
-                                <!-- Logo Section - Left Column -->
-                                <div class="flex justify-center">
-                                    <div
-                                        class="grid grid-cols-2 gap-3 bg-white rounded-xl p-4 shadow-xl ring-1 ring-slate-200">
-                                        <!-- Logo Sekolah -->
-                                        <div
-                                            class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 ring-1 ring-blue-100">
-                                            <svg class="h-8 w-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                                <path
-                                                    d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
-                                            </svg>
-                                        </div>
+                                <!-- Logo Section -->
+                                <div
+                                    class="flex flex-wrap justify-center gap-4 bg-white rounded-xl p-4 shadow-xl ring-1 ring-slate-200">
 
-                                        <!-- Logo SMK-PK -->
-                                        <div
-                                            class="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 ring-1 ring-orange-100">
-                                            <svg class="h-8 w-8 text-orange-500" fill="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path
-                                                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z" />
-                                            </svg>
-                                        </div>
-
-                                        <!-- Logo Pusmendik -->
-                                        <div
-                                            class="flex h-12 w-12 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-100">
-                                            <svg class="h-8 w-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                                <path
-                                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                            </svg>
-                                        </div>
-
-                                        <!-- Logo Indonesia -->
-                                        <div
-                                            class="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100 overflow-hidden">
-                                            <div class="h-6 w-9 flex flex-col rounded">
-                                                <div class="h-1/2 w-full bg-red-500"></div>
-                                                <div class="h-1/2 w-full bg-white"></div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <img src="{{ public_path('assets/logo-compressed.png') }}"
+                                        class="h-16 object-contain">
+                                    <img src="{{ public_path('assets/smk-pk-compressed.png') }}"
+                                        class="h-16 object-contain">
+                                    <img src="{{ public_path('assets/pusmendik.svg') }}"
+                                        class="h-12 object-contain w-full">
                                 </div>
 
-                                <!-- Text Section - Right Column -->
+
+
+
+                                <!-- Text Section -->
                                 <div class="text-left">
-                                    <p class="text-lg font-semibold leading-7 text-blue-600 mb-3">YAYASAN DARUT TAQWA
+                                    <p class="text-lg font-semibold leading-7 text-blue-600 mb-3">
+                                        YAYASAN DARUT TAQWA
                                     </p>
-                                    <h1
-                                        class="text-3xl font-bold tracking-tight text-slate-900 lg:text-4xl xl:text-5xl mb-3">
+
+                                    <h1 class="text-3xl font-bold tracking-tight text-slate-900 mb-3">
                                         <span class="block text-blue-600">SMK DARUT TAQWA</span>
                                     </h1>
-                                    <p class="text-lg leading-8 text-slate-600 ">SENGONAGUNG PURWOSARI
-                                        PASURUAN</p>
+
+                                    <p class="text-lg leading-8 text-slate-600">
+                                        SENGONAGUNG PURWOSARI PASURUAN
+                                    </p>
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- Information Card -->
                         <div class="mx-auto max-w-4xl mb-4">
