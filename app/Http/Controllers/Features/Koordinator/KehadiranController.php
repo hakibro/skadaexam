@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\SesiRuanganSiswa;
 use App\Models\Ruangan;
 use App\Models\SesiRuangan;
+use App\Exports\KehadiranExport;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Kelas;
 use Carbon\Carbon;
 use App\Models\Siswa;
@@ -51,10 +53,7 @@ class KehadiranController extends Controller
             });
         }
 
-        // Sesi
-        if ($request->filled('sesi_id')) {
-            $query->where('sesi_ruangan_id', $request->sesi_id);
-        }
+
 
         // Tingkat
         if ($request->filled('tingkat')) {
@@ -83,83 +82,13 @@ class KehadiranController extends Controller
     }
 
     /**
-     * Download sesuai filter (CSV – ringan & cepat)
+     * Download sesuai filter (Excel – ringan & cepat)
      */
-    public function download(Request $request)
+    public function downloadExcel(Request $request)
     {
-        $query = DB::table('kehadiran')
-            ->select([
-                'users.nama',
-                'kehadiran.kategori',
-                'kehadiran.status',
-                'kehadiran.tanggal',
-                'ruangan.nama as ruangan',
-                'sesi.nama as sesi',
-                'kelas.nama as kelas',
-                'jurusan.nama as jurusan',
-            ])
-            ->leftJoin('users', 'users.id', '=', 'kehadiran.user_id')
-            ->leftJoin('ruangan', 'ruangan.id', '=', 'kehadiran.ruangan_id')
-            ->leftJoin('sesi', 'sesi.id', '=', 'kehadiran.sesi_id')
-            ->leftJoin('kelas', 'kelas.id', '=', 'kehadiran.kelas_id')
-            ->leftJoin('jurusan', 'jurusan.id', '=', 'kelas.jurusan_id');
-
-        // === FILTER SAMA PERSIS DENGAN INDEX ===
-        foreach ($request->query() as $key => $value) {
-            if ($value === null || $value === '')
-                continue;
-
-            match ($key) {
-                'kategori' => $query->where('kehadiran.kategori', $value),
-                'status' => $query->where('kehadiran.status', $value),
-                'ruangan_id' => $query->where('kehadiran.ruangan_id', $value),
-                'sesi_id' => $query->where('kehadiran.sesi_id', $value),
-                'kelas_id' => $query->where('kehadiran.kelas_id', $value),
-                'jurusan_id' => $query->where('kelas.jurusan_id', $value),
-                'tingkat' => $query->where('kelas.tingkat', $value),
-                default => null,
-            };
-        }
-
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('kehadiran.tanggal', [
-                Carbon::parse($request->start_date)->startOfDay(),
-                Carbon::parse($request->end_date)->endOfDay(),
-            ]);
-        }
-
-        $data = $query->orderBy('kehadiran.tanggal')->get();
-
-        // ================= EXPORT CSV =================
-        $filename = 'kehadiran_' . now()->format('Ymd_His') . '.csv';
-
-        return response()->streamDownload(function () use ($data) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, [
-                'Nama',
-                'Kategori',
-                'Status',
-                'Tanggal',
-                'Ruangan',
-                'Sesi',
-                'Kelas',
-                'Jurusan'
-            ]);
-
-            foreach ($data as $row) {
-                fputcsv($file, [
-                    $row->nama,
-                    $row->kategori,
-                    $row->status,
-                    $row->tanggal,
-                    $row->ruangan,
-                    $row->sesi,
-                    $row->kelas,
-                    $row->jurusan,
-                ]);
-            }
-
-            fclose($file);
-        }, $filename);
+        return Excel::download(
+            new KehadiranExport($request),
+            'laporan-kehadiran-' . now()->format('Y-m-d_H-i-s') . '.xlsx'
+        );
     }
 }

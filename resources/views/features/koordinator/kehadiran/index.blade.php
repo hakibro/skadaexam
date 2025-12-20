@@ -128,6 +128,13 @@
                         Reset
                     </a>
                 </div>
+                <a href="{{ route('koordinator.kehadiran.export', request()->query()) }}"
+                    class="inline-flex items-center px-4 py-2 rounded-lg
+                       bg-green-600 text-white text-sm font-medium
+                       hover:bg-green-700 focus:outline-none focus:ring focus:ring-green-300">
+                    <i class="fas fa-solid fa-download mr-2"></i>
+                    Download Excel
+                </a>
             </div>
         </form>
 

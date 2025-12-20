@@ -73,5 +73,7 @@ Route::middleware(['auth:web', 'role:admin|koordinator|naskah'])->prefix('koordi
     Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
         Route::get('/', [KehadiranController::class, 'index'])->name('index');
         Route::get('/download', [KehadiranController::class, 'download'])->name('download');
+        Route::get('/export', [KehadiranController::class, 'downloadExcel'])
+            ->name('export');
     });
 });
