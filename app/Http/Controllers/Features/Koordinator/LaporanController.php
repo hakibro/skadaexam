@@ -412,7 +412,16 @@ class LaporanController extends Controller
         $filename = 'berita_acara_' . $beritaAcara->id . '.pdf';
         $path = storage_path('app/public/' . $filename);
 
+        // Pdf::html(view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render())
+        //     ->save($path);
         Pdf::html(view('features.koordinator.laporan.pdf', compact('beritaAcara'))->render())
+            ->withBrowsershot(function (Browsershot $browsershot) {
+                $browsershot
+                    ->setChromePath(
+                        '/root/.cache/puppeteer/chrome/linux-143.0.7499.169/chrome-linux64/chrome'
+                    )
+                    ->noSandbox();
+            })
             ->save($path);
 
         return response()->file($path); // ini akan menampilkan PDF di browser
