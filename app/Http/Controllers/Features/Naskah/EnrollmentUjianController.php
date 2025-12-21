@@ -290,7 +290,7 @@ class EnrollmentUjianController extends Controller
         $options = $sesiRuangans->map(function ($sesi) {
             return [
                 'id' => $sesi->id,
-                'text' => $sesi->nama_sesi,
+                'text' => $sesi->ruangan->nama_ruangan . ' - ' . $sesi->nama_sesi,
             ];
         });
 
