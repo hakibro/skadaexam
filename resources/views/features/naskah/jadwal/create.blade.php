@@ -135,7 +135,7 @@
                             @enderror
                         </div>
 
-                        <div>
+                        {{-- <div>
                             <label for="scheduling_mode" class="block text-sm font-medium text-gray-700">Mode
                                 Penjadwalan</label>
                             <select name="scheduling_mode" id="scheduling_mode"
@@ -159,10 +159,11 @@
                             @error('scheduling_mode')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
-                        </div>
+                        </div> --}}
 
                         <div class="md:col-span-2">
-                            <label for="deskripsi" class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                            <label for="deskripsi" class="block text-sm font-medium text-gray-700">Deskripsi
+                                (optional)</label>
                             <textarea name="deskripsi" id="deskripsi" rows="3"
                                 class="mt-1 form-textarea block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('deskripsi') border-red-500 @enderror"
                                 placeholder="Deskripsi atau petunjuk tambahan untuk ujian">{{ old('deskripsi') }}</textarea>
@@ -173,7 +174,7 @@
                     </div>
 
                     <!-- Kelas Target Section -->
-                    <div class="bg-white p-4 rounded-md border border-gray-200 mb-6">
+                    {{-- <div class=" bg-white p-4 rounded-md border border-gray-200 mb-6">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Kelas Target</h4>
                         <p class="text-sm text-gray-600 mb-4">Pilih kelas yang akan mengikuti ujian ini. Jika tidak ada
                             kelas yang dipilih, sistem akan secara otomatis memilih kelas berdasarkan tingkat dan jurusan
@@ -194,7 +195,7 @@
                                 </div>
                             @endforeach
                         </div>
-                    </div>
+                    </div> --}}
 
                     <!-- Pengaturan Ujian Section -->
                     <div class="bg-gray-50 p-4 rounded-md">
