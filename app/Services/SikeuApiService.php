@@ -12,8 +12,8 @@ class SikeuApiService
 
     public function __construct()
     {
-        $this->baseUrl = 'https://api.daruttaqwa.or.id/sikeu/pagu/v1/uas1/c98803b227e70b47c3c26a736d61b44c/20252026';
-        $this->timeout = 30;
+        $this->baseUrl = config('services.sikeu.base_url');
+        $this->timeout = config('services.sikeu.timeout');
     }
 
     /**

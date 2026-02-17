@@ -385,7 +385,8 @@ class EnrollmentUjianController extends Controller
     public function bulkEnrollment(Request $request)
     {
         $request->validate([
-            'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
+            // 'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
+            'jadwal_id' => 'required|exists:jadwal_ujian,id',
             'kelas_ids' => 'required|array',
             'kelas_ids.*' => 'exists:kelas,id',
         ]);
@@ -393,14 +394,12 @@ class EnrollmentUjianController extends Controller
         try {
             DB::beginTransaction();
 
-            $sesiRuangan = SesiRuangan::findOrFail($request->sesi_ruangan_id);
-
             // Get all students from selected kelas
             $siswaList = Siswa::whereIn('kelas_id', $request->kelas_ids)
                 ->get();
 
             // Get already enrolled students
-            $enrolledSiswaIds = EnrollmentUjian::where('sesi_ruangan_id', $sesiRuangan->id)
+            $enrolledSiswaIds = EnrollmentUjian::where('jadwal_ujian_id', $request->jadwal_id)
                 ->pluck('siswa_id')
                 ->toArray();
 
@@ -408,20 +407,30 @@ class EnrollmentUjianController extends Controller
             $skippedCount = 0;
 
             foreach ($siswaList as $siswa) {
-                // Skip if already enrolled
+                // 1. Skip jika sudah terdaftar
                 if (in_array($siswa->id, $enrolledSiswaIds)) {
                     $skippedCount++;
                     continue;
                 }
 
-                // Create new enrollment
-                // Get the first jadwal ujian from the sesi ruangan relationship
-                $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
+                // Ambil sesi ruangan yang terhubung ke jadwal_id tertentu DAN dimiliki oleh siswa ini
+                $sesiRuangan = $siswa->sesiRuangan()
+                    ->whereHas('jadwalUjians', function ($q) use ($request) {
+                        $q->where('jadwal_ujian.id', $request->jadwal_id);
+                    })
+                    ->first();
 
+                if (!$sesiRuangan) {
+                    // Tambahkan penanganan jika sesi tidak ditemukan agar tidak error saat create
+                    Log::warning("Siswa {$siswa->nama} belum diplot ke ruangan untuk jadwal ini.");
+                    continue;
+                }
+
+                // 4. Create Enrollment
                 EnrollmentUjian::create([
                     'siswa_id' => $siswa->id,
                     'sesi_ruangan_id' => $sesiRuangan->id,
-                    'jadwal_ujian_id' => $jadwalUjian ? $jadwalUjian->id : null,
+                    'jadwal_ujian_id' => $request->jadwal_id,
                     'status_enrollment' => 'enrolled',
                 ]);
 

@@ -15,13 +15,10 @@ class SesiRuanganSiswa extends Model
         'sesi_ruangan_id',
         'siswa_id',
         'status_kehadiran',
-        'token',
-        'token_expired_at',
         'keterangan'
     ];
 
     protected $casts = [
-        'token_expired_at' => 'datetime',
         'status_kehadiran' => 'string'
     ];
 

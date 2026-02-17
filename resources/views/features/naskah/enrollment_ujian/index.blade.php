@@ -13,7 +13,7 @@
                     <div id="bulk-actions" class="flex gap-2 my-2" style="display:none;">
                         <button type="button" class="bulk-action-btn" data-action="enrolled">Enroll Ulang</button>
                         <button type="button" class="bulk-action-btn" data-action="cancelled">Batalkan</button>
-                        <button type="button" class="bulk-action-btn" data-action="delete">Hapus</button>
+                        <button type="button" class="bulk-action-btn" data-action="deleted">Hapus</button>
 
                     </div>
                     <a href="{{ route('naskah.enrollment-ujian.create') }}"
@@ -358,14 +358,6 @@
                             </select>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="bulk_sesi_ruangan_id" class="block mb-2 text-sm font-medium text-gray-900">Sesi
-                                Ruangan <span class="text-red-500">*</span></label>
-                            <select id="bulk_sesi_ruangan_id" name="sesi_ruangan_id" required disabled
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option value="">Pilih Sesi Ruangan</option>
-                            </select>
-                        </div>
 
                         <div>
                             <label class="block mb-2 text-sm font-medium text-gray-900">Kelas <span
@@ -430,15 +422,19 @@
             }
 
             // Toggle semua row checkbox saat header checkbox dicentang
-            selectAll.addEventListener('change', function() {
-                rowCheckboxes.forEach(cb => cb.checked = this.checked);
-                toggleBulkActions();
-            });
+            if (selectAll) {
+                selectAll.addEventListener('change', function() {
+                    rowCheckboxes.forEach(cb => cb.checked = this.checked);
+                    toggleBulkActions();
+                });
+            }
 
             // Toggle individual row checkbox
-            rowCheckboxes.forEach(cb => {
-                cb.addEventListener('change', toggleBulkActions);
-            });
+            if (rowCheckboxes.length > 0) {
+                rowCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', toggleBulkActions);
+                });
+            }
 
             // Fungsi konfirmasi bulk action
             function confirmBulkAction(action) {

@@ -137,10 +137,11 @@ class Siswa extends Authenticatable
     /**
      * Get all sesi ruangan that this siswa is enrolled in.
      */
+    // Cari function sesiRuangan() dan ubah menjadi seperti ini:
     public function sesiRuangan()
     {
         return $this->belongsToMany(SesiRuangan::class, 'sesi_ruangan_siswa', 'siswa_id', 'sesi_ruangan_id')
-            ->withPivot('status', 'waktu_masuk', 'waktu_keluar', 'last_activity', 'durasi_aktif', 'catatan')
+            ->withPivot('status_kehadiran', 'keterangan') // Sesuaikan dengan kolom yang ada di DB
             ->withTimestamps();
     }
 
