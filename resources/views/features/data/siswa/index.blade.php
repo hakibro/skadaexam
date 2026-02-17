@@ -241,7 +241,7 @@
             <div class="bg-white shadow rounded-lg p-6">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                     {{-- Search Input --}}
-                    <div class="md:col-span-5">
+                    <div class="md:col-span-4">
                         <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -296,6 +296,17 @@
                                     </option>
                                 @endforeach
                             @endif
+                        </select>
+                    </div>
+                    {{-- Per Halaman --}}
+                    <div class="md:col-span-1">
+                        <label for="per-page" class="block text-sm font-medium text-gray-700 mb-2">Per Halaman</label>
+                        <select id="per-page" name="per_page"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
+                            <option value="200" {{ request('per_page') == '200' ? 'selected' : '' }}>200</option>
+                            <option value="500" {{ request('per_page') == '500' ? 'selected' : '' }}>500</option>
                         </select>
                     </div>
 
@@ -397,6 +408,7 @@
             const paymentFilter = document.getElementById('payment-filter');
             const rekomendasiFilter = document.getElementById('rekomendasi-filter');
             const kelasFilter = document.getElementById('kelas-filter');
+            const perPageFilter = document.getElementById('per-page');
             const clearFiltersBtn = document.getElementById('clear-filters');
             const loadingState = document.getElementById('loading-state');
             const resultsContainer = document.getElementById('results-container');
@@ -501,7 +513,8 @@
                     search: searchInput?.value || '',
                     status_pembayaran: paymentFilter?.value || '',
                     rekomendasi: rekomendasiFilter?.value || '',
-                    kelas_id: kelasFilter?.value || ''
+                    kelas_id: kelasFilter?.value || '',
+                    per_page: perPageFilter?.value || ''
                 };
 
                 Object.keys(filters).forEach(key => {
@@ -569,7 +582,7 @@
                 searchInput.addEventListener('input', performSearch);
             }
 
-            [paymentFilter, rekomendasiFilter, kelasFilter].forEach(filter => {
+            [paymentFilter, rekomendasiFilter, kelasFilter, perPageFilter].forEach(filter => {
                 if (filter) {
                     filter.addEventListener('change', performSearch);
                 }
