@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class JadwalUjianSesiRuangan extends Pivot
 {
+    // Beritahu Laravel bahwa pivot ini punya ID unik
+    public $incrementing = true;
     protected $table = 'jadwal_ujian_sesi_ruangan';
 
     // Allow mass assignment

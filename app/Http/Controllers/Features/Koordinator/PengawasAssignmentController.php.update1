@@ -19,54 +19,46 @@ class PengawasAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        // Filter by date, default to today
+        // 1. Filter berdasarkan tanggal
         $tanggal = $request->filled('tanggal') ? $request->tanggal : now()->format('Y-m-d');
 
-        // Get all session pivot data for the selected date
-        // We use the pivot model directly to get all jadwals for that date
-        $pivotQuery = JadwalUjianSesiRuangan::whereHas('jadwalUjian', function ($q) use ($tanggal) {
-            $q->whereDate('tanggal', $tanggal);
-        })
-            ->with(['sesiRuangan.ruangan', 'jadwalUjian.mapel', 'pengawas']);
+        // 2. Ambil semua JadwalUjian dengan relasi sesiRuangans dan detailnya
+        // Kita muat (eager load) sesiRuangans beserta pivotnya (pengawas) dan ruangan
+        $jadwalUjians = JadwalUjian::with([
+            'sesiRuangans' => function ($query) {
+                $query->with(['ruangan']);
+            }
+        ])
+            ->whereDate('tanggal', $tanggal)
+            ->get();
 
-        // Clone for stats
-        $allPivots = (clone $pivotQuery)->get();
+        // 3. Ambil semua sesiRuangan dari koleksi $jadwalUjians
+        $sesiRuangans = $jadwalUjians->flatMap(function ($jadwal) {
+            return $jadwal->sesiRuangans->map(function ($sesi) use ($jadwal) {
+                // Kita ambil pengawas dari data pivot
+                // Relasi ini bekerja karena di model JadwalUjian ada ->withPivot('pengawas_id')
+                $pengawasId = $sesi->pivot->pengawas_id;
 
-        // Map data for the view
-        $sesiRuangans = $allPivots->map(function ($pivot) {
-            $sesi = $pivot->sesiRuangan;
-            $jadwal = $pivot->jadwalUjian;
+                // Tambahkan atribut custom untuk memudahkan tampilan di Blade
+                $sesi->judul_jadwal = $jadwal->judul ?? '-';
+                $sesi->pengawas_for_jadwal = $pengawasId ? Guru::find($pengawasId) : null;
+                $sesi->pivot_id = $sesi->pivot->id; // ID dari tabel jadwal_ujian_sesi_ruangan
 
-            return (object) [
-                'id' => $sesi->id, // Sesi ID
-                'pivot_id' => $pivot->id, // Pivot ID for unique reference
-                'jadwal_ujian_id' => $jadwal->id, // Jadwal ID
-                'nama_sesi' => $sesi->nama_sesi,
-                'waktu_mulai' => $sesi->waktu_mulai,
-                'waktu_selesai' => $sesi->waktu_selesai,
-                'status' => $sesi->status,
-                'ruangan' => $sesi->ruangan,
-                'mapel' => $jadwal->mapel->nama_mapel ?? $jadwal->judul,
-                'pengawas_for_jadwal' => $pivot->pengawas, // The assigned guru
-            ];
+                return $sesi;
+            });
         });
 
-        // Get available pengawas
-        $availablePengawas = Guru::whereHas('user', function ($query) {
-            $query->whereHas('roles', function ($q) {
-                $q->where('name', 'pengawas');
-            });
-        })->orderBy('nama')->get();
 
-        // Calculate Stats based on unique sessions assigned
-        $uniqueSessions = $sesiRuangans->unique('id');
-        $totalSesi = $uniqueSessions->count();
+        // 4. Ambil daftar pengawas (Tetap sama)
+        $availablePengawas = Guru::whereHas('user.roles', function ($q) {
+            $q->where('name', 'pengawas');
+        })
+            ->orderBy('nama')
+            ->get();
 
-        // A session is "assigned" if at least one jadwal has a pengawas (assuming logic syncs them)
-        // or strictly check if pengawas exists
-        $assignedSesi = $uniqueSessions->filter(function ($s) {
-            return !is_null($s->pengawas_for_jadwal);
-        })->count();
+        // 5. Statistik
+        $totalSesi = $sesiRuangans->count();
+        $assignedSesi = $sesiRuangans->whereNotNull('pengawas_for_jadwal')->count();
 
         $stats = [
             'total_sesi' => $totalSesi,
@@ -74,9 +66,6 @@ class PengawasAssignmentController extends Controller
             'unassigned' => $totalSesi - $assignedSesi,
             'total_pengawas' => $availablePengawas->count(),
         ];
-
-        // Pass jadwalUjians for filter dropdown if needed, or just date
-        $jadwalUjians = JadwalUjian::whereDate('tanggal', $tanggal)->get();
 
         return view('features.koordinator.pengawas_assignment.index', compact(
             'jadwalUjians',
@@ -93,15 +82,19 @@ class PengawasAssignmentController extends Controller
     public function assign(Request $request)
     {
         $request->validate([
-            'jadwal_ujian_id' => 'required|exists:jadwal_ujian,id',
-            'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id',
+            'pivot_id' => 'required|exists:jadwal_ujian_sesi_ruangan,id',
             'pengawas_id' => 'required|exists:guru,id'
         ]);
 
-        $jadwal = JadwalUjian::findOrFail($request->jadwal_ujian_id);
-        $sesi = SesiRuangan::findOrFail($request->sesi_ruangan_id);
+        // Ambil data pivot beserta relasinya
+        $pivot = JadwalUjianSesiRuangan::with(['jadwalUjian', 'sesiRuangan'])->findOrFail($request->pivot_id);
 
-        $result = $this->assignPengawasToSession($jadwal, $sesi, $request->pengawas_id);
+        // Tetap gunakan fungsi internal Anda dengan mengirimkan objek dari relasi
+        $result = $this->assignPengawasToSession(
+            $pivot->jadwalUjian,
+            $pivot->sesiRuangan,
+            $request->pengawas_id
+        );
 
         return response()->json($result);
     }
@@ -112,12 +105,14 @@ class PengawasAssignmentController extends Controller
     public function unassign(Request $request)
     {
         $request->validate([
-            'jadwal_ujian_id' => 'required|exists:jadwal_ujian,id',
-            'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id'
+            'pivot_id' => 'required|exists:jadwal_ujian_sesi_ruangan,id'
+
         ]);
 
-        $jadwal = JadwalUjian::findOrFail($request->jadwal_ujian_id);
-        $sesi = SesiRuangan::findOrFail($request->sesi_ruangan_id);
+        $pivot = JadwalUjianSesiRuangan::with(['jadwalUjian', 'sesiRuangan'])->findOrFail($request->pivot_id);
+
+        $jadwal = $pivot->jadwalUjian;
+        $sesi = $pivot->sesiRuangan;
 
         $result = $this->removePengawasFromSession($jadwal, $sesi);
 
@@ -164,196 +159,217 @@ class PengawasAssignmentController extends Controller
      */
     public function getPengawasAvailability(Request $request)
     {
-        $request->validate([
-            'jadwal_ujian_id' => 'required|exists:jadwal_ujian,id',
-            'sesi_ruangan_id' => 'required|exists:sesi_ruangan,id'
-        ]);
+        // Gunakan try-catch agar jika error, respon tetap JSON (bukan HTML)
+        try {
+            $request->validate([
+                'pivot_id' => 'required|exists:jadwal_ujian_sesi_ruangan,id',
+            ]);
 
-        $jadwalUjian = JadwalUjian::findOrFail($request->jadwal_ujian_id);
-        $sesiRuangan = SesiRuangan::findOrFail($request->sesi_ruangan_id);
-        $date = $jadwalUjian->tanggal->format('Y-m-d');
+            $pivot = JadwalUjianSesiRuangan::with(['jadwalUjian', 'sesiRuangan.ruangan'])->findOrFail($request->pivot_id);
 
-        // Get all pengawas
-        $allPengawas = Guru::whereHas('user', function ($query) {
-            $query->whereHas('roles', function ($q) {
+            $jadwalUjian = $pivot->jadwalUjian;
+            $sesiRuangan = $pivot->sesiRuangan;
+
+            // PROTEKSI: Pastikan tanggal diproses sebagai Carbon
+            $date = ($jadwalUjian->tanggal instanceof Carbon)
+                ? $jadwalUjian->tanggal->format('Y-m-d')
+                : Carbon::parse($jadwalUjian->tanggal)->format('Y-m-d');
+
+            $currentRuanganId = $sesiRuangan->ruangan_id;
+
+            // Ambil pengawas
+            $allPengawas = Guru::whereHas('user.roles', function ($q) {
                 $q->where('name', 'pengawas');
-            });
-        })->get();
+            })->get();
 
-        $availablePengawas = [];
-        $unavailablePengawas = [];
+            $availablePengawas = [];
+            $unavailablePengawas = [];
 
-        foreach ($allPengawas as $pengawas) {
-            // We need to check if pengawas is assigned to another room at the same time
-            $currentRuangan = $sesiRuangan->ruangan;
-            $currentRuanganId = $currentRuangan ? $currentRuangan->id : null;
-
-            // Get all assignments for this pengawas that overlap with the current session
-            $existingAssignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawas->id)
-                ->whereHas('jadwalUjian', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
-                })
-                ->whereHas('sesiRuangan', function ($q) use ($sesiRuangan) {
-                    $q->where(function ($query) use ($sesiRuangan) {
-                        $query->where(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '<=', $sesiRuangan->waktu_mulai)
-                                ->where('waktu_selesai', '>', $sesiRuangan->waktu_mulai);
-                        })->orWhere(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '<', $sesiRuangan->waktu_selesai)
-                                ->where('waktu_selesai', '>=', $sesiRuangan->waktu_selesai);
-                        })->orWhere(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '>=', $sesiRuangan->waktu_mulai)
-                                ->where('waktu_selesai', '<=', $sesiRuangan->waktu_selesai);
+            foreach ($allPengawas as $pengawas) {
+                // Cek tugas lain di jam yang sama (Overlap Logic)
+                $existingAssignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawas->id)
+                    ->where('id', '!=', $pivot->id) // Abaikan sesi ini sendiri
+                    ->whereHas('jadwalUjian', function ($q) use ($date) {
+                        $q->whereDate('tanggal', $date);
+                    })
+                    ->whereHas('sesiRuangan', function ($q) use ($sesiRuangan) {
+                        $q->where(function ($query) use ($sesiRuangan) {
+                            $query->where(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '<=', $sesiRuangan->waktu_mulai)
+                                    ->where('waktu_selesai', '>', $sesiRuangan->waktu_mulai);
+                            })->orWhere(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '<', $sesiRuangan->waktu_selesai)
+                                    ->where('waktu_selesai', '>=', $sesiRuangan->waktu_selesai);
+                            })->orWhere(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '>=', $sesiRuangan->waktu_mulai)
+                                    ->where('waktu_selesai', '<=', $sesiRuangan->waktu_selesai);
+                            });
                         });
-                    });
-                })
-                ->with(['jadwalUjian', 'sesiRuangan.ruangan'])
-                ->get();
+                    })
+                    ->with(['jadwalUjian', 'sesiRuangan.ruangan'])
+                    ->get();
 
-            // Check if any assignments are in different rooms
-            $conflictInDifferentRoom = false;
-            $conflictAssignment = null;
+                $conflictInDifferentRoom = false;
+                $conflictAssignment = null;
 
-            foreach ($existingAssignments as $assignment) {
-                $assignmentRuangan = $assignment->sesiRuangan->ruangan;
-                $assignmentRuanganId = $assignmentRuangan ? $assignmentRuangan->id : null;
-
-                // If assignment is in a different room, it's a conflict
-                if ($assignmentRuanganId && $currentRuanganId && $assignmentRuanganId != $currentRuanganId) {
-                    $conflictInDifferentRoom = true;
-                    $conflictAssignment = $assignment;
-                    break;
+                foreach ($existingAssignments as $assignment) {
+                    $assignmentRuanganId = $assignment->sesiRuangan->ruangan_id;
+                    if ($assignmentRuanganId && $currentRuanganId && $assignmentRuanganId != $currentRuanganId) {
+                        $conflictInDifferentRoom = true;
+                        $conflictAssignment = $assignment;
+                        break;
+                    }
                 }
-            }
 
-            // If no conflict in different room, pengawas is available
-            if (!$conflictInDifferentRoom) {
-                $availablePengawas[] = [
-                    'id' => $pengawas->id,
-                    'nama' => $pengawas->nama,
-                    'nip' => $pengawas->nip,
-                    'email' => $pengawas->email
-                ];
+                if (!$conflictInDifferentRoom) {
+                    // MASUKKAN KE AVAILABLE
+                    $availablePengawas[] = [
+                        'id' => $pengawas->id,
+                        'nama' => $pengawas->nama,
+                        'nip' => $pengawas->nip
+                    ];
 
-                // If there are assignments in the same room, add a note
-                if (!$existingAssignments->isEmpty()) {
-                    $firstAssignment = $existingAssignments->first();
-                    $conflictSesi = $firstAssignment->sesiRuangan;
-                    $conflictJadwal = $firstAssignment->jadwalUjian;
-
+                    // Jika ada di ruangan yang sama, tambahkan ke list 'Peringatan' (bukan unavailable keras)
+                    if (!$existingAssignments->isEmpty()) {
+                        $first = $existingAssignments->first();
+                        $unavailablePengawas[] = [
+                            'id' => $pengawas->id,
+                            'nama' => $pengawas->nama,
+                            'note' => 'Sudah ada di ruangan ini (Sesi: ' . ($first->sesiRuangan->nama_sesi ?? '-') . ')',
+                            'is_soft_conflict' => true
+                        ];
+                    }
+                } else {
+                    // BENTROK KERAS (Ruangan Berbeda)
                     $unavailablePengawas[] = [
                         'id' => $pengawas->id,
                         'nama' => $pengawas->nama,
-                        'conflict_session' => $conflictSesi->nama_sesi,
-                        'conflict_ruangan' => $conflictSesi->ruangan->nama_ruangan ?? 'Unknown',
-                        'conflict_jadwal' => $conflictJadwal->judul,
-                        'conflict_time' => $conflictSesi->waktu_mulai . ' - ' . $conflictSesi->waktu_selesai,
-                        'note' => 'Sudah ditugaskan di ruangan yang sama, dapat ditugaskan untuk mapel lain'
+                        'conflict_session' => $conflictAssignment->sesiRuangan->nama_sesi ?? '-',
+                        'conflict_ruangan' => $conflictAssignment->sesiRuangan->ruangan->nama_ruangan ?? 'Unknown',
+                        'note' => 'BentroK di Ruangan Lain',
+                        'is_soft_conflict' => false
                     ];
                 }
-            } else {
-                // Pengawas has a conflict in a different room
-                $conflictSesi = $conflictAssignment->sesiRuangan;
-                $conflictJadwal = $conflictAssignment->jadwalUjian;
-
-                $unavailablePengawas[] = [
-                    'id' => $pengawas->id,
-                    'nama' => $pengawas->nama,
-                    'conflict_session' => $conflictSesi->nama_sesi,
-                    'conflict_ruangan' => $conflictSesi->ruangan->nama_ruangan ?? 'Unknown',
-                    'conflict_jadwal' => $conflictJadwal->judul,
-                    'conflict_time' => $conflictSesi->waktu_mulai . ' - ' . $conflictSesi->waktu_selesai,
-                    'note' => 'Tidak dapat ditugaskan karena sudah ditugaskan di ruangan lain pada waktu yang sama'
-                ];
             }
-        }
 
-        return response()->json([
-            'available' => $availablePengawas,
-            'unavailable' => $unavailablePengawas
-        ]);
+            return response()->json([
+                'available' => $availablePengawas,
+                'unavailable' => $unavailablePengawas
+            ]);
+
+        } catch (\Exception $e) {
+            // Mencegah munculnya HTML error page
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
-     * Bulk assign pengawas to multiple sessions
-     * Updated to handle 'selections' array from frontend
+     * Bulk assign pengawas to multiple sessions in a jadwal
      */
     public function bulkAssign(Request $request)
     {
-        // Validasi disesuaikan dengan format JSON yang dikirim dari JS
         $request->validate([
-            'selections' => 'required|array',
-            'selections.*.sesi_id' => 'required|exists:sesi_ruangan,id',
-            'selections.*.jadwal_id' => 'required|exists:jadwal_ujian,id',
+            'pivot_ids' => 'required|array',
+            'pivot_ids.*' => 'exists:jadwal_ujian_sesi_ruangan,id',
             'pengawas_id' => 'required|exists:guru,id'
         ]);
-
-        $pengawasId = $request->pengawas_id;
-        $assignedCount = 0;
-        $conflictMessages = [];
 
         try {
             DB::beginTransaction();
 
-            // Cek peran pengawas sekali saja di awal
-            $pengawas = Guru::findOrFail($pengawasId);
+            // 1. Verifikasi role pengawas
+            $pengawas = Guru::findOrFail($request->pengawas_id);
             if (!$pengawas->user || !$pengawas->user->hasRole('pengawas')) {
-                throw new \Exception('Guru yang dipilih tidak memiliki peran pengawas');
+                throw new \Exception('Guru yang dipilih tidak memiliki role pengawas');
             }
 
-            // Loop melalui setiap seleksi yang dikirim
-            foreach ($request->selections as $selection) {
-                // Ambil jadwal dan sesi berdasarkan ID yang dikirim
-                // Catatan: jadwal_id di sini hanya sebagai "anchor" untuk menentukan tanggal.
-                // Logic di dalam assignPengawasToSession akan otomatis menyebar ke semua jadwal di tanggal yang sama.
-                $jadwal = JadwalUjian::find($selection['jadwal_id']);
-                $sesi = SesiRuangan::find($selection['sesi_id']);
+            $assigned = 0;
+            $conflicts = [];
 
-                if ($jadwal && $sesi) {
-                    // Panggil method internal yang sudah ada logic lengkapnya
-                    $result = $this->assignPengawasToSession($jadwal, $sesi, $pengawasId);
+            // 2. Ambil semua data pivot berdasarkan ID yang dikirim
+            $targetPivots = JadwalUjianSesiRuangan::with(['jadwalUjian', 'sesiRuangan.ruangan'])
+                ->whereIn('id', $request->pivot_ids)
+                ->get();
 
-                    if ($result['success']) {
-                        $assignedCount++;
-                    } else {
-                        // Catat pesan konflik jika ada
-                        $conflictMessages[] = $sesi->nama_sesi . ': ' . ($result['message'] ?? 'Gagal');
+            foreach ($targetPivots as $pivot) {
+                $jadwal = $pivot->jadwalUjian;
+                $sesi = $pivot->sesiRuangan;
+
+                // Pastikan tanggal dalam format Carbon
+                $date = ($jadwal->tanggal instanceof \Carbon\Carbon)
+                    ? $jadwal->tanggal->format('Y-m-d')
+                    : \Carbon\Carbon::parse($jadwal->tanggal)->format('Y-m-d');
+
+                $currentRuanganId = $sesi->ruangan_id;
+
+                // 3. Cek bentrok pengawas (Sudah ada di ruangan LAIN pada jam yang sama)
+                $conflictAssignments = JadwalUjianSesiRuangan::where('pengawas_id', $request->pengawas_id)
+                    ->where('id', '!=', $pivot->id) // Abaikan baris ini sendiri
+                    ->whereHas('jadwalUjian', function ($q) use ($date) {
+                        $q->whereDate('tanggal', $date);
+                    })
+                    ->whereHas('sesiRuangan', function ($q) use ($sesi) {
+                        $q->where(function ($query) use ($sesi) {
+                            $query->where(function ($q) use ($sesi) {
+                                $q->where('waktu_mulai', '<=', $sesi->waktu_mulai)
+                                    ->where('waktu_selesai', '>', $sesi->waktu_mulai);
+                            })->orWhere(function ($q) use ($sesi) {
+                                $q->where('waktu_mulai', '<', $sesi->waktu_selesai)
+                                    ->where('waktu_selesai', '>=', $sesi->waktu_selesai);
+                            })->orWhere(function ($q) use ($sesi) {
+                                $q->where('waktu_mulai', '>=', $sesi->waktu_mulai)
+                                    ->where('waktu_selesai', '<=', $sesi->waktu_selesai);
+                            });
+                        });
+                    })
+                    ->get();
+
+                // 4. Cek apakah ada bentrok di ruangan yang berbeda
+                $hasConflict = false;
+                foreach ($conflictAssignments as $assignment) {
+                    // Jika ruangan berbeda, maka ini bentrok (Conflict)
+                    if ($assignment->sesiRuangan->ruangan_id != $currentRuanganId) {
+                        $hasConflict = true;
+                        break;
                     }
+                }
+
+                if (!$hasConflict) {
+                    // Update langsung pada record pivot
+                    $pivot->pengawas_id = $request->pengawas_id;
+                    $pivot->save();
+                    $assigned++;
+                } else {
+                    $conflicts[] = $sesi->nama_sesi;
                 }
             }
 
             DB::commit();
 
-            $message = "{$assignedCount} sesi berhasil ditugaskan.";
-            if (count($conflictMessages) > 0) {
-                $message .= " Beberapa sesi gagal: " . implode('; ', $conflictMessages);
-            }
-
             return response()->json([
                 'success' => true,
-                'message' => $message,
-                'assigned' => $assignedCount,
-                'conflicts' => $conflictMessages
+                'message' => "{$assigned} sesi berhasil ditugaskan.",
+                'assigned' => $assigned,
+                'conflicts' => count($conflicts),
+                'conflict_sessions' => $conflicts
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Error in bulk assign pengawas', [
-                'request' => $request->all(),
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error in bulk assign pengawas: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+                'message' => 'Gagal melakukan penugasan: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
      * Assign pengawas to a session (internal method)
-     * Logic updated: Assigns pengawas to ALL jadwal on the same date for this session.
      */
     private function assignPengawasToSession(JadwalUjian $jadwal, SesiRuangan $sesi, $pengawasId)
     {
@@ -406,7 +422,6 @@ class PengawasAssignmentController extends Controller
             $conflict = false;
             foreach ($conflictAssignments as $assignment) {
                 $assignmentRuanganId = $assignment->sesiRuangan->ruangan->id ?? null;
-                // If assignment is in a different room, it's a conflict
                 if ($assignmentRuanganId && $assignmentRuanganId != $currentRuanganId) {
                     $conflict = true;
                     break;
@@ -420,28 +435,25 @@ class PengawasAssignmentController extends Controller
                 ];
             }
 
-            // --- NEW LOGIC START ---
-            // Find all Jadwal IDs that occur on the same date
-            $jadwalIdsOnDate = JadwalUjian::whereDate('tanggal', $date)->pluck('id');
+            // Assign pengawas using the pivot table
+            JadwalUjianSesiRuangan::updateOrCreate(
+                [
+                    'jadwal_ujian_id' => $jadwal->id,
+                    'sesi_ruangan_id' => $sesi->id
+                ],
+                ['pengawas_id' => $pengawasId]
+            );
 
-            // Update all pivot records for this session and those jadwal IDs
-            // This assigns the pengawas to this session for ALL jadwals on this date
-            JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesi->id)
-                ->whereIn('jadwal_ujian_id', $jadwalIdsOnDate)
-                ->update(['pengawas_id' => $pengawasId]);
-            // --- NEW LOGIC END ---
-
-            Log::info('Pengawas assigned to session for all jadwal on date', [
-                'date' => $date,
+            Log::info('Pengawas assigned to session', [
+                'jadwal_id' => $jadwal->id,
                 'session_id' => $sesi->id,
                 'pengawas_id' => $pengawasId,
-                'affected_jadwals' => $jadwalIdsOnDate,
                 'assigned_by' => auth()->id()
             ]);
 
             return [
                 'success' => true,
-                'message' => 'Pengawas berhasil ditugaskan untuk semua jadwal di tanggal yang sama',
+                'message' => 'Pengawas berhasil ditugaskan',
                 'pengawas_name' => $pengawas->nama
             ];
         } catch (\Exception $e) {
@@ -461,33 +473,31 @@ class PengawasAssignmentController extends Controller
 
     /**
      * Remove pengawas assignment (internal method)
-     * Logic updated: Removes pengawas from ALL jadwal on the same date for this session.
      */
     private function removePengawasFromSession(JadwalUjian $jadwal, SesiRuangan $sesi)
     {
         try {
-            $date = $jadwal->tanggal->format('Y-m-d');
+            // Find the pivot record
+            $pivot = JadwalUjianSesiRuangan::where('jadwal_ujian_id', $jadwal->id)
+                ->where('sesi_ruangan_id', $sesi->id)
+                ->first();
 
-            // --- NEW LOGIC START ---
-            // Find all Jadwal IDs that occur on the same date
-            $jadwalIdsOnDate = JadwalUjian::whereDate('tanggal', $date)->pluck('id');
+            if ($pivot) {
+                $pengawasName = $pivot->pengawas ? $pivot->pengawas->nama : 'Unknown';
 
-            // Update all pivot records for this session and those jadwal IDs
-            $updatedCount = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesi->id)
-                ->whereIn('jadwal_ujian_id', $jadwalIdsOnDate)
-                ->update(['pengawas_id' => null]);
-            // --- NEW LOGIC END ---
+                // Update the pivot record
+                $pivot->update(['pengawas_id' => null]);
 
-            Log::info('Pengawas assignment removed for all jadwal on date', [
-                'date' => $date,
-                'session_id' => $sesi->id,
-                'removed_by' => auth()->id(),
-                'records_updated' => $updatedCount
-            ]);
+                Log::info('Pengawas assignment removed', [
+                    'jadwal_id' => $jadwal->id,
+                    'session_id' => $sesi->id,
+                    'removed_by' => auth()->id()
+                ]);
+            }
 
             return [
                 'success' => true,
-                'message' => 'Penugasan pengawas berhasil dibatalkan untuk semua jadwal di tanggal yang sama'
+                'message' => 'Penugasan pengawas berhasil dibatalkan'
             ];
         } catch (\Exception $e) {
             Log::error('Error removing pengawas assignment', [
@@ -542,6 +552,14 @@ class PengawasAssignmentController extends Controller
             $sessions = $dateAssignments->map(function ($assignment) {
                 $sesi = $assignment->sesiRuangan;
                 $jadwal = $assignment->jadwalUjian;
+
+                // Debug info
+                Log::debug('Processing all_schedules entry', [
+                    'jadwal_id' => $jadwal->id,
+                    'has_mapel' => isset($jadwal->mapel),
+                    'mapel_nama' => $jadwal->mapel->nama ?? null,
+                    'judul' => $jadwal->judul ?? null
+                ]);
 
                 // Get proper subject name with more robust handling
                 $mapel = null;
@@ -598,8 +616,18 @@ class PengawasAssignmentController extends Controller
             $jadwal = $assignment->jadwalUjian;
             $examDate = $jadwal->tanggal->format('Y-m-d');
 
+            // Get proper room name
             $ruangan = $sesi->ruangan ? $sesi->ruangan->nama_ruangan : 'Ruangan Tidak Diketahui';
 
+            // Debug info
+            Log::debug('Processing calendar event', [
+                'jadwal_id' => $jadwal->id,
+                'has_mapel' => isset($jadwal->mapel),
+                'mapel_nama' => $jadwal->mapel->nama ?? null,
+                'judul' => $jadwal->judul ?? null
+            ]);
+
+            // Get proper subject name
             $mapel = null;
             if ($jadwal->mapel && isset($jadwal->mapel->nama)) {
                 $mapel = $jadwal->mapel->nama;
@@ -622,6 +650,7 @@ class PengawasAssignmentController extends Controller
                 'borderColor' => $this->getStatusColor($sesi->status),
             ];
 
+            // Add for compatibility with direct properties
             $event['description'] = $mapel;
             $event['mapel'] = $mapel;
             $event['ruangan'] = $ruangan;

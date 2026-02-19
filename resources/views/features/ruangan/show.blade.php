@@ -141,7 +141,7 @@
                                             <div class="flex items-center">
                                                 <span
                                                     class="{{ $session->status == 'belum_mulai' ? 'bg-blue-100 text-blue-800' : ($session->status == 'berlangsung' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') }} px-2 py-1 text-xs rounded-full mr-2">
-                                                    {{ $session->status_label }}
+                                                    {{ $session->status_label['text'] }} {{-- FIXED: Access the text key --}}
                                                 </span>
                                                 <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $session->id]) }}"
                                                     class="text-blue-600 hover:text-blue-900">
@@ -259,7 +259,7 @@
                                     <div class="sesi-item border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                                         data-status="{{ $sesi->status }}" data-name="{{ strtolower($sesi->nama_sesi) }}"
                                         data-date="{{ $sesi->jadwalUjians->first() ? \Carbon\Carbon::parse($sesi->jadwalUjians->first()->tanggal)->format('Y-m-d') : now()->format('Y-m-d') }}"
-                                        data-pengawas="{{ $sesi->pengawas_names }}">>
+                                        data-pengawas="{{ $sesi->pengawas_names }}">
                                         <div
                                             class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                                             <div class="flex items-center">
@@ -275,7 +275,7 @@
                                             </div>
                                             <span
                                                 class="{{ $sesi->status == 'belum_mulai' ? 'bg-blue-100 text-blue-800' : ($sesi->status == 'berlangsung' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') }} px-2 py-1 text-xs rounded-full">
-                                                {{ $ruangan->status_label['text'] }}
+                                                {{ $sesi->status_label['text'] }} {{-- FIXED: Use $sesi instead of $ruangan --}}
                                             </span>
                                         </div>
                                         <div class="p-4">
@@ -299,7 +299,7 @@
                                                     <span class="text-xs text-gray-500">Pengawas</span>
                                                     <div class="text-gray-900">
                                                         <i class="fa-solid fa-user mr-1 text-gray-400"></i>
-                                                        {{ $sesi->pengawas_names }}
+                                                        {{ $sesi->pengawas_names ?? 'N/A' }}
                                                     </div>
                                                 </div>
                                             </div>

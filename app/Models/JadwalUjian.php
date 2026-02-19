@@ -86,7 +86,7 @@ class JadwalUjian extends Model
     public function sesiRuangans()
     {
         return $this->belongsToMany(SesiRuangan::class, 'jadwal_ujian_sesi_ruangan')
-            ->withPivot('pengawas_id')
+            ->withPivot('id','pengawas_id')
             ->using(JadwalUjianSesiRuangan::class)
             ->withTimestamps();
     }
