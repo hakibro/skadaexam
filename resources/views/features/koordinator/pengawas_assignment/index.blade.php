@@ -62,7 +62,7 @@
                                 <i class="fa-solid fa-calendar-day text-sm"></i>
                             </div>
                             <input type="date" id="tanggal" name="tanggal" value="{{ $tanggal }}"
-                                class="pl-10 pr-3 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full transition duration-150">
+                                class="pl-10 pr-3 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full transition duration-150 [color-scheme:dark]">
                         </div>
                     </form>
 
