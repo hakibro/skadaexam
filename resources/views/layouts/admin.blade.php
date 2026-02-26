@@ -260,6 +260,11 @@
                             <i class="fa-solid fa-file-import text-sm"></i>
                             <span class="text-sm">Import Data</span>
                         </a>
+                        <a href="{{ route('ruangan.cari-siswa') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('ruangan.cari-siswa') ? 'bg-red-600 text-white' : '' }}">
+                            <i class="fa-solid fa-search text-sm"></i>
+                            <span class="text-sm">Cari Siswa</span>
+                        </a>
                     </div>
                 @endif
                 <!-- Settings -->

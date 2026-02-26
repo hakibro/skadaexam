@@ -23,6 +23,7 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::post('enrollment-ujian/bulk', [EnrollmentUjianController::class, 'bulkEnrollment'])->name('enrollment-ujian.bulk');
     Route::post('enrollment-ujian/bulk-action', [EnrollmentUjianController::class, 'bulkAction'])
         ->name('enrollment-ujian.bulk-action');
+    Route::post('enrollment-ujian/enroll-selected', [EnrollmentUjianController::class, 'enrollSelectedSiswa'])->name('enrollment-ujian.enroll-selected');
 
     Route::post('enrollment-ujian/generate-tokens', [EnrollmentUjianController::class, 'generateTokens'])->name('enrollment-ujian.generate-tokens');
     Route::post('enrollment-ujian/{enrollmentUjian}/generate-token', [EnrollmentUjianController::class, 'generateToken'])->name('enrollment-ujian.generate-token');

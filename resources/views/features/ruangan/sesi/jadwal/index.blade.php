@@ -126,13 +126,15 @@
                             <div class="p-6">
                                 <div class="flex justify-between items-start">
                                     <div class="flex-1">
-                                        <h4 class="text-lg font-medium text-gray-900">{{ $jadwal->judul }}</h4>
+                                        <h4 class="text-lg font-medium text-gray-900">{{ $jadwal->judul }} -
+                                            {{ \Carbon\Carbon::parse($jadwal->tanggal)->format('d/m') }}</h4>
+
                                         <p class="text-sm text-gray-600 mt-1">{{ $jadwal->kode_ujian }}</p>
                                         <div class="flex items-center space-x-4 mt-2">
                                             <span class="text-sm text-gray-500">
                                                 <i class="fa-solid fa-book mr-1"></i>
                                                 {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
-                                                @if($jadwal->mapel && $jadwal->mapel->jurusan)
+                                                @if ($jadwal->mapel && $jadwal->mapel->jurusan)
                                                     <span class="font-medium">({{ $jadwal->mapel->jurusan }})</span>
                                                 @elseif($jadwal->mapel)
                                                     <span class="italic">(Semua Jurusan)</span>
@@ -161,7 +163,7 @@
                                             </span>
                                         </div>
                                         <div class="mt-2 text-xs text-gray-500">
-                                            @if($jadwal->kelas_target && is_array($jadwal->kelas_target) && count($jadwal->kelas_target) > 0)
+                                            @if ($jadwal->kelas_target && is_array($jadwal->kelas_target) && count($jadwal->kelas_target) > 0)
                                                 <span class="font-medium">Kelas Target:</span>
                                                 {{ implode(', ', $jadwal->kelasTarget()->pluck('nama_kelas')->toArray()) }}
                                             @else
@@ -205,7 +207,8 @@
                     <form action="{{ route('ruangan.sesi.jadwal.store', [$ruangan->id, $sesi->id]) }}" method="POST">
                         @csrf
                         <div class="p-4">
-                            <input type="text" id="search-jadwal" placeholder="Cari jadwal ujian..." class="w-full border-gray-300 rounded-md mb-2">
+                            <input type="text" id="search-jadwal" placeholder="Cari jadwal ujian..."
+                                class="w-full border-gray-300 rounded-md mb-2">
                         </div>
                         <div class="max-h-96 overflow-y-auto divide-y divide-gray-200" id="jadwal-container">
                             @foreach ($availableJadwals as $jadwal)
@@ -214,13 +217,16 @@
                                         <input type="checkbox" name="jadwal_ids[]" value="{{ $jadwal->id }}"
                                             class="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                         <div class="flex-1">
-                                            <h4 class="text-base font-medium text-gray-900 jadwal-judul">{{ $jadwal->judul }}</h4>
-                                            <p class="text-sm text-gray-600 mt-1 jadwal-kode">{{ $jadwal->kode_ujian }}</p>
+                                            <h4 class="text-base font-medium text-gray-900 jadwal-judul">
+                                                {{ $jadwal->judul }} -
+                                                {{ \Carbon\Carbon::parse($jadwal->tanggal)->format('d/m') }}</h4>
+                                            <p class="text-sm text-gray-600 mt-1 jadwal-kode">{{ $jadwal->kode_ujian }}
+                                            </p>
                                             <div class="flex items-center space-x-4 mt-2">
                                                 <span class="text-sm text-gray-500 jadwal-mapel">
                                                     <i class="fa-solid fa-book mr-1"></i>
                                                     {{ $jadwal->mapel->nama_mapel ?? 'N/A' }}
-                                                    @if($jadwal->mapel && $jadwal->mapel->jurusan)
+                                                    @if ($jadwal->mapel && $jadwal->mapel->jurusan)
                                                         <span class="font-medium">({{ $jadwal->mapel->jurusan }})</span>
                                                     @elseif($jadwal->mapel)
                                                         <span class="italic">(Semua Jurusan)</span>
@@ -249,7 +255,7 @@
                                                 </span>
                                             </div>
                                             <div class="mt-2 text-xs text-gray-500">
-                                                @if($jadwal->kelas_target && is_array($jadwal->kelas_target) && count($jadwal->kelas_target) > 0)
+                                                @if ($jadwal->kelas_target && is_array($jadwal->kelas_target) && count($jadwal->kelas_target) > 0)
                                                     <span class="font-medium">Kelas Target:</span>
                                                     {{ implode(', ', $jadwal->kelasTarget()->pluck('nama_kelas')->toArray()) }}
                                                 @else
@@ -279,13 +285,15 @@
                 @endif
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
             <div class="text-sm text-gray-600">
                 <h4 class="font-medium text-gray-800 mb-2">Catatan Penting:</h4>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li>Jadwal ujian dengan Mapel yang memiliki jurusan <strong>kosong</strong> berlaku untuk semua jurusan</li>
-                    <li>Ketika menambahkan siswa ke sesi, sistem akan otomatis menambahkan jadwal ujian yang sesuai dengan jurusan/kelas siswa</li>
+                    <li>Jadwal ujian dengan Mapel yang memiliki jurusan <strong>kosong</strong> berlaku untuk semua jurusan
+                    </li>
+                    <li>Ketika menambahkan siswa ke sesi, sistem akan otomatis menambahkan jadwal ujian yang sesuai dengan
+                        jurusan/kelas siswa</li>
                     <li>Pastikan jadwal ujian memiliki status "Aktif" agar dapat diikuti oleh siswa</li>
                 </ul>
             </div>
@@ -309,7 +317,7 @@
                         const mapel = item.querySelector('.jadwal-mapel').textContent.toLowerCase();
                         const jenis = item.querySelector('.jadwal-jenis').textContent.toLowerCase();
 
-                        if (judul.includes(searchTerm) || kode.includes(searchTerm) || 
+                        if (judul.includes(searchTerm) || kode.includes(searchTerm) ||
                             mapel.includes(searchTerm) || jenis.includes(searchTerm)) {
                             item.style.display = 'block';
                         } else {

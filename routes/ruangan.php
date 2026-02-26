@@ -45,6 +45,9 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 
+        Route::get('/cari-siswa', [SesiRuanganController::class, 'cariSiswa'])->name('cari-siswa');
+
+
         // ===============================
         // Route dengan parameter {ruangan}
         // ===============================
@@ -55,6 +58,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
             Route::put('/update-status', [RuanganController::class, 'updateStatus'])->name('update-status');
             Route::delete('/', [RuanganController::class, 'destroy'])->name('destroy');
             Route::delete('/force', [RuanganController::class, 'forceDelete'])->name('force-delete');
+
 
 
             // Sesi Ruangan
@@ -68,6 +72,10 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
                 Route::delete('/{sesi}', [SesiRuanganController::class, 'destroy'])->name('destroy');
                 Route::delete('/{sesi}/force', [SesiRuanganController::class, 'forceDelete'])->name('force-delete');
                 Route::post('/{sesi}/generate-token', [SesiRuanganController::class, 'generateToken'])->name('generate-token');
+
+
+                // Duplikat sesi
+                Route::post('/{sesi}/duplicate', [SesiRuanganController::class, 'duplicate'])->name('duplicate');
 
                 // siswa dalam sesi
                 Route::prefix('{sesi}/siswa')->name('siswa.')->group(function () {

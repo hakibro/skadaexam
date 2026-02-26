@@ -67,12 +67,12 @@ class EnrollmentUjianController extends Controller
             });
         }
 
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 50);
         $enrollments = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         // Data untuk filter dropdown
         $jadwalUjians = JadwalUjian::where('status', 'aktif')
-            ->orderBy('tanggal', 'desc')
+            ->orderBy('tanggal', 'asc')
             ->get();
 
         $sesiRuangans = SesiRuangan::whereIn('status', ['belum_mulai', 'berlangsung'])
@@ -456,6 +456,99 @@ class EnrollmentUjianController extends Controller
             ]);
 
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enroll selected students to a specific jadwal, automatically assigning to appropriate sesi.
+     * Skip if already enrolled.
+     */
+    public function enrollSelectedSiswa(Request $request)
+    {
+        $request->validate([
+            'siswa_ids' => 'required|array',
+            'siswa_ids.*' => 'exists:siswa,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $siswaIds = $request->siswa_ids;
+            $enrolledCount = 0;
+            $skippedCount = 0;
+            $noSesiCount = 0;
+
+            foreach ($siswaIds as $siswaId) {
+                $siswa = Siswa::with('kelas')->find($siswaId);
+                if (!$siswa || !$siswa->kelas) {
+                    continue;
+                }
+
+                // Cari semua jadwal ujian yang sesuai dengan kelas siswa (berdasarkan kelas_target)
+                $matchingJadwals = JadwalUjian::where('status', 'aktif')
+                    ->where(function ($q) use ($siswa) {
+                        $q->whereJsonContains('kelas_target', $siswa->kelas_id)
+                            ->orWhereJsonContains('kelas_target', (string) $siswa->kelas_id);
+                    })
+                    ->get();
+
+                if ($matchingJadwals->isEmpty()) {
+                    continue; // tidak ada jadwal untuk kelas ini
+                }
+
+                // Ambil semua sesi ruangan tempat siswa sudah terdaftar
+                $assignedSesiIds = $siswa->sesiRuanganSiswa()->pluck('sesi_ruangan_id')->toArray();
+
+                foreach ($matchingJadwals as $jadwal) {
+                    // Cari sesi ruangan yang dimiliki siswa DAN terhubung dengan jadwal ini
+                    $sesiForJadwal = SesiRuangan::whereIn('id', $assignedSesiIds)
+                        ->whereHas('jadwalUjians', fn($q) => $q->where('jadwal_ujian_id', $jadwal->id))
+                        ->first();
+
+                    if (!$sesiForJadwal) {
+                        $noSesiCount++;
+                        continue;
+                    }
+
+                    // Cek apakah sudah terdaftar
+                    $exists = EnrollmentUjian::where('siswa_id', $siswaId)
+                        ->where('jadwal_ujian_id', $jadwal->id)
+                        ->exists();
+
+                    if ($exists) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    // Buat enrollment baru
+                    EnrollmentUjian::create([
+                        'siswa_id' => $siswaId,
+                        'jadwal_ujian_id' => $jadwal->id,
+                        'sesi_ruangan_id' => $sesiForJadwal->id,
+                        'status_enrollment' => 'enrolled',
+                    ]);
+
+                    $enrolledCount++;
+                }
+            }
+
+            DB::commit();
+
+            $message = "✅ {$enrolledCount} enrollment berhasil dibuat.";
+            if ($skippedCount > 0)
+                $message .= " ⏭️ {$skippedCount} dilewati (sudah ada).";
+            if ($noSesiCount > 0)
+                $message .= " 🏫 {$noSesiCount} siswa tidak memiliki sesi ruangan untuk beberapa jadwal.";
+
+            if ($enrolledCount > 0) {
+                return redirect()->back()->with('success', $message);
+            } else {
+                return redirect()->back()->with('warning', '⚠️ Tidak ada enrollment baru. ' . $message);
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Gagal enroll siswa terpilih', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 

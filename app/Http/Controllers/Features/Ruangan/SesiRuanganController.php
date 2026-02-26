@@ -90,10 +90,9 @@ class SesiRuanganController extends Controller
                 })
                 ->exists();
 
+            // Jika ada konflik, beri warning tapi lanjutkan
             if ($conflict) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Terdapat konflik jadwal dengan sesi lain di ruangan yang sama');
+                session()->flash('warning', 'Terdapat konflik jadwal dengan sesi lain di ruangan yang sama, namun sesi tetap dibuat.');
             }
 
             DB::beginTransaction();
@@ -198,9 +197,7 @@ class SesiRuanganController extends Controller
                 ->exists();
 
             if ($conflict) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Terdapat konflik jadwal dengan sesi lain di ruangan yang sama');
+                session()->flash('warning', 'Terdapat konflik jadwal dengan sesi lain di ruangan yang sama, namun perubahan tetap disimpan.');
             }
 
             DB::beginTransaction();
@@ -589,4 +586,60 @@ class SesiRuanganController extends Controller
                 ->with('error', 'Gagal melepas jadwal ujian: ' . $e->getMessage());
         }
     }
+
+
+    // Cari siswa di ruangan mana saja
+    public function cariSiswa(Request $request)
+    {
+        $search = $request->input('q');
+        $siswas = collect();
+        if ($search) {
+            $siswas = Siswa::with(['kelas', 'sesiRuanganSiswa.sesiRuangan.ruangan', 'sesiRuanganSiswa.sesiRuangan.jadwalUjians'])
+                ->where('nama', 'like', "%{$search}%")
+                ->orWhere('idyayasan', 'like', "%{$search}%")
+                ->paginate(10);
+        }
+        return view('features.ruangan.cari-siswa', compact('siswas', 'search'));
+    }
+
+    /**
+     * Duplicate a session.
+     */
+
+    public function duplicate(Ruangan $ruangan, SesiRuangan $sesi)
+    {
+        try {
+            DB::beginTransaction();
+
+            // 1. Duplikasi sesi
+            $newSesi = $sesi->replicate();
+            $newSesi->nama_sesi = $sesi->nama_sesi . ' (copy)';
+            $newSesi->status = 'belum_mulai';
+            $newSesi->kode_sesi = null; // akan digenerate otomatis oleh boot creating
+            $newSesi->token_ujian = null;
+            $newSesi->token_expired_at = null;
+            $newSesi->save();
+
+            // 2. Duplikasi data siswa (sesi_ruangan_siswa)
+            $copiedCount = 0;
+            foreach ($sesi->sesiRuanganSiswa as $siswaEntry) {
+                $newSesi->sesiRuanganSiswa()->create([
+                    'siswa_id' => $siswaEntry->siswa_id,
+                    'status_kehadiran' => 'tidak_hadir', // reset kehadiran
+                    'keterangan' => null,
+                ]);
+                $copiedCount++;
+            }
+
+            DB::commit();
+
+            return redirect()->route('ruangan.sesi.edit', [$ruangan->id, $newSesi->id])
+                ->with('success', "Sesi berhasil diduplikasi beserta {$copiedCount} data siswa. Silakan periksa dan sesuaikan.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error duplicating sesi: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menduplikasi sesi: ' . $e->getMessage());
+        }
+    }
+
 }

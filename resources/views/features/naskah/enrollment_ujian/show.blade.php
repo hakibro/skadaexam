@@ -52,7 +52,7 @@
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Mata Pelajaran</th>
                                 <td class="py-3 text-sm text-gray-700">
-                                    {{ $enrollment->jadwalUjian->mapel->nama ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->mapel->nama ?? 'N/A') }}
+                                    {{ $enrollment->jadwalUjian->mapel->nama_mapel ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->mapel->nama ?? 'N/A') }}
                                 </td>
                             </tr>
                             <tr>
@@ -71,7 +71,7 @@
                             </tr>
                             <tr>
                                 <th class="py-3 text-left text-sm font-medium text-gray-900">Durasi</th>
-                                <td class="py-3 text-sm text-gray-700">{{ $enrollment->sesiRuangan->durasi_ujian }} menit
+                                <td class="py-3 text-sm text-gray-700">{{ $enrollment->jadwalUjian->durasi_menit }} menit
                                 </td>
                             </tr>
                         </tbody>

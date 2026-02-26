@@ -196,6 +196,15 @@
                                                 class="text-yellow-600 hover:text-yellow-900" title="Edit">
                                                 <i class="fa-solid fa-edit"></i>
                                             </a>
+                                            <form action="{{ route('ruangan.sesi.duplicate', [$ruangan->id, $sesi->id]) }}"
+                                                method="POST" class="inline"
+                                                onsubmit="return confirm('Duplikat sesi ini beserta semua data siswa? Data kehadiran akan direset.');">
+                                                @csrf
+                                                <button type="submit" class="text-green-600 hover:text-green-900"
+                                                    title="Duplikat Sesi (dengan siswa)">
+                                                    <i class="fa-regular fa-copy"></i> <!-- atau fa-clone, fa-copy -->
+                                                </button>
+                                            </form>
                                             <button onclick="deleteSesi({{ $sesi->id }}, false)"
                                                 class="text-red-600 hover:text-red-900" title="Hapus">
                                                 <i class="fa-solid fa-trash"></i>

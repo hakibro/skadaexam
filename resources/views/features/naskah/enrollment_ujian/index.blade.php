@@ -14,299 +14,252 @@
                         <button type="button" class="bulk-action-btn" data-action="enrolled">Enroll Ulang</button>
                         <button type="button" class="bulk-action-btn" data-action="cancelled">Batalkan</button>
                         <button type="button" class="bulk-action-btn" data-action="deleted">Hapus</button>
-
                     </div>
                     <a href="{{ route('naskah.enrollment-ujian.create') }}"
                         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-150">
                         <i class="fa-solid fa-plus mr-2"></i> Tambah Enrollment
                     </a>
+                    <!-- Tombol Enroll Semua Jadwal (modal dengan select2) -->
+                    <button type="button"
+                        class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition duration-150"
+                        data-modal-toggle="enrollSelectedModal">
+                        <i class="fa-solid fa-user-plus mr-2"></i> Enroll Semua Jadwal
+                    </button>
                     <button type="button"
                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150"
                         data-modal-toggle="bulkEnrollmentModal">
                         <i class="fa-solid fa-users mr-2"></i> Enrollment Massal
                     </button>
-
-
                 </div>
             </div>
 
             <!-- Filter Form -->
-            <div class="p-4 bg-gray-50">
+            <div class="p-3 bg-white border-b border-gray-200">
                 <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form">
-                    <div class="flex flex-wrap gap-4">
-                        <!-- Nama Siswa / ID Yayasan -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa / ID Yayasan</label>
+                    <div class="flex flex-nowrap items-end gap-2 overflow-x-auto pb-2 lg:pb-0">
+
+                        <div class="min-w-[180px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Cari Siswa</label>
                             <input type="text" name="siswa_search" value="{{ request('siswa_search') }}"
-                                placeholder="Cari siswa atau ID yayasan"
-                                class="form-input w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                placeholder="Nama / ID..."
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                         </div>
 
-                        <!-- Kelas Siswa -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                        <div class="min-w-[120px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Kelas</label>
                             <select name="kelas_id"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                                 <option value="">Semua Kelas</option>
                                 @foreach ($kelasList as $kelas)
                                     <option value="{{ $kelas->id }}"
-                                        {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>
-                                        {{ $kelas->nama }}
+                                        {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>{{ $kelas->nama }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
-                        <!-- Jadwal Ujian -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Jadwal Ujian</label>
-                            <select name="jadwal_id" id="jadwal_id"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+                        <div class="min-w-[150px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Jadwal</label>
+                            <select name="jadwal_id"
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                                 <option value="">Semua Jadwal</option>
                                 @foreach ($jadwalUjians as $jadwal)
                                     <option value="{{ $jadwal->id }}"
                                         {{ request('jadwal_id') == $jadwal->id ? 'selected' : '' }}>
-                                        {{ $jadwal->judul }} - {{ $jadwal->tanggal->format('d M Y') }}
+                                        {{ $jadwal->tanggal->format('d/m') }} - {{ Str::limit($jadwal->judul, 15) }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Sesi Ruangan -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Sesi Ruangan</label>
-                            <select name="sesi_ruangan_id" id="sesi_ruangan_id"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Semua Sesi</option>
-                                @foreach ($sesiRuangans as $sesi)
-                                    <option value="{{ $sesi->id }}"
-                                        {{ request('sesi_ruangan_id') == $sesi->id ? 'selected' : '' }}>
-                                        {{ $sesi->nama_sesi }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Status Enrollment -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Enrollment</label>
+                        <div class="min-w-[110px]">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Status</label>
                             <select name="status"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Semua Status</option>
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                <option value="">Status</option>
                                 <option value="enrolled" {{ request('status') == 'enrolled' ? 'selected' : '' }}>Terdaftar
                                 </option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
                                 <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Selesai
                                 </option>
-                                <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>
-                                    Dibatalkan
-                                </option>
                             </select>
                         </div>
 
-                        <!-- Status Kehadiran -->
-                        <div class="w-full lg:flex-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Status Kehadiran</label>
+                        <div class="min-w-[110px]">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Kehadiran</label>
                             <select name="kehadiran"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Semua Status</option>
-                                <option value="belum_hadir" {{ request('kehadiran') == 'belum_hadir' ? 'selected' : '' }}>
-                                    Belum Hadir</option>
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                <option value="">Kehadiran</option>
                                 <option value="hadir" {{ request('kehadiran') == 'hadir' ? 'selected' : '' }}>Hadir
                                 </option>
                                 <option value="tidak_hadir" {{ request('kehadiran') == 'tidak_hadir' ? 'selected' : '' }}>
-                                    Tidak Hadir</option>
+                                    Absen</option>
                             </select>
                         </div>
 
-                        <!-- Per Halaman & Tombol -->
-                        <div class="w-full md:w-auto">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Per Halaman</label>
+                        <div class="min-w-[70px]">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Limit</label>
                             <select name="per_page"
-                                class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="15" {{ request('per_page', 15) == 15 ? 'selected' : '' }}>15</option>
-                                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
-                                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
-                                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                @foreach ([50, 100, 250] as $p)
+                                    <option value="{{ $p }}"
+                                        {{ request('per_page', 50) == $p ? 'selected' : '' }}>{{ $p }}</option>
+                                @endforeach
                             </select>
                         </div>
 
-                        <div class="w-full md:w-auto flex items-end">
+                        <div class="flex gap-1">
                             <button type="submit"
-                                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150">
-                                <i class="fa-solid fa-search mr-2"></i> Filter
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition shadow-sm"
+                                title="Cari">
+                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
                             </button>
                             <a href="{{ route('naskah.enrollment-ujian.index') }}"
-                                class="inline-flex items-center px-4 py-2 ml-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition duration-150">
-                                <i class="fa-solid fa-times mr-2"></i> Reset
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-md transition border border-gray-300"
+                                title="Reset">
+                                <i class="fa-solid fa-rotate-left text-xs"></i>
                             </a>
                         </div>
                     </div>
                 </form>
             </div>
 
-
             <div class="overflow-x-auto">
                 @if (count($enrollments) > 0)
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2">
-                                    <input type="checkbox" id="select_all">
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    ID YYS</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Nama Siswa</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kelas</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Jadwal Ujian</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sesi</th>
-
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status</th>
-                                <th
-                                    class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach ($enrollments as $enrollment)
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-2">
-                                        <input type="checkbox" class="row_checkbox" value="{{ $enrollment->id }}">
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="font-mono text-sm">{{ $enrollment->siswa->idyayasan ?? 'N/A' }}</span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ $enrollment->siswa->nama ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ $enrollment->siswa->kelas->nama ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <div class="font-medium text-gray-900">
-                                            {{ $enrollment->jadwalUjian->judul ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->judul ?? 'N/A') }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            {{ (optional($enrollment->jadwalUjian)->tanggal
-                                                    ? $enrollment->jadwalUjian->tanggal->format('d M Y')
-                                                    : optional($enrollment->sesiRuangan->jadwalUjians->first())->tanggal)
-                                                ? $enrollment->sesiRuangan->jadwalUjians->first()->tanggal->format('d M Y')
-                                                : 'N/A' }}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ $enrollment->sesiRuangan->nama_sesi ?? 'N/A' }}
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @switch($enrollment->status_enrollment)
-                                            @case('enrolled')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                    <i class="fa-solid fa-clipboard-list mr-1"></i> Terdaftar
-                                                </span>
-                                            @break
-
-                                            @case('active')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                    <i class="fa-solid fa-play-circle mr-1"></i> Aktif
-                                                </span>
-                                            @break
-
-                                            @case('completed')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-teal-100 text-teal-800">
-                                                    <i class="fa-solid fa-check-circle mr-1"></i> Selesai
-                                                </span>
-                                            @break
-
-                                            @case('absent')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                    <i class="fa-solid fa-user-slash mr-1"></i> Tidak Hadir
-                                                </span>
-                                            @break
-
-                                            @case('cancelled')
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                    <i class="fa-solid fa-ban mr-1"></i> Dibatalkan
-                                                </span>
-                                            @break
-
-                                            @default
-                                                <span
-                                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                    {{ $enrollment->status_enrollment }}
-                                                </span>
-                                        @endswitch
-
-                                        <!-- Kehadiran Status -->
-                                        @if ($enrollment->sesiRuanganSiswa?->status_kehadiran)
-                                            <div class="mt-1">
-                                                @switch($enrollment->sesiRuanganSiswa->status_kehadiran)
-                                                    @case('belum_hadir')
-                                                        <span
-                                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                            <i class="fa-solid fa-clock mr-1"></i> Belum Hadir
-                                                        </span>
-                                                    @break
-
-                                                    @case('hadir')
-                                                        <span
-                                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                            <i class="fa-solid fa-user-check mr-1"></i> Hadir
-                                                        </span>
-                                                    @break
-
-                                                    @case('tidak_hadir')
-                                                        <span
-                                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                            <i class="fa-solid fa-user-xmark mr-1"></i> Tidak Hadir
-                                                        </span>
-                                                    @break
-                                                @endswitch
-                                            </div>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                                        <div class="flex gap-2 items-center justify-center">
-                                            <!-- Lihat -->
-                                            <a href="{{ route('naskah.enrollment-ujian.show', $enrollment->id) }}"
-                                                class="flex items-center justify-center px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition">
-                                                <i class="fa-solid fa-eye"></i>
-                                            </a>
-
-                                            <!-- Edit -->
-                                            <a href="{{ route('naskah.enrollment-ujian.edit', $enrollment->id) }}"
-                                                class="flex items-center justify-center px-3 py-1 bg-yellow-500 text-white text-xs rounded-md hover:bg-yellow-600 transition">
-                                                <i class="fa-solid fa-edit"></i>
-                                            </a>
-
-                                            <!-- Hapus -->
-                                            <form action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}"
-                                                method="POST" class="inline-block"
-                                                onsubmit="return confirm('Apakah Anda yakin ingin menghapus pendaftaran ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="flex items-center justify-center px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition">
-                                                    <i class="fa-solid fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-
-                                    </td>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">
+                                        <input type="checkbox" id="select_all"
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    </th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">ID
+                                        YYS</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
+                                        Nama Siswa</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
+                                        Kelas</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
+                                        Jadwal Ujian</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
+                                        Sesi</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
+                                        Status</th>
+                                    <th class="px-6 py-3 text-center font-semibold text-gray-600 uppercase tracking-wider">
+                                        Aksi</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach ($enrollments as $enrollment)
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-4 py-4">
+                                            <input type="checkbox"
+                                                class="row_checkbox rounded border-gray-300 text-blue-600"
+                                                value="{{ $enrollment->id }}">
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap font-mono text-gray-600">
+                                            {{ $enrollment->siswa->idyayasan ?? '-' }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                                            {{ $enrollment->siswa->nama ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                class="text-gray-600">{{ $enrollment->siswa->kelas->nama ?? '-' }}</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="text-gray-900 font-medium">
+                                                {{ $enrollment->jadwalUjian->judul ?? ($enrollment->sesiRuangan->jadwalUjians->first()?->judul ?? 'N/A') }}
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-0.5">
+                                                <i class="fa-regular fa-calendar-days mr-1"></i>
+                                                {{ optional($enrollment->jadwalUjian->tanggal ?? $enrollment->sesiRuangan->jadwalUjians->first()?->tanggal)->format('d M Y') ?? '-' }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-gray-600">
+                                            {{ $enrollment->sesiRuangan->nama_sesi ?? '-' }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap space-y-1">
+                                            {{-- Status Enrollment --}}
+                                            @php
+                                                $statusClasses = [
+                                                    'enrolled' => 'bg-blue-100 text-blue-700',
+                                                    'active' => 'bg-green-100 text-green-700',
+                                                    'completed' => 'bg-teal-100 text-teal-700',
+                                                    'absent' => 'bg-yellow-100 text-yellow-700',
+                                                    'cancelled' => 'bg-red-100 text-red-700',
+                                                ];
+                                                $statusIcons = [
+                                                    'enrolled' => 'fa-clipboard-list',
+                                                    'active' => 'fa-play-circle',
+                                                    'completed' => 'fa-check-circle',
+                                                    'absent' => 'fa-user-slash',
+                                                    'cancelled' => 'fa-ban',
+                                                ];
+                                                $currStatus = $enrollment->status_enrollment;
+                                            @endphp
+
+                                            <span
+                                                class="px-2.5 py-1 inline-flex items-center text-xs font-bold rounded-md {{ $statusClasses[$currStatus] ?? 'bg-gray-100 text-gray-700' }}">
+                                                <i
+                                                    class="fa-solid {{ $statusIcons[$currStatus] ?? 'fa-info-circle' }} mr-1.5"></i>
+                                                {{ ucfirst($currStatus) }}
+                                            </span>
+
+                                            {{-- Status Kehadiran --}}
+                                            @if ($enrollment->sesiRuanganSiswa?->status_kehadiran)
+                                                <div class="block">
+                                                    @switch($enrollment->sesiRuanganSiswa->status_kehadiran)
+                                                        @case('hadir')
+                                                            <span
+                                                                class="px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded bg-green-50 text-green-600 border border-green-200">Hadir</span>
+                                                        @break
+
+                                                        @case('tidak_hadir')
+                                                            <span
+                                                                class="px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded bg-red-50 text-red-600 border border-red-200">Absen</span>
+                                                        @break
+
+                                                        @default
+                                                            <span
+                                                                class="px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded bg-gray-50 text-gray-500 border border-gray-200">Belum
+                                                                Hadir</span>
+                                                    @endswitch
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                                            <div class="flex justify-center gap-1.5">
+                                                <a href="{{ route('naskah.enrollment-ujian.show', $enrollment->id) }}"
+                                                    class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                    title="Lihat Detail">
+                                                    <i class="fa-solid fa-eye text-sm"></i>
+                                                </a>
+
+                                                <a href="{{ route('naskah.enrollment-ujian.edit', $enrollment->id) }}"
+                                                    class="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm"
+                                                    title="Edit">
+                                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                                </a>
+
+                                                <form
+                                                    action="{{ route('naskah.enrollment-ujian.destroy', $enrollment->id) }}"
+                                                    method="POST" onsubmit="return confirm('Hapus pendaftaran ini?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                        class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                                        title="Hapus">
+                                                        <i class="fa-solid fa-trash text-sm"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div class="p-4 border-t">
                         {{ $enrollments->appends(request()->query())->links() }}
@@ -322,6 +275,52 @@
                         </a>
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Enroll Semua Jadwal (dengan Select2) -->
+    <div id="enrollSelectedModal" tabindex="-1" aria-hidden="true"
+        class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
+        <div class="relative p-4 w-full max-w-lg h-full md:h-auto">
+            <div class="relative bg-white rounded-lg shadow-lg">
+                <div class="flex justify-between items-center p-4 border-b rounded-t">
+                    <h3 class="text-lg font-medium text-gray-900">
+                        <i class="fa-solid fa-user-plus mr-2"></i>Enroll Siswa ke Semua Jadwal
+                    </h3>
+                    <button type="button"
+                        class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
+                        data-modal-toggle="enrollSelectedModal">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <form action="{{ route('naskah.enrollment-ujian.enroll-selected') }}" method="POST"
+                    id="enrollSelectedForm">
+                    @csrf
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label for="siswa_select" class="block mb-2 text-sm font-medium text-gray-900">
+                                Pilih Siswa <span class="text-red-500">*</span>
+                            </label>
+                            <select id="siswa_select" name="siswa_ids[]" multiple class="w-full"
+                                style="width: 100%;"></select>
+                            <p class="mt-2 text-sm text-gray-500">
+                                Ketik untuk mencari siswa berdasarkan nama atau ID Yayasan. Bisa pilih lebih dari satu.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end p-4 space-x-2 border-t border-gray-200 rounded-b">
+                        <button type="button"
+                            class="modal-close-btn text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900"
+                            data-modal-toggle="enrollSelectedModal">
+                            <i class="fa-solid fa-times mr-2"></i>Batal
+                        </button>
+                        <button type="submit"
+                            class="text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:outline-none focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5">
+                            <i class="fa-solid fa-save mr-2"></i>Enroll
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -357,7 +356,6 @@
                                 @endforeach
                             </select>
                         </div>
-
 
                         <div>
                             <label class="block mb-2 text-sm font-medium text-gray-900">Kelas <span
@@ -408,20 +406,23 @@
 @endsection
 
 @section('scripts')
+    <!-- Load jQuery dan Select2 (pastikan urutannya benar) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Semua checkbox row
+            // ===== BULK ACTION (checkbox di tabel) =====
             const rowCheckboxes = document.querySelectorAll('.row_checkbox');
             const bulkActions = document.getElementById('bulk-actions');
             const selectAll = document.getElementById('select_all');
 
-            // Toggle bulk action visibility
             function toggleBulkActions() {
                 const anyChecked = Array.from(rowCheckboxes).some(cb => cb.checked);
-                bulkActions.style.display = anyChecked ? 'flex' : 'none';
+                if (bulkActions) bulkActions.style.display = anyChecked ? 'flex' : 'none';
             }
 
-            // Toggle semua row checkbox saat header checkbox dicentang
             if (selectAll) {
                 selectAll.addEventListener('change', function() {
                     rowCheckboxes.forEach(cb => cb.checked = this.checked);
@@ -429,15 +430,11 @@
                 });
             }
 
-            // Toggle individual row checkbox
-            if (rowCheckboxes.length > 0) {
-                rowCheckboxes.forEach(cb => {
-                    cb.addEventListener('change', toggleBulkActions);
-                });
-            }
+            rowCheckboxes.forEach(cb => {
+                cb.addEventListener('change', toggleBulkActions);
+            });
 
-            // Fungsi konfirmasi bulk action
-            function confirmBulkAction(action) {
+            window.confirmBulkAction = function(action) {
                 const selectedIds = Array.from(rowCheckboxes)
                     .filter(cb => cb.checked)
                     .map(cb => cb.value);
@@ -447,7 +444,8 @@
                     return;
                 }
 
-                if (!confirm(`Apakah yakin ingin melakukan "${action}" untuk ${selectedIds.length} data?`)) return;
+                if (!confirm(`Apakah yakin ingin melakukan "${action}" untuk ${selectedIds.length} data?`))
+                    return;
 
                 fetch("{{ route('naskah.enrollment-ujian.bulk-action') }}", {
                         method: "POST",
@@ -456,7 +454,7 @@
                             "X-CSRF-TOKEN": "{{ csrf_token() }}"
                         },
                         body: JSON.stringify({
-                            action: action,
+                            action,
                             ids: selectedIds
                         })
                     })
@@ -473,175 +471,110 @@
                         console.error(err);
                         alert('Gagal melakukan bulk action.');
                     });
-            }
+            };
 
-            // Bulk action buttons
             document.querySelectorAll('.bulk-action-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const action = this.dataset.action;
-                    confirmBulkAction(action);
+                    confirmBulkAction(this.dataset.action);
                 });
             });
 
-
-            // start filter functions
-            // Auto-submit filter form when selecting filters
-            const autoSubmitElements = document.querySelectorAll('.enrollment-filter-form select');
-            autoSubmitElements.forEach(element => {
-                element.addEventListener('change', function() {
+            // ===== FILTER AUTO SUBMIT =====
+            document.querySelectorAll('.enrollment-filter-form select').forEach(el => {
+                el.addEventListener('change', function() {
                     this.closest('form').submit();
                 });
             });
 
-            // Modal functionality
-            const bulkEnrollmentModal = document.getElementById('bulkEnrollmentModal');
-            const modalToggleButtons = document.querySelectorAll('[data-modal-toggle="bulkEnrollmentModal"]');
-
-            modalToggleButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    bulkEnrollmentModal.classList.toggle('hidden');
-                    bulkEnrollmentModal.classList.toggle('flex');
+            // ===== MODAL BULK ENROLLMENT (existing) =====
+            const bulkModal = document.getElementById('bulkEnrollmentModal');
+            document.querySelectorAll('[data-modal-toggle="bulkEnrollmentModal"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    bulkModal.classList.toggle('hidden');
+                    bulkModal.classList.toggle('flex');
                 });
             });
-
-            // Close modal when clicking outside
-            bulkEnrollmentModal.addEventListener('click', function(e) {
-                if (e.target === bulkEnrollmentModal) {
-                    bulkEnrollmentModal.classList.add('hidden');
-                    bulkEnrollmentModal.classList.remove('flex');
+            bulkModal.addEventListener('click', (e) => {
+                if (e.target === bulkModal) {
+                    bulkModal.classList.add('hidden');
+                    bulkModal.classList.remove('flex');
                 }
             });
 
-            // Select all / Deselect all functionality
-            const selectAllBtn = document.getElementById('selectAllKelas');
-            const deselectAllBtn = document.getElementById('deselectAllKelas');
+            // Select all / deselect all kelas (bulk enrollment)
+            const selectAllKelas = document.getElementById('selectAllKelas');
+            const deselectAllKelas = document.getElementById('deselectAllKelas');
             const kelasCheckboxes = document.querySelectorAll('.kelas-checkbox');
+            if (selectAllKelas) {
+                selectAllKelas.addEventListener('click', () => {
+                    kelasCheckboxes.forEach(cb => cb.checked = true);
+                });
+            }
+            if (deselectAllKelas) {
+                deselectAllKelas.addEventListener('click', () => {
+                    kelasCheckboxes.forEach(cb => cb.checked = false);
+                });
+            }
 
-            if (selectAllBtn) {
-                selectAllBtn.addEventListener('click', function() {
-                    kelasCheckboxes.forEach(checkbox => {
-                        checkbox.checked = true;
+            // ===== MODAL ENROLL SEMUA JADWAL (dengan Select2) =====
+            const enrollModal = document.getElementById('enrollSelectedModal');
+            const enrollToggles = document.querySelectorAll('[data-modal-toggle="enrollSelectedModal"]');
+
+            // Fungsi inisialisasi Select2
+            function initSelect2() {
+                if (!$('#siswa_select').data('select2')) {
+                    $('#siswa_select').select2({
+                        ajax: {
+                            url: '{{ route('naskah.enrollment-ujian.get-siswa-options') }}',
+                            dataType: 'json',
+                            delay: 250,
+                            data: function(params) {
+                                return {
+                                    search: params.term
+                                };
+                            },
+                            processResults: function(data) {
+                                return {
+                                    results: data
+                                };
+                            },
+                            cache: true
+                        },
+                        placeholder: 'Ketik nama atau ID Yayasan...',
+                        minimumInputLength: 2,
+                        allowClear: true,
+                        width: '100%'
                     });
-                });
+                }
             }
 
-            if (deselectAllBtn) {
-                deselectAllBtn.addEventListener('click', function() {
-                    kelasCheckboxes.forEach(checkbox => {
-                        checkbox.checked = false;
-                    });
+            // Buka modal (hanya untuk tombol pembuka)
+            enrollToggles.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    enrollModal.classList.remove('hidden');
+                    enrollModal.classList.add('flex');
+                    enrollModal.removeAttribute('aria-hidden');
+                    initSelect2();
                 });
-            }
+            });
 
-            // Form validation
-            const bulkForm = document.getElementById('bulkEnrollmentForm');
-            const kelasError = document.getElementById('kelas-error');
+            // Tutup modal saat klik di luar area modal
+            enrollModal.addEventListener('click', (e) => {
+                if (e.target === enrollModal) {
+                    enrollModal.classList.add('hidden');
+                    enrollModal.classList.remove('flex');
+                    enrollModal.setAttribute('aria-hidden', 'true');
+                }
+            });
 
-            if (bulkForm) {
-                bulkForm.addEventListener('submit', function(e) {
-                    const checkedKelas = document.querySelectorAll('.kelas-checkbox:checked');
-                    const jadwalSelected = document.getElementById('bulk_jadwal_id').value;
-                    const sesiSelected = document.getElementById('bulk_sesi_ruangan_id').value;
-
-                    if (!jadwalSelected) {
-                        alert('Harap pilih jadwal ujian terlebih dahulu');
-                        e.preventDefault();
-                        return false;
-                    }
-
-                    if (!sesiSelected) {
-                        alert('Harap pilih sesi ruangan terlebih dahulu');
-                        e.preventDefault();
-                        return false;
-                    }
-
-                    if (checkedKelas.length === 0) {
-                        kelasError.classList.remove('hidden');
-                        alert('Harap pilih minimal satu kelas');
-                        e.preventDefault();
-                        return false;
-                    } else {
-                        kelasError.classList.add('hidden');
-                    }
-
-                    // Confirmation dialog
-                    const totalKelas = checkedKelas.length;
-                    if (!confirm(
-                            `Apakah Anda yakin ingin mendaftarkan siswa dari ${totalKelas} kelas ke ujian ini? Proses ini tidak dapat dibatalkan.`
-                        )) {
-                        e.preventDefault();
-                        return false;
-                    }
+            // Tutup modal via tombol batal (menggunakan class modal-close-btn)
+            document.querySelectorAll('.modal-close-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    enrollModal.classList.add('hidden');
+                    enrollModal.classList.remove('flex');
+                    enrollModal.setAttribute('aria-hidden', 'true');
                 });
-            }
-
-            // Dynamic sesi options based on jadwal selection (for bulk enrollment modal)
-            const bulkJadwalSelect = document.getElementById('bulk_jadwal_id');
-            const bulkSesiSelect = document.getElementById('bulk_sesi_ruangan_id');
-
-            if (bulkJadwalSelect && bulkSesiSelect) {
-                bulkJadwalSelect.addEventListener('change', function() {
-                    const jadwalId = this.value;
-                    bulkSesiSelect.disabled = true;
-                    bulkSesiSelect.innerHTML = '<option value="">Pilih Sesi Ruangan</option>';
-
-                    if (jadwalId) {
-                        fetch(
-                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`
-                            )
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.length > 0) {
-                                    data.forEach(item => {
-                                        const option = document.createElement('option');
-                                        option.value = item.id;
-                                        option.textContent = item.text;
-                                        bulkSesiSelect.appendChild(option);
-                                    });
-                                    bulkSesiSelect.disabled = false;
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error loading sesi options for bulk enrollment', error);
-                                alert('Gagal memuat sesi ujian');
-                            });
-                    }
-                });
-            }
-
-            // Dynamic sesi options based on jadwal selection
-            const jadwalSelect = document.getElementById('jadwal_id');
-            const sesiSelect = document.getElementById('sesi_ruangan_id');
-
-            if (jadwalSelect && sesiSelect) {
-                jadwalSelect.addEventListener('change', function() {
-                    const jadwalId = this.value;
-                    sesiSelect.disabled = true;
-                    sesiSelect.innerHTML = '<option value="">Pilih Sesi Ruangan</option>';
-
-                    if (jadwalId) {
-                        fetch(
-                                `{{ route('naskah.enrollment-ujian.get-sesi-options') }}?jadwal_id=${jadwalId}`
-                            )
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data && data.length > 0) {
-                                    data.forEach(item => {
-                                        const option = document.createElement('option');
-                                        option.value = item.id;
-                                        option.textContent = item.text;
-                                        sesiSelect.appendChild(option);
-                                    });
-                                    sesiSelect.disabled = false;
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error loading sesi options', error);
-                                alert('Gagal memuat sesi ujian');
-                            });
-                    }
-                });
-            }
+            });
 
         });
     </script>
