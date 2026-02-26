@@ -238,7 +238,8 @@ class GuruController extends Controller
             ['Bob Johnson', '', 'bob@example.com', 'password123', 'naskah'],
         ];
 
-        return Excel::download(new class($sampleData) implements \Maatwebsite\Excel\Concerns\FromArray {
+        return Excel::download(
+            new class ($sampleData) implements \Maatwebsite\Excel\Concerns\FromArray {
             protected $data;
 
             public function __construct($data)
@@ -250,7 +251,11 @@ class GuruController extends Controller
             {
                 return $this->data;
             }
-        }, 'guru-template.xlsx', \Maatwebsite\Excel\Excel::XLSX, $headers);
+            },
+            'guru-template.xlsx',
+            \Maatwebsite\Excel\Excel::XLSX,
+            $headers
+        );
     }
 
     /**
@@ -286,17 +291,13 @@ class GuruController extends Controller
 
         // Apply role filter if provided - FIXED for Spatie roles
         if (!empty($roleFilter)) {
-            Log::info("Applying role filter: {$roleFilter}");
-
-            // Include debug SQL logging
-            DB::enableQueryLog();
-
-            $gurusQuery->whereHas('user.roles', function ($q) use ($roleFilter) {
-                $q->where('name', $roleFilter);
+            // Pastikan relasi 'user' didefinisikan di model Guru
+            // Dan relasi 'roles' didefinisikan di model User (bawaan Spatie)
+            $gurusQuery->whereHas('user', function ($q) use ($roleFilter) {
+                $q->whereHas('roles', function ($q2) use ($roleFilter) {
+                    $q2->where('name', $roleFilter);
+                });
             });
-
-            $queries = DB::getQueryLog();
-            Log::info('Role filter query:', end($queries));
         }
 
         // Execute query with pagination
