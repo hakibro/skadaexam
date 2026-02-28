@@ -575,7 +575,6 @@
                     enrollModal.setAttribute('aria-hidden', 'true');
                 });
             });
-
         });
     </script>
 @endsection
