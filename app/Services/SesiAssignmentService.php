@@ -55,8 +55,8 @@ class SesiAssignmentService
             $assignedCount += $createdCount;
         }
 
-        // STEP 4: Auto-enroll siswa from assigned sesi ruangan
-        if ($assignedCount > 0) {
+        // STEP 4: Auto-enroll siswa dari assigned sesi ruangan (hanya jika auto_enroll aktif)
+        if ($assignedCount > 0 && $jadwalUjian->auto_enroll) {
             $enrolledCount = $this->autoEnrollStudentsFromAssignedSesi($jadwalUjian);
             Log::info("Auto-enrolled {$enrolledCount} students to jadwal {$jadwalUjian->kode_ujian}");
         }
@@ -64,8 +64,10 @@ class SesiAssignmentService
         // STEP 5: Log summary
         if ($assignedCount > 0) {
             $summary = "Assigned {$assignedCount} sesi to jadwal {$jadwalUjian->kode_ujian}: ";
-            if ($reusedCount > 0) $summary .= "{$reusedCount} reused, ";
-            if ($createdCount > 0) $summary .= "{$createdCount} created";
+            if ($reusedCount > 0)
+                $summary .= "{$reusedCount} reused, ";
+            if ($createdCount > 0)
+                $summary .= "{$createdCount} created";
             Log::info($summary);
         } else {
             Log::warning("No sesi assigned to jadwal {$jadwalUjian->kode_ujian} on date {$targetDate}");
@@ -274,13 +276,13 @@ class SesiAssignmentService
 
             foreach ($templateSesis as $templateSesi) {
                 $newSesi = SesiRuangan::create([
-                    'ruangan_id'    => $room->id,
-                    'nama_sesi'     => $templateSesi->nama_sesi, // tidak perlu tambah nama ruangan lagi
-                    'waktu_mulai'   => $templateSesi->waktu_mulai,
+                    'ruangan_id' => $room->id,
+                    'nama_sesi' => $templateSesi->nama_sesi, // tidak perlu tambah nama ruangan lagi
+                    'waktu_mulai' => $templateSesi->waktu_mulai,
                     'waktu_selesai' => $templateSesi->waktu_selesai,
-                    'status'        => 'belum_mulai',
-                    'pengaturan'    => $templateSesi->pengaturan,
-                    'template_id'   => $templateSesi->id
+                    'status' => 'belum_mulai',
+                    'pengaturan' => $templateSesi->pengaturan,
+                    'template_id' => $templateSesi->id
                 ]);
 
                 $jadwalUjian->sesiRuangans()->attach($newSesi->id, [
@@ -291,9 +293,9 @@ class SesiAssignmentService
                 // Copy assignment siswa (optional, bisa di-skip kalau tidak perlu)
                 foreach ($templateSesi->sesiRuanganSiswa as $assignment) {
                     $newSesi->sesiRuanganSiswa()->create([
-                        'siswa_id'         => $assignment->siswa_id,
+                        'siswa_id' => $assignment->siswa_id,
                         'status_kehadiran' => 'tidak_hadir',
-                        'keterangan'       => $assignment->keterangan,
+                        'keterangan' => $assignment->keterangan,
                     ]);
                 }
 

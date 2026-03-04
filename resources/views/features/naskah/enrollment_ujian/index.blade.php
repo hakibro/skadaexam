@@ -5,6 +5,23 @@
 @section('page-description', 'Kelola pendaftaran siswa pada ujian')
 
 @section('content')
+    @if (session('import_errors'))
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fa-solid fa-circle-exclamation text-red-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700 font-medium">Terdapat {{ count(session('import_errors')) }} kesalahan:</p>
+                    <ul class="mt-2 list-disc list-inside text-sm text-red-600">
+                        @foreach (session('import_errors') as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    @endif
     <div class="space-y-6">
         <div class="bg-white shadow-md rounded-lg overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
@@ -29,6 +46,12 @@
                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150"
                         data-modal-toggle="bulkEnrollmentModal">
                         <i class="fa-solid fa-users mr-2"></i> Enrollment Massal
+                    </button>
+                    <!-- Tombol Import Excel -->
+                    <button type="button"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition duration-150"
+                        data-modal-toggle="importExcelModal">
+                        <i class="fa-solid fa-file-excel mr-2"></i> Import Excel
                     </button>
                 </div>
             </div>
@@ -66,7 +89,7 @@
                                 @foreach ($jadwalUjians as $jadwal)
                                     <option value="{{ $jadwal->id }}"
                                         {{ request('jadwal_id') == $jadwal->id ? 'selected' : '' }}>
-                                        {{ $jadwal->tanggal->format('d/m') }} - {{ Str::limit($jadwal->judul, 15) }}
+                                        {{ $jadwal->tanggal->format('d/m') }} - {{ $jadwal->judul }}
                                     </option>
                                 @endforeach
                             </select>
@@ -403,6 +426,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Import Excel -->
+    <div id="importExcelModal" tabindex="-1" aria-hidden="true"
+        class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
+        <div class="relative p-4 w-full max-w-md h-full md:h-auto">
+            <div class="relative bg-white rounded-lg shadow-lg">
+                <div class="flex justify-between items-center p-4 border-b rounded-t">
+                    <h3 class="text-lg font-medium text-gray-900">
+                        <i class="fa-solid fa-file-excel mr-2"></i>Import Enrollment dari Excel
+                    </h3>
+                    <button type="button"
+                        class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
+                        data-modal-toggle="importExcelModal">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <form action="{{ route('naskah.enrollment-ujian.import') }}" method="POST"
+                    enctype="multipart/form-data">
+                    @csrf
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label for="file" class="block mb-2 text-sm font-medium text-gray-900">
+                                Pilih File Excel <span class="text-red-500">*</span>
+                            </label>
+                            <input type="file" name="file" id="file" accept=".xlsx,.xls,.csv" required
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <p class="mt-2 text-sm text-gray-500">
+                                Format file: kolom <strong>idperson</strong> (idyayasan/nis) dan
+                                <strong>kode_jadwal</strong> (kode ujian).
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end p-4 space-x-2 border-t border-gray-200 rounded-b">
+                        <button type="button"
+                            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900"
+                            data-modal-toggle="importExcelModal">
+                            <i class="fa-solid fa-times mr-2"></i>Batal
+                        </button>
+                        <button type="submit"
+                            class="text-white bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-5 py-2.5">
+                            <i class="fa-solid fa-upload mr-2"></i>Upload & Proses
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -574,6 +644,21 @@
                     enrollModal.classList.remove('flex');
                     enrollModal.setAttribute('aria-hidden', 'true');
                 });
+            });
+
+            // Toggle modal import
+            const importModal = document.getElementById('importExcelModal');
+            document.querySelectorAll('[data-modal-toggle="importExcelModal"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    importModal.classList.toggle('hidden');
+                    importModal.classList.toggle('flex');
+                });
+            });
+            importModal.addEventListener('click', (e) => {
+                if (e.target === importModal) {
+                    importModal.classList.add('hidden');
+                    importModal.classList.remove('flex');
+                }
             });
         });
     </script>

@@ -29,6 +29,7 @@ class JadwalUjian extends Model
         'acak_soal',
         'acak_jawaban',
         'auto_assign_sesi',
+        'auto_enroll',
         'scheduling_mode',
         'timezone',
         'aktifkan_auto_logout'
@@ -43,6 +44,7 @@ class JadwalUjian extends Model
         'acak_soal' => 'boolean',
         'acak_jawaban' => 'boolean',
         'auto_assign_sesi' => 'boolean',
+        'auto_enroll' => 'boolean',
         'aktifkan_auto_logout' => 'boolean',
         'status' => 'string' // Enum: draft, active, completed, cancelled
     ];
@@ -86,7 +88,7 @@ class JadwalUjian extends Model
     public function sesiRuangans()
     {
         return $this->belongsToMany(SesiRuangan::class, 'jadwal_ujian_sesi_ruangan')
-            ->withPivot('id','pengawas_id')
+            ->withPivot('id', 'pengawas_id')
             ->using(JadwalUjianSesiRuangan::class)
             ->withTimestamps();
     }

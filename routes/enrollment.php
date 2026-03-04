@@ -31,6 +31,9 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
 
     Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [EnrollmentUjianController::class, 'updateStatus'])->name('enrollment-ujian.update-status');
     Route::resource('enrollment-ujian', EnrollmentUjianController::class);
+
+    Route::post('enrollment-ujian/import', [EnrollmentUjianController::class, 'importExcel'])->name('enrollment-ujian.import');
+
 });
 
 

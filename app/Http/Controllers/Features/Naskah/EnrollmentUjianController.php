@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Imports\EnrollmentImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EnrollmentUjianController extends Controller
 {
@@ -741,4 +743,32 @@ class EnrollmentUjianController extends Controller
 
         return redirect()->back()->with('success', 'Siswa berhasil diaktifkan kembali.');
     }
+
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            $import = new EnrollmentImport();
+            Excel::import($import, $request->file('file'));
+
+            $success = $import->getSuccessCount();
+            $failed = $import->getFailedCount();
+            $errors = $import->getErrors();
+
+            $message = "Import selesai. Berhasil: {$success}, Gagal: {$failed}.";
+            if ($failed > 0) {
+                // Simpan errors ke session flash agar bisa ditampilkan
+                session()->flash('import_errors', $errors);
+                return redirect()->back()->with('warning', $message);
+            }
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat membaca file: ' . $e->getMessage());
+        }
+    }
+
 }

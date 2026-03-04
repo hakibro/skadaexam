@@ -56,6 +56,10 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::put('jadwal/{jadwal}/switch-scheduling-mode', [JadwalUjianController::class, 'switchSchedulingMode'])->name('jadwal.switch-scheduling-mode');
     Route::post('jadwal/{jadwal}/apply-to-sessions', [JadwalUjianController::class, 'applyToSessions'])->name('jadwal.apply-to-sessions');
 
+
+    // Jadwal Ujian Susulan
+    Route::post('jadwal/susulan', [JadwalUjianController::class, 'storeSusulan'])->name('jadwal.susulan.store');
+
     // ===== HASIL UJIAN MANAGEMENT =====
     Route::get('hasil/export', [HasilUjianController::class, 'export'])->name('hasil.export');
     Route::get('hasil/analisis', [HasilUjianController::class, 'analisis'])->name('hasil.analisis');

@@ -135,7 +135,7 @@
                             @enderror
                         </div>
 
-                        {{-- <div>
+                        <div>
                             <label for="scheduling_mode" class="block text-sm font-medium text-gray-700">Mode
                                 Penjadwalan</label>
                             <select name="scheduling_mode" id="scheduling_mode"
@@ -159,7 +159,7 @@
                             @error('scheduling_mode')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
-                        </div> --}}
+                        </div>
 
                         <div class="md:col-span-2">
                             <label for="deskripsi" class="block text-sm font-medium text-gray-700">Deskripsi
@@ -244,6 +244,15 @@
                                     class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="auto_assign_sesi" class="ml-2 block text-sm text-gray-700">
                                     Auto Assign Sesi
+                                </label>
+                            </div>
+
+                            <div class="flex items-center" id="auto-enroll-container">
+                                <input type="checkbox" name="auto_enroll" id="auto_enroll" value="1"
+                                    {{ old('auto_enroll', true) ? 'checked' : '' }}
+                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="auto_enroll" class="ml-2 block text-sm text-gray-700">
+                                    Auto Enroll Siswa
                                 </label>
                             </div>
                         </div>

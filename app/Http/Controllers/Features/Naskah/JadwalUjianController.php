@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Features\Naskah;
 
 use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
+use App\Models\Ruangan;
 use App\Models\SesiRuangan;
+use App\Models\SesiRuanganSiswa;
+use App\Models\EnrollmentUjian;
 use App\Models\BankSoal;
 use App\Models\Mapel;
 use App\Models\Kelas;
 use App\Services\SesiAssignmentService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Carbon\Carbon;
 
 class JadwalUjianController extends Controller
@@ -51,10 +55,13 @@ class JadwalUjianController extends Controller
             });
         }
 
-        $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate(10);
-        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
+        $perPage = $request->get('per_page', 30); // default 30
+        $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate($perPage);
 
-        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels'));
+        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
+        $allJadwal = JadwalUjian::orderBy('tanggal', 'desc')->get();
+
+        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'allJadwal', 'perPage'));
     }
 
     /**
@@ -85,6 +92,7 @@ class JadwalUjianController extends Controller
             'deskripsi' => 'nullable|string',
             'scheduling_mode' => 'nullable|in:fixed,flexible',
             'auto_assign_sesi' => 'nullable|boolean',
+            'auto_enroll' => 'nullable|boolean',
             'kelas_target' => 'nullable|array',
             'kelas_target.*' => 'exists:kelas,id',
         ]);
@@ -138,7 +146,8 @@ class JadwalUjianController extends Controller
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
             'aktifkan_auto_logout' => $request->has('aktifkan_auto_logout'),
             'scheduling_mode' => $request->get('scheduling_mode', 'flexible'),
-            'auto_assign_sesi' => $request->get('auto_assign_sesi', true),
+            'auto_assign_sesi' => $request->has('auto_assign_sesi'),
+            'auto_enroll' => $request->has('auto_enroll'),
             'kelas_target' => $kelasTarget, // Add the kelas_target field
             'status' => 'draft',
             'created_by' => auth()->id(),
@@ -741,4 +750,113 @@ class JadwalUjianController extends Controller
                 ->with('error', 'Gagal menerapkan ke sesi: ' . $e->getMessage());
         }
     }
+
+    public function storeSusulan(Request $request)
+    {
+        $request->validate([
+            'jadwal_ids' => 'required|array',
+            'jadwal_ids.*' => 'exists:jadwal_ujian,id',
+            'tanggal' => 'required|date',
+            'waktu_mulai' => 'required|date_format:H:i',
+            'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Hitung total siswa yang akan diikutkan (dari semua jadwal asli)
+            $totalSiswa = 0;
+            foreach ($request->jadwal_ids as $id) {
+                $totalSiswa += EnrollmentUjian::where('jadwal_ujian_id', $id)
+                    ->where('status_enrollment', 'enrolled')
+                    ->count();
+            }
+
+            // 1. Buat ruangan baru
+            $ruangan = Ruangan::create([
+                'kode_ruangan' => 'RS' . strtoupper(Str::random(2)),
+                'nama_ruangan' => 'Ruang Ujian Susulan ' . date('Y-m-d H:i'),
+                'kapasitas' => $totalSiswa,
+                'status' => 'aktif',
+                // tambahkan field lain sesuai kebutuhan (lokasi, dll)
+            ]);
+
+            // 2. Buat sesi ruangan
+            $sesi = SesiRuangan::create([
+                'ruangan_id' => $ruangan->id,
+                'nama_sesi' => 'Sesi Ujian Susulan',
+                'waktu_mulai' => $request->waktu_mulai,
+                'waktu_selesai' => $request->waktu_selesai,
+                'status' => 'belum_mulai',
+                'pengaturan' => null,
+                'template_id' => null,
+            ]);
+
+            // 3. Proses setiap jadwal yang dipilih
+            foreach ($request->jadwal_ids as $jadwalId) {
+                $jadwalAsli = JadwalUjian::findOrFail($jadwalId);
+
+                // Duplikasi jadwal
+                $jadwalBaru = $jadwalAsli->replicate();
+                $jadwalBaru->judul = 'Susulan - ' . $jadwalAsli->judul;
+                $jadwalBaru->tanggal = $request->tanggal;
+                $jadwalBaru->status = 'aktif';
+                $jadwalBaru->kode_ujian = 'S' . date('Ymd') . strtoupper(Str::random(5));
+                $jadwalBaru->created_by = auth()->id();
+                $jadwalBaru->auto_assign_sesi = false; // kita attach manual
+                $jadwalBaru->auto_enroll = false;       // kita enroll manual
+                $jadwalBaru->save();
+
+                // Hubungkan jadwal baru dengan sesi
+                $jadwalBaru->sesiRuangans()->attach($sesi->id);
+
+                // Ambil semua siswa dengan status enrolled dari jadwal asli
+                $enrollments = EnrollmentUjian::where('jadwal_ujian_id', $jadwalId)
+                    ->where('status_enrollment', 'enrolled')
+                    ->with('siswa')
+                    ->get();
+
+                foreach ($enrollments as $enrollment) {
+                    $siswa = $enrollment->siswa;
+
+                    // Daftarkan siswa ke sesi (sesi_ruangan_siswa) – hanya jika belum ada
+                    $exists = SesiRuanganSiswa::where('sesi_ruangan_id', $sesi->id)
+                        ->where('siswa_id', $siswa->id)
+                        ->exists();
+
+                    if (!$exists) {
+                        SesiRuanganSiswa::create([
+                            'sesi_ruangan_id' => $sesi->id,
+                            'siswa_id' => $siswa->id,
+                            'status_kehadiran' => 'tidak_hadir',
+                        ]);
+                    }
+
+                    // Buat enrollment baru untuk jadwal susulan – hanya jika belum ada
+                    $enrollmentExists = EnrollmentUjian::where('siswa_id', $siswa->id)
+                        ->where('jadwal_ujian_id', $jadwalBaru->id)
+                        ->exists();
+
+                    if (!$enrollmentExists) {
+                        EnrollmentUjian::create([
+                            'siswa_id' => $siswa->id,
+                            'jadwal_ujian_id' => $jadwalBaru->id,
+                            'sesi_ruangan_id' => $sesi->id,
+                            'status_enrollment' => 'enrolled',
+                            'catatan' => 'Ujian susulan',
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('naskah.jadwal.index')
+                ->with('success', 'Ujian susulan berhasil dibuat untuk ' . count($request->jadwal_ids) . ' jadwal.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Gagal membuat ujian susulan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
 }
