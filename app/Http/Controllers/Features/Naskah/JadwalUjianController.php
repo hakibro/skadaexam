@@ -59,9 +59,8 @@ class JadwalUjianController extends Controller
         $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate($perPage);
 
         $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
-        $allJadwal = JadwalUjian::orderBy('tanggal', 'desc')->get();
 
-        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'allJadwal', 'perPage'));
+        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage'));
     }
 
     /**
@@ -82,20 +81,35 @@ class JadwalUjianController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'judul' => 'required|string|max:255',
             'mapel_id' => 'required|exists:mapel,id',
-            'bank_soal_id' => 'required|exists:bank_soal,id',
+            'bank_soal_id' => 'nullable|exists:bank_soal,id',
             'tanggal' => 'required|date',
-            'durasi_menit' => 'required|integer|min:1',
-            'jumlah_soal' => 'required|integer|min:1',
-            'jenis_ujian' => 'required|string',
+            'durasi_preset' => 'required|in:25,30,45,manual',
+            'durasi_manual' => 'required_if:durasi_preset,manual|nullable|integer|min:1',
             'deskripsi' => 'nullable|string',
-            'scheduling_mode' => 'nullable|in:fixed,flexible',
-            'auto_assign_sesi' => 'nullable|boolean',
-            'auto_enroll' => 'nullable|boolean',
             'kelas_target' => 'nullable|array',
             'kelas_target.*' => 'exists:kelas,id',
         ]);
+
+        $mapel = Mapel::findOrFail($request->mapel_id);
+        $bankSoal = $this->resolveBankSoalForMapel($request->mapel_id, $request->bank_soal_id);
+
+        if (!$bankSoal) {
+            return back()
+                ->withInput()
+                ->withErrors(['bank_soal_id' => 'Tidak ada bank soal yang terkait dengan mata pelajaran ini.']);
+        }
+
+        $jumlahSoal = $bankSoal->soals()->count();
+        if ($jumlahSoal < 1) {
+            return back()
+                ->withInput()
+                ->withErrors(['jumlah_soal' => 'Bank soal terkait belum memiliki soal.']);
+        }
+
+        $durasiMenit = $request->durasi_preset === 'manual'
+            ? (int) $request->durasi_manual
+            : (int) $request->durasi_preset;
 
         // Generate unique exam code
         $kodeUjian = 'U' . date('Ymd') . strtoupper(Str::random(5));
@@ -108,7 +122,6 @@ class JadwalUjianController extends Controller
             $kelasTarget = $request->kelas_target;
         } else {
             // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
-            $mapel = Mapel::find($request->mapel_id);
             if ($mapel) {
                 $query = Kelas::query();
 
@@ -133,38 +146,42 @@ class JadwalUjianController extends Controller
         // Create new jadwal ujian
         $jadwalUjian = JadwalUjian::create([
             'kode_ujian' => $kodeUjian,
-            'judul' => $request->judul,
+            'judul' => $mapel->nama_mapel,
             'deskripsi' => $request->deskripsi,
             'mapel_id' => $request->mapel_id,
-            'bank_soal_id' => $request->bank_soal_id,
-            'jenis_ujian' => $request->jenis_ujian,
+            'bank_soal_id' => $bankSoal->id,
+            'jenis_ujian' => 'uas',
             'tanggal' => $request->tanggal,
-            'durasi_menit' => $request->durasi_menit,
-            'jumlah_soal' => $request->jumlah_soal,
+            'durasi_menit' => $durasiMenit,
+            'jumlah_soal' => $jumlahSoal,
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),
             'aktifkan_auto_logout' => $request->has('aktifkan_auto_logout'),
-            'scheduling_mode' => $request->get('scheduling_mode', 'flexible'),
-            'auto_assign_sesi' => $request->has('auto_assign_sesi'),
-            'auto_enroll' => $request->has('auto_enroll'),
+            'auto_assign_sesi' => false,
+            'auto_enroll' => false,
             'kelas_target' => $kelasTarget, // Add the kelas_target field
-            'status' => 'draft',
+            'status' => 'aktif',
             'created_by' => auth()->id(),
         ]);
 
-        // Auto assign sesi ruangan if flexible scheduling is enabled
-        if ($jadwalUjian->scheduling_mode === 'flexible' && $jadwalUjian->auto_assign_sesi) {
-            $sesiAssignmentService = new SesiAssignmentService();
-            $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwalUjian);
+        return redirect()->route('naskah.jadwal.show', $jadwalUjian->id)
+            ->with('success', 'Jadwal ujian berhasil dibuat');
+    }
 
-            if ($assignedCount > 0) {
-                session()->flash('info', "Berhasil mengaitkan {$assignedCount} sesi ruangan secara otomatis berdasarkan tanggal yang sama.");
+    private function resolveBankSoalForMapel(int $mapelId, ?int $bankSoalId = null): ?BankSoal
+    {
+        $query = BankSoal::where('mapel_id', $mapelId)->withCount('soals')->orderBy('judul', 'asc');
+
+        if ($bankSoalId) {
+            $selectedBankSoal = (clone $query)->where('id', $bankSoalId)->first();
+
+            if ($selectedBankSoal) {
+                return $selectedBankSoal;
             }
         }
 
-        return redirect()->route('naskah.jadwal.show', $jadwalUjian->id)
-            ->with('success', 'Jadwal ujian berhasil dibuat');
+        return $query->get()->first(fn($bankSoal) => $bankSoal->soals_count > 0);
     }
 
     /**
@@ -190,7 +207,7 @@ class JadwalUjianController extends Controller
 
         try {
             // Try loading each relationship separately for better error isolation
-            try {
+        try {
                 $jadwal->load('mapel');
                 file_put_contents($logFile, "✓ Loaded mapel\n", FILE_APPEND);
             } catch (\Exception $e) {
@@ -231,11 +248,19 @@ class JadwalUjianController extends Controller
             file_put_contents($logFile, "Data ready for view\n", FILE_APPEND);
             file_put_contents($logFile, "Schedule info: " . json_encode($scheduleInfo) . "\n", FILE_APPEND);
 
+            $sourceSesiOptions = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa'])
+                ->withCount('sesiRuanganSiswa')
+                ->where('sumber', 'sumber')
+                ->orderBy('ruangan_id')
+                ->orderBy('waktu_mulai')
+                ->get();
+
             // Standard debug view
             file_put_contents($logFile, "Using standard debug view\n", FILE_APPEND);
             return view('features.naskah.jadwal.show', [
                 'jadwal' => $jadwal,
                 'scheduleInfo' => $scheduleInfo,
+                'sourceSesiOptions' => $sourceSesiOptions,
                 'debug_timestamp' => $timestamp,
                 'debug_id' => $uniqueId
             ]);
@@ -387,6 +412,175 @@ class JadwalUjianController extends Controller
             'success' => true,
             'message' => 'Sesi ujian berhasil ditambahkan ke jadwal'
         ]);
+    }
+
+    public function attachSourceSesiAndEnroll(Request $request, JadwalUjian $jadwal)
+    {
+        $request->validate([
+            'sesi_ids' => 'required|array|min:1',
+            'sesi_ids.*' => 'exists:sesi_ruangan,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $attachedCount = 0;
+            $enrolledCount = 0;
+            $skippedCount = 0;
+
+            $sourceSesis = SesiRuangan::with(['sesiRuanganSiswa.siswa.kelas'])
+                ->whereIn('id', $request->sesi_ids)
+                ->where('sumber', 'sumber')
+                ->get();
+
+            foreach ($sourceSesis as $sourceSesi) {
+                $duplicateSesi = SesiRuangan::where('sumber', $sourceSesi->kode_sesi)
+                    ->whereHas('jadwalUjians', function ($query) use ($jadwal) {
+                        $query->whereDate('jadwal_ujian.tanggal', $jadwal->tanggal->toDateString());
+                    })
+                    ->with('sesiRuanganSiswa')
+                    ->first();
+
+                if (!$duplicateSesi) {
+                    $duplicateSesi = SesiRuangan::create([
+                        'ruangan_id' => $sourceSesi->ruangan_id,
+                        'nama_sesi' => $sourceSesi->nama_sesi,
+                        'waktu_mulai' => $sourceSesi->waktu_mulai,
+                        'waktu_selesai' => $sourceSesi->waktu_selesai,
+                        'status' => 'belum_mulai',
+                        'sumber' => $sourceSesi->kode_sesi,
+                        'pengaturan' => $sourceSesi->pengaturan,
+                    ]);
+                }
+
+                foreach ($sourceSesi->sesiRuanganSiswa as $assignment) {
+                    $duplicateSesi->sesiRuanganSiswa()->firstOrCreate(
+                        ['siswa_id' => $assignment->siswa_id],
+                        [
+                            'status_kehadiran' => 'tidak_hadir',
+                            'keterangan' => $assignment->keterangan,
+                        ]
+                    );
+                }
+
+                $duplicateSesi->load('sesiRuanganSiswa.siswa.kelas');
+
+                if (!$jadwal->sesiRuangans()->where('sesi_ruangan.id', $duplicateSesi->id)->exists()) {
+                    $jadwal->sesiRuangans()->attach($duplicateSesi->id, [
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $attachedCount++;
+                }
+
+                foreach ($duplicateSesi->sesiRuanganSiswa as $assignment) {
+                    if (!$this->isSiswaEligibleForJadwal($assignment->siswa, $jadwal)) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    $enrollment = EnrollmentUjian::withTrashed()
+                        ->where('jadwal_ujian_id', $jadwal->id)
+                        ->where('siswa_id', $assignment->siswa_id)
+                        ->first();
+
+                    if (!$enrollment) {
+                        EnrollmentUjian::create([
+                            'siswa_id' => $assignment->siswa_id,
+                            'jadwal_ujian_id' => $jadwal->id,
+                            'sesi_ruangan_id' => $duplicateSesi->id,
+                            'status_enrollment' => 'enrolled',
+                            'catatan' => 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
+                        ]);
+                        $enrolledCount++;
+                        continue;
+                    }
+
+                    if ($enrollment->trashed()) {
+                        $enrollment->restore();
+                    }
+
+                    $enrollment->update([
+                        'sesi_ruangan_id' => $duplicateSesi->id,
+                        'status_enrollment' => $enrollment->status_enrollment ?: 'enrolled',
+                        'catatan' => $enrollment->catatan ?: 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $message = "Berhasil menambahkan {$attachedCount} sesi dan {$enrolledCount} siswa ke ujian.";
+            if ($skippedCount > 0) {
+                $message .= " {$skippedCount} siswa dilewati karena tingkat/jurusan tidak sesuai.";
+            }
+
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->with('error', 'Gagal mengatur sesi ujian: ' . $e->getMessage());
+        }
+    }
+
+    private function isSiswaEligibleForJadwal($siswa, JadwalUjian $jadwal): bool
+    {
+        if (!$siswa || !$siswa->kelas) {
+            return false;
+        }
+
+        $kelasTargets = collect($jadwal->kelas_target ?? [])
+            ->map(fn($kelasId) => (string) $kelasId)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($kelasTargets) && !in_array((string) $siswa->kelas_id, $kelasTargets, true)) {
+            return false;
+        }
+
+        $mapel = $jadwal->mapel;
+        if (!$mapel) {
+            return true;
+        }
+
+        $mapelTingkat = $this->normalizeEligibilityValue($mapel->tingkat);
+        $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat);
+
+        if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
+            return false;
+        }
+
+        $mapelJurusan = $this->normalizeEligibilityValue($mapel->jurusan);
+        $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan);
+
+        if ($mapelJurusan && $mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function normalizeEligibilityValue($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match ($normalized) {
+            '10', 'KELAS 10', 'KELAS X' => 'X',
+            '11', 'KELAS 11', 'KELAS XI' => 'XI',
+            '12', 'KELAS 12', 'KELAS XII' => 'XII',
+            default => $normalized,
+        };
     }
 
     /**
@@ -635,7 +829,7 @@ class JadwalUjianController extends Controller
         ]);
 
         // If enabling auto assign, run assignment now
-        if ($autoAssign && $jadwal->scheduling_mode === 'flexible') {
+        if ($autoAssign) {
             $sesiAssignmentService = new SesiAssignmentService();
             $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwal);
 
@@ -655,41 +849,8 @@ class JadwalUjianController extends Controller
      */
     public function switchSchedulingMode(Request $request, JadwalUjian $jadwal)
     {
-        $request->validate([
-            'scheduling_mode' => 'required|in:fixed,flexible'
-        ]);
-
-        $newMode = $request->scheduling_mode;
-        $oldMode = $jadwal->scheduling_mode;
-
-        $jadwal->update([
-            'scheduling_mode' => $newMode
-        ]);
-
-        // Handle mode switching logic
-        if ($newMode === 'flexible' && $oldMode === 'fixed') {
-            // Switching to flexible - enable auto assignment
-            $jadwal->update(['auto_assign_sesi' => true]);
-
-            $sesiAssignmentService = new SesiAssignmentService();
-            $assignedCount = $sesiAssignmentService->autoAssignSesiByDate($jadwal);
-
-            $message = "Mode penjadwalan diubah ke fleksibel.";
-            if ($assignedCount > 0) {
-                $message .= " {$assignedCount} sesi ruangan berhasil dikaitkan.";
-            }
-        } elseif ($newMode === 'fixed' && $oldMode === 'flexible') {
-            // Switching to fixed - clear sesi assignments
-            $jadwal->sesiRuangans()->detach();
-            $jadwal->update(['auto_assign_sesi' => false]);
-
-            $message = "Mode penjadwalan diubah ke tetap. Semua kaitan sesi ruangan telah dihapus.";
-        } else {
-            $message = "Mode penjadwalan berhasil diperbarui.";
-        }
-
         return redirect()->route('naskah.jadwal.show', $jadwal->id)
-            ->with('success', $message);
+            ->with('warning', 'Mode penjadwalan sudah tidak digunakan.');
     }
 
     /**
@@ -788,7 +949,6 @@ class JadwalUjianController extends Controller
                 'waktu_selesai' => $request->waktu_selesai,
                 'status' => 'belum_mulai',
                 'pengaturan' => null,
-                'template_id' => null,
             ]);
 
             // 3. Proses setiap jadwal yang dipilih

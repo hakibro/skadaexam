@@ -30,7 +30,6 @@ class JadwalUjian extends Model
         'acak_jawaban',
         'auto_assign_sesi',
         'auto_enroll',
-        'scheduling_mode',
         'timezone',
         'aktifkan_auto_logout'
     ];
@@ -396,14 +395,12 @@ class JadwalUjian extends Model
      */
     public function getWaktuMulaiAttribute()
     {
-        if ($this->scheduling_mode === 'flexible') {
-            $earliestSesi = $this->sesiRuangans()
-                ->orderBy('waktu_mulai', 'asc')
-                ->first();
+        $earliestSesi = $this->sesiRuangans()
+            ->orderBy('waktu_mulai', 'asc')
+            ->first();
 
-            if ($earliestSesi) {
-                return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $earliestSesi->waktu_mulai);
-            }
+        if ($earliestSesi) {
+            return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $earliestSesi->waktu_mulai);
         }
 
         return $this->tanggal;
@@ -419,14 +416,12 @@ class JadwalUjian extends Model
             return null;
         }
 
-        if ($this->scheduling_mode === 'flexible') {
-            $latestSesi = $this->sesiRuangans()
-                ->orderBy('waktu_selesai', 'desc')
-                ->first();
+        $latestSesi = $this->sesiRuangans()
+            ->orderBy('waktu_selesai', 'desc')
+            ->first();
 
-            if ($latestSesi) {
-                return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $latestSesi->waktu_selesai);
-            }
+        if ($latestSesi) {
+            return Carbon::parse($this->tanggal->format('Y-m-d') . ' ' . $latestSesi->waktu_selesai);
         }
 
         return (clone $this->tanggal)->addMinutes($this->durasi_menit ?? 0);
@@ -437,17 +432,6 @@ class JadwalUjian extends Model
      */
     public function getTimeSlots()
     {
-        if ($this->scheduling_mode === 'fixed') {
-            return [
-                [
-                    'waktu_mulai' => $this->tanggal,
-                    'waktu_selesai' => $this->waktu_selesai,
-                    'durasi_menit' => $this->durasi_menit,
-                    'source' => 'fixed'
-                ]
-            ];
-        }
-
         $timeSlots = [];
         foreach ($this->sesiRuangans as $sesi) {
             $timeSlots[] = [
@@ -469,7 +453,7 @@ class JadwalUjian extends Model
      */
     public function isFlexibleScheduling()
     {
-        return $this->scheduling_mode === 'flexible';
+        return true;
     }
 
     /**
@@ -477,10 +461,6 @@ class JadwalUjian extends Model
      */
     public function getTotalCapacity()
     {
-        if ($this->scheduling_mode === 'fixed') {
-            return 0; // No specific capacity for fixed scheduling
-        }
-
         return $this->sesiRuangans->sum(function ($sesi) {
             return $sesi->ruangan->kapasitas ?? 0;
         });
@@ -491,16 +471,6 @@ class JadwalUjian extends Model
      */
     public function getScheduleSummary()
     {
-        if ($this->scheduling_mode === 'fixed') {
-            return [
-                'mode' => 'fixed',
-                'tanggal' => $this->tanggal->format('d M Y'),
-                'waktu' => $this->tanggal->format('H:i') . ' - ' . $this->waktu_selesai->format('H:i'),
-                'durasi' => $this->durasi_menit . ' menit',
-                'sesi_count' => 0
-            ];
-        }
-
         $sesiCount = $this->sesiRuangans->count();
 
         if ($sesiCount === 0) {

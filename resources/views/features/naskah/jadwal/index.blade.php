@@ -55,11 +55,6 @@
                         class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition">
                         <i class="fa-solid fa-plus mr-1"></i> Tambah
                     </a>
-                    <button type="button"
-                        class="inline-flex items-center px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition"
-                        data-modal-toggle="susulanModal">
-                        <i class="fa-solid fa-clock mr-1"></i> Susulan
-                    </button>
                 </div>
             </div>
 
@@ -199,6 +194,11 @@
                                                 title="Detail">
                                                 <i class="fa-solid fa-eye text-xs"></i>
                                             </a>
+                                            <a href="{{ route('naskah.jadwal.show', $jadwal->id) }}?assign_sesi=1"
+                                                class="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-600 hover:text-white transition"
+                                                title="Assign Sesi">
+                                                <i class="fa-solid fa-layer-group text-xs"></i>
+                                            </a>
                                             <a href="{{ route('naskah.jadwal.edit', $jadwal->id) }}"
                                                 class="p-1 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-500 hover:text-white transition"
                                                 title="Edit">
@@ -249,77 +249,6 @@
         </form>
     </div>
 
-    <!-- Modal Ujian Susulan -->
-    <div id="susulanModal" tabindex="-1" aria-hidden="true"
-        class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
-        <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
-            <div class="relative bg-white rounded-lg shadow-lg">
-                <div class="flex justify-between items-center p-4 border-b rounded-t">
-                    <h3 class="text-lg font-medium text-gray-900">
-                        <i class="fa-solid fa-clock mr-2"></i>Buat Ujian Susulan
-                    </h3>
-                    <button type="button"
-                        class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
-                        data-modal-toggle="susulanModal">
-                        <i class="fa-solid fa-times"></i>
-                    </button>
-                </div>
-                <form action="{{ route('naskah.jadwal.susulan.store') }}" method="POST">
-                    @csrf
-                    <div class="p-6 space-y-4">
-                        <div>
-                            <label for="jadwal_ids" class="block mb-2 text-sm font-medium text-gray-900">
-                                Pilih Jadwal Ujian <span class="text-red-500">*</span>
-                            </label>
-                            <select id="jadwal_ids" name="jadwal_ids[]" multiple required
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                @foreach ($allJadwal as $jadwal)
-                                    <option value="{{ $jadwal->id }}">{{ $jadwal->judul }} ({{ $jadwal->kode_ujian }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <p class="mt-2 text-sm text-gray-500">Pilih satu atau lebih jadwal yang akan dibuatkan ujian
-                                susulan.</p>
-                        </div>
-                        <div>
-                            <label for="tanggal" class="block mb-2 text-sm font-medium text-gray-900">
-                                Tanggal Ujian Susulan <span class="text-red-500">*</span>
-                            </label>
-                            <input type="date" name="tanggal" id="tanggal" required
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="waktu_mulai" class="block mb-2 text-sm font-medium text-gray-900">
-                                    Waktu Mulai <span class="text-red-500">*</span>
-                                </label>
-                                <input type="time" name="waktu_mulai" id="waktu_mulai" required
-                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            </div>
-                            <div>
-                                <label for="waktu_selesai" class="block mb-2 text-sm font-medium text-gray-900">
-                                    Waktu Selesai <span class="text-red-500">*</span>
-                                </label>
-                                <input type="time" name="waktu_selesai" id="waktu_selesai" required
-                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-end p-4 space-x-2 border-t border-gray-200 rounded-b">
-                        <button type="button"
-                            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900"
-                            data-modal-toggle="susulanModal">
-                            <i class="fa-solid fa-times mr-2"></i>Batal
-                        </button>
-                        <button type="submit"
-                            class="text-white bg-orange-700 hover:bg-orange-800 focus:ring-4 focus:outline-none focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5">
-                            <i class="fa-solid fa-save mr-2"></i>Buat Ujian Susulan
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('scripts')
@@ -443,21 +372,6 @@
 
             if (!dropdown.contains(event.target)) {
                 menu.classList.add('hidden');
-            }
-        });
-
-        // Toggle modal susulan
-        const susulanModal = document.getElementById('susulanModal');
-        document.querySelectorAll('[data-modal-toggle="susulanModal"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                susulanModal.classList.toggle('hidden');
-                susulanModal.classList.toggle('flex');
-            });
-        });
-        susulanModal.addEventListener('click', (e) => {
-            if (e.target === susulanModal) {
-                susulanModal.classList.add('hidden');
-                susulanModal.classList.remove('flex');
             }
         });
     </script>

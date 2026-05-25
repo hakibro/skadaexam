@@ -32,15 +32,15 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     {
         foreach ($rows as $row) {
             // Convert numeric idyayasan to string if exists
-            if (isset($row['idyayasan']) && is_numeric($row['idyayasan'])) {
-                $row['idyayasan'] = (string) $row['idyayasan'];
+            if ($this->rowValue($row, ['idyayasan']) !== null && is_numeric($this->rowValue($row, ['idyayasan']))) {
+                $row['idyayasan'] = (string) $this->rowValue($row, ['idyayasan']);
             }
 
             // If no kode_ruangan, skip ruangan and sesi processing but check for student assignment
-            if (empty($row['kode_ruangan'])) {
+            if (empty($this->rowValue($row, ['kode_ruangan']))) {
                 // If we have kode_sesi, try to find existing session and assign student
-                if (!empty($row['kode_sesi']) && !empty($row['idyayasan'])) {
-                    $sesi = SesiRuangan::where('kode_sesi', $row['kode_sesi'])->first();
+                if (!empty($this->rowValue($row, ['kode_sesi'])) && !empty($this->rowValue($row, ['idyayasan']))) {
+                    $sesi = SesiRuangan::where('kode_sesi', $this->rowValue($row, ['kode_sesi']))->first();
                     if ($sesi) {
                         $this->processSiswaAssignment($row, $sesi);
                     }
@@ -57,11 +57,11 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             }
 
             // Step 2: Process SesiRuangan if kode_sesi is provided
-            if (!empty($row['kode_sesi'])) {
+            if (!empty($this->rowValue($row, ['kode_sesi']))) {
                 $sesi = $this->processSesiRuangan($row, $ruangan);
 
                 // Step 3: Process Student Assignment if student idyayasan is provided
-                if ($sesi && !empty($row['idyayasan'])) {
+                if ($sesi && !empty($this->rowValue($row, ['idyayasan']))) {
                     $this->processSiswaAssignment($row, $sesi);
                 }
             }
@@ -74,34 +74,36 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     protected function processRuangan($row)
     {
         try {
+            $kapasitas = $this->normalizeInteger($this->rowValue($row, ['kapasitas_ruangan', 'kapasitas']), 30);
+
             // Check if ruangan exists by kode_ruangan
-            $ruangan = Ruangan::where('kode_ruangan', $row['kode_ruangan'])->first();
+            $ruangan = Ruangan::where('kode_ruangan', $this->rowValue($row, ['kode_ruangan']))->first();
 
             if ($ruangan) {
                 // Update existing ruangan
                 $ruangan->update([
-                    'nama_ruangan' => $row['nama_ruangan'] ?? $ruangan->nama_ruangan,
-                    'kapasitas' => $row['kapasitas_ruangan'] ?? $ruangan->kapasitas,
-                    'lokasi' => $row['lokasi'] ?? $ruangan->lokasi,
-                    'status' => $row['status'] ?? $ruangan->status,
+                    'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], $ruangan->nama_ruangan),
+                    'kapasitas' => $kapasitas,
+                    'lokasi' => $this->rowValue($row, ['lokasi'], $ruangan->lokasi),
+                    'status' => $this->rowValue($row, ['status'], $ruangan->status),
                     // Only update other fields if provided
                 ]);
                 $this->results['ruangan_updated']++;
             } else {
                 // Create new ruangan
                 $ruangan = Ruangan::create([
-                    'kode_ruangan' => $row['kode_ruangan'],
-                    'nama_ruangan' => $row['nama_ruangan'] ?? 'Ruangan ' . $row['kode_ruangan'],
-                    'kapasitas' => $row['kapasitas_ruangan'] ?? 30,
-                    'lokasi' => $row['lokasi'] ?? null,
-                    'status' => $row['status'] ?? 'aktif',
+                    'kode_ruangan' => $this->rowValue($row, ['kode_ruangan']),
+                    'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], 'Ruangan ' . $this->rowValue($row, ['kode_ruangan'])),
+                    'kapasitas' => $kapasitas,
+                    'lokasi' => $this->rowValue($row, ['lokasi']),
+                    'status' => $this->rowValue($row, ['status'], 'aktif'),
                 ]);
                 $this->results['ruangan_created']++;
             }
 
             return $ruangan;
         } catch (\Exception $e) {
-            Log::error("Error processing ruangan {$row['kode_ruangan']}: " . $e->getMessage());
+            Log::error("Error processing ruangan {$this->rowValue($row, ['kode_ruangan'], '-')}: " . $e->getMessage());
             return null;
         }
     }
@@ -114,30 +116,33 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     {
         try {
             // Check if sesi exists by kode_sesi
-            $sesi = SesiRuangan::where('kode_sesi', $row['kode_sesi'])->first();
+            $kodeSesi = $this->rowValue($row, ['kode_sesi']);
+            $sesi = SesiRuangan::where('kode_sesi', $kodeSesi)->first();
 
             // Validate time format
-            $waktuMulai = $this->formatTime($row['waktu_mulai_sesi'] ?? '00:00');
-            $waktuSelesai = $this->formatTime($row['waktu_selesai_sesi'] ?? '00:00');
+            $waktuMulai = $this->formatTime($this->rowValue($row, ['waktu_mulai_sesi', 'waktu_mulai'], '00:00'));
+            $waktuSelesai = $this->formatTime($this->rowValue($row, ['waktu_selesai_sesi', 'waktu_selesai'], '00:00'));
 
             if ($sesi) {
                 // Update existing sesi
                 $sesi->update([
-                    'nama_sesi' => $row['nama_sesi'] ?? $sesi->nama_sesi,
+                    'nama_sesi' => $this->rowValue($row, ['nama_sesi'], $sesi->nama_sesi),
                     'waktu_mulai' => $waktuMulai,
                     'waktu_selesai' => $waktuSelesai,
-                    'status' => $row['status_sesi'] ?? $sesi->status,
+                    'status' => $this->rowValue($row, ['status_sesi'], $sesi->status),
+                    'sumber' => 'sumber',
                     'ruangan_id' => $ruangan->id, // Link to the correct ruangan
                 ]);
                 $this->results['sesi_updated']++;
             } else {
                 // Create new sesi
                 $sesi = new SesiRuangan([
-                    'kode_sesi' => $row['kode_sesi'],
-                    'nama_sesi' => $row['nama_sesi'] ?? 'Sesi ' . $row['kode_sesi'],
+                    'kode_sesi' => $kodeSesi,
+                    'nama_sesi' => $this->rowValue($row, ['nama_sesi'], 'Sesi ' . $kodeSesi),
                     'waktu_mulai' => $waktuMulai,
                     'waktu_selesai' => $waktuSelesai,
-                    'status' => $row['status_sesi'] ?? 'belum_mulai',
+                    'status' => $this->rowValue($row, ['status_sesi'], 'belum_mulai'),
+                    'sumber' => 'sumber',
                     'ruangan_id' => $ruangan->id,
                     // Other fields will use defaults
                 ]);
@@ -148,7 +153,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
 
             return $sesi;
         } catch (\Exception $e) {
-            Log::error("Error processing sesi {$row['kode_sesi']}: " . $e->getMessage());
+            Log::error("Error processing sesi {$this->rowValue($row, ['kode_sesi'], '-')}: " . $e->getMessage());
             return null;
         }
     }
@@ -160,7 +165,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     {
         try {
             // Convert idyayasan to string if numeric
-            $idyayasan = is_numeric($row['idyayasan']) ? (string) $row['idyayasan'] : $row['idyayasan'];
+            $rawIdyayasan = $this->rowValue($row, ['idyayasan']);
+            $idyayasan = is_numeric($rawIdyayasan) ? (string) $rawIdyayasan : $rawIdyayasan;
 
             // Find the student by idyayasan
             $siswa = Siswa::where('idyayasan', $idyayasan)->first();
@@ -188,7 +194,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
 
             return true;
         } catch (\Exception $e) {
-            Log::error("Error assigning student {$row['idyayasan']} to session: " . $e->getMessage());
+            $loggedIdyayasan = $this->rowValue($row, ['idyayasan'], '-');
+            Log::error("Error assigning student {$loggedIdyayasan} to session: " . $e->getMessage());
             return null;
         }
     }
@@ -198,6 +205,10 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     private function formatTime($time)
     {
         try {
+            if ($time === null || $time === '') {
+                return '00:00:00';
+            }
+
             // Case 1: langsung DateTime
             if ($time instanceof \DateTime) {
                 return Carbon::instance($time)->format('H:i:s');
@@ -220,6 +231,26 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
         return '00:00:00';
     }
 
+    private function rowValue($row, array $keys, $default = null)
+    {
+        foreach ($keys as $key) {
+            if (isset($row[$key]) && $row[$key] !== '') {
+                return $row[$key];
+            }
+        }
+
+        return $default;
+    }
+
+    private function normalizeInteger($value, int $default): int
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return (int) preg_replace('/[^0-9]/', '', (string) $value) ?: $default;
+    }
+
 
 
     /**
@@ -239,7 +270,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             // Ruangan fields - kode_ruangan nullable to allow student-only rows
             '*.kode_ruangan' => 'nullable|string|max:20',
             '*.nama_ruangan' => 'nullable|string|max:191',
-            '*.kapasitas' => 'nullable|integer|min:1|max:1000',
+            '*.kapasitas' => 'nullable',
+            '*.kapasitas_ruangan' => 'nullable',
             '*.lokasi' => 'nullable|string|max:191',
             '*.status' => 'nullable|string|in:aktif,perbaikan,tidak_aktif',
 
@@ -248,6 +280,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             '*.nama_sesi' => 'nullable|string|max:191',
             '*.waktu_mulai_sesi' => 'nullable',
             '*.waktu_selesai_sesi' => 'nullable',
+            '*.waktu_mulai' => 'nullable',
+            '*.waktu_selesai' => 'nullable',
             '*.status_sesi' => 'nullable|string|in:belum_mulai,berlangsung,selesai,dibatalkan',
 
             // Siswa fields - convert to string if needed

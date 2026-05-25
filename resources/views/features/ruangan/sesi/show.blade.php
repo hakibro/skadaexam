@@ -54,7 +54,18 @@
             <div class="flex justify-between items-start mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">{{ $sesi->nama_sesi }}</h2>
-                    <p class="text-sm text-gray-600 mt-1">{{ $sesi->kode_sesi }}</p>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <p class="text-sm text-gray-600">{{ $sesi->kode_sesi }}</p>
+                        @if ($sesi->sumber === 'sumber')
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
+                            </span>
+                        @elseif (!empty($sesi->sumber))
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                <i class="fa-regular fa-copy mr-1"></i>Duplikat dari {{ $sesi->sumber }}
+                            </span>
+                        @endif
+                    </div>
                 </div>
                 <div class="flex space-x-2">
                     <span
@@ -63,6 +74,18 @@
                     </span>
                 </div>
             </div>
+
+            @if ($sesi->sumber === 'sumber')
+                <div class="mb-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <div class="font-semibold">Sesi ini adalah sesi sumber.</div>
+                    <div class="mt-1">Sesi sumber dipakai sebagai acuan saat jadwal ujian menambahkan sesi dan enroll siswa.</div>
+                </div>
+            @elseif (!empty($sesi->sumber))
+                <div class="mb-6 rounded-md border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
+                    <div class="font-semibold">Sesi ini adalah hasil duplikasi.</div>
+                    <div class="mt-1">Data peserta disalin dari sesi sumber dengan kode {{ $sesi->sumber }}.</div>
+                </div>
+            @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Left Column -->

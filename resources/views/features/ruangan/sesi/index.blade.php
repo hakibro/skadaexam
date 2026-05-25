@@ -82,6 +82,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Sesi</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Sesi</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jadwal Ujian
                                 </th>
@@ -94,12 +95,33 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($sesiList as $sesi)
-                                <tr class="hover:bg-gray-50">
+                                <tr @class([
+                                    'hover:bg-gray-50',
+                                    'bg-emerald-50/60' => $sesi->sumber === 'sumber',
+                                    'bg-indigo-50/50' => !empty($sesi->sumber) && $sesi->sumber !== 'sumber',
+                                ])>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900">{{ $sesi->kode_sesi }}</div>
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">{{ $sesi->nama_sesi }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if ($sesi->sumber === 'sumber')
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
+                                            </span>
+                                            <div class="mt-1 text-xs text-emerald-700">Template duplikasi jadwal ujian</div>
+                                        @elseif (!empty($sesi->sumber))
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                <i class="fa-regular fa-copy mr-1"></i>Duplikat
+                                            </span>
+                                            <div class="mt-1 text-xs text-indigo-700">Dari: {{ $sesi->sumber }}</div>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                                                Belum ditandai
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">

@@ -103,15 +103,6 @@
                     </div>
                 </div>
 
-                <!-- Keterangan -->
-                <div>
-                    <label for="keterangan" class="block text-sm font-medium text-gray-700">Keterangan</label>
-                    <textarea name="keterangan" id="keterangan" rows="3"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('keterangan') }}</textarea>
-                    @error('keterangan')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
 
                 <!-- Info Ruangan -->
                 <div class="bg-gray-50 p-4 rounded-md">

@@ -8,6 +8,7 @@ use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Mapel;
+use App\Models\SoalUjian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -134,8 +135,11 @@ class HasilUjianController extends Controller
         $hasil->load([
             'jadwalUjian.mapel',
             'jadwalUjian.bankSoal',
-            'sesiRuangan',
-            'siswa.kelas'
+            'sesiRuangan.ruangan',
+            'siswa.kelas',
+            'jawabanSiswas.soalUjian',
+            'pelanggaranUjian',
+            'enrollment'
         ]);
 
         // Variabel tambahan untuk view
@@ -147,13 +151,29 @@ class HasilUjianController extends Controller
         // Ambil hasil ujian lain dari siswa yang sama
         $otherResults = HasilUjian::where('siswa_id', $hasil->siswa_id)
             ->where('id', '!=', $hasil->id)
+            ->with(['jadwalUjian.mapel'])
+            ->latest()
+            ->limit(8)
             ->get();
+        $answerRows = $this->buildAnswerRows($hasil);
+        $jawabanStats = $this->summarizeAnswerRows($answerRows);
+        $peerStats = $this->buildPeerStats($hasil);
+        $timeline = $this->buildResultTimeline($hasil);
+        $weakCategories = collect($kategoriAnalisis)
+            ->sortBy('persentase')
+            ->take(3)
+            ->all();
 
         return view('features.naskah.hasil.show', compact(
             'hasil',
             'mapel',
             'kategoriAnalisis',
-            'otherResults'
+            'otherResults',
+            'answerRows',
+            'jawabanStats',
+            'peerStats',
+            'timeline',
+            'weakCategories'
         ));
     }
     /**
@@ -482,7 +502,7 @@ class HasilUjianController extends Controller
      */
     public function analisis(Request $request)
     {
-        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas']);
+        $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas', 'jawabanSiswas.soalUjian']);
 
         // Apply filters similar to index method
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
@@ -496,6 +516,14 @@ class HasilUjianController extends Controller
             });
         }
 
+        if ($request->filled('tingkat')) {
+            $query->whereHas('siswa.kelas', fn($q) => $q->where('tingkat', $request->tingkat));
+        }
+
+        if ($request->filled('jurusan')) {
+            $query->whereHas('siswa.kelas', fn($q) => $q->where('jurusan', $request->jurusan));
+        }
+
         // Only consider completed tests for analysis
         $query->where('status', 'selesai');
 
@@ -506,6 +534,10 @@ class HasilUjianController extends Controller
         $avgNilai = $totalHasil > 0 ? $hasilUjians->avg('nilai') : 0;
         $maxNilai = $totalHasil > 0 ? $hasilUjians->max('nilai') : 0;
         $minNilai = $totalHasil > 0 ? $hasilUjians->min('nilai') : 0;
+        $medianNilai = $totalHasil > 0 ? $hasilUjians->sortBy('nilai')->values()->get((int) floor(($totalHasil - 1) / 2))->nilai : 0;
+        $passCount = $hasilUjians->where('lulus', true)->count();
+        $passRate = $totalHasil > 0 ? round(($passCount / $totalHasil) * 100, 1) : 0;
+        $avgDurasi = round($hasilUjians->avg('durasi_menit') ?? 0, 1);
 
         // Group results by score ranges
         $scoreRanges = [
@@ -540,7 +572,7 @@ class HasilUjianController extends Controller
         if ($totalHasil > 0) {
             $kelasPerfomance = $hasilUjians
                 ->groupBy(function ($item) {
-                    return $item->siswa->kelas->name ?? 'Tanpa Kelas';
+                    return $item->siswa->kelas->nama_kelas ?? 'Tanpa Kelas';
                 })
                 ->map(function ($items, $kelas) {
                     return [
@@ -555,9 +587,43 @@ class HasilUjianController extends Controller
                 ->values();
         }
 
+        $questionAnalysis = $this->buildQuestionAnalysis($hasilUjians);
+        $categoryAnalysis = $this->buildCategoryAnalysis($questionAnalysis);
+        $topStudents = $hasilUjians->sortByDesc('nilai')->take(10)->values();
+        $bottomStudents = $hasilUjians->sortBy('nilai')->take(10)->values();
+        $jadwalComparison = $hasilUjians
+            ->groupBy(fn($hasil) => $hasil->jadwalUjian->judul ?? 'Tanpa Jadwal')
+            ->map(fn($items, $jadwal) => [
+                'jadwal' => $jadwal,
+                'jumlah' => $items->count(),
+                'rata_rata' => round($items->avg('nilai'), 2),
+                'lulus' => $items->where('lulus', true)->count(),
+            ])
+            ->sortByDesc('rata_rata')
+            ->values();
+        $tingkatComparison = $hasilUjians
+            ->groupBy(fn($hasil) => $hasil->siswa->kelas->tingkat ?? '-')
+            ->map(fn($items, $tingkat) => [
+                'tingkat' => $tingkat,
+                'jumlah' => $items->count(),
+                'rata_rata' => round($items->avg('nilai'), 2),
+            ])
+            ->values();
+        $jurusanComparison = $hasilUjians
+            ->groupBy(fn($hasil) => $hasil->siswa->kelas->jurusan ?? '-')
+            ->map(fn($items, $jurusan) => [
+                'jurusan' => $jurusan,
+                'jumlah' => $items->count(),
+                'rata_rata' => round($items->avg('nilai'), 2),
+            ])
+            ->sortByDesc('rata_rata')
+            ->values();
+
         // Get filters for the view
         $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
         $kelasList = \App\Models\Kelas::orderBy('nama_kelas', 'asc')->get();
+        $tingkatList = \App\Models\Kelas::select('tingkat')->distinct()->whereNotNull('tingkat')->orderBy('tingkat')->pluck('tingkat');
+        $jurusanList = \App\Models\Kelas::select('jurusan')->distinct()->whereNotNull('jurusan')->orderBy('jurusan')->pluck('jurusan');
 
         return view('features.naskah.hasil.analisis', compact(
             'hasilUjians',
@@ -565,10 +631,203 @@ class HasilUjianController extends Controller
             'avgNilai',
             'maxNilai',
             'minNilai',
+            'medianNilai',
+            'passCount',
+            'passRate',
+            'avgDurasi',
             'scoreRanges',
             'kelasPerfomance',
+            'questionAnalysis',
+            'categoryAnalysis',
+            'topStudents',
+            'bottomStudents',
+            'jadwalComparison',
+            'tingkatComparison',
+            'jurusanComparison',
             'jadwalUjians',
-            'kelasList'
+            'kelasList',
+            'tingkatList',
+            'jurusanList'
         ));
+    }
+
+    public function jawaban(HasilUjian $hasil)
+    {
+        $hasil->load(['jadwalUjian.mapel', 'siswa.kelas', 'jawabanSiswas.soalUjian']);
+        $hasilUjian = $hasil;
+        $mapel = $hasil->jadwalUjian->mapel;
+        $jawaban = $this->buildAnswerRows($hasil);
+
+        return view('features.naskah.hasil.jawaban', compact('hasilUjian', 'mapel', 'jawaban'));
+    }
+
+    public function print(Request $request, HasilUjian $hasil)
+    {
+        $hasil->load(['jadwalUjian.mapel', 'jadwalUjian.bankSoal', 'sesiRuangan.ruangan', 'siswa.kelas', 'jawabanSiswas.soalUjian']);
+        $answerRows = $request->boolean('with_answers') ? $this->buildAnswerRows($hasil) : [];
+
+        return view('features.naskah.hasil.print', compact('hasil', 'answerRows'));
+    }
+
+    private function buildAnswerRows(HasilUjian $hasil): array
+    {
+        $rows = [];
+        $jawabanRecords = $hasil->relationLoaded('jawabanSiswas')
+            ? $hasil->jawabanSiswas
+            : $hasil->jawabanSiswas()->with('soalUjian')->get();
+
+        if ($jawabanRecords->isNotEmpty()) {
+            foreach ($jawabanRecords as $index => $jawaban) {
+                $soal = $jawaban->soalUjian;
+                if (!$soal) {
+                    continue;
+                }
+
+                $kunci = strtoupper((string) ($soal->kunci_jawaban ?? ''));
+                $jawabanSiswa = strtoupper((string) ($jawaban->jawaban ?? ''));
+                $status = $jawabanSiswa === '' ? 'kosong' : ($jawabanSiswa === $kunci ? 'benar' : 'salah');
+
+                $rows[] = [
+                    'soal_id' => $soal->id,
+                    'nomor' => $soal->nomor_soal ?? $soal->urutan ?? $index + 1,
+                    'pertanyaan' => $soal->pertanyaan ?? $soal->soal ?? '-',
+                    'text' => strip_tags($soal->pertanyaan ?? $soal->soal ?? '-'),
+                    'pilihan' => $this->getQuestionOptions($soal),
+                    'jawaban' => $jawabanSiswa,
+                    'kunci' => $kunci,
+                    'status' => $status,
+                    'is_correct' => $status === 'benar',
+                    'kategori' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
+                    'category' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
+                    'pembahasan' => $soal->pembahasan_teks ?? null,
+                    'waktu_jawab' => optional($jawaban->waktu_jawab)->format('H:i:s'),
+                ];
+            }
+
+            return $rows;
+        }
+
+        foreach (($hasil->jawaban ?? []) as $index => $item) {
+            $soalId = $item['soal_id'] ?? $item['id'] ?? null;
+            $soal = $soalId ? SoalUjian::find($soalId) : null;
+            $jawabanSiswa = strtoupper((string) ($item['jawaban'] ?? ''));
+            $kunci = strtoupper((string) ($item['kunci'] ?? $soal?->kunci_jawaban ?? ''));
+            $isCorrect = $item['is_correct'] ?? ($jawabanSiswa && $kunci ? $jawabanSiswa === $kunci : null);
+
+            $rows[] = [
+                'soal_id' => $soalId,
+                'nomor' => $soal?->nomor_soal ?? $soal?->urutan ?? $index + 1,
+                'pertanyaan' => $soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1),
+                'text' => strip_tags($soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1)),
+                'pilihan' => $soal ? $this->getQuestionOptions($soal) : [],
+                'jawaban' => $jawabanSiswa,
+                'kunci' => $kunci,
+                'status' => $jawabanSiswa === '' ? 'kosong' : ($isCorrect ? 'benar' : 'salah'),
+                'is_correct' => (bool) $isCorrect,
+                'kategori' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
+                'category' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
+                'pembahasan' => $soal?->pembahasan_teks,
+                'waktu_jawab' => $item['waktu_jawab'] ?? null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function getQuestionOptions($soal): array
+    {
+        return collect(['A', 'B', 'C', 'D', 'E'])
+            ->mapWithKeys(function ($key) use ($soal) {
+                $lower = strtolower($key);
+                $value = $soal->{"pilihan_{$lower}_teks"} ?? $soal->{"opsi_{$lower}"} ?? null;
+                return $value ? [$key => $value] : [];
+            })
+            ->all();
+    }
+
+    private function summarizeAnswerRows(array $rows): array
+    {
+        $total = count($rows);
+        $benar = collect($rows)->where('status', 'benar')->count();
+        $salah = collect($rows)->where('status', 'salah')->count();
+        $kosong = collect($rows)->where('status', 'kosong')->count();
+
+        return compact('total', 'benar', 'salah', 'kosong');
+    }
+
+    private function buildPeerStats(HasilUjian $hasil): array
+    {
+        $sameJadwal = HasilUjian::where('jadwal_ujian_id', $hasil->jadwal_ujian_id)->where('status', 'selesai')->get();
+        $sameKelas = HasilUjian::where('jadwal_ujian_id', $hasil->jadwal_ujian_id)
+            ->where('status', 'selesai')
+            ->whereHas('siswa', fn($q) => $q->where('kelas_id', $hasil->siswa->kelas_id))
+            ->get();
+
+        $rank = $sameJadwal->sortByDesc('nilai')->values()->search(fn($item) => $item->id === $hasil->id);
+
+        return [
+            'avg_jadwal' => round($sameJadwal->avg('nilai') ?? 0, 2),
+            'avg_kelas' => round($sameKelas->avg('nilai') ?? 0, 2),
+            'rank' => $rank === false ? null : $rank + 1,
+            'total' => $sameJadwal->count(),
+        ];
+    }
+
+    private function buildResultTimeline(HasilUjian $hasil): array
+    {
+        return [
+            ['label' => 'Mulai ujian', 'time' => optional($hasil->waktu_mulai ?? $hasil->created_at)->format('d/m/Y H:i')],
+            ['label' => 'Selesai ujian', 'time' => optional($hasil->waktu_selesai)->format('d/m/Y H:i') ?? '-'],
+            ['label' => 'Durasi', 'time' => $hasil->durasi_menit ? $hasil->durasi_menit . ' menit' : $hasil->getDurationFormatted()],
+        ];
+    }
+
+    private function buildQuestionAnalysis($hasilUjians)
+    {
+        $questionStats = [];
+        foreach ($hasilUjians as $hasil) {
+            foreach ($this->buildAnswerRows($hasil) as $row) {
+                $key = $row['soal_id'] ?? $row['nomor'];
+                if (!isset($questionStats[$key])) {
+                    $questionStats[$key] = [
+                        'nomor' => $row['nomor'],
+                        'text' => $row['text'],
+                        'category' => $row['category'],
+                        'correct' => 0,
+                        'incorrect' => 0,
+                        'blank' => 0,
+                        'total' => 0,
+                    ];
+                }
+
+                $questionStats[$key]['total']++;
+                if ($row['status'] === 'benar') {
+                    $questionStats[$key]['correct']++;
+                } elseif ($row['status'] === 'salah') {
+                    $questionStats[$key]['incorrect']++;
+                } else {
+                    $questionStats[$key]['blank']++;
+                }
+            }
+        }
+
+        return collect($questionStats)->map(function ($item) {
+            $item['accuracy'] = $item['total'] > 0 ? round(($item['correct'] / $item['total']) * 100, 1) : 0;
+            $item['difficulty_label'] = $item['accuracy'] >= 75 ? 'Mudah' : ($item['accuracy'] >= 45 ? 'Sedang' : 'Sulit');
+            return $item;
+        })->sortBy('nomor')->values();
+    }
+
+    private function buildCategoryAnalysis($questionAnalysis)
+    {
+        return collect($questionAnalysis)
+            ->groupBy('category')
+            ->map(fn($items, $category) => [
+                'category' => $category,
+                'accuracy' => round($items->avg('accuracy'), 1),
+                'questions' => $items->count(),
+            ])
+            ->sortBy('accuracy')
+            ->values();
     }
 }

@@ -18,7 +18,7 @@ class SesiAssignmentService
      */
     public function autoAssignSesiByDate(JadwalUjian $jadwalUjian)
     {
-        if (!$jadwalUjian->auto_assign_sesi || $jadwalUjian->scheduling_mode !== 'flexible') {
+        if (!$jadwalUjian->auto_assign_sesi) {
             return false;
         }
 
@@ -49,7 +49,7 @@ class SesiAssignmentService
             }
         }
 
-        // STEP 3: If no existing sesi found, create new ones by duplicating from any existing sesi
+        // STEP 3: If no existing sesi found, create new ones by duplicating from source sesi
         if ($assignedCount == 0) {
             $createdCount = $this->createNewSesiByDuplication($jadwalUjian, $targetDate);
             $assignedCount += $createdCount;
@@ -190,7 +190,6 @@ class SesiAssignmentService
     public function autoAssignForAllEligibleJadwal(): int
     {
         $eligibleJadwal = JadwalUjian::where('auto_assign_sesi', true)
-            ->where('scheduling_mode', 'flexible')
             ->whereIn('status', ['draft', 'aktif'])
             ->get();
 
@@ -265,7 +264,7 @@ class SesiAssignmentService
         foreach ($activeRooms as $room) {
             // Ambil template sesi khusus untuk ruangan ini
             $templateSesis = SesiRuangan::where('ruangan_id', $room->id)
-                ->whereDoesntHave('jadwalUjians')
+                ->where('sumber', 'sumber')
                 ->orderBy('waktu_mulai')
                 ->get();
 
@@ -275,34 +274,45 @@ class SesiAssignmentService
             }
 
             foreach ($templateSesis as $templateSesi) {
-                $newSesi = SesiRuangan::create([
-                    'ruangan_id' => $room->id,
-                    'nama_sesi' => $templateSesi->nama_sesi, // tidak perlu tambah nama ruangan lagi
-                    'waktu_mulai' => $templateSesi->waktu_mulai,
-                    'waktu_selesai' => $templateSesi->waktu_selesai,
-                    'status' => 'belum_mulai',
-                    'pengaturan' => $templateSesi->pengaturan,
-                    'template_id' => $templateSesi->id
-                ]);
+                $newSesi = SesiRuangan::where('sumber', $templateSesi->kode_sesi)
+                    ->whereHas('jadwalUjians', function ($query) use ($targetDate) {
+                        $query->whereDate('jadwal_ujian.tanggal', $targetDate);
+                    })
+                    ->first();
 
-                $jadwalUjian->sesiRuangans()->attach($newSesi->id, [
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-
-                // Copy assignment siswa (optional, bisa di-skip kalau tidak perlu)
-                foreach ($templateSesi->sesiRuanganSiswa as $assignment) {
-                    $newSesi->sesiRuanganSiswa()->create([
-                        'siswa_id' => $assignment->siswa_id,
-                        'status_kehadiran' => 'tidak_hadir',
-                        'keterangan' => $assignment->keterangan,
+                if (!$newSesi) {
+                    $newSesi = SesiRuangan::create([
+                        'ruangan_id' => $room->id,
+                        'nama_sesi' => $templateSesi->nama_sesi,
+                        'waktu_mulai' => $templateSesi->waktu_mulai,
+                        'waktu_selesai' => $templateSesi->waktu_selesai,
+                        'status' => 'belum_mulai',
+                        'sumber' => $templateSesi->kode_sesi,
+                        'pengaturan' => $templateSesi->pengaturan,
                     ]);
+
+                    Log::info("Created new sesi {$newSesi->id} (from source {$templateSesi->kode_sesi}) "
+                        . "for jadwal {$jadwalUjian->kode_ujian} in room {$room->nama_ruangan}");
                 }
 
-                $createdCount++;
+                foreach ($templateSesi->sesiRuanganSiswa as $assignment) {
+                    $newSesi->sesiRuanganSiswa()->firstOrCreate(
+                        ['siswa_id' => $assignment->siswa_id],
+                        [
+                            'status_kehadiran' => 'tidak_hadir',
+                            'keterangan' => $assignment->keterangan,
+                        ]
+                    );
+                }
 
-                Log::info("Created new sesi {$newSesi->id} (from template {$templateSesi->id}) "
-                    . "for jadwal {$jadwalUjian->kode_ujian} in room {$room->nama_ruangan}");
+                if (!$jadwalUjian->sesiRuangans()->where('sesi_ruangan.id', $newSesi->id)->exists()) {
+                    $jadwalUjian->sesiRuangans()->attach($newSesi->id, [
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    $createdCount++;
+                }
             }
         }
 
@@ -326,11 +336,11 @@ class SesiAssignmentService
                 'waktu_mulai' => $jadwalUjian->waktu_mulai,
                 'waktu_selesai' => $jadwalUjian->waktu_selesai,
                 'status' => 'belum_mulai',
+                'sumber' => null,
                 'pengaturan' => json_encode([
                     'max_peserta' => $room->kapasitas,
                     'jadwal_ujian_id' => $jadwalUjian->id,
                 ]),
-                'template_id' => null
             ]);
 
             // Link the new sesi to the jadwal ujian
@@ -419,10 +429,19 @@ class SesiAssignmentService
             return false;
         }
 
+        if ($jadwalUjian->mapel && $jadwalUjian->mapel->tingkat) {
+            $mapelTingkat = $this->normalizeEligibilityValue($jadwalUjian->mapel->tingkat);
+            $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat ?? null);
+
+            if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
+                return false;
+            }
+        }
+
         // Check jurusan compatibility with mapel
         if ($jadwalUjian->mapel && $jadwalUjian->mapel->jurusan) {
-            $mapelJurusan = $jadwalUjian->mapel->jurusan;
-            $siswaJurusan = $siswa->kelas->jurusan ?? null;
+            $mapelJurusan = $this->normalizeEligibilityValue($jadwalUjian->mapel->jurusan);
+            $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan ?? null);
 
             // If mapel has specific jurusan and siswa's jurusan doesn't match
             if ($mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
@@ -431,5 +450,25 @@ class SesiAssignmentService
         }
 
         return true;
+    }
+
+    private function normalizeEligibilityValue($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match ($normalized) {
+            '10', 'KELAS 10', 'KELAS X' => 'X',
+            '11', 'KELAS 11', 'KELAS XI' => 'XI',
+            '12', 'KELAS 12', 'KELAS XII' => 'XII',
+            default => $normalized,
+        };
     }
 }

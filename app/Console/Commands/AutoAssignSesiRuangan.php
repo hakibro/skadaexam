@@ -80,7 +80,6 @@ class AutoAssignSesiRuangan extends Command
                     }
                 } else {
                     $eligibleJadwal = JadwalUjian::where('auto_assign_sesi', true)
-                        ->where('scheduling_mode', 'flexible')
                         ->whereIn('status', ['draft', 'aktif'])
                         ->get();
 

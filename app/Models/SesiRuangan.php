@@ -26,6 +26,7 @@ class SesiRuangan extends Model
 
     protected $fillable = [
         'kode_sesi',
+        'sumber',
         'nama_sesi',
         'waktu_mulai',
         'waktu_selesai',
@@ -33,6 +34,7 @@ class SesiRuangan extends Model
         'token_expired_at',
         'status',
         'pengaturan',
+        'keterangan',
         'ruangan_id'
     ];
 

@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'Cari Siswa di Ruangan/Sesi')
-@section('page-title', 'Cari Siswa di Ruangan/Sesi')
-@section('page-description', 'Cari siswa berdasarkan nama, ID Yayasan')
+@section('title', 'Atur Siswa')
+@section('page-title', 'Atur Siswa')
+@section('page-description', 'Cari siswa, atur sesi, dan enrollment ujian')
 
 @section('content')
     <div class="py-6">
@@ -38,7 +38,13 @@
             <!-- Card Utama Pencarian -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 class="text-lg font-medium leading-6 text-gray-900">Cari Siswa di Ruangan / Sesi</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900">Atur Siswa</h3>
+                        <button type="button" onclick="openAssignModal()"
+                            class="inline-flex items-center px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-md">
+                            <i class="fas fa-user-plus mr-2"></i> Tambah Siswa ke Sesi
+                        </button>
+                    </div>
                 </div>
                 <div class="p-6 bg-white">
                     <!-- Form Pencarian -->
@@ -65,7 +71,11 @@
                                         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
                                             <div class="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
-                                                    <h4 class="text-lg font-semibold text-gray-800">{{ $siswa->nama }}</h4>
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="checkbox" class="siswa-result-checkbox rounded border-gray-300 text-blue-600"
+                                                            value="{{ $siswa->id }}">
+                                                        <h4 class="text-lg font-semibold text-gray-800">{{ $siswa->nama }}</h4>
+                                                    </div>
                                                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
                                                         <span><span class="font-medium">ID Yayasan:</span>
                                                             {{ $siswa->idyayasan }}</span>
@@ -219,4 +229,134 @@
             </div>
         </div>
     </div>
+
+    <div id="assignSiswaModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Tambah Siswa ke Sesi</h3>
+                <button type="button" onclick="closeAssignModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form action="{{ route('ruangan.atur-siswa.assign') }}" method="POST" id="assignSiswaForm">
+                @csrf
+                <input type="hidden" name="q" value="{{ request('q') }}">
+                <div id="selectedSiswaInputs"></div>
+                <div class="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+                    <div class="rounded-md bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
+                        Centang siswa dari hasil pencarian, lalu pilih sesi. Jika jadwal dipilih manual, enrollment hanya dibuat untuk mapel yang eligible terhadap tingkat dan jurusan siswa.
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cari siswa cepat</label>
+                        <input type="text" id="modalStudentSearch"
+                            class="w-full rounded-md border-gray-300 shadow-sm text-sm"
+                            placeholder="Filter nama / ID Yayasan dari hasil pencarian saat ini">
+                    </div>
+
+                    <div class="space-y-4">
+                        @foreach (($sesiOptions ?? collect()) as $ruanganNama => $sesiGroup)
+                            <div class="border rounded-md overflow-hidden">
+                                <div class="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
+                                    <div class="font-semibold text-gray-900">{{ $ruanganNama }}</div>
+                                    <label class="text-xs font-medium text-gray-700">
+                                        <input type="checkbox" class="modal-select-room mr-1 rounded border-gray-300 text-blue-600"
+                                            data-room="{{ \Illuminate\Support\Str::slug($ruanganNama) }}">
+                                        Select all sesi
+                                    </label>
+                                </div>
+                                <div class="divide-y">
+                                    @foreach ($sesiGroup as $sesi)
+                                        <label class="block p-3 hover:bg-gray-50">
+                                            <div class="flex items-start gap-2">
+                                                <input type="checkbox" name="sesi_ids[]" value="{{ $sesi->id }}"
+                                                    class="modal-sesi-checkbox mt-1 rounded border-gray-300 text-blue-600"
+                                                    data-room="{{ \Illuminate\Support\Str::slug($ruanganNama) }}">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-semibold text-gray-900">
+                                                        {{ $sesi->nama_sesi }} - {{ $sesi->kode_sesi }}
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">
+                                                        {{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}
+                                                    </div>
+                                                    @if ($sesi->jadwalUjians->count() > 0)
+                                                        <div class="mt-2 flex flex-wrap gap-2">
+                                                            @foreach ($sesi->jadwalUjians as $jadwal)
+                                                                <label class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">
+                                                                    <input type="checkbox" name="jadwal_ids[]" value="{{ $jadwal->id }}"
+                                                                        class="rounded border-gray-300 text-indigo-600">
+                                                                    {{ $jadwal->mapel->nama_mapel ?? $jadwal->judul }}
+                                                                    ({{ optional($jadwal->tanggal)->format('d/m/Y') }})
+                                                                </label>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="mt-1 text-xs text-gray-400">Belum terkait jadwal ujian</div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t bg-gray-50 flex justify-end gap-2">
+                    <button type="button" onclick="closeAssignModal()"
+                        class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md">
+                        Simpan Pengaturan Siswa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endsection
+
+@section('scripts')
+    <script>
+        function openAssignModal() {
+            const selected = [...document.querySelectorAll('.siswa-result-checkbox:checked')].map((checkbox) => checkbox.value);
+            const container = document.getElementById('selectedSiswaInputs');
+            container.innerHTML = '';
+
+            if (selected.length === 0) {
+                alert('Pilih minimal satu siswa dari hasil pencarian.');
+                return;
+            }
+
+            selected.forEach((id) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'siswa_ids[]';
+                input.value = id;
+                container.appendChild(input);
+            });
+
+            document.getElementById('assignSiswaModal').classList.remove('hidden');
+            document.getElementById('assignSiswaModal').classList.add('flex');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignSiswaModal').classList.add('hidden');
+            document.getElementById('assignSiswaModal').classList.remove('flex');
+        }
+
+        document.querySelectorAll('.modal-select-room').forEach((checkbox) => {
+            checkbox.addEventListener('change', function() {
+                document.querySelectorAll(`.modal-sesi-checkbox[data-room="${this.dataset.room}"]`)
+                    .forEach((item) => item.checked = this.checked);
+            });
+        });
+
+        document.getElementById('modalStudentSearch')?.addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            document.querySelectorAll('.siswa-result-checkbox').forEach((checkbox) => {
+                const card = checkbox.closest('.border.border-gray-200');
+                const text = card?.textContent.toLowerCase() || '';
+                if (card) card.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    </script>
 @endsection

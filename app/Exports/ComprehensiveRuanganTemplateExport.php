@@ -140,15 +140,17 @@ class ComprehensiveRuanganTemplateExport implements FromCollection, WithHeadings
         $lastRow++;
         $sheet->setCellValue('A' . $lastRow, '1. kode_ruangan: Wajib diisi untuk membuat/update ruangan. Kosongkan jika hanya assign siswa.');
         $lastRow++;
-        $sheet->setCellValue('A' . $lastRow, '2. status_ruangan: aktif, perbaikan, atau tidak_aktif.');
+        $sheet->setCellValue('A' . $lastRow, '2. kapasitas: Dibaca dari file. Jika kosong, kapasitas ruangan menjadi 30.');
         $lastRow++;
-        $sheet->setCellValue('A' . $lastRow, '3. kode_sesi: Wajib diisi untuk membuat sesi atau assign siswa ke sesi.');
+        $sheet->setCellValue('A' . $lastRow, '3. status_ruangan: aktif, perbaikan, atau tidak_aktif.');
         $lastRow++;
-        $sheet->setCellValue('A' . $lastRow, '4. status_sesi: belum_mulai, berlangsung, selesai, atau dibatalkan.');
+        $sheet->setCellValue('A' . $lastRow, '4. kode_sesi: Wajib diisi untuk membuat sesi sumber atau assign siswa ke sesi.');
         $lastRow++;
-        $sheet->setCellValue('A' . $lastRow, '5. idyayasan: ID siswa (bisa berupa angka atau string). Wajib untuk assignment siswa.');
+        $sheet->setCellValue('A' . $lastRow, '5. status_sesi: belum_mulai, berlangsung, selesai, atau dibatalkan.');
         $lastRow++;
-        $sheet->setCellValue('A' . $lastRow, '6. Format waktu: HH:MM (contoh: 08:30).');
+        $sheet->setCellValue('A' . $lastRow, '6. idyayasan: ID siswa (bisa berupa angka atau string). Wajib untuk assignment siswa.');
+        $lastRow++;
+        $sheet->setCellValue('A' . $lastRow, '7. Format waktu: HH:MM (contoh: 08:30).');
         $lastRow++;
 
         $sheet->setCellValue('A' . ($lastRow + 1), 'Contoh skenario di atas:');

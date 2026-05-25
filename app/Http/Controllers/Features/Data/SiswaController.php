@@ -58,6 +58,7 @@ class SiswaController extends Controller
             ->whereExists(function ($query) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('siswa')
+                    ->whereNull('siswa.deleted_at')
                     ->whereColumn('siswa.kelas_id', 'kelas.id');
             })
             ->orderBy('nama_kelas')
@@ -128,6 +129,7 @@ class SiswaController extends Controller
             ->whereExists(function ($query) {
                 $query->select(\Illuminate\Support\Facades\DB::raw(1))
                     ->from('siswa')
+                    ->whereNull('siswa.deleted_at')
                     ->whereColumn('siswa.kelas_id', 'kelas.id');
             })
             ->orderBy('nama_kelas')
@@ -393,7 +395,9 @@ class SiswaController extends Controller
                 }
 
                 // Cek apakah siswa sudah ada
-                $existingSiswa = Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                $existingSiswa = Siswa::withTrashed()
+                    ->where('idyayasan', $studentData['idyayasan'])
+                    ->first();
 
                 if ($existingSiswa) {
                     // Update siswa yang sudah ada (tetap simpan rekomendasi dan catatan_rekomendasi)
@@ -403,6 +407,10 @@ class SiswaController extends Controller
                         'status_pembayaran' => $studentData['status_pembayaran'] ?? $existingSiswa->status_pembayaran,
                         // Tetap simpan rekomendasi dan catatan_rekomendasi yang sudah ada
                     ];
+
+                    if ($existingSiswa->trashed()) {
+                        $existingSiswa->restore();
+                    }
 
                     $existingSiswa->update($updateData);
                     $results['updated']++;
@@ -783,7 +791,9 @@ class SiswaController extends Controller
                     }
 
                     // Cek apakah siswa sudah ada
-                    $existingSiswa = Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                    $existingSiswa = Siswa::withTrashed()
+                        ->where('idyayasan', $studentData['idyayasan'])
+                        ->first();
 
                     if ($existingSiswa) {
                         // Update siswa yang sudah ada (simpan rekomendasi dan catatan_rekomendasi)
@@ -792,6 +802,10 @@ class SiswaController extends Controller
                             'kelas_id' => $kelasId ?? $existingSiswa->kelas_id,
                             'status_pembayaran' => $studentData['status_pembayaran'] ?? $existingSiswa->status_pembayaran,
                         ];
+
+                        if ($existingSiswa->trashed()) {
+                            $existingSiswa->restore();
+                        }
 
                         $existingSiswa->update($updateData);
                         $siswaResults['updated']++;
@@ -967,6 +981,8 @@ class SiswaController extends Controller
                 'updated_kelas' => 0,
                 'updated_siswa' => 0,
                 'created_siswa' => 0,
+                'restored_siswa' => 0,
+                'deleted_siswa' => 0,
                 'skipped' => 0,
                 'errors' => []
             ];
@@ -996,9 +1012,9 @@ class SiswaController extends Controller
             session(['sync_message' => 'Analyzing student data differences...']);
             session(['sync_progress' => 40]);
 
-            // Create lookup array for API data
-            $apiStudents = collect($apiData)->keyBy('idyayasan');
-            $existingStudents = Siswa::pluck('idyayasan')->toArray();
+            $apiStudents = collect($apiData)
+                ->filter(fn($student) => !empty($student['idyayasan']))
+                ->keyBy('idyayasan');
 
             session(['sync_message' => 'Synchronizing student data...']);
             session(['sync_progress' => 50]);
@@ -1007,7 +1023,7 @@ class SiswaController extends Controller
             $progressStep = 40 / max(count($apiData), 1);
             $currentProgress = 50;
 
-            $siswaResults = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+            $siswaResults = ['created' => 0, 'updated' => 0, 'restored' => 0, 'deleted' => 0, 'skipped' => 0, 'errors' => []];
 
             foreach ($apiData as $index => $studentData) {
                 try {
@@ -1027,7 +1043,9 @@ class SiswaController extends Controller
                         $kelasId = $allKelas[trim($studentData['kelas'])];
                     }
 
-                    $existingSiswa = Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                    $existingSiswa = Siswa::withTrashed()
+                        ->where('idyayasan', $studentData['idyayasan'])
+                        ->first();
 
                     if ($existingSiswa) {
                         // Cek apakah data perlu diupdate
@@ -1035,7 +1053,7 @@ class SiswaController extends Controller
                         $updateData = [];
 
                         if ($existingSiswa->nama !== ($studentData['nama'] ?? null)) {
-                            $updateData['nama'] = $studentData['nama'];
+                            $updateData['nama'] = $studentData['nama'] ?? $existingSiswa->nama;
                             $needsUpdate = true;
                         }
 
@@ -1045,8 +1063,13 @@ class SiswaController extends Controller
                         }
 
                         if ($existingSiswa->status_pembayaran !== ($studentData['status_pembayaran'] ?? 'Belum Lunas')) {
-                            $updateData['status_pembayaran'] = $studentData['status_pembayaran'];
+                            $updateData['status_pembayaran'] = $studentData['status_pembayaran'] ?? 'Belum Lunas';
                             $needsUpdate = true;
+                        }
+
+                        if ($existingSiswa->trashed()) {
+                            $existingSiswa->restore();
+                            $siswaResults['restored']++;
                         }
 
                         if ($needsUpdate) {
@@ -1073,8 +1096,15 @@ class SiswaController extends Controller
                 }
             }
 
+            $apiIdyayasan = $apiStudents->keys()->all();
+            if (!empty($apiIdyayasan)) {
+                $siswaResults['deleted'] = Siswa::whereNotIn('idyayasan', $apiIdyayasan)->delete();
+            }
+
             $results['updated_siswa'] = $siswaResults['updated'];
             $results['created_siswa'] = $siswaResults['created'];
+            $results['restored_siswa'] = $siswaResults['restored'];
+            $results['deleted_siswa'] = $siswaResults['deleted'];
             $results['skipped'] = $siswaResults['skipped'];
             $results['errors'] = array_merge($results['errors'], $siswaResults['errors']);
 
@@ -1088,6 +1118,7 @@ class SiswaController extends Controller
 
             $message = "Sync completed! Created kelas: {$results['created_kelas']}, Updated kelas: {$results['updated_kelas']}, ";
             $message .= "Created siswa: {$results['created_siswa']}, Updated siswa: {$results['updated_siswa']}";
+            $message .= ", Restored siswa: {$results['restored_siswa']}, Deleted siswa: {$results['deleted_siswa']}";
 
             if ($results['skipped'] > 0) {
                 $message .= ", Skipped: {$results['skipped']}";

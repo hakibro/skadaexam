@@ -16,7 +16,7 @@
             </div>
 
             <div class="flex space-x-2">
-                <a href="{{ route('naskah.hasil.print', ['id' => $hasilUjian->id, 'with_answers' => true]) }}" target="_blank"
+                <a href="{{ route('naskah.hasil.print', ['hasil' => $hasilUjian->id, 'with_answers' => true]) }}" target="_blank"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <i class="fa-solid fa-print mr-2"></i> Cetak dengan Jawaban
                 </a>
@@ -37,8 +37,8 @@
                             class="text-lg font-bold {{ $hasilUjian->nilai >= ($mapel->kkm ?? 75) ? 'text-green-600' : 'text-red-600' }}">
                             Nilai: {{ number_format($hasilUjian->nilai, 2) }}
                         </div>
-                        <div class="text-sm text-gray-500">{{ $hasilUjian->jawaban_benar }} benar /
-                            {{ $hasilUjian->total_soal }} soal</div>
+                        <div class="text-sm text-gray-500">{{ $hasilUjian->jumlah_benar }} benar /
+                            {{ $hasilUjian->jumlah_soal }} soal</div>
                     </div>
                 </div>
             </div>
@@ -102,7 +102,7 @@
                         <div class="space-y-2 mt-4">
                             <h5 class="text-sm font-medium text-gray-700">Pilihan Jawaban:</h5>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                @foreach ($soal['pilihan'] as $key => $pilihan)
+                                @forelse ($soal['pilihan'] as $key => $pilihan)
                                     <div
                                         class="flex items-start space-x-2 p-2 rounded-md 
                                     {{ $soal['kunci'] == $key
@@ -132,7 +132,11 @@
                                             {!! $pilihan !!}
                                         </div>
                                     </div>
-                                @endforeach
+                                @empty
+                                    <div class="col-span-1 md:col-span-2 text-sm text-gray-500 bg-gray-50 rounded-md p-3">
+                                        Pilihan jawaban tidak tersedia.
+                                    </div>
+                                @endforelse
                             </div>
                         </div>
 
@@ -190,7 +194,7 @@
                 class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                 <i class="fa-solid fa-arrow-left mr-2"></i> Kembali ke Detail Hasil
             </a>
-            <a href="{{ route('naskah.hasil.print', ['id' => $hasilUjian->id, 'with_answers' => true]) }}" target="_blank"
+            <a href="{{ route('naskah.hasil.print', ['hasil' => $hasilUjian->id, 'with_answers' => true]) }}" target="_blank"
                 class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                 <i class="fa-solid fa-print mr-2"></i> Cetak Lembar Jawaban
             </a>

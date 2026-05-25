@@ -50,6 +50,7 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     // Additional jadwal actions
     Route::put('jadwal/{jadwal}/status', [JadwalUjianController::class, 'updateStatus'])->name('jadwal.status');
     Route::post('jadwal/{jadwal}/attach-sesi', [JadwalUjianController::class, 'attachSesi'])->name('jadwal.attach-sesi');
+    Route::post('jadwal/{jadwal}/attach-source-sesi-enroll', [JadwalUjianController::class, 'attachSourceSesiAndEnroll'])->name('jadwal.attach-source-sesi-enroll');
     Route::post('jadwal/{jadwal}/detach-sesi', [JadwalUjianController::class, 'detachSesi'])->name('jadwal.detach-sesi');
     Route::post('jadwal/{jadwal}/reassign-sesi', [JadwalUjianController::class, 'reassignSesi'])->name('jadwal.reassign-sesi');
     Route::put('jadwal/{jadwal}/toggle-auto-assign', [JadwalUjianController::class, 'toggleAutoAssign'])->name('jadwal.toggle-auto-assign');

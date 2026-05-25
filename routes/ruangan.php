@@ -46,6 +46,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 
         Route::get('/cari-siswa', [SesiRuanganController::class, 'cariSiswa'])->name('cari-siswa');
+        Route::post('/atur-siswa/assign', [SesiRuanganController::class, 'assignSiswaKeSesi'])->name('atur-siswa.assign');
 
 
         // ===============================

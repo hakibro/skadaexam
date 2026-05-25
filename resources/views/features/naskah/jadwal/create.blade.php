@@ -15,6 +15,8 @@
                 </div>
 
                 <div class="p-4 sm:p-6 space-y-6">
+                    <input type="hidden" name="jenis_ujian" value="uas">
+
                     <!-- Status Section - Added for better visibility -->
                     <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
                         <div class="flex items-center">
@@ -35,44 +37,31 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="judul" class="block text-sm font-medium text-gray-700">Judul Ujian <span
-                                    class="text-red-500">*</span></label>
-                            <input type="text" name="judul" id="judul" required value="{{ old('judul') }}"
-                                class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('judul') border-red-500 @enderror"
-                                placeholder="Contoh: Ulangan Tengah Semester Matematika">
-                            @error('judul')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
-                            <label for="jenis_ujian" class="block text-sm font-medium text-gray-700">Jenis Ujian <span
-                                    class="text-red-500">*</span></label>
-                            <select name="jenis_ujian" id="jenis_ujian" required
-                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('jenis_ujian') border-red-500 @enderror">
-                                <option value="">-- Pilih Jenis Ujian --</option>
-                                <option value="uts" {{ old('jenis_ujian') == 'uts' ? 'selected' : '' }}>UTS</option>
-                                <option value="uas" {{ old('jenis_ujian') == 'uas' ? 'selected' : '' }}>UAS</option>
-                            </select>
-                            @error('jenis_ujian')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
                             <label for="mapel_id" class="block text-sm font-medium text-gray-700">Mata Pelajaran <span
                                     class="text-red-500">*</span></label>
                             <select name="mapel_id" id="mapel_id" required
                                 class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('mapel_id') border-red-500 @enderror">
                                 <option value="">-- Pilih Mata Pelajaran --</option>
                                 @foreach ($mapels as $mapel)
-                                    <option value="{{ $mapel->id }}"
+                                    <option value="{{ $mapel->id }}" data-mapel-name="{{ $mapel->nama_mapel }}"
                                         {{ old('mapel_id') == $mapel->id ? 'selected' : '' }}>
                                         {{ $mapel->nama_mapel }}
                                     </option>
                                 @endforeach
                             </select>
                             @error('mapel_id')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="judul" class="block text-sm font-medium text-gray-700">Judul Ujian <span
+                                    class="text-red-500">*</span></label>
+                            <input type="text" name="judul" id="judul" required readonly
+                                value="{{ old('judul') }}"
+                                class="mt-1 form-input block w-full rounded-md shadow-sm bg-gray-100 text-gray-700 focus:ring-blue-500 focus:border-blue-500 @error('judul') border-red-500 @enderror"
+                                placeholder="Otomatis mengikuti mata pelajaran">
+                            @error('judul')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
                         </div>
@@ -97,27 +86,39 @@
                             @enderror
                         </div>
 
-                        <div>
-                            <label for="jumlah_soal" class="block text-sm font-medium text-gray-700">Jumlah Soal <span
-                                    class="text-red-500">*</span></label>
-                            <input type="number" name="jumlah_soal" id="jumlah_soal" required min="1"
-                                value="{{ old('jumlah_soal') }}"
-                                class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('jumlah_soal') border-red-500 @enderror"
-                                placeholder="Jumlah soal yang ditampilkan">
-                            @error('jumlah_soal')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                            <p class="mt-1 text-xs text-gray-500">Jumlah soal yang akan ditampilkan dalam ujian (harus <=
-                                    jumlah soal dalam bank soal)</p>
-                        </div>
+                        <input type="hidden" name="jumlah_soal" id="jumlah_soal" value="{{ old('jumlah_soal') }}">
 
                         <div>
                             <label for="durasi_menit" class="block text-sm font-medium text-gray-700">Durasi (menit) <span
                                     class="text-red-500">*</span></label>
-                            <input type="number" name="durasi_menit" id="durasi_menit" required min="1"
-                                value="{{ old('durasi_menit') }}"
-                                class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('durasi_menit') border-red-500 @enderror"
-                                placeholder="Durasi ujian dalam menit">
+                            @php
+                                $oldDurasi = old('durasi_menit');
+                                $oldPreset = old('durasi_preset', in_array((string) $oldDurasi, ['25', '30', '45']) ? $oldDurasi : ($oldDurasi ? 'manual' : '30'));
+                            @endphp
+                            <select name="durasi_preset" id="durasi_preset" required
+                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('durasi_preset') border-red-500 @enderror">
+                                <option value="25" {{ (string) $oldPreset === '25' ? 'selected' : '' }}>25 menit
+                                </option>
+                                <option value="30" {{ (string) $oldPreset === '30' ? 'selected' : '' }}>30 menit
+                                </option>
+                                <option value="45" {{ (string) $oldPreset === '45' ? 'selected' : '' }}>45 menit
+                                </option>
+                                <option value="manual" {{ $oldPreset === 'manual' ? 'selected' : '' }}>Isi manual
+                                </option>
+                            </select>
+                            <div id="durasi_manual_container" class="mt-2 hidden">
+                                <input type="number" name="durasi_manual" id="durasi_manual" min="1"
+                                    value="{{ old('durasi_manual', $oldPreset === 'manual' ? $oldDurasi : '') }}"
+                                    class="form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('durasi_manual') border-red-500 @enderror"
+                                    placeholder="Masukkan durasi manual">
+                            </div>
+                            <input type="hidden" name="durasi_menit" id="durasi_menit" value="{{ old('durasi_menit') }}">
+                            @error('durasi_preset')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
+                            @error('durasi_manual')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
                             @error('durasi_menit')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
@@ -128,35 +129,7 @@
                                 <span class="text-red-500">*</span></label>
                             <input type="date" name="tanggal" id="tanggal" required value="{{ old('tanggal') }}"
                                 class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('tanggal') border-red-500 @enderror">
-                            <p class="mt-1 text-xs text-gray-500">Untuk mode fleksibel, sistem akan otomatis mengaitkan sesi
-                                ruangan dengan tanggal yang sama.</p>
                             @error('tanggal')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
-                            <label for="scheduling_mode" class="block text-sm font-medium text-gray-700">Mode
-                                Penjadwalan</label>
-                            <select name="scheduling_mode" id="scheduling_mode"
-                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('scheduling_mode') border-red-500 @enderror">
-                                <option value="flexible"
-                                    {{ old('scheduling_mode', 'flexible') == 'flexible' ? 'selected' : '' }}>
-                                    Fleksibel (Berdasarkan Sesi Ruangan)
-                                </option>
-                                <option value="fixed" {{ old('scheduling_mode') == 'fixed' ? 'selected' : '' }}>
-                                    Tetap (Waktu Spesifik)
-                                </option>
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500">
-                                <span class="mode-description" id="flexible-desc">
-                                    Waktu ujian akan mengikuti jadwal sesi ruangan yang memiliki tanggal yang sama.
-                                </span>
-                                <span class="mode-description hidden" id="fixed-desc">
-                                    Waktu ujian akan tetap sesuai dengan tanggal dan durasi yang ditentukan.
-                                </span>
-                            </p>
-                            @error('scheduling_mode')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
                         </div>
@@ -201,7 +174,7 @@
                     <div class="bg-gray-50 p-4 rounded-md">
                         <h4 class="text-base font-medium text-gray-800 mb-3">Pengaturan Ujian</h4>
 
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="flex items-center">
                                 <input type="checkbox" name="acak_soal" id="acak_soal" value="1"
                                     {{ old('acak_soal') ? 'checked' : '' }}
@@ -238,23 +211,6 @@
                                 </label>
                             </div>
 
-                            <div class="flex items-center" id="auto-assign-container">
-                                <input type="checkbox" name="auto_assign_sesi" id="auto_assign_sesi" value="1"
-                                    {{ old('auto_assign_sesi', true) ? 'checked' : '' }}
-                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="auto_assign_sesi" class="ml-2 block text-sm text-gray-700">
-                                    Auto Assign Sesi
-                                </label>
-                            </div>
-
-                            <div class="flex items-center" id="auto-enroll-container">
-                                <input type="checkbox" name="auto_enroll" id="auto_enroll" value="1"
-                                    {{ old('auto_enroll', true) ? 'checked' : '' }}
-                                    class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <label for="auto_enroll" class="ml-2 block text-sm text-gray-700">
-                                    Auto Enroll Siswa
-                                </label>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -273,88 +229,119 @@
         </form>
     </div>
 
-    @push('scripts')
-        <script>
+@endsection
+
+@section('scripts')
+    <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Filter bank soal based on selected mapel
                 const mapelSelect = document.getElementById('mapel_id');
+                const judulInput = document.getElementById('judul');
                 const bankSoalSelect = document.getElementById('bank_soal_id');
                 const jumlahSoalInput = document.getElementById('jumlah_soal');
+                const durasiPresetSelect = document.getElementById('durasi_preset');
+                const durasiManualContainer = document.getElementById('durasi_manual_container');
+                const durasiManualInput = document.getElementById('durasi_manual');
+                const durasiMenitInput = document.getElementById('durasi_menit');
                 const jadwalForm = document.getElementById('jadwalForm');
                 const submitButton = document.getElementById('submitButton');
-
-                // Scheduling mode elements
-                const schedulingModeSelect = document.getElementById('scheduling_mode');
-                const autoAssignContainer = document.getElementById('auto-assign-container');
-                const flexibleDesc = document.getElementById('flexible-desc');
-                const fixedDesc = document.getElementById('fixed-desc');
 
                 // Store original bank soal options
                 const originalOptions = Array.from(bankSoalSelect.options);
 
-                // Handle scheduling mode changes
-                function handleSchedulingModeChange() {
-                    const mode = schedulingModeSelect.value;
+                function updateJudulFromMapel() {
+                    const selectedOption = mapelSelect.options[mapelSelect.selectedIndex];
+                    judulInput.value = selectedOption?.dataset.mapelName || '';
+                }
 
-                    if (mode === 'flexible') {
-                        autoAssignContainer.style.display = 'flex';
-                        flexibleDesc.classList.remove('hidden');
-                        fixedDesc.classList.add('hidden');
+                function updateJumlahSoalFromBankSoal() {
+                    const selectedOption = bankSoalSelect.options[bankSoalSelect.selectedIndex];
+
+                    if (selectedOption && selectedOption.dataset.soalCount) {
+                        const soalCount = parseInt(selectedOption.dataset.soalCount);
+                        jumlahSoalInput.value = Number.isNaN(soalCount) ? '' : soalCount;
                     } else {
-                        autoAssignContainer.style.display = 'none';
-                        flexibleDesc.classList.add('hidden');
-                        fixedDesc.classList.remove('hidden');
+                        jumlahSoalInput.value = '';
                     }
                 }
 
-                // Initialize scheduling mode display
-                handleSchedulingModeChange();
+                function syncDurasiInput() {
+                    const preset = durasiPresetSelect.value;
 
-                // Add event listener for scheduling mode changes
-                schedulingModeSelect.addEventListener('change', handleSchedulingModeChange);
+                    if (preset === 'manual') {
+                        durasiManualContainer.classList.remove('hidden');
+                        durasiManualInput.required = true;
+                        durasiMenitInput.value = durasiManualInput.value;
+                    } else {
+                        durasiManualContainer.classList.add('hidden');
+                        durasiManualInput.required = false;
+                        durasiManualInput.value = '';
+                        durasiMenitInput.value = preset;
+                    }
+                }
+
+                durasiPresetSelect.addEventListener('change', syncDurasiInput);
+                durasiManualInput.addEventListener('input', syncDurasiInput);
 
                 // Filter bank soal when mapel changes
                 mapelSelect.addEventListener('change', function() {
                     const selectedMapelId = this.value;
+                    updateJudulFromMapel();
 
                     // Reset bank soal options
                     bankSoalSelect.innerHTML = '<option value="">-- Pilih Bank Soal --</option>';
+                    bankSoalSelect.disabled = !selectedMapelId;
 
                     if (selectedMapelId) {
                         // Filter bank soal options for the selected mapel
                         originalOptions.forEach(option => {
-                            if (option.dataset.mapelId == selectedMapelId || option.value === '') {
+                            if (option.value !== '' && option.dataset.mapelId == selectedMapelId) {
                                 bankSoalSelect.appendChild(option.cloneNode(true));
                             }
                         });
+                        const firstBankSoalWithQuestions = Array.from(bankSoalSelect.options)
+                            .findIndex(option => parseInt(option.dataset.soalCount || '0') > 0);
+                        if (firstBankSoalWithQuestions > 0) {
+                            bankSoalSelect.selectedIndex = firstBankSoalWithQuestions;
+                        } else if (bankSoalSelect.options.length > 1) {
+                            bankSoalSelect.selectedIndex = 1;
+                        }
                     } else {
                         // Show all options if no mapel selected
                         originalOptions.forEach(option => {
-                            bankSoalSelect.appendChild(option.cloneNode(true));
+                            if (option.value !== '') {
+                                bankSoalSelect.appendChild(option.cloneNode(true));
+                            }
                         });
                     }
+
+                    updateJumlahSoalFromBankSoal();
+                    bankSoalSelect.dispatchEvent(new Event('change'));
                 });
 
                 // Validate jumlah soal when bank soal changes
                 bankSoalSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption && selectedOption.dataset.soalCount) {
-                        const maxSoal = parseInt(selectedOption.dataset.soalCount);
-                        jumlahSoalInput.max = maxSoal;
-
-                        // Update placeholder to show max available
-                        jumlahSoalInput.placeholder = `Maksimal ${maxSoal} soal`;
-
-                        // If current value exceeds max, reset to max
-                        if (parseInt(jumlahSoalInput.value) > maxSoal) {
-                            jumlahSoalInput.value = maxSoal;
-                        }
-                    }
+                    updateJumlahSoalFromBankSoal();
                 });
+
+                updateJudulFromMapel();
+                syncDurasiInput();
+                bankSoalSelect.disabled = !mapelSelect.value;
+                if (mapelSelect.value) {
+                    mapelSelect.dispatchEvent(new Event('change'));
+                    const oldBankSoalId = @json(old('bank_soal_id'));
+                    if (oldBankSoalId) {
+                        bankSoalSelect.value = oldBankSoalId;
+                        updateJumlahSoalFromBankSoal();
+                    }
+                } else {
+                    updateJumlahSoalFromBankSoal();
+                }
 
                 // Form validation
                 jadwalForm.addEventListener('submit', function(e) {
                     let isValid = true;
+                    syncDurasiInput();
 
                     // Check if bank soal is selected
                     if (!bankSoalSelect.value) {
@@ -362,16 +349,14 @@
                         isValid = false;
                     }
 
-                    // Validate jumlah soal against bank soal
-                    if (bankSoalSelect.value) {
-                        const selectedOption = bankSoalSelect.options[bankSoalSelect.selectedIndex];
-                        const maxSoal = parseInt(selectedOption.dataset.soalCount);
-                        const requestedSoal = parseInt(jumlahSoalInput.value);
+                    if (!jumlahSoalInput.value || parseInt(jumlahSoalInput.value) < 1) {
+                        alert('Bank soal yang dipilih belum memiliki soal');
+                        isValid = false;
+                    }
 
-                        if (requestedSoal > maxSoal) {
-                            alert(`Jumlah soal tidak boleh melebihi ${maxSoal} (jumlah soal dalam bank soal)`);
-                            isValid = false;
-                        }
+                    if (durasiPresetSelect.value === 'manual' && !durasiManualInput.value) {
+                        alert('Silahkan isi durasi manual');
+                        isValid = false;
                     }
 
                     if (!isValid) {
@@ -379,6 +364,5 @@
                     }
                 });
             });
-        </script>
-    @endpush
+    </script>
 @endsection

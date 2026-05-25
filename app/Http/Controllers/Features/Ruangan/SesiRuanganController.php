@@ -49,23 +49,10 @@ class SesiRuanganController extends Controller
      */
     public function store(Request $request, Ruangan $ruangan)
     {
-        // Format time fields if they're coming from a template
-        if ($request->filled('template_id') && $request->template_id) {
-            // Format waktu_mulai and waktu_selesai to ensure H:i format
-            if ($request->has('waktu_mulai')) {
-                $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
-            }
-            if ($request->has('waktu_selesai')) {
-                $request->merge(['waktu_selesai' => date('H:i', strtotime($request->waktu_selesai))]);
-            }
-        }
-
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
-            'keterangan' => 'nullable|string',
-            'template_id' => 'nullable|exists:sesi_templates,id',
             'kode_sesi' => 'nullable|string|max:20',
         ]);
 
@@ -104,14 +91,9 @@ class SesiRuanganController extends Controller
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
                 'status' => 'belum_mulai',
-                'keterangan' => $request->keterangan,
+                'sumber' => 'sumber',
                 'kode_sesi' => $request->kode_sesi,
             ];
-
-            // If using template, store the reference
-            if ($request->template_id) {
-                $sesiData['template_id'] = $request->template_id;
-            }
 
             $sesi = SesiRuangan::create($sesiData);
 
@@ -170,7 +152,6 @@ class SesiRuanganController extends Controller
             'waktu_mulai' => 'required|date_format:H:i',
             'waktu_selesai' => 'required|date_format:H:i|after:waktu_mulai',
             'status' => 'required|in:belum_mulai,berlangsung,selesai,dibatalkan',
-            'keterangan' => 'nullable|string',
             'kode_sesi' => 'nullable|string|max:20',
         ]);
 
@@ -207,7 +188,6 @@ class SesiRuanganController extends Controller
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
                 'status' => $request->status,
-                'keterangan' => $request->keterangan,
                 'kode_sesi' => $request->kode_sesi,
             ]);
 
@@ -594,12 +574,155 @@ class SesiRuanganController extends Controller
         $search = $request->input('q');
         $siswas = collect();
         if ($search) {
-            $siswas = Siswa::with(['kelas', 'sesiRuanganSiswa.sesiRuangan.ruangan', 'sesiRuanganSiswa.sesiRuangan.jadwalUjians'])
+            $siswas = Siswa::with(['kelas', 'sesiRuanganSiswa.sesiRuangan.ruangan', 'sesiRuanganSiswa.sesiRuangan.jadwalUjians.mapel'])
                 ->where('nama', 'like', "%{$search}%")
                 ->orWhere('idyayasan', 'like', "%{$search}%")
                 ->paginate(10);
         }
-        return view('features.ruangan.cari-siswa', compact('siswas', 'search'));
+
+        $sesiOptions = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel'])
+            ->orderBy('ruangan_id')
+            ->orderBy('waktu_mulai')
+            ->get()
+            ->groupBy(fn($sesi) => $sesi->ruangan->nama_ruangan ?? 'Ruangan tidak tersedia');
+
+        return view('features.ruangan.cari-siswa', compact('siswas', 'search', 'sesiOptions'));
+    }
+
+    public function assignSiswaKeSesi(Request $request)
+    {
+        $validated = $request->validate([
+            'siswa_ids' => 'required|array|min:1',
+            'siswa_ids.*' => 'exists:siswa,id',
+            'sesi_ids' => 'required|array|min:1',
+            'sesi_ids.*' => 'exists:sesi_ruangan,id',
+            'jadwal_ids' => 'nullable|array',
+            'jadwal_ids.*' => 'exists:jadwal_ujian,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $assigned = 0;
+            $enrolled = 0;
+            $siswas = Siswa::with('kelas')->whereIn('id', $validated['siswa_ids'])->get();
+            $sesis = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel'])->whereIn('id', $validated['sesi_ids'])->get();
+            $manualJadwals = collect();
+
+            if (!empty($validated['jadwal_ids'])) {
+                $manualJadwals = JadwalUjian::with('mapel')->whereIn('id', $validated['jadwal_ids'])->get();
+            }
+
+            foreach ($sesis as $sesi) {
+                foreach ($siswas as $siswa) {
+                    $sesiSiswa = $sesi->sesiRuanganSiswa()->firstOrCreate(
+                        ['siswa_id' => $siswa->id],
+                        ['status_kehadiran' => 'tidak_hadir']
+                    );
+
+                    if ($sesiSiswa->wasRecentlyCreated) {
+                        $assigned++;
+                    }
+
+                    $jadwalCandidates = $manualJadwals->isNotEmpty()
+                        ? $manualJadwals
+                        : $sesi->jadwalUjians;
+
+                    foreach ($jadwalCandidates as $jadwal) {
+                        if (!$this->isSiswaEligibleForJadwal($siswa, $jadwal)) {
+                            continue;
+                        }
+
+                        $enrollment = EnrollmentUjian::withTrashed()
+                            ->where('jadwal_ujian_id', $jadwal->id)
+                            ->where('siswa_id', $siswa->id)
+                            ->first();
+
+                        if (!$enrollment) {
+                            EnrollmentUjian::create([
+                                'siswa_id' => $siswa->id,
+                                'jadwal_ujian_id' => $jadwal->id,
+                                'sesi_ruangan_id' => $sesi->id,
+                                'status_enrollment' => 'enrolled',
+                                'catatan' => 'Ditambahkan manual dari Atur Siswa',
+                            ]);
+                            $enrolled++;
+                            continue;
+                        }
+
+                        if ($enrollment->trashed()) {
+                            $enrollment->restore();
+                        }
+
+                        $enrollment->update([
+                            'sesi_ruangan_id' => $sesi->id,
+                            'status_enrollment' => $enrollment->status_enrollment ?: 'enrolled',
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('ruangan.cari-siswa', ['q' => $request->input('q')])
+                ->with('success', "{$assigned} siswa ditambahkan ke sesi, {$enrolled} enrollment dibuat.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Gagal mengatur siswa: ' . $e->getMessage());
+        }
+    }
+
+    private function isSiswaEligibleForJadwal(Siswa $siswa, JadwalUjian $jadwal): bool
+    {
+        if (!$siswa->kelas) {
+            return false;
+        }
+
+        $kelasTargets = collect($jadwal->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+        if (!empty($kelasTargets) && !in_array((string) $siswa->kelas_id, $kelasTargets, true)) {
+            return false;
+        }
+
+        if (!$jadwal->mapel) {
+            return true;
+        }
+
+        $mapelTingkat = $this->normalizeEligibilityValue($jadwal->mapel->tingkat);
+        $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat);
+        if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
+            return false;
+        }
+
+        $mapelJurusan = $this->normalizeEligibilityValue($jadwal->mapel->jurusan);
+        $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan);
+        if ($mapelJurusan && $mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function normalizeEligibilityValue($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match ($normalized) {
+            '10', 'KELAS 10', 'KELAS X' => 'X',
+            '11', 'KELAS 11', 'KELAS XI' => 'XI',
+            '12', 'KELAS 12', 'KELAS XII' => 'XII',
+            default => $normalized,
+        };
     }
 
     /**
@@ -615,6 +738,7 @@ class SesiRuanganController extends Controller
             $newSesi = $sesi->replicate();
             $newSesi->nama_sesi = $sesi->nama_sesi . ' (copy)';
             $newSesi->status = 'belum_mulai';
+            $newSesi->sumber = $sesi->kode_sesi;
             $newSesi->kode_sesi = null; // akan digenerate otomatis oleh boot creating
             $newSesi->token_ujian = null;
             $newSesi->token_expired_at = null;

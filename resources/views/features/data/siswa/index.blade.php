@@ -559,10 +559,12 @@
                             if (data.data.stats) {
                                 const showingCount = document.getElementById('showing-count');
                                 const totalCount = document.getElementById('total-count');
+                                const siswaCount = document.getElementById('siswa-count');
 
                                 if (showingCount) showingCount.textContent = data.data.stats
                                     .showing || 0;
                                 if (totalCount) totalCount.textContent = data.data.stats.total || 0;
+                                if (siswaCount) siswaCount.textContent = data.data.stats.total || 0;
                             }
                         } else {
                             showToast('Search failed: ' + (data.error || 'Unknown error'), 'error');
@@ -1175,6 +1177,7 @@
                         syncResultsContent.innerHTML = `<p class="text-green-700">${message}</p>`;
                     }
                 }
+                performSearch();
             }
 
             function showSyncError(message) {

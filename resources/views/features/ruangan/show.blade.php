@@ -256,12 +256,16 @@
 
                             <div class="space-y-4 max-h-[600px] overflow-y-auto" id="sesiList">
                                 @foreach ($sesiRuangan as $sesi)
-                                    <div class="sesi-item border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                                    <div @class([
+                                        'sesi-item border rounded-lg overflow-hidden hover:shadow-md transition-shadow',
+                                        'border-emerald-200 bg-emerald-50/60' => $sesi->sumber === 'sumber',
+                                        'border-indigo-200 bg-indigo-50/50' => !empty($sesi->sumber) && $sesi->sumber !== 'sumber',
+                                    ])
                                         data-status="{{ $sesi->status }}" data-name="{{ strtolower($sesi->nama_sesi) }}"
                                         data-date="{{ $sesi->jadwalUjians->first() ? \Carbon\Carbon::parse($sesi->jadwalUjians->first()->tanggal)->format('Y-m-d') : now()->format('Y-m-d') }}"
                                         data-pengawas="{{ $sesi->pengawas_names }}">
                                         <div
-                                            class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                                            class="px-4 py-3 border-b border-gray-200 flex justify-between items-center {{ $sesi->sumber === 'sumber' ? 'bg-emerald-100/70' : (!empty($sesi->sumber) ? 'bg-indigo-100/60' : 'bg-gray-50') }}">
                                             <div class="flex items-center">
                                                 <div
                                                     class="{{ $sesi->status == 'belum_mulai' ? 'bg-blue-100 text-blue-600' : ($sesi->status == 'berlangsung' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600') }} p-2 rounded-full mr-3">
@@ -270,7 +274,18 @@
                                                 </div>
                                                 <div>
                                                     <h4 class="font-medium text-gray-900">{{ $sesi->nama_sesi }}</h4>
-                                                    <span class="text-sm text-gray-600">{{ $sesi->kode_sesi }}</span>
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <span class="text-sm text-gray-600">{{ $sesi->kode_sesi }}</span>
+                                                        @if ($sesi->sumber === 'sumber')
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
+                                                            </span>
+                                                        @elseif (!empty($sesi->sumber))
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                                <i class="fa-regular fa-copy mr-1"></i>Duplikat dari {{ $sesi->sumber }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </div>
                                             <span
