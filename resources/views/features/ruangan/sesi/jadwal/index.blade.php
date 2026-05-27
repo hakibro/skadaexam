@@ -292,8 +292,7 @@
                 <ul class="list-disc pl-5 space-y-1">
                     <li>Jadwal ujian dengan Mapel yang memiliki jurusan <strong>kosong</strong> berlaku untuk semua jurusan
                     </li>
-                    <li>Ketika menambahkan siswa ke sesi, sistem akan otomatis menambahkan jadwal ujian yang sesuai dengan
-                        jurusan/kelas siswa</li>
+                    <li>Jadwal ujian pada sesi ini ditambahkan manual dari halaman ini atau dari pengaturan jadwal ujian</li>
                     <li>Pastikan jadwal ujian memiliki status "Aktif" agar dapat diikuti oleh siswa</li>
                 </ul>
             </div>

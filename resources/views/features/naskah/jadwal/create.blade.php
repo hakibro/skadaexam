@@ -57,10 +57,10 @@
                         <div>
                             <label for="judul" class="block text-sm font-medium text-gray-700">Judul Ujian <span
                                     class="text-red-500">*</span></label>
-                            <input type="text" name="judul" id="judul" required readonly
+                            <input type="text" name="judul" id="judul" required
                                 value="{{ old('judul') }}"
-                                class="mt-1 form-input block w-full rounded-md shadow-sm bg-gray-100 text-gray-700 focus:ring-blue-500 focus:border-blue-500 @error('judul') border-red-500 @enderror"
-                                placeholder="Otomatis mengikuti mata pelajaran">
+                                class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('judul') border-red-500 @enderror"
+                                placeholder="Contoh: Matematika atau Susulan - Matematika">
                             @error('judul')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
@@ -249,9 +249,17 @@
                 // Store original bank soal options
                 const originalOptions = Array.from(bankSoalSelect.options);
 
+                let lastAutoJudul = '';
+
                 function updateJudulFromMapel() {
                     const selectedOption = mapelSelect.options[mapelSelect.selectedIndex];
-                    judulInput.value = selectedOption?.dataset.mapelName || '';
+                    const mapelName = selectedOption?.dataset.mapelName || '';
+
+                    if (!judulInput.value || judulInput.value === lastAutoJudul) {
+                        judulInput.value = mapelName;
+                    }
+
+                    lastAutoJudul = mapelName;
                 }
 
                 function updateJumlahSoalFromBankSoal() {

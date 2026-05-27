@@ -303,7 +303,6 @@ class SesiRuanganController extends Controller
             }
 
             $added = 0;
-            $matchedJadwalIds = [];
 
             foreach ($request->siswa_ids as $siswaId) {
                 // Check if student is already assigned
@@ -315,79 +314,13 @@ class SesiRuanganController extends Controller
                         'status_kehadiran' => 'tidak_hadir', // Default status
                     ]);
                     $added++;
-
-                    // Get student's class and jurusan
-                    $siswa = Siswa::with('kelas')->find($siswaId);
-                    if ($siswa && $siswa->kelas) {
-                        $kelasJurusan = $siswa->kelas->jurusan;
-
-                        // Find matching jadwal ujian based on jurusan compatibility
-                        $matchingJadwals = \App\Models\JadwalUjian::whereHas('mapel', function ($query) use ($kelasJurusan) {
-                            $query->where('jurusan', $kelasJurusan)
-                                ->orWhere('jurusan', 'UMUM')
-                                ->orWhereNull('jurusan'); // If jurusan is null, it applies to all
-                        })
-                            ->where('status', 'aktif')
-                            ->whereJsonContains('kelas_target', $siswa->kelas_id)
-                            ->get();
-
-                        foreach ($matchingJadwals as $jadwal) {
-                            $matchedJadwalIds[$jadwal->id] = $jadwal;
-
-                            // Create automatic enrollment for this jadwal
-                            $existingEnrollment = \App\Models\EnrollmentUjian::where('jadwal_ujian_id', $jadwal->id)
-                                ->where('sesi_ruangan_id', $sesi->id)
-                                ->where('siswa_id', $siswaId)
-                                ->first();
-
-                            if (!$existingEnrollment) {
-                                // Create new enrollment record
-                                $enrollment = new \App\Models\EnrollmentUjian([
-                                    'sesi_ruangan_id' => $sesi->id,
-                                    'jadwal_ujian_id' => $jadwal->id,
-                                    'siswa_id' => $siswaId,
-                                    'status_enrollment' => 'enrolled',
-                                    'catatan' => 'Auto-enrolled when assigned to session'
-                                ]);
-                                $enrollment->save();
-
-                                Log::info("Auto-enrolled student {$siswaId} in jadwal {$jadwal->id} for sesi {$sesi->id}");
-                            }
-                        }
-                    }
                 }
-            }
-
-            // Attach matched jadwal ujian to sesi ruangan
-            if (!empty($matchedJadwalIds)) {
-                foreach ($matchedJadwalIds as $jadwalId => $jadwal) {
-                    if (!$sesi->jadwalUjians()->where('jadwal_ujian_id', $jadwalId)->exists()) {
-                        $sesi->jadwalUjians()->attach($jadwalId);
-                        Log::info("Attached jadwal ujian {$jadwalId} to sesi ruangan {$sesi->id}");
-                    }
-                }
-            } else {
-                Log::info("No matching jadwal ujian found for students in sesi ruangan {$sesi->id}");
-            }
-
-            // If no jadwal ujian was matched, add a warning message
-            if (empty($matchedJadwalIds) && $added > 0) {
-                session()->flash('warning', 'Siswa ditambahkan, tetapi tidak ada jadwal ujian yang cocok. Harap tambahkan jadwal ujian secara manual.');
             }
 
             DB::commit();
 
-            $totalEnrollments = \App\Models\EnrollmentUjian::where('sesi_ruangan_id', $sesi->id)
-                ->whereIn('siswa_id', $request->siswa_ids)
-                ->count();
-
-            $jadwalMsg = count($matchedJadwalIds) > 0 ?
-                ' dan ' . count($matchedJadwalIds) . ' jadwal ujian yang sesuai otomatis ditambahkan' : '';
-            $enrollMsg = $totalEnrollments > 0 ?
-                ', ' . $totalEnrollments . ' enrollment ujian otomatis dibuat' : '';
-
             return redirect()->route('ruangan.sesi.siswa.index', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
-                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi' . $jadwalMsg . $enrollMsg);
+                ->with('success', $added . ' siswa berhasil ditambahkan ke sesi');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error adding students to sesi: ' . $e->getMessage());

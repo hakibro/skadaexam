@@ -81,6 +81,7 @@ class JadwalUjianController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'judul' => 'required|string|max:255',
             'mapel_id' => 'required|exists:mapel,id',
             'bank_soal_id' => 'nullable|exists:bank_soal,id',
             'tanggal' => 'required|date',
@@ -146,7 +147,7 @@ class JadwalUjianController extends Controller
         // Create new jadwal ujian
         $jadwalUjian = JadwalUjian::create([
             'kode_ujian' => $kodeUjian,
-            'judul' => $mapel->nama_mapel,
+            'judul' => $request->judul,
             'deskripsi' => $request->deskripsi,
             'mapel_id' => $request->mapel_id,
             'bank_soal_id' => $bankSoal->id,

@@ -172,8 +172,8 @@
 
                         <div class="mt-3 text-xs text-gray-500 italic">
                             <i class="fa-solid fa-info-circle mr-1"></i>
-                            Jadwal ujian yang sesuai dengan jurusan/kelas siswa akan otomatis ditambahkan ke sesi.
-                            Jadwal ujian dengan jurusan <strong>kosong</strong> berlaku untuk semua jurusan.
+                            Penambahan siswa manual hanya memasukkan siswa ke sesi ruangan ini.
+                            Jadwal ujian dan enrollment siswa diatur dari halaman jadwal ujian.
                         </div>
                     </form>
                 @else
