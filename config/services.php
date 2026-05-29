@@ -46,6 +46,9 @@ return [
         'base_url' => env('API_SIKEU_BASE_URL'),
         'timeout' => env('API_SIKEU_TIMEOUT', 30),
     ],
+    'local_api' => [
+        'bearer_token' => env('API_BEARER_TOKEN'),
+    ],
     'chrome' => [
         'path' => env('CHROME_PATH', '/usr/bin/google-chrome'),
         'args' => array_filter(explode(',', env('CHROME_ARGS', '--no-sandbox'))),

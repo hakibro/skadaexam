@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'siswa.role' => \App\Http\Middleware\SiswaRole::class,
             'siswa.force_logout' => \App\Http\Middleware\ForceLogoutSiswa::class,
             'ujian.active' => \App\Http\Middleware\UjianActive::class,
+            'api.bearer' => \App\Http\Middleware\ApiBearerToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
