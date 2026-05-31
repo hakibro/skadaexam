@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Mapel;
 use App\Models\SesiRuangan;
 use App\Models\Kelas;
+use App\Services\TahunAjaranService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -22,33 +23,39 @@ class DashboardController extends Controller
     {
         try {
             // Get statistics
-            $bankSoalCount = BankSoal::count();
-            $soalCount = Soal::count();
-            $jadwalUjianCount = JadwalUjian::count();
-            $hasilUjianCount = HasilUjian::count();
-            $mapelCount = Mapel::count();
-            $sesiCount = SesiRuangan::count();
-            $kelasCount = Kelas::count();
+            $activeYearId = app(TahunAjaranService::class)->activeId();
+            $bankSoalCount = BankSoal::forTahunAjaran($activeYearId)->count();
+            $soalCount = Soal::whereHas('bankSoal', fn($q) => $q->forTahunAjaran($activeYearId))->count();
+            $jadwalUjianCount = JadwalUjian::forTahunAjaran($activeYearId)->count();
+            $hasilUjianCount = HasilUjian::whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($activeYearId))->count();
+            $mapelCount = Mapel::forTahunAjaran($activeYearId)->count();
+            $sesiCount = SesiRuangan::forTahunAjaran($activeYearId)->count();
+            $kelasCount = Kelas::forTahunAjaran($activeYearId)->count();
 
             // Get pass rate statistics
             $passedResults = HasilUjian::where('is_final', true)
+                ->whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($activeYearId))
                 ->where(function ($query) {
                     $query->where(function ($q) {
                         // Jika menggunakan skor
                         $q->whereRaw('(skor / jumlah_soal) >= 0.7');
                     });
                 })->count();
-            $totalCompletedResults = HasilUjian::where('is_final', true)->count();
+            $totalCompletedResults = HasilUjian::where('is_final', true)
+                ->whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($activeYearId))
+                ->count();
             $passRate = $totalCompletedResults > 0 ? round(($passedResults / $totalCompletedResults) * 100) : 0;
 
             // Get recently created bank soals
             $recentBankSoals = BankSoal::with('creator')
+                ->forTahunAjaran($activeYearId)
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get();
 
             // Get recently created or updated soals
             $recentSoals = Soal::with('bankSoal')
+                ->whereHas('bankSoal', fn($q) => $q->forTahunAjaran($activeYearId))
                 ->orderBy('updated_at', 'desc')
                 ->limit(5)
                 ->get();
@@ -56,28 +63,33 @@ class DashboardController extends Controller
             // Get recently completed exams
             $recentResults = HasilUjian::with(['siswa', 'jadwalUjian.bankSoal'])
                 ->where('is_final', true)
+                ->whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($activeYearId))
                 ->orderBy('waktu_selesai', 'desc')
                 ->limit(5)
                 ->get();
 
             // Get statistics by tingkat/kelas
             $soalsByTingkat = BankSoal::select('tingkat', DB::raw('COUNT(*) as count'))
+                ->forTahunAjaran($activeYearId)
                 ->groupBy('tingkat')
                 ->get();
 
             // Get statistics by soal type
             $soalsByType = Soal::select('tipe_soal', DB::raw('COUNT(*) as count'))
+                ->whereHas('bankSoal', fn($q) => $q->forTahunAjaran($activeYearId))
                 ->groupBy('tipe_soal')
                 ->get();
 
             // Get statistics by subject
             $soalsByMapel = BankSoal::join('mapel', 'bank_soal.mapel_id', '=', 'mapel.id')
+                ->when($activeYearId, fn($query) => $query->where('bank_soal.tahun_ajaran_id', $activeYearId))
                 ->select('mapel.nama_mapel', DB::raw('COUNT(bank_soal.id) as count'))
                 ->groupBy('mapel.id', 'mapel.nama_mapel')
                 ->get();
 
             // Get upcoming exams - Fix, using tanggal
             $upcomingExams = JadwalUjian::with(['bankSoal', 'mapel'])
+                ->forTahunAjaran($activeYearId)
                 ->where('tanggal', '>=', Carbon::today())
                 ->where('status', 'aktif') // Changed from 'active' to 'aktif' to match status values
                 ->orderBy('tanggal', 'asc')
@@ -85,7 +97,7 @@ class DashboardController extends Controller
                 ->get();
 
             // Get recent activities
-            $recentActivities = $this->getRecentActivities();
+            $recentActivities = $this->getRecentActivities($activeYearId);
 
             return view('features.naskah.dashboard', compact(
                 'bankSoalCount',
@@ -121,12 +133,13 @@ class DashboardController extends Controller
     /**
      * Get recent activities based on created and updated records
      */
-    private function getRecentActivities()
+    private function getRecentActivities($tahunAjaranId = null)
     {
         $activities = collect();
 
         // Add bank soal activities
         $bankSoalActivities = BankSoal::with('creator')
+            ->forTahunAjaran($tahunAjaranId)
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
@@ -143,6 +156,7 @@ class DashboardController extends Controller
 
         // Add jadwal ujian activities
         $jadwalActivities = JadwalUjian::with('creator')
+            ->forTahunAjaran($tahunAjaranId)
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()

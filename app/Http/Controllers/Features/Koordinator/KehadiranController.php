@@ -12,19 +12,25 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Kelas;
 use Carbon\Carbon;
 use App\Models\Siswa;
+use App\Services\TahunAjaranService;
 
 
 class KehadiranController extends Controller
 {
     public function index(Request $request)
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+
         $query = SesiRuanganSiswa::query()
             ->with([
                 'siswa.kelas',
+                'siswa.tahunAjaranRecords.kelas',
                 'sesiRuangan',
                 'sesiRuangan.jadwalUjian',
                 'sesiRuangan.ruangan',
-            ]);
+            ])
+            ->when($tahunAjaranId, fn($q) => $q->whereHas('sesiRuangan', fn($sesi) => $sesi->where('tahun_ajaran_id', $tahunAjaranId)));
 
         // ================= FILTER =================
 
@@ -57,16 +63,16 @@ class KehadiranController extends Controller
 
         // Tingkat
         if ($request->filled('tingkat')) {
-            $query->whereHas('siswa.kelas', function ($q) use ($request) {
-                $q->where('tingkat', $request->tingkat);
-            });
+            $query->whereHas('siswa.tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)));
         }
 
         // Jurusan (dari tabel kelas, bukan master jurusan)
         if ($request->filled('jurusan')) {
-            $query->whereHas('siswa.kelas', function ($q) use ($request) {
-                $q->where('jurusan', $request->jurusan);
-            });
+            $query->whereHas('siswa.tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->whereHas('kelas', fn($kelas) => $kelas->where('jurusan', $request->jurusan)));
         }
 
 
@@ -75,10 +81,11 @@ class KehadiranController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $ruangan = Ruangan::orderBy('nama_ruangan')->get();
-        $jurusan = Kelas::select('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan');
+        $ruangan = Ruangan::forTahunAjaran($tahunAjaranId)->orderBy('nama_ruangan')->get();
+        $jurusan = Kelas::forTahunAjaran($tahunAjaranId)->select('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan');
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'jurusan'));
+        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'jurusan', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**

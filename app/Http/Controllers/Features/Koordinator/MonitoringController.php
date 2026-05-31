@@ -8,6 +8,7 @@ use App\Models\BeritaAcaraUjian;
 use App\Models\SesiRuanganSiswa;
 use App\Models\Ruangan;
 use App\Models\Guru;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,9 +26,11 @@ class MonitoringController extends Controller
         $selectedDate = $request->get('date', Carbon::today()->format('Y-m-d'));
         $selectedStatus = $request->get('status', 'all');
         $selectedRuangan = $request->get('ruangan_id', 'all');
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
 
         // Build query for sessions
         $query = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa.siswa', 'jadwalUjians'])
+            ->forTahunAjaran($tahunAjaranId)
             ->whereHas('jadwalUjians', function ($q) use ($selectedDate) {
                 $q->whereDate('tanggal', $selectedDate);
             });
@@ -43,15 +46,17 @@ class MonitoringController extends Controller
         $sessions = $query->orderBy('waktu_mulai')->get();
 
         // Get monitoring statistics
-        $stats = $this->getMonitoringStats($selectedDate);
+        $stats = $this->getMonitoringStats($selectedDate, $tahunAjaranId);
 
         // Get available ruangan for filter
         $availableRuangan = Ruangan::where('status', 'aktif')
+            ->forTahunAjaran($tahunAjaranId)
             ->orderBy('nama_ruangan')
             ->get();
 
         // Get real-time data for ongoing sessions
         $activeSessions = SesiRuangan::where('status', 'berlangsung')
+            ->forTahunAjaran($tahunAjaranId)
             ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
             ->get()
             ->map(function ($session) {
@@ -117,12 +122,12 @@ class MonitoringController extends Controller
             });
 
         // Get rooms for filter dropdown
-        $rooms = Ruangan::where('status', 'aktif')->orderBy('nama_ruangan')->get();
+        $rooms = Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'aktif')->orderBy('nama_ruangan')->get();
 
 
         if ($request->ajax()) {
             return response()->json([
-                'stats' => $this->getMonitoringStats($selectedDate),
+                'stats' => $this->getMonitoringStats($selectedDate, $tahunAjaranId),
                 'sessions' => $activeSessions->map(function ($session) {
                     return [
                         'id' => $session->id,
@@ -146,7 +151,8 @@ class MonitoringController extends Controller
             'rooms',
             'selectedDate',
             'selectedStatus',
-            'selectedRuangan'
+            'selectedRuangan',
+            'tahunAjaranId'
         ));
     }
 
@@ -204,7 +210,9 @@ class MonitoringController extends Controller
      */
     public function getLiveUpdates()
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
         $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
+            ->forTahunAjaran($tahunAjaranId)
             ->with(['ruangan', 'pengawas', 'sesiRuanganSiswa'])
             ->get()
             ->map(function ($sesi) {
@@ -307,9 +315,9 @@ class MonitoringController extends Controller
         }
     }
 
-    private function getMonitoringStats($date)
+    private function getMonitoringStats($date, $tahunAjaranId = null)
     {
-        $sessionsToday = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($date) {
+        $sessionsToday = SesiRuangan::forTahunAjaran($tahunAjaranId)->whereHas('jadwalUjians', function ($q) use ($date) {
             $q->whereDate('tanggal', $date);
         });
 
@@ -317,8 +325,9 @@ class MonitoringController extends Controller
 
 
         $activeStudents = SesiRuanganSiswa::where('status_kehadiran', 'hadir')
-            ->whereHas('sesiRuangan', function ($query) use ($date) {
+            ->whereHas('sesiRuangan', function ($query) use ($date, $tahunAjaranId) {
                 $query->where('status', 'berlangsung')
+                    ->forTahunAjaran($tahunAjaranId)
                     ->whereHas('jadwalUjians', function ($q) use ($date) {
                         $q->whereDate('tanggal', $date);
                     });
@@ -326,8 +335,9 @@ class MonitoringController extends Controller
 
         $issues = 0; // Logout functionality removed from current design
 
-        $onlineProctors = Guru::whereHas('sesiRuanganDiawasi', function ($query) use ($date) {
+        $onlineProctors = Guru::whereHas('sesiRuanganDiawasi', function ($query) use ($date, $tahunAjaranId) {
             $query->where('status', 'berlangsung')
+                ->forTahunAjaran($tahunAjaranId)
                 ->whereHas('jadwalUjians', function ($q) use ($date) {
                     $q->whereDate('tanggal', $date);
                 });
@@ -345,12 +355,14 @@ class MonitoringController extends Controller
             'berlangsung' => $activeSessions,
             'selesai' => $sessionsToday->clone()->where('status', 'selesai')->count(),
             'dibatalkan' => $sessionsToday->clone()->where('status', 'dibatalkan')->count(),
-            'total_students' => SesiRuanganSiswa::whereHas('sesiRuangan.jadwalUjians', function ($query) use ($date) {
-                $query->whereDate('tanggal', $date);
+            'total_students' => SesiRuanganSiswa::whereHas('sesiRuangan', function ($query) use ($date, $tahunAjaranId) {
+                $query->forTahunAjaran($tahunAjaranId)
+                    ->whereHas('jadwalUjians', fn($jadwal) => $jadwal->whereDate('tanggal', $date));
             })->count(),
             'students_present' => SesiRuanganSiswa::where('status_kehadiran', 'hadir')
-                ->whereHas('sesiRuangan.jadwalUjians', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
+                ->whereHas('sesiRuangan', function ($query) use ($date, $tahunAjaranId) {
+                    $query->forTahunAjaran($tahunAjaranId)
+                        ->whereHas('jadwalUjians', fn($jadwal) => $jadwal->whereDate('tanggal', $date));
                 })->count(),
             'unassigned_sessions' => $sessionsToday->clone()
                 ->whereDoesntHave('jadwalUjians', function ($query) {

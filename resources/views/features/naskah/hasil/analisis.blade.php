@@ -6,7 +6,7 @@
 
 @section('content')
     @php
-        $filterParams = request()->only(['jadwal_id', 'kelas_id', 'tingkat', 'jurusan']);
+        $filterParams = request()->only(['tahun_ajaran_id', 'paket_ujian_id', 'jadwal_id', 'kelas_id', 'tingkat', 'jurusan']);
         $rangeTotal = max((int) $totalHasil, 1);
     @endphp
 
@@ -29,7 +29,28 @@
         </div>
 
         <div class="bg-white rounded-lg shadow p-5">
-            <form method="GET" action="{{ route('naskah.hasil.analisis') }}" class="grid grid-cols-1 gap-4 md:grid-cols-5">
+            <form method="GET" action="{{ route('naskah.hasil.analisis') }}" class="grid grid-cols-1 gap-4 md:grid-cols-6">
+                <div>
+                    <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700">Tahun Ajaran</label>
+                    <select id="tahun_ajaran_id" name="tahun_ajaran_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        @foreach ($tahunAjarans as $tahun)
+                            <option value="{{ $tahun->id }}" @selected((string) $tahunAjaranId === (string) $tahun->id)>
+                                {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700">Paket</label>
+                    <select id="paket_ujian_id" name="paket_ujian_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="">Semua paket</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}" @selected(request('paket_ujian_id') == $paket->id)>
+                                {{ $paket->nama }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div>
                     <label for="jadwal_id" class="block text-sm font-medium text-gray-700">Jadwal</label>
                     <select id="jadwal_id" name="jadwal_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">

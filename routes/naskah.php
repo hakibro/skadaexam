@@ -6,6 +6,7 @@ use App\Http\Controllers\Features\Naskah\MapelRecoveryController;
 use App\Http\Controllers\Features\Naskah\BankSoalController;
 use App\Http\Controllers\Features\Naskah\SoalController;
 use App\Http\Controllers\Features\Naskah\JadwalUjianController;
+use App\Http\Controllers\Features\Naskah\PaketUjianController;
 use App\Http\Controllers\Features\Naskah\UpdateJadwalTargetKelasController;
 use App\Http\Controllers\Features\Naskah\HasilUjianController;
 use App\Http\Controllers\Features\Naskah\PanduanController;
@@ -38,6 +39,9 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::get('soal/{soal}/preview', [SoalController::class, 'preview'])->name('soal.preview');
 
     // ===== JADWAL UJIAN MANAGEMENT =====
+    Route::resource('paket-ujian', PaketUjianController::class)
+        ->parameters(['paket-ujian' => 'paketUjian'])
+        ->except(['destroy']);
     // Batch update kelas_target
     Route::get('jadwal/batch-update-kelas-target', [UpdateJadwalTargetKelasController::class, 'index'])->name('jadwal.batch-update-kelas-target');
     Route::post('jadwal/batch-update-kelas-target', [UpdateJadwalTargetKelasController::class, 'update'])->name('jadwal.batch-update-kelas-target.update');

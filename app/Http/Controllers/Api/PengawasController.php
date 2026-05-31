@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JadwalUjianSesiRuangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 
 class PengawasController extends Controller
@@ -17,6 +18,17 @@ class PengawasController extends Controller
                 'pengawas:id,nama,nip,email',
             ])
             ->whereNotNull('pengawas_id');
+
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        }
 
         if ($request->filled('pengawas_id')) {
             $query->where('pengawas_id', $request->pengawas_id);

@@ -14,6 +14,7 @@ use PhpOffice\PhpWord\Element\Image;
 use PhpOffice\PhpWord\Element\Text;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Soal;
+use App\Services\TahunAjaranService;
 
 class BankSoalController extends Controller
 {
@@ -22,7 +23,9 @@ class BankSoalController extends Controller
      */
     public function index(Request $request)
     {
-        $query = BankSoal::with('mapel'); // Tambahkan relasi mapel
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $query = BankSoal::with('mapel')->forTahunAjaran($tahunAjaranId); // Tambahkan relasi mapel
 
         // Apply search filter
         if ($request->filled('search')) {
@@ -53,9 +56,10 @@ class BankSoalController extends Controller
 
         $perPage = $request->get('per_page', 10);
         $bankSoals = $query->orderBy('created_at', 'desc')->paginate($perPage);
-        $mapels = Mapel::active()->get(); // Ambil semua mata pelajaran aktif
+        $mapels = Mapel::active()->forTahunAjaran($tahunAjaranId)->get(); // Ambil semua mata pelajaran aktif
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels'));
+        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -63,7 +67,8 @@ class BankSoalController extends Controller
      */
     public function create()
     {
-        $mapels = Mapel::active()->get(); // Ambil semua mata pelajaran aktif
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $mapels = Mapel::active()->forTahunAjaran($activeYear->id)->get(); // Ambil semua mata pelajaran aktif
         return view('features.naskah.banksoal.create', compact('mapels'));
     }
 
@@ -82,6 +87,7 @@ class BankSoalController extends Controller
         ]);
 
         try {
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
             DB::beginTransaction();
 
             // Generate kode bank soal unik
@@ -94,6 +100,7 @@ class BankSoalController extends Controller
 
             // Simpan data bank soal
             $bankSoal = BankSoal::create([
+                'tahun_ajaran_id' => $activeYear->id,
                 'kode_bank' => $kodeBank,
                 'judul' => $request->judul,
                 'deskripsi' => $request->deskripsi,
@@ -149,7 +156,12 @@ class BankSoalController extends Controller
      */
     public function edit(BankSoal $banksoal)
     {
-        $mapels = Mapel::active()->get(); // Ambil semua mata pelajaran aktif
+        if ($banksoal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.banksoal.show', $banksoal->id)
+                ->with('error', 'Bank soal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $mapels = Mapel::active()->forTahunAjaran($banksoal->tahun_ajaran_id)->get(); // Ambil semua mata pelajaran aktif
         $soals = $banksoal->soals()->orderBy('nomor_soal', 'asc')->paginate(10); // Tambahkan daftar soal
         return view('features.naskah.banksoal.edit', compact('banksoal', 'mapels', 'soals'));
     }
@@ -159,6 +171,11 @@ class BankSoalController extends Controller
      */
     public function update(Request $request, BankSoal $banksoal)
     {
+        if ($banksoal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.banksoal.show', $banksoal->id)
+                ->with('error', 'Bank soal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'judul' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
@@ -170,6 +187,8 @@ class BankSoalController extends Controller
         ]);
 
         try {
+            Mapel::forTahunAjaran($banksoal->tahun_ajaran_id)->findOrFail($request->mapel_id);
+
             // Update basic info
             $banksoal->update([
                 'judul' => $request->judul,

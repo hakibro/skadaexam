@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Siswa;
 use App\Http\Controllers\Controller;
 use App\Models\EnrollmentUjian;
 use App\Models\JadwalUjian;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -115,6 +116,7 @@ class SiswaDashboardController extends Controller
     public function index(Request $request)
     {
         $siswa = Auth::guard('siswa')->user();
+        $activeYearId = app(TahunAjaranService::class)->activeId();
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
 
@@ -138,6 +140,7 @@ class SiswaDashboardController extends Controller
                     $today = Carbon::today();
                     $query->whereDate('tanggal', '>=', $today);
                 })
+                ->when($activeYearId, fn($query) => $query->whereHas('jadwalUjian', fn($jadwal) => $jadwal->where('tahun_ajaran_id', $activeYearId)))
                 ->first();
 
             if ($currentEnrollment) {
@@ -148,22 +151,30 @@ class SiswaDashboardController extends Controller
 
         // === Statistik ujian ===
         $today = Carbon::today();
-        $siswaKelas = $siswa->Kelas;          // relasi ke model Kelas
-        $siswaKelasId = $siswaKelas->id;
-        $siswaJurusan = $siswaKelas->jurusan;
-        $siswaTingkat = $siswaKelas->tingkat; // pastikan ada field tingkat di tabel kelas
+        $siswaKelas = $activeYearId ? $siswa->kelasForTahunAjaran($activeYearId) : $siswa->kelas;
+        $allJadwal = collect();
 
-        // Ambil semua jadwal ujian yang sesuai kelas, jurusan, dan tingkat
-        $allJadwal = JadwalUjian::whereJsonContains('kelas_target', $siswaKelasId)
-            ->whereHas('mapel', function ($q) use ($siswaJurusan, $siswaTingkat) {
-                $q->where('tingkat', $siswaTingkat) // pastikan tingkat sesuai
-                    ->where(function ($sub) use ($siswaJurusan) {
-                        $sub->whereNull('jurusan')
-                            ->orWhere('jurusan', $siswaJurusan)
-                            ->orWhere('jurusan', 'UMUM');
-                    });
-            })
-            ->get();
+        if ($siswaKelas) {
+            $siswaKelasId = $siswaKelas->id;
+            $siswaJurusan = $siswaKelas->jurusan;
+            $siswaTingkat = $siswaKelas->tingkat;
+
+            // Ambil semua jadwal ujian yang sesuai kelas, jurusan, dan tingkat pada tahun aktif.
+            $allJadwal = JadwalUjian::forTahunAjaran($activeYearId)
+                ->where(function ($query) use ($siswaKelasId) {
+                    $query->whereJsonContains('kelas_target', (string) $siswaKelasId)
+                        ->orWhereJsonContains('kelas_target', $siswaKelasId);
+                })
+                ->whereHas('mapel', function ($q) use ($siswaJurusan, $siswaTingkat) {
+                    $q->where('tingkat', $siswaTingkat)
+                        ->where(function ($sub) use ($siswaJurusan) {
+                            $sub->whereNull('jurusan')
+                                ->orWhere('jurusan', $siswaJurusan)
+                                ->orWhere('jurusan', 'UMUM');
+                        });
+                })
+                ->get();
+        }
 
         $stats = [
             'total'       => $allJadwal->count(),
@@ -179,6 +190,7 @@ class SiswaDashboardController extends Controller
             ->whereHas('jadwalUjian', function ($query) use ($today) {
                 $query->whereDate('tanggal', '=', $today); // hanya hari ini
             })
+            ->when($activeYearId, fn($query) => $query->whereHas('jadwalUjian', fn($jadwal) => $jadwal->where('tahun_ajaran_id', $activeYearId)))
             ->orderBy('jadwal_ujian_id', 'asc') // langsung order dari query
             ->get();
         $activeMapels = collect([]);

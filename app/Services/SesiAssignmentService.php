@@ -25,7 +25,7 @@ class SesiAssignmentService
         $targetDate = $jadwalUjian->tanggal->format('Y-m-d');
 
         // STEP 1: Check for existing sesi_ruangan that are already used by other jadwal on the same date
-        $existingSesiForDate = $this->getSesiRuanganForDate($targetDate);
+        $existingSesiForDate = $this->getSesiRuanganForDate($targetDate, $jadwalUjian->tahun_ajaran_id);
 
         $assignedCount = 0;
         $reusedCount = 0;
@@ -230,10 +230,11 @@ class SesiAssignmentService
     /**
      * Get existing sesi_ruangan that are already used by jadwal_ujian on specific date
      */
-    private function getSesiRuanganForDate(string $targetDate): array
+    private function getSesiRuanganForDate(string $targetDate, ?int $tahunAjaranId = null): array
     {
         // Find jadwal_ujian on the target date that have sesi_ruangan assigned
         $jadwalOnDate = JadwalUjian::whereDate('tanggal', $targetDate)
+            ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereHas('sesiRuangans')
             ->with('sesiRuangans')
             ->get();
@@ -258,13 +259,16 @@ class SesiAssignmentService
      */
     private function createNewSesiByDuplication(JadwalUjian $jadwalUjian, string $targetDate): int
     {
-        $activeRooms = \App\Models\Ruangan::where('status', 'aktif')->get();
+        $activeRooms = \App\Models\Ruangan::where('status', 'aktif')
+            ->when($jadwalUjian->tahun_ajaran_id, fn($query) => $query->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id))
+            ->get();
         $createdCount = 0;
 
         foreach ($activeRooms as $room) {
             // Ambil template sesi khusus untuk ruangan ini
             $templateSesis = SesiRuangan::where('ruangan_id', $room->id)
                 ->where('sumber', 'sumber')
+                ->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
                 ->orderBy('waktu_mulai')
                 ->get();
 
@@ -282,6 +286,7 @@ class SesiAssignmentService
 
                 if (!$newSesi) {
                     $newSesi = SesiRuangan::create([
+                        'tahun_ajaran_id' => $jadwalUjian->tahun_ajaran_id,
                         'ruangan_id' => $room->id,
                         'nama_sesi' => $templateSesi->nama_sesi,
                         'waktu_mulai' => $templateSesi->waktu_mulai,
@@ -325,12 +330,15 @@ class SesiAssignmentService
      */
     private function createBasicSesiForAllRooms(JadwalUjian $jadwalUjian, string $targetDate): int
     {
-        $activeRooms = \App\Models\Ruangan::where('status', 'aktif')->get();
+        $activeRooms = \App\Models\Ruangan::where('status', 'aktif')
+            ->when($jadwalUjian->tahun_ajaran_id, fn($query) => $query->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id))
+            ->get();
         $createdCount = 0;
 
         foreach ($activeRooms as $room) {
             // Create basic sesi with default timing
             $newSesi = SesiRuangan::create([
+                'tahun_ajaran_id' => $jadwalUjian->tahun_ajaran_id,
                 'ruangan_id' => $room->id,
                 'nama_sesi' => 'Sesi Ujian - ' . $room->nama_ruangan,
                 'waktu_mulai' => $jadwalUjian->waktu_mulai,
@@ -368,14 +376,14 @@ class SesiAssignmentService
         $enrolledCount = 0;
 
         // Get all sesi ruangan assigned to this jadwal
-        $assignedSesi = $jadwalUjian->sesiRuangans()->with(['sesiRuanganSiswa.siswa.kelas'])->get();
+        $assignedSesi = $jadwalUjian->sesiRuangans()->with(['sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'])->get();
 
         foreach ($assignedSesi as $sesi) {
             // Get all siswa in this sesi ruangan
             foreach ($sesi->sesiRuanganSiswa as $sesiSiswa) {
                 $siswa = $sesiSiswa->siswa;
 
-                if (!$siswa || !$siswa->kelas) {
+                if (!$siswa || !$this->resolveSiswaKelas($siswa, $jadwalUjian)) {
                     continue;
                 }
 
@@ -422,16 +430,21 @@ class SesiAssignmentService
      */
     private function isSiswaEligibleForJadwal(\App\Models\Siswa $siswa, JadwalUjian $jadwalUjian): bool
     {
+        $kelas = $this->resolveSiswaKelas($siswa, $jadwalUjian);
+        if (!$kelas) {
+            return false;
+        }
+
         // Check if siswa's kelas is in jadwal's kelas_target
         $kelasTargets = $jadwalUjian->kelas_target ?? [];
 
-        if (!empty($kelasTargets) && !in_array($siswa->kelas_id, $kelasTargets)) {
+        if (!empty($kelasTargets) && !in_array($kelas->id, $kelasTargets)) {
             return false;
         }
 
         if ($jadwalUjian->mapel && $jadwalUjian->mapel->tingkat) {
             $mapelTingkat = $this->normalizeEligibilityValue($jadwalUjian->mapel->tingkat);
-            $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat ?? null);
+            $siswaTingkat = $this->normalizeEligibilityValue($kelas->tingkat ?? null);
 
             if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
                 return false;
@@ -441,7 +454,7 @@ class SesiAssignmentService
         // Check jurusan compatibility with mapel
         if ($jadwalUjian->mapel && $jadwalUjian->mapel->jurusan) {
             $mapelJurusan = $this->normalizeEligibilityValue($jadwalUjian->mapel->jurusan);
-            $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan ?? null);
+            $siswaJurusan = $this->normalizeEligibilityValue($kelas->jurusan ?? null);
 
             // If mapel has specific jurusan and siswa's jurusan doesn't match
             if ($mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
@@ -450,6 +463,24 @@ class SesiAssignmentService
         }
 
         return true;
+    }
+
+    private function resolveSiswaKelas(\App\Models\Siswa $siswa, JadwalUjian $jadwalUjian): ?\App\Models\Kelas
+    {
+        if ($jadwalUjian->tahun_ajaran_id) {
+            $record = $siswa->relationLoaded('tahunAjaranRecords')
+                ? $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
+                : $siswa->tahunAjaranRecords()
+                    ->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
+                    ->with('kelas')
+                    ->first();
+
+            if ($record?->kelas) {
+                return $record->kelas;
+            }
+        }
+
+        return $siswa->kelas;
     }
 
     private function normalizeEligibilityValue($value): ?string

@@ -71,7 +71,22 @@
         <div class="bg-white shadow rounded-lg p-4">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                 <!-- Search Input -->
-                <div class="md:col-span-5">
+                <div class="md:col-span-2">
+                    <label for="tahun-ajaran-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-calendar mr-1 text-gray-400"></i>
+                        Tahun Ajaran
+                    </label>
+                    <select id="tahun-ajaran-filter"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        @foreach ($tahunAjarans as $tahun)
+                            <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="md:col-span-3">
                     <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fa-solid fa-search mr-1 text-gray-400"></i>
                         Cari Bank Soal
@@ -384,6 +399,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('search-input');
+            const tahunAjaranFilter = document.getElementById('tahun-ajaran-filter');
             const mapelFilter = document.getElementById('mapel-filter'); // Filter mata pelajaran
             const tingkatFilter = document.getElementById('tingkat-filter');
             const statusFilter = document.getElementById('status-filter');
@@ -500,6 +516,7 @@
             // Function to apply filters
             function applyFilters() {
                 const searchValue = searchInput.value.trim();
+                const tahunAjaranValue = tahunAjaranFilter ? tahunAjaranFilter.value : '';
                 const mapelValue = mapelFilter.value; // Tambahkan mata pelajaran
                 const tingkatValue = tingkatFilter.value;
                 const statusValue = statusFilter.value;
@@ -511,6 +528,9 @@
 
                 if (searchValue) url.searchParams.set('search', searchValue);
                 else url.searchParams.delete('search');
+
+                if (tahunAjaranValue) url.searchParams.set('tahun_ajaran_id', tahunAjaranValue);
+                else url.searchParams.delete('tahun_ajaran_id');
 
                 if (mapelValue) url.searchParams.set('mapel_id', mapelValue); // Filter mata pelajaran
                 else url.searchParams.delete('mapel_id');
@@ -542,6 +562,10 @@
                 mapelFilter.addEventListener('change', applyFilters);
             }
 
+            if (tahunAjaranFilter) {
+                tahunAjaranFilter.addEventListener('change', applyFilters);
+            }
+
             if (tingkatFilter) {
                 tingkatFilter.addEventListener('change', applyFilters);
             }
@@ -558,6 +582,7 @@
                 clearFiltersBtn.addEventListener('click', function() {
                     // Reset all filters
                     if (searchInput) searchInput.value = '';
+                    if (tahunAjaranFilter) tahunAjaranFilter.value = '';
                     if (mapelFilter) mapelFilter.value = '';
                     if (tingkatFilter) tingkatFilter.value = '';
                     if (statusFilter) statusFilter.value = '';

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Features\Naskah;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSoalRequest;
 use App\Models\BankSoal;
+use App\Models\Mapel;
 use App\Models\Soal;
+use App\Services\TahunAjaranService;
 use App\Services\SoalImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,8 +33,10 @@ class SoalController extends Controller
         $tipeSoal = $request->get('tipe_soal');
         $perPage = $request->get('per_page', 10);
         $search = $request->get('search');
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
 
         $query = Soal::with(['bankSoal', 'bankSoal.mapel']);
+        $query->whereHas('bankSoal', fn($q) => $q->forTahunAjaran($tahunAjaranId));
 
         // Bank Soal filter
         if ($bankSoalId) {
@@ -67,10 +71,11 @@ class SoalController extends Controller
         }
 
         $soals = $query->orderBy('nomor_soal')->paginate($perPage);
-        $bankSoals = BankSoal::active()->get();
-        $tingkatList = BankSoal::distinct('tingkat')->pluck('tingkat')->toArray();
+        $bankSoals = BankSoal::forTahunAjaran($tahunAjaranId)->active()->get();
+        $mapels = Mapel::forTahunAjaran($tahunAjaranId)->active()->get();
+        $tingkatList = BankSoal::forTahunAjaran($tahunAjaranId)->distinct('tingkat')->pluck('tingkat')->toArray();
 
-        return view('features.naskah.soal.index', compact('soals', 'bankSoals', 'tingkatList'));
+        return view('features.naskah.soal.index', compact('soals', 'bankSoals', 'mapels', 'tingkatList'));
     }
 
     /**
@@ -78,12 +83,18 @@ class SoalController extends Controller
      */
     public function create(Request $request)
     {
-        $bankSoals = BankSoal::active()->get();
+        $activeYear = app(TahunAjaranService::class)->active();
+        if (!$activeYear) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum membuat soal.');
+        }
+
+        $bankSoals = BankSoal::forTahunAjaran($activeYear->id)->active()->get();
         $selectedBankSoal = null;
         $nextNomorSoal = 1;
 
         if ($request->has('bank_soal_id')) {
-            $selectedBankSoal = BankSoal::find($request->bank_soal_id);
+            $selectedBankSoal = BankSoal::forTahunAjaran($activeYear->id)->find($request->bank_soal_id);
             if ($selectedBankSoal) {
                 $nextNomorSoal = $selectedBankSoal->soals()->max('nomor_soal') + 1;
             }
@@ -101,6 +112,8 @@ class SoalController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
+            BankSoal::forTahunAjaran($activeYear->id)->findOrFail($data['bank_soal_id']);
 
             // Debug logging - log raw request data
             Log::info('Raw request data received', [
@@ -204,7 +217,7 @@ class SoalController extends Controller
             $soal = Soal::create($data);
 
             // Update bank soal total
-            $bankSoal = BankSoal::find($data['bank_soal_id']);
+            $bankSoal = BankSoal::forTahunAjaran($activeYear->id)->findOrFail($data['bank_soal_id']);
             $bankSoal->updateTotalSoal();
 
             DB::commit();
@@ -257,7 +270,13 @@ class SoalController extends Controller
      */
     public function edit(Soal $soal)
     {
-        $bankSoals = BankSoal::active()->get();
+        $soal->load('bankSoal.tahunAjaran');
+        if ($soal->bankSoal?->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.soal.show', $soal)
+                ->with('error', 'Soal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $bankSoals = BankSoal::forTahunAjaran($soal->bankSoal?->tahun_ajaran_id)->active()->get();
 
         return view('features.naskah.soal.edit', compact('soal', 'bankSoals'));
     }
@@ -271,6 +290,13 @@ class SoalController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+            $soal->load('bankSoal.tahunAjaran');
+
+            if ($soal->bankSoal?->tahunAjaran?->isReadOnly()) {
+                throw new \Exception('Soal pada tahun ajaran arsip hanya dapat dilihat.');
+            }
+
+            BankSoal::forTahunAjaran($soal->bankSoal?->tahun_ajaran_id)->findOrFail($data['bank_soal_id']);
 
             // Log file upload info before processing
             $hasGambarPertanyaan = $request->hasFile('gambar_pertanyaan');
@@ -618,7 +644,13 @@ class SoalController extends Controller
      */
     public function import()
     {
-        $bankSoals = BankSoal::active()->get();
+        $activeYear = app(TahunAjaranService::class)->active();
+        if (!$activeYear) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum import soal.');
+        }
+
+        $bankSoals = BankSoal::forTahunAjaran($activeYear->id)->active()->get();
         return view('features.naskah.soal.import', compact('bankSoals'));
     }
 
@@ -652,6 +684,9 @@ class SoalController extends Controller
                 if (!$bankSoalId) {
                     return redirect()->back()->with('error', 'Bank soal harus dipilih untuk ekspor');
                 }
+
+                $activeYearId = app(TahunAjaranService::class)->activeId();
+                BankSoal::forTahunAjaran($activeYearId)->findOrFail($bankSoalId);
 
                 $bankSoal = BankSoal::findOrFail($bankSoalId);
                 $soals = $bankSoal->soals()->orderBy('nomor_soal')->get();

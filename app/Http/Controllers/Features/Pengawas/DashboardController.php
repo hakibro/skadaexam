@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
 use App\Models\SesiRuanganSiswa;
+use App\Services\TahunAjaranService;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -60,17 +61,20 @@ class DashboardController extends Controller
 
         $today = Carbon::today();
         $isAdmin = $user->isAdmin() || $user->isKoordinator();
+        $activeYearId = app(TahunAjaranService::class)->activeId();
 
         // Base query
         $baseQuery = SesiRuangan::query()
             ->with(['ruangan', 'sesiRuanganSiswa'])
+            ->when($activeYearId, fn($q) => $q->where('tahun_ajaran_id', $activeYearId))
             ->orderBy('id', 'desc');
 
         // Hari ini
         $assignments = (clone $baseQuery)
             ->with([
-                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
                     $q->whereDate('tanggal', $today)
+                        ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId))
                         ->with('mapel')
                         ->orderBy('tanggal', 'asc');
 
@@ -82,8 +86,9 @@ class DashboardController extends Controller
                 'ruangan',
                 'sesiRuanganSiswa'
             ])
-            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', $today);
+            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
+                $q->whereDate('tanggal', $today)
+                    ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId));
 
                 // Apply supervisor filter for non-admin users
                 if (!$isAdmin && $guru) {
@@ -95,8 +100,9 @@ class DashboardController extends Controller
         // Upcoming
         $upcomingAssignments = (clone $baseQuery)
             ->with([
-                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
                     $q->whereDate('tanggal', '>', $today)
+                        ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId))
                         ->with('mapel')
                         ->orderBy('tanggal', 'asc');
 
@@ -108,8 +114,9 @@ class DashboardController extends Controller
                 'ruangan',
                 'sesiRuanganSiswa'
             ])
-            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', '>', $today);
+            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
+                $q->whereDate('tanggal', '>', $today)
+                    ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId));
 
                 // Apply supervisor filter for non-admin users
                 if (!$isAdmin && $guru) {
@@ -127,8 +134,9 @@ class DashboardController extends Controller
         // Past
         $pastAssignments = (clone $baseQuery)
             ->with([
-                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin) {
+                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
                     $q->whereDate('tanggal', '<', $today)
+                        ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId))
                         ->with('mapel')
                         ->orderBy('tanggal', 'desc');
 
@@ -140,8 +148,9 @@ class DashboardController extends Controller
                 'ruangan',
                 'sesiRuanganSiswa'
             ])
-            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin) {
-                $q->whereDate('tanggal', '<', $today);
+            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
+                $q->whereDate('tanggal', '<', $today)
+                    ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId));
 
                 // Apply supervisor filter for non-admin users
                 if (!$isAdmin && $guru) {

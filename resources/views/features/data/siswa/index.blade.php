@@ -256,6 +256,20 @@
 
                     {{-- Payment Status Filter --}}
                     <div class="md:col-span-2">
+                        <label for="tahun-ajaran-filter" class="block text-sm font-medium text-gray-700 mb-2">Tahun
+                            Ajaran</label>
+                        <select id="tahun-ajaran-filter" name="tahun_ajaran_id"
+                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            @foreach ($tahunAjarans as $tahun)
+                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                    {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Payment Status Filter --}}
+                    <div class="md:col-span-2">
                         <label for="payment-filter" class="block text-sm font-medium text-gray-700 mb-2">Payment
                             Status</label>
                         <select id="payment-filter" name="status_pembayaran"
@@ -406,6 +420,7 @@
             // Basic elements
             const searchInput = document.getElementById('search-input');
             const paymentFilter = document.getElementById('payment-filter');
+            const tahunAjaranFilter = document.getElementById('tahun-ajaran-filter');
             const rekomendasiFilter = document.getElementById('rekomendasi-filter');
             const kelasFilter = document.getElementById('kelas-filter');
             const perPageFilter = document.getElementById('per-page');
@@ -511,6 +526,7 @@
 
                 const filters = {
                     search: searchInput?.value || '',
+                    tahun_ajaran_id: tahunAjaranFilter?.value || '',
                     status_pembayaran: paymentFilter?.value || '',
                     rekomendasi: rekomendasiFilter?.value || '',
                     kelas_id: kelasFilter?.value || '',
@@ -584,7 +600,7 @@
                 searchInput.addEventListener('input', performSearch);
             }
 
-            [paymentFilter, rekomendasiFilter, kelasFilter, perPageFilter].forEach(filter => {
+            [tahunAjaranFilter, paymentFilter, rekomendasiFilter, kelasFilter, perPageFilter].forEach(filter => {
                 if (filter) {
                     filter.addEventListener('change', performSearch);
                 }
@@ -595,6 +611,7 @@
                 clearFiltersBtn.addEventListener('click', function() {
                     if (searchInput) searchInput.value = '';
                     if (paymentFilter) paymentFilter.value = '';
+                    if (tahunAjaranFilter) tahunAjaranFilter.value = '';
                     if (rekomendasiFilter) rekomendasiFilter.value = '';
                     if (kelasFilter) kelasFilter.value = '';
                     performSearch();
@@ -1345,6 +1362,7 @@
                         // Tambahkan semua filter yang aktif
                         const filters = {
                             search: searchInput?.value || '',
+                            tahun_ajaran_id: tahunAjaranFilter?.value || '',
                             status_pembayaran: paymentFilter?.value || '',
                             rekomendasi: rekomendasiFilter?.value || '',
                             kelas_id: kelasFilter?.value || '',

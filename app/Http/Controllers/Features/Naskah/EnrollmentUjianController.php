@@ -9,6 +9,7 @@ use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Kelas;
 use App\Services\EnrollmentService;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,19 @@ class EnrollmentUjianController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EnrollmentUjian::with(['siswa', 'sesiRuangan.jadwalUjian', 'sesiRuanganSiswa']);
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjianId = $request->get('paket_ujian_id');
+
+        $query = EnrollmentUjian::with(['siswa.tahunAjaranRecords.kelas', 'sesiRuangan.jadwalUjian', 'sesiRuanganSiswa', 'jadwalUjian']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($paketUjianId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $paketUjianId));
+        }
 
         // Apply filters
 
@@ -64,8 +77,9 @@ class EnrollmentUjianController extends Controller
         // Filter berdasarkan kelas
         if ($request->filled('kelas_id')) {
             $kelasId = $request->kelas_id;
-            $query->whereHas('siswa', function ($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
+            $query->whereHas('siswa.tahunAjaranRecords', function ($q) use ($kelasId, $tahunAjaranId) {
+                $q->where('kelas_id', $kelasId)
+                    ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId));
             });
         }
 
@@ -73,16 +87,21 @@ class EnrollmentUjianController extends Controller
         $enrollments = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         // Data untuk filter dropdown
-        $jadwalUjians = JadwalUjian::where('status', 'aktif')
+        $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->forPaketUjian($paketUjianId)
+            ->where('status', 'aktif')
             ->orderBy('tanggal', 'asc')
             ->get();
 
         $sesiRuangans = SesiRuangan::whereIn('status', ['belum_mulai', 'berlangsung'])
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->orderBy('waktu_mulai', 'desc')
             ->get();
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $kelasList = Kelas::forTahunAjaran($tahunAjaranId)->orderBy('nama_kelas')->get();
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $paketUjians = \App\Models\PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))->orderBy('nama')->get();
 
-        return view('features.naskah.enrollment_ujian.index', compact('enrollments', 'jadwalUjians', 'sesiRuangans', 'kelasList'));
+        return view('features.naskah.enrollment_ujian.index', compact('enrollments', 'jadwalUjians', 'sesiRuangans', 'kelasList', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
     }
 
     /**
@@ -90,9 +109,15 @@ class EnrollmentUjianController extends Controller
      */
     public function create()
     {
-        $jadwalUjians = JadwalUjian::where('status', 'aktif')->orderBy('tanggal', 'desc')->get();
+        $activeYear = app(TahunAjaranService::class)->active();
+        if (!$activeYear) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum membuat enrollment.');
+        }
+
+        $jadwalUjians = JadwalUjian::forTahunAjaran($activeYear->id)->where('status', 'aktif')->orderBy('tanggal', 'desc')->get();
         $sesiRuangans = collect(); // Will be populated via AJAX
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $kelasList = Kelas::forTahunAjaran($activeYear->id)->orderBy('nama_kelas')->get();
 
         return view('features.naskah.enrollment_ujian.create', compact('jadwalUjians', 'sesiRuangans', 'kelasList'));
     }
@@ -112,6 +137,11 @@ class EnrollmentUjianController extends Controller
             DB::beginTransaction();
 
             $sesiRuangan = SesiRuangan::with('jadwalUjians')->findOrFail($request->sesi_ruangan_id);
+            $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
+
+            if (!$jadwalUjian) {
+                throw new \Exception('Sesi ruangan belum terhubung ke jadwal ujian.');
+            }
 
             $enrolled = 0;
             $skipped = 0;
@@ -127,14 +157,20 @@ class EnrollmentUjianController extends Controller
                     continue;
                 }
 
-                // Get the first jadwal ujian from the sesi ruangan relationship
-                $jadwalUjian = $sesiRuangan->jadwalUjians()->first();
+                $siswa = Siswa::with('tahunAjaranRecords.kelas')->findOrFail($siswaId);
+                $kelasTahun = $siswa->kelasForTahunAjaran($jadwalUjian->tahun_ajaran_id);
+                $kelasTarget = collect($jadwalUjian->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+
+                if (!$kelasTahun || (!empty($kelasTarget) && !in_array((string) $kelasTahun->id, $kelasTarget, true))) {
+                    $skipped++;
+                    continue;
+                }
 
                 // Create new enrollment
                 EnrollmentUjian::create([
                     'siswa_id' => $siswaId,
                     'sesi_ruangan_id' => $sesiRuangan->id,
-                    'jadwal_ujian_id' => $jadwalUjian ? $jadwalUjian->id : null,
+                    'jadwal_ujian_id' => $jadwalUjian->id,
                     'status_enrollment' => 'enrolled',
                 ]);
 
@@ -284,10 +320,14 @@ class EnrollmentUjianController extends Controller
             return response()->json([]);
         }
 
+        $jadwal = JadwalUjian::findOrFail($jadwalId);
+
         // Ambil sesi melalui relasi pivot jadwal_ujian_sesi_ruangan
         $sesiRuangans = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($jadwalId) {
             $q->where('jadwal_ujian_id', $jadwalId);
-        })->get();
+        })
+            ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+            ->get();
 
         $options = $sesiRuangans->map(function ($sesi) {
             return [
@@ -312,7 +352,9 @@ class EnrollmentUjianController extends Controller
         ]);
 
         try {
-            $sesiRuangan = SesiRuangan::findOrFail($request->sesi_id);
+            $sesiRuangan = SesiRuangan::with('jadwalUjians')->findOrFail($request->sesi_id);
+            $jadwal = $sesiRuangan->jadwalUjians->first();
+            $tahunAjaranId = $sesiRuangan->tahun_ajaran_id ?: $jadwal?->tahun_ajaran_id;
 
             // Get already enrolled students for this session
             $enrolledSiswaIds = EnrollmentUjian::where('sesi_ruangan_id', $sesiRuangan->id)
@@ -320,16 +362,20 @@ class EnrollmentUjianController extends Controller
                 ->toArray();
 
             // Get all students from the selected classes who are not already enrolled
-            $siswaList = Siswa::whereIn('kelas_id', $request->kelas_ids)
+            $siswaList = Siswa::whereHas('tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->whereIn('kelas_id', $request->kelas_ids))
                 ->whereNotIn('id', $enrolledSiswaIds)
-                ->with('kelas')
-                ->get(['id', 'nis', 'nama', 'kelas_id'])
-                ->map(function ($siswa) {
+                ->with('kelas', 'tahunAjaranRecords.kelas')
+                ->get(['id', 'nis', 'idyayasan', 'nama', 'kelas_id'])
+                ->map(function ($siswa) use ($tahunAjaranId) {
+                    $kelas = $this->kelasForTahun($siswa, $tahunAjaranId);
+
                     return [
                         'id' => $siswa->id,
                         'nis' => $siswa->nis,
                         'nama' => $siswa->nama,
-                        'kelas' => $siswa->kelas->nama ?? 'Tidak ada kelas'
+                        'kelas' => $kelas?->nama_kelas ?? 'Tidak ada kelas'
                     ];
                 });
 
@@ -358,8 +404,9 @@ class EnrollmentUjianController extends Controller
     {
         $search = $request->get('search', '');
         $kelasId = $request->get('kelas_id');
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
 
-        $query = Siswa::with('kelas')
+        $query = Siswa::with('kelas', 'tahunAjaranRecords.kelas')
             ->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('nis', 'like', "%{$search}%")
@@ -367,14 +414,20 @@ class EnrollmentUjianController extends Controller
             });
 
         if ($kelasId) {
-            $query->where('kelas_id', $kelasId);
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->where('kelas_id', $kelasId));
+        } elseif ($tahunAjaranId) {
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
         }
 
         $siswaList = $query->limit(50)->get()
-            ->map(function ($siswa) {
+            ->map(function ($siswa) use ($tahunAjaranId) {
+                $kelas = $this->kelasForTahun($siswa, $tahunAjaranId);
+
                 return [
                     'id' => $siswa->id,
-                    'text' => $siswa->nama . ' (' . ($siswa->nis ?? $siswa->idyayasan) . ') - ' . ($siswa->kelas->nama ?? 'No Class')
+                    'text' => $siswa->nama . ' (' . ($siswa->nis ?? $siswa->idyayasan) . ') - ' . ($kelas?->nama_kelas ?? 'No Class')
                 ];
             });
 
@@ -395,9 +448,13 @@ class EnrollmentUjianController extends Controller
 
         try {
             DB::beginTransaction();
+            $jadwal = JadwalUjian::findOrFail($request->jadwal_id);
 
             // Get all students from selected kelas
-            $siswaList = Siswa::whereIn('kelas_id', $request->kelas_ids)
+            $siswaList = Siswa::whereHas('tahunAjaranRecords', fn($q) => $q
+                ->when($jadwal->tahun_ajaran_id, fn($pivot) => $pivot->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id))
+                ->whereIn('kelas_id', $request->kelas_ids))
+                ->with('tahunAjaranRecords.kelas')
                 ->get();
 
             // Get already enrolled students
@@ -417,6 +474,7 @@ class EnrollmentUjianController extends Controller
 
                 // Ambil sesi ruangan yang terhubung ke jadwal_id tertentu DAN dimiliki oleh siswa ini
                 $sesiRuangan = $siswa->sesiRuangan()
+                    ->where('sesi_ruangan.tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                     ->whereHas('jadwalUjians', function ($q) use ($request) {
                         $q->where('jadwal_ujian.id', $request->jadwal_id);
                     })
@@ -476,21 +534,24 @@ class EnrollmentUjianController extends Controller
             DB::beginTransaction();
 
             $siswaIds = $request->siswa_ids;
+            $activeYearId = app(TahunAjaranService::class)->activeId();
             $enrolledCount = 0;
             $skippedCount = 0;
             $noSesiCount = 0;
 
             foreach ($siswaIds as $siswaId) {
-                $siswa = Siswa::with('kelas')->find($siswaId);
-                if (!$siswa || !$siswa->kelas) {
+                $siswa = Siswa::with('kelas', 'tahunAjaranRecords.kelas')->find($siswaId);
+                $kelas = $siswa ? $this->kelasForTahun($siswa, $activeYearId) : null;
+                if (!$siswa || !$kelas) {
                     continue;
                 }
 
                 // Cari semua jadwal ujian yang sesuai dengan kelas siswa (berdasarkan kelas_target)
-                $matchingJadwals = JadwalUjian::where('status', 'aktif')
-                    ->where(function ($q) use ($siswa) {
-                        $q->whereJsonContains('kelas_target', $siswa->kelas_id)
-                            ->orWhereJsonContains('kelas_target', (string) $siswa->kelas_id);
+                $matchingJadwals = JadwalUjian::forTahunAjaran($activeYearId)
+                    ->where('status', 'aktif')
+                    ->where(function ($q) use ($kelas) {
+                        $q->whereJsonContains('kelas_target', $kelas->id)
+                            ->orWhereJsonContains('kelas_target', (string) $kelas->id);
                     })
                     ->get();
 
@@ -504,6 +565,7 @@ class EnrollmentUjianController extends Controller
                 foreach ($matchingJadwals as $jadwal) {
                     // Cari sesi ruangan yang dimiliki siswa DAN terhubung dengan jadwal ini
                     $sesiForJadwal = SesiRuangan::whereIn('id', $assignedSesiIds)
+                        ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                         ->whereHas('jadwalUjians', fn($q) => $q->where('jadwal_ujian_id', $jadwal->id))
                         ->first();
 
@@ -608,10 +670,10 @@ class EnrollmentUjianController extends Controller
     public function syncEnrollments($sesiId)
     {
         try {
-            $sesiRuangan = SesiRuangan::with(['jadwalUjian', 'sesiRuanganSiswa.siswa'])
+            $sesiRuangan = SesiRuangan::with(['jadwalUjians', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'])
                 ->findOrFail($sesiId);
 
-            $jadwalUjian = $sesiRuangan->jadwalUjian;
+            $jadwalUjian = $sesiRuangan->jadwalUjians->first();
 
             if (!$jadwalUjian) {
                 return redirect()->back()
@@ -627,6 +689,14 @@ class EnrollmentUjianController extends Controller
             $skippedCount = 0;
 
             foreach ($assignedStudents as $assignment) {
+                $kelas = $assignment->siswa ? $this->kelasForTahun($assignment->siswa, $jadwalUjian->tahun_ajaran_id) : null;
+                $kelasTargets = collect($jadwalUjian->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+
+                if (!$kelas || (!empty($kelasTargets) && !in_array((string) $kelas->id, $kelasTargets, true))) {
+                    $skippedCount++;
+                    continue;
+                }
+
                 // Check if student is already enrolled
                 $existingEnrollment = EnrollmentUjian::where('siswa_id', $assignment->siswa_id)
                     ->where('jadwal_ujian_id', $jadwalUjian->id)
@@ -769,6 +839,21 @@ class EnrollmentUjianController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan saat membaca file: ' . $e->getMessage());
         }
+    }
+
+    private function kelasForTahun(Siswa $siswa, ?int $tahunAjaranId)
+    {
+        if ($tahunAjaranId) {
+            $record = $siswa->relationLoaded('tahunAjaranRecords')
+                ? $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $tahunAjaranId)
+                : $siswa->tahunAjaranRecords()->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas')->first();
+
+            if ($record?->kelas) {
+                return $record->kelas;
+            }
+        }
+
+        return $siswa->kelas;
     }
 
 }

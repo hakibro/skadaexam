@@ -7,6 +7,7 @@ use App\Models\Guru;
 use App\Models\SesiRuangan;
 use App\Models\BeritaAcaraUjian;
 use App\Models\Ruangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,11 +19,14 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+
         // Get statistics
-        $stats = $this->getKoordinatorStats();
+        $stats = $this->getKoordinatorStats($activeYearId);
 
         // Get today's sessions using jadwal_ujian's tanggal
         $todaySessions = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
+            ->forTahunAjaran($activeYearId)
             ->whereHas('jadwalUjians', function ($query) {
                 $query->whereDate('tanggal', Carbon::today());
             })
@@ -35,6 +39,7 @@ class DashboardController extends Controller
             ->join('sesi_ruangan', 'jadwal_ujian_sesi_ruangan.sesi_ruangan_id', '=', 'sesi_ruangan.id')
             ->join('ruangan', 'sesi_ruangan.ruangan_id', '=', 'ruangan.id')
             ->whereNull('jadwal_ujian_sesi_ruangan.pengawas_id')
+            ->when($activeYearId, fn($query) => $query->where('jadwal_ujian.tahun_ajaran_id', $activeYearId))
             ->where('jadwal_ujian.tanggal', '>=', Carbon::today())
             ->select(
                 'sesi_ruangan.id',
@@ -49,6 +54,7 @@ class DashboardController extends Controller
 
         // Get pending berita acara (need verification)
         $pendingBeritaAcara = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'pengawas'])
+            ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($activeYearId))
             ->where('is_final', false)
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -63,11 +69,12 @@ class DashboardController extends Controller
 
         // Get ongoing sessions that need monitoring
         $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
+            ->forTahunAjaran($activeYearId)
             ->with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
             ->get();
 
         // Get recent activities
-        $recentActivities = $this->getRecentActivities();
+        $recentActivities = $this->getRecentActivities($activeYearId);
 
         return view('features.koordinator.dashboard', compact(
             'stats',
@@ -98,7 +105,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function getKoordinatorStats()
+    private function getKoordinatorStats($tahunAjaranId = null)
     {
         return [
             'total_pengawas' => Guru::whereHas('user', function ($query) {
@@ -107,27 +114,31 @@ class DashboardController extends Controller
                 });
             })->count(),
 
-            'sessions_today' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+            'sessions_today' => SesiRuangan::forTahunAjaran($tahunAjaranId)->whereHas('jadwalUjians', function ($q) {
                 $q->whereDate('tanggal', Carbon::today());
             })->count(),
 
             'unassigned_sessions' => DB::table('jadwal_ujian')
                 ->join('jadwal_ujian_sesi_ruangan', 'jadwal_ujian.id', '=', 'jadwal_ujian_sesi_ruangan.jadwal_ujian_id')
                 ->whereNull('jadwal_ujian_sesi_ruangan.pengawas_id')
+                ->when($tahunAjaranId, fn($query) => $query->where('jadwal_ujian.tahun_ajaran_id', $tahunAjaranId))
                 ->where('jadwal_ujian.tanggal', '>=', Carbon::today())
                 ->count(),
 
-            'draft_berita_acara' => BeritaAcaraUjian::where('is_final', false)->count(),
+            'draft_berita_acara' => BeritaAcaraUjian::where('is_final', false)
+                ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($tahunAjaranId))
+                ->count(),
 
-            'ongoing_sessions' => SesiRuangan::where('status', 'berlangsung')->count(),
+            'ongoing_sessions' => SesiRuangan::forTahunAjaran($tahunAjaranId)->where('status', 'berlangsung')->count(),
 
             'finalized_berita_acara_today' => BeritaAcaraUjian::where('is_final', true)
+                ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($tahunAjaranId))
                 ->whereDate('waktu_finalisasi', Carbon::today())
                 ->count(),
 
-            'total_ruangan_aktif' => Ruangan::where('status', 'aktif')->count(),
+            'total_ruangan_aktif' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'aktif')->count(),
 
-            'sessions_this_week' => SesiRuangan::whereHas('jadwalUjians', function ($q) {
+            'sessions_this_week' => SesiRuangan::forTahunAjaran($tahunAjaranId)->whereHas('jadwalUjians', function ($q) {
                 $q->whereBetween('tanggal', [
                     Carbon::now()->startOfWeek(),
                     Carbon::now()->endOfWeek()
@@ -136,7 +147,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getRecentActivities()
+    private function getRecentActivities($tahunAjaranId = null)
     {
         $activities = collect();
 
@@ -147,6 +158,7 @@ class DashboardController extends Controller
             ->join('guru', 'jadwal_ujian_sesi_ruangan.pengawas_id', '=', 'guru.id')
             ->join('jadwal_ujian', 'jadwal_ujian_sesi_ruangan.jadwal_ujian_id', '=', 'jadwal_ujian.id')
             ->whereNotNull('jadwal_ujian_sesi_ruangan.pengawas_id')
+            ->when($tahunAjaranId, fn($query) => $query->where('jadwal_ujian.tahun_ajaran_id', $tahunAjaranId))
             ->select(
                 'guru.nama as pengawas_nama',
                 'ruangan.nama_ruangan',
@@ -172,6 +184,7 @@ class DashboardController extends Controller
 
         // Recent berita acara submissions
         $recentBeritaAcara = BeritaAcaraUjian::with(['pengawas', 'sesiRuangan.ruangan'])
+            ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($tahunAjaranId))
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()

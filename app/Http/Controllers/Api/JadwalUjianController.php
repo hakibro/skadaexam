@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 
 class JadwalUjianController extends Controller
@@ -13,8 +14,21 @@ class JadwalUjianController extends Controller
         $query = JadwalUjian::with([
             'mapel:id,nama_mapel,jurusan',
             'bankSoal:id,judul',
+            'tahunAjaran:id,nama,kode,is_active',
+            'paketUjian:id,nama,status',
             // 'sesiRuangans.ruangan:id,kode_ruangan,nama_ruangan,kapasitas',
         ]);
+
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->where('paket_ujian_id', $request->paket_ujian_id);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -59,6 +73,17 @@ class JadwalUjianController extends Controller
             'durasi_menit' => $jadwal->durasi_menit,
             'jumlah_soal' => $jadwal->jumlah_soal,
             'status' => $jadwal->status,
+            'tahun_ajaran' => $jadwal->tahunAjaran ? [
+                'id' => $jadwal->tahunAjaran->id,
+                'kode' => $jadwal->tahunAjaran->kode,
+                'nama' => $jadwal->tahunAjaran->nama,
+                'is_active' => $jadwal->tahunAjaran->is_active,
+            ] : null,
+            'paket_ujian' => $jadwal->paketUjian ? [
+                'id' => $jadwal->paketUjian->id,
+                'nama' => $jadwal->paketUjian->nama,
+                'status' => $jadwal->paketUjian->status,
+            ] : null,
             'mapel' => $jadwal->mapel ? [
                 'id' => $jadwal->mapel->id,
                 'nama_mapel' => $jadwal->mapel->nama_mapel,

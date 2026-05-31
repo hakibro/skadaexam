@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Features\Data;
 
 use App\Http\Controllers\Controller;
 use App\Models\Siswa;
+use App\Models\SiswaTahunAjaran;
 use App\Services\SikeuApiService;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -13,10 +15,30 @@ use Illuminate\Support\Facades\DB;
 class SiswaController extends Controller
 {
     protected $sikeuApiService;
+    protected $tahunAjaranService;
 
-    public function __construct(SikeuApiService $sikeuApiService)
+    public function __construct(SikeuApiService $sikeuApiService, ?TahunAjaranService $tahunAjaranService = null)
     {
         $this->sikeuApiService = $sikeuApiService;
+        $this->tahunAjaranService = $tahunAjaranService ?: app(TahunAjaranService::class);
+    }
+
+    private function hydrateKelasForTahun($siswas, ?int $tahunAjaranId): void
+    {
+        if (!$tahunAjaranId) {
+            return;
+        }
+
+        foreach ($siswas as $siswa) {
+            $record = $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $tahunAjaranId);
+            if ($record?->kelas) {
+                $siswa->setRelation('kelas', $record->kelas);
+                $siswa->kelas_id = $record->kelas_id;
+                $siswa->status_pembayaran = $record->status_pembayaran ?? $siswa->status_pembayaran;
+                $siswa->rekomendasi = $record->rekomendasi ?? $siswa->rekomendasi;
+                $siswa->catatan_rekomendasi = $record->catatan ?? $siswa->catatan_rekomendasi;
+            }
+        }
     }
 
     /**
@@ -24,7 +46,12 @@ class SiswaController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Siswa::with('kelas'); // Eager load kelas data for better performance
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $this->tahunAjaranService->activeId());
+        $query = Siswa::with(['kelas', 'tahunAjaranRecords.kelas']); // Eager load kelas data for better performance
+
+        if ($tahunAjaranId) {
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
 
         // Apply filters if present
         if ($request->filled('search')) {
@@ -37,37 +64,38 @@ class SiswaController extends Controller
         }
 
         if ($request->filled('kelas_id')) {
-            $query->where('kelas_id', $request->get('kelas_id'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('kelas_id', $request->get('kelas_id'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('status_pembayaran')) {
-            $query->where('status_pembayaran', $request->get('status_pembayaran'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('status_pembayaran', $request->get('status_pembayaran'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('rekomendasi')) {
-            $query->where('rekomendasi', $request->get('rekomendasi'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('rekomendasi', $request->get('rekomendasi'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         // Paginate results
         $perPage = $request->get('per_page', 50);
         $siswas = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $this->hydrateKelasForTahun($siswas->getCollection(), $tahunAjaranId);
         $siswas->appends($request->query());
 
         // Get available kelas for filter dropdown using more efficient query
-        $availableKelas = \App\Models\Kelas::select('id', 'nama_kelas')
-            ->whereExists(function ($query) {
-                $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('siswa')
-                    ->whereNull('siswa.deleted_at')
-                    ->whereColumn('siswa.kelas_id', 'kelas.id');
-            })
+        $availableKelas = \App\Models\Kelas::forTahunAjaran($tahunAjaranId)
             ->orderBy('nama_kelas')
             ->pluck('nama_kelas', 'id');
 
         // Get total count for empty state detection
-        $totalSiswa = Siswa::count();
+        $totalSiswa = $tahunAjaranId
+            ? Siswa::whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))->count()
+            : Siswa::count();
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa'));
+        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -75,7 +103,12 @@ class SiswaController extends Controller
      */
     public function search(Request $request)
     {
-        $query = Siswa::with('kelas'); // Eager load kelas data for better performance
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $this->tahunAjaranService->activeId());
+        $query = Siswa::with(['kelas', 'tahunAjaranRecords.kelas']); // Eager load kelas data for better performance
+
+        if ($tahunAjaranId) {
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
 
         // Apply filters
         if ($request->filled('search')) {
@@ -88,20 +121,24 @@ class SiswaController extends Controller
         }
 
         if ($request->filled('kelas_id')) {
-            $query->where('kelas_id', $request->get('kelas_id'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('kelas_id', $request->get('kelas_id'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('status_pembayaran')) {
-            $query->where('status_pembayaran', $request->get('status_pembayaran'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('status_pembayaran', $request->get('status_pembayaran'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('rekomendasi')) {
-            $query->where('rekomendasi', $request->get('rekomendasi'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('rekomendasi', $request->get('rekomendasi'))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         // Paginate results
         $perPage = $request->get('per_page', 50);
         $siswas = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $this->hydrateKelasForTahun($siswas->getCollection(), $tahunAjaranId);
 
         // PENTING: Tambahkan semua parameter request ke pagination links
         $siswas->appends($request->except('_token'));
@@ -125,17 +162,13 @@ class SiswaController extends Controller
         }
 
         // Untuk non-AJAX, tampilkan view dengan data
-        $availableKelas = \App\Models\Kelas::select('id', 'nama_kelas')
-            ->whereExists(function ($query) {
-                $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('siswa')
-                    ->whereNull('siswa.deleted_at')
-                    ->whereColumn('siswa.kelas_id', 'kelas.id');
-            })
+        $availableKelas = \App\Models\Kelas::forTahunAjaran($tahunAjaranId)
             ->orderBy('nama_kelas')
             ->pluck('nama_kelas', 'id');
 
-        return view('features.data.siswa.index', compact('siswas', 'availableKelas'));
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+
+        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -196,6 +229,7 @@ class SiswaController extends Controller
     public function importFromApi()
     {
         try {
+            $activeYear = $this->tahunAjaranService->ensureActive();
             Log::info('Starting SIKEU API import process');
 
             // Fetch data from API
@@ -244,7 +278,9 @@ class SiswaController extends Controller
             $results['errors'] = array_merge($results['errors'], $kelasResults['errors']);
 
             // Refresh kelas data untuk langkah berikutnya
-            $allKelas = \App\Models\Kelas::pluck('id', 'nama_kelas')->toArray();
+            $allKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
+                ->pluck('id', 'nama_kelas')
+                ->toArray();
 
             Log::info('Kelas data saved', [
                 'created' => $results['created_kelas'],
@@ -253,7 +289,7 @@ class SiswaController extends Controller
             ]);
 
             // LANGKAH 3: Proses data siswa
-            $siswaResults = $this->processSiswaData($apiData, $allKelas);
+            $siswaResults = $this->processSiswaData($apiData, $allKelas, $activeYear->id);
             $results['created_siswa'] = $siswaResults['created'];
             $results['updated_siswa'] = $siswaResults['updated'];
             $results['skipped'] = $siswaResults['skipped'];
@@ -318,6 +354,8 @@ class SiswaController extends Controller
      */
     private function processKelasData(array $uniqueKelas): array
     {
+        $activeYear = $this->tahunAjaranService->ensureActive();
+
         $results = [
             'created' => 0,
             'updated' => 0,
@@ -326,7 +364,9 @@ class SiswaController extends Controller
 
         foreach ($uniqueKelas as $kelasName => $kelasData) {
             try {
-                $existingKelas = \App\Models\Kelas::where('nama_kelas', $kelasName)->first();
+                $existingKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
+                    ->where('nama_kelas', $kelasName)
+                    ->first();
 
                 if ($existingKelas) {
                     // Update existing kelas if needed
@@ -343,7 +383,9 @@ class SiswaController extends Controller
                     }
                 } else {
                     // Create new kelas
-                    \App\Models\Kelas::create($kelasData);
+                    \App\Models\Kelas::create(array_merge($kelasData, [
+                        'tahun_ajaran_id' => $activeYear->id,
+                    ]));
                     $results['created']++;
                 }
             } catch (\Exception $e) {
@@ -367,8 +409,10 @@ class SiswaController extends Controller
      * @param array $allKelas Lookup array of kelas ID by name
      * @return array Results of processing
      */
-    private function processSiswaData(array $apiData, array $allKelas): array
+    private function processSiswaData(array $apiData, array $allKelas, ?int $tahunAjaranId = null): array
     {
+        $tahunAjaranId = $tahunAjaranId ?: $this->tahunAjaranService->ensureActive()->id;
+
         $results = [
             'created' => 0,
             'updated' => 0,
@@ -429,10 +473,27 @@ class SiswaController extends Controller
                         'catatan_rekomendasi' => null,
                     ];
 
-                    Siswa::create($createData);
+                    $existingSiswa = Siswa::create($createData);
                     $results['created']++;
 
                     Log::info("Created student: {$studentData['idyayasan']}");
+                }
+
+                $siswaForPivot = $existingSiswa ?? Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                if ($siswaForPivot) {
+                    SiswaTahunAjaran::updateOrCreate(
+                        [
+                            'siswa_id' => $siswaForPivot->id,
+                            'tahun_ajaran_id' => $tahunAjaranId,
+                        ],
+                        [
+                            'kelas_id' => $kelasId,
+                            'status_siswa' => 'aktif',
+                            'status_pembayaran' => $studentData['status_pembayaran'] ?? $siswaForPivot->status_pembayaran,
+                            'rekomendasi' => $siswaForPivot->rekomendasi,
+                            'catatan' => $siswaForPivot->catatan_rekomendasi,
+                        ]
+                    );
                 }
             } catch (\Exception $e) {
                 Log::error("Error processing student {$index}", [
@@ -674,6 +735,7 @@ class SiswaController extends Controller
                 'skipped' => 0,
                 'errors' => []
             ];
+            $activeYear = $this->tahunAjaranService->ensureActive();
 
             DB::beginTransaction();
 
@@ -707,7 +769,9 @@ class SiswaController extends Controller
                         session()->save(); // Periodically save session
                     }
 
-                    $existingKelas = \App\Models\Kelas::where('nama_kelas', $kelasName)->first();
+                    $existingKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
+                        ->where('nama_kelas', $kelasName)
+                        ->first();
 
                     if ($existingKelas) {
                         // Update kelas yang sudah ada jika diperlukan
@@ -724,7 +788,9 @@ class SiswaController extends Controller
                         }
                     } else {
                         // Buat kelas baru
-                        \App\Models\Kelas::create($kelasData);
+                        \App\Models\Kelas::create(array_merge($kelasData, [
+                            'tahun_ajaran_id' => $activeYear->id,
+                        ]));
                         $kelasResults['created']++;
                     }
                 } catch (\Exception $e) {
@@ -743,7 +809,9 @@ class SiswaController extends Controller
             $results['errors'] = array_merge($results['errors'], $kelasResults['errors']);
 
             // Refresh data kelas untuk langkah berikutnya
-            $allKelas = \App\Models\Kelas::pluck('id', 'nama_kelas')->toArray();
+            $allKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
+                ->pluck('id', 'nama_kelas')
+                ->toArray();
 
             session(['import_message' => 'Processing student data...']);
             session(['import_progress' => 35]);
@@ -822,8 +890,25 @@ class SiswaController extends Controller
                             'catatan_rekomendasi' => null,
                         ];
 
-                        Siswa::create($createData);
+                        $existingSiswa = Siswa::create($createData);
                         $siswaResults['created']++;
+                    }
+
+                    $siswaForPivot = $existingSiswa ?? Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                    if ($siswaForPivot) {
+                        SiswaTahunAjaran::updateOrCreate(
+                            [
+                                'siswa_id' => $siswaForPivot->id,
+                                'tahun_ajaran_id' => $activeYear->id,
+                            ],
+                            [
+                                'kelas_id' => $kelasId,
+                                'status_siswa' => 'aktif',
+                                'status_pembayaran' => $studentData['status_pembayaran'] ?? $siswaForPivot->status_pembayaran,
+                                'rekomendasi' => $siswaForPivot->rekomendasi,
+                                'catatan' => $siswaForPivot->catatan_rekomendasi,
+                            ]
+                        );
                     }
                 } catch (\Exception $e) {
                     $siswaResults['errors'][] = [
@@ -930,6 +1015,7 @@ class SiswaController extends Controller
     public function syncFromApi(Request $request)
     {
         try {
+            $activeYear = $this->tahunAjaranService->ensureActive();
             Log::info('Starting SIKEU API sync process');
 
             // Initialize session for progress tracking
@@ -1007,7 +1093,9 @@ class SiswaController extends Controller
             $results['errors'] = array_merge($results['errors'], $kelasResults['errors']);
 
             // Refresh kelas data for the next step
-            $allKelas = \App\Models\Kelas::pluck('id', 'nama_kelas')->toArray();
+            $allKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
+                ->pluck('id', 'nama_kelas')
+                ->toArray();
 
             session(['sync_message' => 'Analyzing student data differences...']);
             session(['sync_progress' => 40]);
@@ -1078,7 +1166,7 @@ class SiswaController extends Controller
                         }
                     } else {
                         // Buat siswa baru
-                        Siswa::create([
+                        $existingSiswa = Siswa::create([
                             'idyayasan' => $studentData['idyayasan'],
                             'nama' => $studentData['nama'] ?? null,
                             'kelas_id' => $kelasId,
@@ -1089,6 +1177,23 @@ class SiswaController extends Controller
                             'catatan_rekomendasi' => null,
                         ]);
                         $siswaResults['created']++;
+                    }
+
+                    $siswaForPivot = $existingSiswa ?? Siswa::where('idyayasan', $studentData['idyayasan'])->first();
+                    if ($siswaForPivot) {
+                        SiswaTahunAjaran::updateOrCreate(
+                            [
+                                'siswa_id' => $siswaForPivot->id,
+                                'tahun_ajaran_id' => $activeYear->id,
+                            ],
+                            [
+                                'kelas_id' => $kelasId,
+                                'status_siswa' => 'aktif',
+                                'status_pembayaran' => $studentData['status_pembayaran'] ?? $siswaForPivot->status_pembayaran,
+                                'rekomendasi' => $siswaForPivot->rekomendasi,
+                                'catatan' => $siswaForPivot->catatan_rekomendasi,
+                            ]
+                        );
                     }
                 } catch (\Exception $e) {
                     $siswaResults['errors'][] = "Error processing {$studentData['idyayasan']}: " . $e->getMessage();

@@ -80,11 +80,11 @@
                         Admin Panel
                     </div> --}}
 
-                    {{-- <a href="{{ route('admin.users.index') }}"
-                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.users.*') ? 'bg-purple-600 text-white' : '' }}">
-                        <i class="fa-solid fa-users"></i>
-                        <span>Manage Users</span>
-                    </a> --}}
+                    <a href="{{ route('admin.tahun-ajaran.index') }}"
+                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.tahun-ajaran.*') ? 'bg-purple-600 text-white' : '' }}">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>Tahun Ajaran</span>
+                    </a>
                 @endif
 
                 <!-- Feature Modules -->
@@ -154,6 +154,11 @@
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.jadwal.*') ? 'bg-green-600 text-white' : '' }}">
                             <i class="fa-solid fa-calendar-alt text-sm"></i>
                             <span class="text-sm">Jadwal Ujian</span>
+                        </a>
+                        <a href="{{ route('naskah.paket-ujian.index') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.paket-ujian.*') ? 'bg-green-600 text-white' : '' }}">
+                            <i class="fa-solid fa-box-archive text-sm"></i>
+                            <span class="text-sm">Paket Ujian</span>
                         </a>
                         <a href="{{ route('naskah.hasil.index') }}"
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.hasil.*') ? 'bg-green-600 text-white' : '' }}">

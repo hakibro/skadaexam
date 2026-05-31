@@ -13,6 +13,7 @@ class BankSoal extends Model
     protected $table = 'bank_soal';
 
     protected $fillable = [
+        'tahun_ajaran_id',
         'kode_bank',
         'judul',
         'deskripsi',
@@ -39,6 +40,11 @@ class BankSoal extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
     /**
@@ -109,6 +115,11 @@ class BankSoal extends Model
     public function scopeByTingkat($query, $tingkat)
     {
         return $query->where('tingkat', $tingkat);
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
     /**

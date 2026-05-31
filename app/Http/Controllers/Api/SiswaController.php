@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Features\Data\SiswaController as FeatureSiswaController;
 use App\Services\SikeuApiService;
+use App\Services\TahunAjaranService;
 use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,12 @@ class SiswaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Siswa::query()->with('kelas');
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
+        $query = Siswa::query()->with(['kelas', 'tahunAjaranRecords.kelas']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
 
         if ($request->filled('search') || $request->filled('q')) {
             $search = $request->filled('search') ? $request->get('search') : $request->get('q');
@@ -32,23 +38,30 @@ class SiswaController extends Controller
         }
 
         if ($request->filled('tingkat')) {
-            $query->whereHas('kelas', fn($q) => $q->where('tingkat', $request->tingkat));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)));
         }
 
         if ($request->filled('kelas_id')) {
-            $query->where('kelas_id', $request->kelas_id);
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('kelas_id', $request->kelas_id)
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('kelas')) {
-            $query->whereHas('kelas', fn($q) => $q->where('nama_kelas', 'like', '%' . $request->kelas . '%'));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+                ->whereHas('kelas', fn($kelas) => $kelas->where('nama_kelas', 'like', '%' . $request->kelas . '%')));
         }
 
         if ($request->filled('status_pembayaran')) {
-            $query->where('status_pembayaran', $request->status_pembayaran);
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('status_pembayaran', $request->status_pembayaran)
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         if ($request->filled('rekomendasi') || $request->filled('status_rekomendasi')) {
-            $query->where('rekomendasi', $request->get('rekomendasi', $request->status_rekomendasi));
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->where('rekomendasi', $request->get('rekomendasi', $request->status_rekomendasi))
+                ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId)));
         }
 
         $perPage = min((int) $request->get('per_page', 50), 200);
@@ -69,6 +82,7 @@ class SiswaController extends Controller
                 'status_pembayaran',
                 'rekomendasi',
                 'status_rekomendasi',
+                'tahun_ajaran_id',
             ]),
             'meta' => [
                 'current_page' => $siswas->currentPage(),
@@ -76,6 +90,7 @@ class SiswaController extends Controller
                 'total' => $siswas->total(),
                 'last_page' => $siswas->lastPage(),
             ],
+            'tahun_ajaran_id' => $tahunAjaranId,
             'data' => $siswas->items(),
         ]);
     }
@@ -151,9 +166,7 @@ class SiswaController extends Controller
     {
         $request->headers->set('X-Requested-With', 'XMLHttpRequest');
 
-        return app(FeatureSiswaController::class, [
-            'sikeuApiService' => $sikeuApiService,
-        ])->syncFromApi($request);
+        return app(FeatureSiswaController::class)->syncFromApi($request);
     }
 
     public function setRekomendasi(Request $request, Siswa $siswa)
@@ -169,6 +182,20 @@ class SiswaController extends Controller
             'catatan_rekomendasi' => $validated['catatan_rekomendasi'] ?? $siswa->catatan_rekomendasi,
         ]);
 
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
+        if ($tahunAjaranId) {
+            $record = $siswa->tahunAjaranRecords()
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->first();
+
+            if ($record) {
+                $record->update([
+                    'rekomendasi' => $validated['rekomendasi'] ?? $validated['status_rekomendasi'],
+                    'catatan' => $validated['catatan_rekomendasi'] ?? $record->catatan,
+                ]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Status rekomendasi siswa berhasil diperbarui',
@@ -178,21 +205,29 @@ class SiswaController extends Controller
 
     private function formatSiswa(Siswa $siswa): array
     {
+        $tahunAjaranId = request('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
+        $tahunRecord = $tahunAjaranId
+            ? ($siswa->relationLoaded('tahunAjaranRecords')
+                ? $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', (int) $tahunAjaranId)
+                : $siswa->tahunAjaranRecords()->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas')->first())
+            : null;
+        $kelas = $tahunRecord?->kelas ?: $siswa->kelas;
+
         return [
             'id' => $siswa->id,
             'nis' => $siswa->nis,
             'idyayasan' => $siswa->idyayasan,
             'nama' => $siswa->nama,
             'email' => $siswa->email,
-            'kelas' => $siswa->kelas ? [
-                'id' => $siswa->kelas->id,
-                'nama_kelas' => $siswa->kelas->nama_kelas,
-                'tingkat' => $siswa->kelas->tingkat,
-                'jurusan' => $siswa->kelas->jurusan,
+            'kelas' => $kelas ? [
+                'id' => $kelas->id,
+                'nama_kelas' => $kelas->nama_kelas,
+                'tingkat' => $kelas->tingkat,
+                'jurusan' => $kelas->jurusan,
             ] : null,
-            'status_pembayaran' => $siswa->status_pembayaran,
-            'rekomendasi' => $siswa->rekomendasi,
-            'catatan_rekomendasi' => $siswa->catatan_rekomendasi,
+            'status_pembayaran' => $tahunRecord?->status_pembayaran ?? $siswa->status_pembayaran,
+            'rekomendasi' => $tahunRecord?->rekomendasi ?? $siswa->rekomendasi,
+            'catatan_rekomendasi' => $tahunRecord?->catatan ?? $siswa->catatan_rekomendasi,
         ];
     }
 }

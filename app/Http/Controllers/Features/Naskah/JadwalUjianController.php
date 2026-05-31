@@ -12,6 +12,7 @@ use App\Models\BankSoal;
 use App\Models\Mapel;
 use App\Models\Kelas;
 use App\Services\SesiAssignmentService;
+use App\Services\TahunAjaranService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -24,8 +25,22 @@ class JadwalUjianController extends Controller
      */
     public function index(Request $request)
     {
-        $query = JadwalUjian::with(['mapel', 'bankSoal', 'creator'])
+        $tahunAjaranService = app(TahunAjaranService::class);
+        $activeYear = $tahunAjaranService->active();
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear?->id);
+        $paketUjianId = $request->get('paket_ujian_id');
+
+        $query = JadwalUjian::with(['mapel', 'bankSoal', 'creator', 'tahunAjaran', 'paketUjian'])
             ->withCount('sesiRuangans');
+
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        if ($paketUjianId) {
+            $query->where('paket_ujian_id', $paketUjianId);
+        }
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
@@ -58,9 +73,13 @@ class JadwalUjianController extends Controller
         $perPage = $request->get('per_page', 30); // default 30
         $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate($perPage);
 
-        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
+        $mapels = Mapel::forTahunAjaran($tahunAjaranId)->orderBy('nama_mapel', 'asc')->get();
+        $paketUjians = \App\Models\PaketUjian::when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
 
-        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage'));
+        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'activeYear'));
     }
 
     /**
@@ -68,11 +87,25 @@ class JadwalUjianController extends Controller
      */
     public function create()
     {
-        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
-        $bankSoals = BankSoal::withCount('soals')->orderBy('judul', 'asc')->get();
-        $kelasList = Kelas::orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
+        $tahunAjaranService = app(TahunAjaranService::class);
+        $activeYear = $tahunAjaranService->active();
 
-        return view('features.naskah.jadwal.create', compact('mapels', 'bankSoals', 'kelasList'));
+        if (!$activeYear) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Belum ada tahun ajaran aktif. Buat dan aktifkan tahun ajaran terlebih dahulu.');
+        }
+
+        $paketUjianId = request('paket_ujian_id') ?: $tahunAjaranService->defaultPaketFor($activeYear)->id;
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
+        $mapels = Mapel::forTahunAjaran($activeYear->id)->orderBy('nama_mapel', 'asc')->get();
+        $bankSoals = BankSoal::forTahunAjaran($activeYear->id)->withCount('soals')->orderBy('judul', 'asc')->get();
+        $kelasList = Kelas::forTahunAjaran($activeYear->id)->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
+
+        return view('features.naskah.jadwal.create', compact('mapels', 'bankSoals', 'kelasList', 'activeYear', 'paketUjians', 'paketUjianId'));
     }
 
     /**
@@ -83,6 +116,7 @@ class JadwalUjianController extends Controller
         $request->validate([
             'judul' => 'required|string|max:255',
             'mapel_id' => 'required|exists:mapel,id',
+            'paket_ujian_id' => 'required|exists:paket_ujian,id',
             'bank_soal_id' => 'nullable|exists:bank_soal,id',
             'tanggal' => 'required|date',
             'durasi_preset' => 'required|in:25,30,45,manual',
@@ -92,7 +126,13 @@ class JadwalUjianController extends Controller
             'kelas_target.*' => 'exists:kelas,id',
         ]);
 
-        $mapel = Mapel::findOrFail($request->mapel_id);
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $paketUjian = \App\Models\PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('id', $request->paket_ujian_id)
+            ->where('status', '!=', 'arsip')
+            ->firstOrFail();
+
+        $mapel = Mapel::where('tahun_ajaran_id', $activeYear->id)->findOrFail($request->mapel_id);
         $bankSoal = $this->resolveBankSoalForMapel($request->mapel_id, $request->bank_soal_id);
 
         if (!$bankSoal) {
@@ -124,7 +164,7 @@ class JadwalUjianController extends Controller
         } else {
             // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
             if ($mapel) {
-                $query = Kelas::query();
+                $query = Kelas::where('tahun_ajaran_id', $activeYear->id);
 
                 // Filter by tingkat if mapel has it
                 if ($mapel->tingkat) {
@@ -146,6 +186,8 @@ class JadwalUjianController extends Controller
 
         // Create new jadwal ujian
         $jadwalUjian = JadwalUjian::create([
+            'tahun_ajaran_id' => $activeYear->id,
+            'paket_ujian_id' => $paketUjian->id,
             'kode_ujian' => $kodeUjian,
             'judul' => $request->judul,
             'deskripsi' => $request->deskripsi,
@@ -172,7 +214,11 @@ class JadwalUjianController extends Controller
 
     private function resolveBankSoalForMapel(int $mapelId, ?int $bankSoalId = null): ?BankSoal
     {
-        $query = BankSoal::where('mapel_id', $mapelId)->withCount('soals')->orderBy('judul', 'asc');
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $query = BankSoal::where('mapel_id', $mapelId)
+            ->forTahunAjaran($activeYearId)
+            ->withCount('soals')
+            ->orderBy('judul', 'asc');
 
         if ($bankSoalId) {
             $selectedBankSoal = (clone $query)->where('id', $bankSoalId)->first();
@@ -252,6 +298,7 @@ class JadwalUjianController extends Controller
             $sourceSesiOptions = SesiRuangan::with(['ruangan', 'sesiRuanganSiswa'])
                 ->withCount('sesiRuanganSiswa')
                 ->where('sumber', 'sumber')
+                ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                 ->orderBy('ruangan_id')
                 ->orderBy('waktu_mulai')
                 ->get();
@@ -301,9 +348,14 @@ class JadwalUjianController extends Controller
      */
     public function edit(JadwalUjian $jadwal)
     {
-        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
-        $bankSoals = BankSoal::orderBy('judul', 'asc')->get();
-        $kelasList = Kelas::orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $mapels = Mapel::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('nama_mapel', 'asc')->get();
+        $bankSoals = BankSoal::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('judul', 'asc')->get();
+        $kelasList = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
 
         return view('features.naskah.jadwal.edit', compact('jadwal', 'mapels', 'bankSoals', 'kelasList'));
     }
@@ -313,6 +365,11 @@ class JadwalUjianController extends Controller
      */
     public function update(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'judul' => 'required|string|max:255',
             'mapel_id' => 'required|exists:mapel,id',
@@ -331,12 +388,15 @@ class JadwalUjianController extends Controller
 
         // If kelas_target is provided in the request, use it
         if ($request->has('kelas_target')) {
-            $kelasTarget = $request->kelas_target;
+            $kelasTarget = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id)
+                ->whereIn('id', $request->kelas_target)
+                ->pluck('id')
+                ->toArray();
         } else {
             // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
-            $mapel = Mapel::find($request->mapel_id);
+            $mapel = Mapel::forTahunAjaran($jadwal->tahun_ajaran_id)->find($request->mapel_id);
             if ($mapel) {
-                $query = Kelas::query();
+                $query = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id);
 
                 // Filter by tingkat if mapel has it
                 if ($mapel->tingkat) {
@@ -381,6 +441,11 @@ class JadwalUjianController extends Controller
      */
     public function updateStatus(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'status' => 'required|in:draft,aktif,selesai,dibatalkan',
         ]);
@@ -398,11 +463,18 @@ class JadwalUjianController extends Controller
      */
     public function attachSesi(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.',
+            ], 422);
+        }
+
         $request->validate([
             'sesi_id' => 'required|exists:sesi_ruangan,id',
         ]);
 
-        $sesi = SesiRuangan::findOrFail($request->sesi_id);
+        $sesi = SesiRuangan::where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)->findOrFail($request->sesi_id);
 
         // Attach the sesi to the jadwal using the many-to-many relationship
         if (!$jadwal->sesiRuangans()->where('sesi_ruangan_id', $sesi->id)->exists()) {
@@ -417,6 +489,11 @@ class JadwalUjianController extends Controller
 
     public function attachSourceSesiAndEnroll(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'sesi_ids' => 'required|array|min:1',
             'sesi_ids.*' => 'exists:sesi_ruangan,id',
@@ -429,9 +506,10 @@ class JadwalUjianController extends Controller
             $enrolledCount = 0;
             $skippedCount = 0;
 
-            $sourceSesis = SesiRuangan::with(['sesiRuanganSiswa.siswa.kelas'])
+            $sourceSesis = SesiRuangan::with(['sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'])
                 ->whereIn('id', $request->sesi_ids)
                 ->where('sumber', 'sumber')
+                ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                 ->get();
 
             foreach ($sourceSesis as $sourceSesi) {
@@ -444,6 +522,7 @@ class JadwalUjianController extends Controller
 
                 if (!$duplicateSesi) {
                     $duplicateSesi = SesiRuangan::create([
+                        'tahun_ajaran_id' => $jadwal->tahun_ajaran_id,
                         'ruangan_id' => $sourceSesi->ruangan_id,
                         'nama_sesi' => $sourceSesi->nama_sesi,
                         'waktu_mulai' => $sourceSesi->waktu_mulai,
@@ -464,7 +543,7 @@ class JadwalUjianController extends Controller
                     );
                 }
 
-                $duplicateSesi->load('sesiRuanganSiswa.siswa.kelas');
+                $duplicateSesi->load('sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas');
 
                 if (!$jadwal->sesiRuangans()->where('sesi_ruangan.id', $duplicateSesi->id)->exists()) {
                     $jadwal->sesiRuangans()->attach($duplicateSesi->id, [
@@ -528,7 +607,12 @@ class JadwalUjianController extends Controller
 
     private function isSiswaEligibleForJadwal($siswa, JadwalUjian $jadwal): bool
     {
-        if (!$siswa || !$siswa->kelas) {
+        if (!$siswa) {
+            return false;
+        }
+
+        $kelas = $this->resolveSiswaKelas($siswa, $jadwal);
+        if (!$kelas) {
             return false;
         }
 
@@ -538,7 +622,7 @@ class JadwalUjianController extends Controller
             ->values()
             ->all();
 
-        if (!empty($kelasTargets) && !in_array((string) $siswa->kelas_id, $kelasTargets, true)) {
+        if (!empty($kelasTargets) && !in_array((string) $kelas->id, $kelasTargets, true)) {
             return false;
         }
 
@@ -548,20 +632,38 @@ class JadwalUjianController extends Controller
         }
 
         $mapelTingkat = $this->normalizeEligibilityValue($mapel->tingkat);
-        $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat);
+        $siswaTingkat = $this->normalizeEligibilityValue($kelas->tingkat);
 
         if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
             return false;
         }
 
         $mapelJurusan = $this->normalizeEligibilityValue($mapel->jurusan);
-        $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan);
+        $siswaJurusan = $this->normalizeEligibilityValue($kelas->jurusan);
 
         if ($mapelJurusan && $mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
             return false;
         }
 
         return true;
+    }
+
+    private function resolveSiswaKelas($siswa, JadwalUjian $jadwal): ?Kelas
+    {
+        if ($jadwal->tahun_ajaran_id) {
+            $record = $siswa->relationLoaded('tahunAjaranRecords')
+                ? $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+                : $siswa->tahunAjaranRecords()
+                    ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+                    ->with('kelas')
+                    ->first();
+
+            if ($record?->kelas) {
+                return $record->kelas;
+            }
+        }
+
+        return $siswa->kelas;
     }
 
     private function normalizeEligibilityValue($value): ?string
@@ -589,6 +691,13 @@ class JadwalUjianController extends Controller
      */
     public function detachSesi(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.',
+            ], 422);
+        }
+
         $request->validate([
             'sesi_id' => 'required|exists:sesi_ruangan,id',
         ]);
@@ -609,6 +718,10 @@ class JadwalUjianController extends Controller
      */
     public function destroy(JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.index')
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
 
         try {
             // Cek apakah sudah ada hasil ujian
@@ -697,6 +810,11 @@ class JadwalUjianController extends Controller
         foreach ($jadwalIds as $id) {
             $jadwal = JadwalUjian::find($id);
             if ($jadwal) {
+                if ($jadwal->tahunAjaran?->isReadOnly()) {
+                    $errors[] = "Jadwal '{$jadwal->judul}' berada di tahun ajaran arsip dan tidak dapat dihapus";
+                    continue;
+                }
+
                 // Check if there are any results associated
                 if ($jadwal->hasilUjian()->count() > 0) {
                     $errors[] = "Jadwal '{$jadwal->judul}' tidak dapat dihapus karena sudah memiliki hasil ujian";
@@ -717,6 +835,11 @@ class JadwalUjianController extends Controller
 
     public function forceDestroy(JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.index')
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         // Hapus semua pelanggaran ujian terkait hasil ujian
         foreach ($jadwal->hasilUjian as $hasil) {
             $hasil->pelanggaranUjian()->delete();
@@ -754,6 +877,10 @@ class JadwalUjianController extends Controller
             $jadwal = JadwalUjian::find($id);
 
             if ($jadwal) {
+                if ($jadwal->tahunAjaran?->isReadOnly()) {
+                    continue;
+                }
+
                 // Hapus semua pelanggaran ujian terkait hasil ujian
                 foreach ($jadwal->hasilUjian as $hasil) {
                     $hasil->pelanggaranUjian()->delete();
@@ -790,7 +917,9 @@ class JadwalUjianController extends Controller
      */
     private function bulkStatusChange($jadwalIds, $newStatus)
     {
-        return JadwalUjian::whereIn('id', $jadwalIds)->update(['status' => $newStatus]);
+        return JadwalUjian::whereIn('id', $jadwalIds)
+            ->whereDoesntHave('tahunAjaran', fn($q) => $q->where('status', 'arsip'))
+            ->update(['status' => $newStatus]);
     }
 
     /**
@@ -798,6 +927,11 @@ class JadwalUjianController extends Controller
      */
     public function reassignSesi(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $sesiAssignmentService = new SesiAssignmentService();
 
         // Clean up existing assignments first
@@ -823,6 +957,11 @@ class JadwalUjianController extends Controller
      */
     public function toggleAutoAssign(Request $request, JadwalUjian $jadwal)
     {
+        if ($jadwal->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $autoAssign = $request->get('auto_assign', false);
 
         $jadwal->update([
@@ -860,12 +999,16 @@ class JadwalUjianController extends Controller
     public function applyToSessions(JadwalUjian $jadwal)
     {
         try {
-            $jadwalDate = $jadwal->tanggal->format('Y-m-d');
+            if ($jadwal->tahunAjaran?->isReadOnly()) {
+                return redirect()->route('naskah.jadwal.show', $jadwal->id)
+                    ->with('error', 'Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+            }
 
             // Since sesi ruangan no longer has tanggal field, we'll match based on other criteria
             $matchingSessions = SesiRuangan::whereDoesntHave('jadwalUjians', function ($query) use ($jadwal) {
                 $query->where('jadwal_ujian_id', $jadwal->id);
             })
+                ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                 ->get();
 
             if ($matchingSessions->isEmpty()) {
@@ -882,10 +1025,11 @@ class JadwalUjianController extends Controller
 
                 // If the sesi has students, check their classes' jurusan against the jadwal's mapel jurusan
                 if ($sesi->sesiRuanganSiswa()->count() > 0) {
-                    $siswaList = $sesi->sesiRuanganSiswa()->with('siswa.kelas')->get();
+                    $siswaList = $sesi->sesiRuanganSiswa()->with('siswa.kelas', 'siswa.tahunAjaranRecords.kelas')->get();
                     foreach ($siswaList as $sesiSiswa) {
-                        if ($sesiSiswa->siswa && $sesiSiswa->siswa->kelas) {
-                            $kelasJurusan = $sesiSiswa->siswa->kelas->jurusan;
+                        $kelas = $sesiSiswa->siswa ? $this->resolveSiswaKelas($sesiSiswa->siswa, $jadwal) : null;
+                        if ($kelas) {
+                            $kelasJurusan = $kelas->jurusan;
 
                             // Skip this sesi if the jadwal doesn't apply to the student's jurusan
                             // unless the mapel's jurusan is null (applies to all)
@@ -925,6 +1069,20 @@ class JadwalUjianController extends Controller
 
         DB::beginTransaction();
         try {
+            $jadwalAsliList = JadwalUjian::with('tahunAjaran')
+                ->whereIn('id', $request->jadwal_ids)
+                ->get();
+            $tahunAjaranId = $jadwalAsliList->first()?->tahun_ajaran_id;
+            $paketUjianId = $jadwalAsliList->first()?->paket_ujian_id;
+
+            if (!$tahunAjaranId || $jadwalAsliList->contains(fn($jadwal) => $jadwal->tahun_ajaran_id !== $tahunAjaranId)) {
+                throw new \Exception('Semua jadwal susulan harus berada pada tahun ajaran yang sama.');
+            }
+
+            if ($jadwalAsliList->contains(fn($jadwal) => $jadwal->tahunAjaran?->isReadOnly())) {
+                throw new \Exception('Jadwal pada tahun ajaran arsip hanya dapat dilihat.');
+            }
+
             // Hitung total siswa yang akan diikutkan (dari semua jadwal asli)
             $totalSiswa = 0;
             foreach ($request->jadwal_ids as $id) {
@@ -935,6 +1093,7 @@ class JadwalUjianController extends Controller
 
             // 1. Buat ruangan baru
             $ruangan = Ruangan::create([
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'kode_ruangan' => 'RS' . strtoupper(Str::random(2)),
                 'nama_ruangan' => 'Ruang Ujian Susulan ' . date('Y-m-d H:i'),
                 'kapasitas' => $totalSiswa,
@@ -944,6 +1103,7 @@ class JadwalUjianController extends Controller
 
             // 2. Buat sesi ruangan
             $sesi = SesiRuangan::create([
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'ruangan_id' => $ruangan->id,
                 'nama_sesi' => 'Sesi Ujian Susulan',
                 'waktu_mulai' => $request->waktu_mulai,
@@ -963,6 +1123,8 @@ class JadwalUjianController extends Controller
                 $jadwalBaru->status = 'aktif';
                 $jadwalBaru->kode_ujian = 'S' . date('Ymd') . strtoupper(Str::random(5));
                 $jadwalBaru->created_by = auth()->id();
+                $jadwalBaru->tahun_ajaran_id = $tahunAjaranId;
+                $jadwalBaru->paket_ujian_id = $paketUjianId;
                 $jadwalBaru->auto_assign_sesi = false; // kita attach manual
                 $jadwalBaru->auto_enroll = false;       // kita enroll manual
                 $jadwalBaru->save();

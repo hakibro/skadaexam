@@ -6,6 +6,7 @@ use App\Models\Ruangan;
 use App\Models\SesiRuangan;
 use App\Models\SesiRuanganSiswa;
 use App\Models\Siswa;
+use App\Services\TahunAjaranService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,12 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
         'sesi_updated' => 0,
         'siswa_assigned' => 0,
     ];
+    protected $tahunAjaranId;
+
+    public function __construct(?int $tahunAjaranId = null)
+    {
+        $this->tahunAjaranId = $tahunAjaranId ?: app(TahunAjaranService::class)->ensureActive()->id;
+    }
 
     /**
      * @param Collection $rows
@@ -77,7 +84,9 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             $kapasitas = $this->normalizeInteger($this->rowValue($row, ['kapasitas_ruangan', 'kapasitas']), 30);
 
             // Check if ruangan exists by kode_ruangan
-            $ruangan = Ruangan::where('kode_ruangan', $this->rowValue($row, ['kode_ruangan']))->first();
+            $ruangan = Ruangan::where('tahun_ajaran_id', $this->tahunAjaranId)
+                ->where('kode_ruangan', $this->rowValue($row, ['kode_ruangan']))
+                ->first();
 
             if ($ruangan) {
                 // Update existing ruangan
@@ -92,6 +101,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             } else {
                 // Create new ruangan
                 $ruangan = Ruangan::create([
+                    'tahun_ajaran_id' => $this->tahunAjaranId,
                     'kode_ruangan' => $this->rowValue($row, ['kode_ruangan']),
                     'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], 'Ruangan ' . $this->rowValue($row, ['kode_ruangan'])),
                     'kapasitas' => $kapasitas,
@@ -117,7 +127,9 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
         try {
             // Check if sesi exists by kode_sesi
             $kodeSesi = $this->rowValue($row, ['kode_sesi']);
-            $sesi = SesiRuangan::where('kode_sesi', $kodeSesi)->first();
+            $sesi = SesiRuangan::where('tahun_ajaran_id', $this->tahunAjaranId)
+                ->where('kode_sesi', $kodeSesi)
+                ->first();
 
             // Validate time format
             $waktuMulai = $this->formatTime($this->rowValue($row, ['waktu_mulai_sesi', 'waktu_mulai'], '00:00'));
@@ -127,6 +139,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 // Update existing sesi
                 $sesi->update([
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], $sesi->nama_sesi),
+                    'tahun_ajaran_id' => $this->tahunAjaranId,
                     'waktu_mulai' => $waktuMulai,
                     'waktu_selesai' => $waktuSelesai,
                     'status' => $this->rowValue($row, ['status_sesi'], $sesi->status),
@@ -137,6 +150,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             } else {
                 // Create new sesi
                 $sesi = new SesiRuangan([
+                    'tahun_ajaran_id' => $this->tahunAjaranId,
                     'kode_sesi' => $kodeSesi,
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], 'Sesi ' . $kodeSesi),
                     'waktu_mulai' => $waktuMulai,

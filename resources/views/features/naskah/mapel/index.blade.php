@@ -55,6 +55,18 @@
             <div class="p-4 bg-gray-50">
                 <form action="{{ route('naskah.mapel.index') }}" method="GET" class="flex flex-wrap gap-4">
                     <div class="w-full md:w-auto">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                        <select name="tahun_ajaran_id"
+                            class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            @foreach ($tahunAjarans as $tahun)
+                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                    {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="w-full md:w-auto">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Kata Kunci</label>
                         <input type="text" name="search" value="{{ request('search') }}"
                             class="form-input w-full md:w-64 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"

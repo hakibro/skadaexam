@@ -60,7 +60,7 @@
                     <select id="mapel-filter"
                         class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Semua Mata Pelajaran</option>
-                        @foreach (App\Models\Mapel::active()->get() as $mapel)
+                        @foreach ($mapels as $mapel)
                             <option value="{{ $mapel->id }}" {{ request('mapel_id') == $mapel->id ? 'selected' : '' }}>
                                 {{ $mapel->nama_mapel }}
                             </option>

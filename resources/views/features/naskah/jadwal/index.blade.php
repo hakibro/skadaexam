@@ -63,6 +63,28 @@
                 <form action="{{ route('naskah.jadwal.index') }}" method="get" class="jadwal-filter-form">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-2">
                         <div class="col-span-1">
+                            <select name="tahun_ajaran_id"
+                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Semua Tahun</option>
+                                @foreach ($tahunAjarans as $tahunAjaran)
+                                    <option value="{{ $tahunAjaran->id }}" {{ (string) $tahunAjaranId === (string) $tahunAjaran->id ? 'selected' : '' }}>
+                                        {{ $tahunAjaran->nama }}{{ $tahunAjaran->is_active ? ' *' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-span-1">
+                            <select name="paket_ujian_id"
+                                class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Semua Paket</option>
+                                @foreach ($paketUjians as $paket)
+                                    <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                        {{ $paket->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-span-1">
                             <input type="text" name="search" value="{{ request('search') }}"
                                 class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Cari judul/kode...">
@@ -156,7 +178,7 @@
                                     <td class="px-3 py-2 whitespace-nowrap font-mono">{{ $jadwal->kode_ujian }}</td>
                                     <td class="px-3 py-2">
                                         <div class="font-medium text-gray-900">{{ $jadwal->judul }}</div>
-                                        <div class="text-gray-500">{{ $jadwal->jenis_ujian }}</div>
+                                        <div class="text-gray-500">{{ $jadwal->paketUjian->nama ?? $jadwal->jenis_ujian }}</div>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap hidden md:table-cell">
                                         {{ $jadwal->mapel->nama_mapel ?? '-' }}

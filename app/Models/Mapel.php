@@ -13,6 +13,7 @@ class Mapel extends Model
     protected $table = 'mapel';
 
     protected $fillable = [
+        'tahun_ajaran_id',
         'kode_mapel',
         'nama_mapel',
         'deskripsi',
@@ -30,6 +31,11 @@ class Mapel extends Model
     public function bankSoals()
     {
         return $this->hasMany(BankSoal::class);
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
     /**
@@ -87,6 +93,11 @@ class Mapel extends Model
     public function scopeByTingkat($query, $tingkat)
     {
         return $query->where('tingkat', $tingkat);
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
     // Accessors & Mutators

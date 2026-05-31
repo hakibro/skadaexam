@@ -135,6 +135,19 @@ class Siswa extends Authenticatable
         return $this->belongsTo(Kelas::class, 'kelas_id', 'id');
     }
 
+    public function tahunAjaranRecords()
+    {
+        return $this->hasMany(SiswaTahunAjaran::class);
+    }
+
+    public function kelasForTahunAjaran($tahunAjaranId)
+    {
+        return $this->tahunAjaranRecords()
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->with('kelas')
+            ->first()?->kelas;
+    }
+
     /**
      * Get all sesi ruangan that this siswa is enrolled in.
      */

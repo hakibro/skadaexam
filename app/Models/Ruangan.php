@@ -12,6 +12,7 @@ class Ruangan extends Model
     protected $table = 'ruangan';
 
     protected $fillable = [
+        'tahun_ajaran_id',
         'kode_ruangan',
         'nama_ruangan',
         'lokasi',
@@ -38,6 +39,11 @@ class Ruangan extends Model
     public function sesiRuangan()
     {
         return $this->hasMany(SesiRuangan::class, 'ruangan_id');
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
     /**
@@ -77,6 +83,11 @@ class Ruangan extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'aktif');
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
     /**

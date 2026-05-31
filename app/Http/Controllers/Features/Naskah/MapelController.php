@@ -7,6 +7,7 @@ use App\Models\Mapel;
 use App\Models\Kelas;
 use App\Models\User;
 use App\Models\SesiRuangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,9 @@ class MapelController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Mapel::query();
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $query = Mapel::forTahunAjaran($tahunAjaranId);
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
@@ -51,10 +54,12 @@ class MapelController extends Controller
 
 
         // Get unique values for filters
-        $tingkats = Mapel::select('tingkat')->distinct()->pluck('tingkat')->sort();
-        $jurusans = Mapel::select('jurusan')->distinct()->whereNotNull('jurusan')->pluck('jurusan')->sort();
+        $tingkats = Mapel::forTahunAjaran($tahunAjaranId)->select('tingkat')->distinct()->pluck('tingkat')->sort();
+        $jurusans = Mapel::forTahunAjaran($tahunAjaranId)->select('jurusan')->distinct()->whereNotNull('jurusan')->pluck('jurusan')->sort();
 
-        return view('features.naskah.mapel.index', compact('mapels', 'tingkats', 'jurusans'));
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+
+        return view('features.naskah.mapel.index', compact('mapels', 'tingkats', 'jurusans', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -62,9 +67,9 @@ class MapelController extends Controller
      */
     public function create()
     {
-
-        $tingkatList = Kelas::pluck('tingkat')->unique();
-        $jurusanList = Kelas::pluck('jurusan')->unique();
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $tingkatList = Kelas::forTahunAjaran($activeYear->id)->pluck('tingkat')->unique();
+        $jurusanList = Kelas::forTahunAjaran($activeYear->id)->pluck('jurusan')->unique();
         return view('features.naskah.mapel.create', compact('tingkatList', 'jurusanList'));
     }
 
@@ -73,6 +78,8 @@ class MapelController extends Controller
      */
     public function store(Request $request)
     {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+
         $request->validate([
             'kode_mapel' => 'required|string|max:20|unique:mapel,kode_mapel',
             'nama_mapel' => 'required|string|max:255',
@@ -82,6 +89,7 @@ class MapelController extends Controller
         ]);
 
         $mapel = Mapel::create([
+            'tahun_ajaran_id' => $activeYear->id,
             'kode_mapel' => $request->kode_mapel,
             'nama_mapel' => $request->nama_mapel,
             'deskripsi' => $request->deskripsi,
@@ -118,8 +126,13 @@ class MapelController extends Controller
     public function edit(Mapel $mapel)
     {
         $mapel = Mapel::find($mapel->id);
-        $tingkatList = Kelas::pluck('tingkat')->unique();
-        $jurusanList = Kelas::pluck('jurusan')->unique();
+        if ($mapel->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.mapel.show', $mapel->id)
+                ->with('error', 'Mata pelajaran pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $tingkatList = Kelas::forTahunAjaran($mapel->tahun_ajaran_id)->pluck('tingkat')->unique();
+        $jurusanList = Kelas::forTahunAjaran($mapel->tahun_ajaran_id)->pluck('jurusan')->unique();
 
         return view('features.naskah.mapel.edit', compact('mapel', 'tingkatList', 'jurusanList'));
     }
@@ -129,6 +142,11 @@ class MapelController extends Controller
      */
     public function update(Request $request, Mapel $mapel)
     {
+        if ($mapel->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('naskah.mapel.show', $mapel->id)
+                ->with('error', 'Mata pelajaran pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'kode_mapel' => 'required|string|max:20|unique:mapel,kode_mapel,' . $mapel->id,
             'nama_mapel' => 'required|string|max:255',

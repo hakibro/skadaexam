@@ -25,6 +25,7 @@ class SesiRuangan extends Model
     protected $table = 'sesi_ruangan';
 
     protected $fillable = [
+        'tahun_ajaran_id',
         'kode_sesi',
         'sumber',
         'nama_sesi',
@@ -67,6 +68,16 @@ class SesiRuangan extends Model
     public function ruangan()
     {
         return $this->belongsTo(Ruangan::class);
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
     /**

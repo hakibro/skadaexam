@@ -138,9 +138,12 @@
 
                             <div class="border rounded-md max-h-64 overflow-y-auto">
                                 @foreach ($availableSiswa as $siswa)
+                                    @php
+                                        $kelasTahun = $siswa->kelasForTahunAjaran($ruangan->tahun_ajaran_id);
+                                    @endphp
                                     <div class="siswa-item p-2 border-b hover:bg-gray-50"
-                                        data-kelas="{{ $siswa->kelas->id ?? '' }}"
-                                        data-jurusan="{{ $siswa->kelas->jurusan ?? '' }}">
+                                        data-kelas="{{ $kelasTahun->id ?? '' }}"
+                                        data-jurusan="{{ $kelasTahun->jurusan ?? '' }}">
                                         <label class="flex items-center">
                                             <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}"
                                                 class="rounded border-gray-300 text-blue-600 available-checkbox mr-2">
@@ -149,9 +152,9 @@
                                                     {{ $siswa->nama }}</div>
                                                 <div class="text-xs text-gray-500 siswa-info">
                                                     ID YYS: <span class="siswa-nis">{{ $siswa->idyayasan }}</span> -
-                                                    Kelas: {{ $siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
-                                                    @if ($siswa->kelas && $siswa->kelas->jurusan)
-                                                        ({{ $siswa->kelas->jurusan }})
+                                                    Kelas: {{ $kelasTahun->nama_kelas ?? 'Tidak ada kelas' }}
+                                                    @if ($kelasTahun?->jurusan)
+                                                        ({{ $kelasTahun->jurusan }})
                                                     @endif
                                                 </div>
                                             </div>
@@ -201,14 +204,17 @@
                 @if ($assignedSiswa->count() > 0)
                     <div class="max-h-96 overflow-y-auto">
                         @foreach ($assignedSiswa as $sesiSiswa)
+                            @php
+                                $kelasTahun = $sesiSiswa->siswa?->kelasForTahunAjaran($ruangan->tahun_ajaran_id);
+                            @endphp
                             <div class="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50">
                                 <div class="flex-1">
                                     <div class="text-sm font-medium text-gray-900">{{ $sesiSiswa->siswa->nama }}</div>
                                     <div class="text-xs text-gray-500">
                                         ID YYS: {{ $sesiSiswa->siswa->idyayasan }} -
-                                        Kelas: {{ $sesiSiswa->siswa->kelas->nama_kelas ?? 'Tidak ada kelas' }}
-                                        @if ($sesiSiswa->siswa->kelas && $sesiSiswa->siswa->kelas->jurusan)
-                                            ({{ $sesiSiswa->siswa->kelas->jurusan }})
+                                        Kelas: {{ $kelasTahun->nama_kelas ?? 'Tidak ada kelas' }}
+                                        @if ($kelasTahun?->jurusan)
+                                            ({{ $kelasTahun->jurusan }})
                                         @endif
                                     </div>
                                 </div>

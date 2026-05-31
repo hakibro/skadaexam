@@ -56,9 +56,7 @@ class EnrollmentService
         }
 
         // Get eligible students from the selected classes
-        $siswaList = Siswa::whereIn('kelas_id', $kelasIds)
-            ->where('status', 'active')
-            ->get();
+        $siswaList = $this->studentQueryForJadwal($jadwalUjian, $kelasIds)->get();
 
         if ($siswaList->isEmpty()) {
             $result['errors'][] = 'Tidak ada siswa yang ditemukan di kelas yang dipilih';
@@ -151,7 +149,17 @@ class EnrollmentService
         }
 
         // Check if sesi ruangan has capacity
+        $jadwalUjian = JadwalUjian::findOrFail($jadwalUjianId);
         $sesiRuangan = SesiRuangan::findOrFail($sesiRuanganId);
+
+        if ($jadwalUjian->tahun_ajaran_id && $sesiRuangan->tahun_ajaran_id !== $jadwalUjian->tahun_ajaran_id) {
+            throw new \Exception("Sesi ruangan tidak berada pada tahun ajaran yang sama dengan jadwal ujian");
+        }
+
+        $siswa = Siswa::with('tahunAjaranRecords.kelas')->findOrFail($siswaId);
+        if (!$this->isStudentEligibleForJadwal($siswa, $jadwalUjian)) {
+            throw new \Exception("Siswa tidak eligible untuk jadwal ujian ini");
+        }
 
         if ($sesiRuangan->remainingCapacity() <= 0) {
             throw new \Exception("Kapasitas ruangan sudah penuh");
@@ -189,15 +197,21 @@ class EnrollmentService
      */
     public function bulkEnrollByClass(int $sesiRuanganId, int $jadwalUjianId, array $kelasIds): int
     {
+        $jadwalUjian = JadwalUjian::findOrFail($jadwalUjianId);
+        $sesiRuangan = SesiRuangan::findOrFail($sesiRuanganId);
+
+        if ($jadwalUjian->tahun_ajaran_id && $sesiRuangan->tahun_ajaran_id !== $jadwalUjian->tahun_ajaran_id) {
+            throw new \Exception("Sesi ruangan tidak berada pada tahun ajaran yang sama dengan jadwal ujian");
+        }
+
         // Get students who aren't already enrolled
         $enrolledStudentIds = EnrollmentUjian::where('jadwal_ujian_id', $jadwalUjianId)
             ->pluck('siswa_id');
 
-        $eligibleStudents = Siswa::whereIn('kelas_id', $kelasIds)
+        $eligibleStudents = $this->studentQueryForJadwal($jadwalUjian, $kelasIds)
             ->whereNotIn('id', $enrolledStudentIds)
             ->get();
 
-        $sesiRuangan = SesiRuangan::findOrFail($sesiRuanganId);
         $remainingCapacity = $sesiRuangan->remainingCapacity();
 
         if ($remainingCapacity < count($eligibleStudents)) {
@@ -374,13 +388,57 @@ class EnrollmentService
         $enrolledStudentIds = EnrollmentUjian::where('jadwal_ujian_id', $jadwalUjianId)
             ->pluck('siswa_id');
 
-        $query = Siswa::whereNotIn('id', $enrolledStudentIds);
+        $jadwalUjian = JadwalUjian::findOrFail($jadwalUjianId);
+        $query = $this->studentQueryForJadwal($jadwalUjian, $kelasIds)
+            ->whereNotIn('id', $enrolledStudentIds);
 
-        if ($kelasIds) {
+        return $query->get();
+    }
+
+    private function studentQueryForJadwal(JadwalUjian $jadwalUjian, ?array $kelasIds = null)
+    {
+        $query = Siswa::query()->with('tahunAjaranRecords.kelas');
+
+        if ($jadwalUjian->tahun_ajaran_id) {
+            $query->whereHas('tahunAjaranRecords', function ($q) use ($jadwalUjian, $kelasIds) {
+                $q->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id);
+
+                if ($kelasIds) {
+                    $q->whereIn('kelas_id', $kelasIds);
+                }
+            });
+        } elseif ($kelasIds) {
             $query->whereIn('kelas_id', $kelasIds);
         }
 
-        return $query->get();
+        return $query;
+    }
+
+    private function isStudentEligibleForJadwal(Siswa $siswa, JadwalUjian $jadwalUjian): bool
+    {
+        $kelas = $this->kelasForJadwal($siswa, $jadwalUjian);
+        if (!$kelas) {
+            return false;
+        }
+
+        $kelasTargets = collect($jadwalUjian->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+        if (!empty($kelasTargets) && !in_array((string) $kelas->id, $kelasTargets, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function kelasForJadwal(Siswa $siswa, JadwalUjian $jadwalUjian)
+    {
+        if ($jadwalUjian->tahun_ajaran_id) {
+            $record = $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id);
+            if ($record?->kelas) {
+                return $record->kelas;
+            }
+        }
+
+        return $siswa->kelas;
     }
 
     /**

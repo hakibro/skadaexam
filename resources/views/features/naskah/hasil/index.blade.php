@@ -121,6 +121,31 @@
             <div class="p-6">
                 <form action="{{ route('naskah.hasil.index') }}" method="GET"
                     class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                        <select id="tahun_ajaran_id" name="tahun_ajaran_id"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                            @foreach ($tahunAjarans as $tahun)
+                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                    {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700 mb-1">Paket Ujian</label>
+                        <select id="paket_ujian_id" name="paket_ujian_id"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                            <option value="">Semua Paket</option>
+                            @foreach ($paketUjians as $paket)
+                                <option value="{{ $paket->id }}" {{ request('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <!-- Jadwal Filter -->
                     <div>
                         <label for="jadwal_id" class="block text-sm font-medium text-gray-700 mb-1">Jadwal Ujian</label>
@@ -220,7 +245,7 @@
                             <i class="fa-solid fa-filter mr-2"></i> Terapkan Filter
                         </button>
 
-                        @if (request()->hasAny(['jadwal_id', 'kelas_id', 'status', 'search']))
+                        @if (request()->hasAny(['tahun_ajaran_id', 'paket_ujian_id', 'jadwal_id', 'kelas_id', 'status', 'search']))
                             <a href="{{ route('naskah.hasil.index') }}"
                                 class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center">
                                 <i class="fa-solid fa-times mr-2"></i> Reset Filter

@@ -35,6 +35,11 @@ class SesiRuanganController extends Controller
      */
     public function create(Ruangan $ruangan)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('ruangan.show', $ruangan->id)
+                ->with('error', 'Ruangan pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $pengawasList = Guru::whereHas('user', function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['pengawas', 'koordinator']);
@@ -49,6 +54,11 @@ class SesiRuanganController extends Controller
      */
     public function store(Request $request, Ruangan $ruangan)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('ruangan.show', $ruangan->id)
+                ->with('error', 'Ruangan pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'nama_sesi' => 'required|string|max:191',
             'waktu_mulai' => 'required|date_format:H:i',
@@ -86,6 +96,7 @@ class SesiRuanganController extends Controller
 
             // Create the session data
             $sesiData = [
+                'tahun_ajaran_id' => $ruangan->tahun_ajaran_id,
                 'ruangan_id' => $ruangan->id,
                 'nama_sesi' => $request->nama_sesi,
                 'waktu_mulai' => $request->waktu_mulai,
@@ -125,6 +136,11 @@ class SesiRuanganController extends Controller
      */
     public function edit(Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('ruangan.sesi.show', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $pengawasList = Guru::whereHas('user', function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['pengawas', 'koordinator']);
@@ -139,6 +155,11 @@ class SesiRuanganController extends Controller
      */
     public function update(Request $request, Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('ruangan.sesi.show', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         // Format time fields to ensure they're in the correct format
         if ($request->has('waktu_mulai')) {
             $request->merge(['waktu_mulai' => date('H:i', strtotime($request->waktu_mulai))]);
@@ -209,6 +230,11 @@ class SesiRuanganController extends Controller
      */
     public function destroy(Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         try {
             // Check if the session has students
             if ($sesi->sesiRuanganSiswa()->count() > 0) {
@@ -235,6 +261,11 @@ class SesiRuanganController extends Controller
      */
     public function forceDelete(Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         try {
             DB::beginTransaction();
 
@@ -264,18 +295,19 @@ class SesiRuanganController extends Controller
      */
     public function siswaIndex(Ruangan $ruangan, SesiRuangan $sesi)
     {
-        $assignedSiswa = $sesi->sesiRuanganSiswa()->with('siswa.kelas')->get();
+        $assignedSiswa = $sesi->sesiRuanganSiswa()->with('siswa.kelas', 'siswa.tahunAjaranRecords.kelas')->get();
 
         // Get available students (not assigned to this session)
         $availableSiswa = Siswa::whereDoesntHave('sesiRuanganSiswa', function ($query) use ($sesi) {
             $query->where('sesi_ruangan_id', $sesi->id);
         })
-            ->with('kelas')
+            ->whereHas('tahunAjaranRecords', fn($query) => $query->where('tahun_ajaran_id', $ruangan->tahun_ajaran_id))
+            ->with('kelas', 'tahunAjaranRecords.kelas')
             // ->where('status_pembayaran', 'Lunas') // Only students who have paid
             ->orderBy('nama')
             ->get();
 
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $kelasList = Kelas::forTahunAjaran($ruangan->tahun_ajaran_id)->orderBy('nama_kelas')->get();
 
         return view('features.ruangan.sesi.siswa.index', compact('ruangan', 'sesi', 'assignedSiswa', 'availableSiswa', 'kelasList'));
     }
@@ -285,6 +317,11 @@ class SesiRuanganController extends Controller
      */
     public function siswaStore(Request $request, Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $request->validate([
             'siswa_ids' => 'required|array|min:1',
             'siswa_ids.*' => 'exists:siswa,id',
@@ -334,6 +371,11 @@ class SesiRuanganController extends Controller
      */
     public function siswaDestroy(Ruangan $ruangan, SesiRuangan $sesi, Siswa $siswa)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         try {
             DB::beginTransaction();
 
@@ -377,6 +419,11 @@ class SesiRuanganController extends Controller
      */
     public function siswaDestroyAll(Ruangan $ruangan, SesiRuangan $sesi)
     {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         try {
             DB::beginTransaction();
 

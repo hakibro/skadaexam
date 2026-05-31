@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Features\Ruangan;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ruangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,9 @@ class RuanganController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Ruangan::query()->withCount('sesiRuangan');
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $query = Ruangan::forTahunAjaran($tahunAjaranId)->withCount('sesiRuangan');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -55,13 +58,14 @@ class RuanganController extends Controller
 
         // Calculate statistics for the view
         $statistics = [
-            'total' => Ruangan::count(),
-            'aktif' => Ruangan::where('status', 'aktif')->count(),
-            'nonaktif' => Ruangan::where('status', 'tidak_aktif')->count(),
-            'perbaikan' => Ruangan::where('status', 'perbaikan')->count(),
+            'total' => Ruangan::forTahunAjaran($tahunAjaranId)->count(),
+            'aktif' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'aktif')->count(),
+            'nonaktif' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'tidak_aktif')->count(),
+            'perbaikan' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'perbaikan')->count(),
         ];
+        $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.ruangan.index', compact('ruangans', 'statistics'));
+        return view('features.ruangan.index', compact('ruangans', 'statistics', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -69,6 +73,13 @@ class RuanganController extends Controller
      */
     public function create()
     {
+        try {
+            app(TahunAjaranService::class)->ensureActive();
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum membuat ruangan.');
+        }
+
         return view('features.ruangan.create');
     }
 
@@ -88,7 +99,9 @@ class RuanganController extends Controller
         ]);
 
         try {
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
             $ruangan = Ruangan::create([
+                'tahun_ajaran_id' => $activeYear->id,
                 'nama_ruangan' => $request->nama_ruangan,
                 'kode_ruangan' => $request->kode_ruangan,
                 'kapasitas' => $request->kapasitas,
@@ -369,6 +382,13 @@ class RuanganController extends Controller
      */
     public function import()
     {
+        try {
+            app(TahunAjaranService::class)->ensureActive();
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum import ruangan.');
+        }
+
         return view('features.ruangan.import');
     }
 
@@ -388,12 +408,14 @@ class RuanganController extends Controller
 
         try {
             DB::beginTransaction();
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
 
             $ruanganData = $request->ruangan_data;
             $imported = 0;
 
             foreach ($ruanganData as $data) {
                 Ruangan::create([
+                    'tahun_ajaran_id' => $activeYear->id,
                     'nama_ruangan' => $data['nama_ruangan'],
                     'kode_ruangan' => $data['kode_ruangan'],
                     'kapasitas' => $data['kapasitas'],
@@ -429,9 +451,13 @@ class RuanganController extends Controller
 
         // Buang kemungkinan nilai kosong
         $ids = array_filter($ids);
+        $ids = Ruangan::whereIn('id', $ids)
+            ->whereDoesntHave('tahunAjaran', fn($query) => $query->where('status', 'arsip'))
+            ->pluck('id')
+            ->all();
 
         if (count($ids) === 0) {
-            return redirect()->back()->with('error', 'Tidak ada item yang dipilih.');
+            return redirect()->back()->with('error', 'Tidak ada item aktif yang dapat diproses.');
         }
 
         try {
@@ -530,6 +556,11 @@ class RuanganController extends Controller
             foreach ($roomIds as $roomId) {
                 $room = Ruangan::find($roomId);
                 if ($room) {
+                    if ($room->tahunAjaran?->isReadOnly()) {
+                        $skippedCount++;
+                        continue;
+                    }
+
                     if ($room->sesiRuangan()->count() > 0) {
                         $skippedCount++;
                     } else {
@@ -560,6 +591,13 @@ class RuanganController extends Controller
      */
     public function importComprehensive()
     {
+        try {
+            app(TahunAjaranService::class)->ensureActive();
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum import komprehensif.');
+        }
+
         return view('features.ruangan.import-comprehensive');
     }
 
@@ -576,7 +614,8 @@ class RuanganController extends Controller
             DB::beginTransaction();
 
             $file = $request->file('import_file');
-            $import = new \App\Imports\ComprehensiveRuanganImport();
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
+            $import = new \App\Imports\ComprehensiveRuanganImport($activeYear->id);
             \Maatwebsite\Excel\Facades\Excel::import($import, $file);
 
             $results = $import->getImportResults();

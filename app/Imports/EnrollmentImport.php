@@ -55,6 +55,16 @@ class EnrollmentImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
+                $kelasTahun = $siswa->kelasForTahunAjaran($jadwal->tahun_ajaran_id);
+                $kelasTargets = collect($jadwal->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+
+                if (!$kelasTahun || (!empty($kelasTargets) && !in_array((string) $kelasTahun->id, $kelasTargets, true))) {
+                    $this->failed++;
+                    $this->errors[] = "Siswa {$siswa->nama} tidak eligible untuk jadwal {$jadwal->judul}.";
+                    DB::rollBack();
+                    continue;
+                }
+
                 // Cek apakah sudah terdaftar di enrollment
                 $existing = EnrollmentUjian::where('siswa_id', $siswa->id)
                     ->where('jadwal_ujian_id', $jadwal->id)
@@ -71,6 +81,7 @@ class EnrollmentImport implements ToCollection, WithHeadingRow
                 $sesi = SesiRuangan::whereHas('jadwalUjians', function ($q) use ($jadwal) {
                     $q->where('jadwal_ujian.id', $jadwal->id);
                 })
+                    ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
                     ->whereHas('sesiRuanganSiswa', function ($q) use ($siswa) {
                         $q->where('siswa_id', $siswa->id);
                     })

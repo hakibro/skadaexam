@@ -9,6 +9,9 @@ use App\Models\SesiRuangan;
 use App\Models\Siswa;
 use App\Models\Mapel;
 use App\Models\SoalUjian;
+use App\Models\PaketUjian;
+use App\Models\TahunAjaran;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -20,7 +23,17 @@ class HasilUjianController extends Controller
      */
     public function index(Request $request)
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
         $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        }
 
         // Filter by jadwal ujian
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
@@ -28,27 +41,7 @@ class HasilUjianController extends Controller
         }
 
         // Filter by kelas
-        if ($request->has('kelas_id') && $request->kelas_id != '') {
-            $kelasId = $request->kelas_id;
-            $query->whereHas('siswa', function ($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
-            });
-        }
-        // Filter by tingkat
-        if ($request->filled('tingkat')) {
-            $tingkat = $request->tingkat;
-            $query->whereHas('siswa.kelas', function ($q) use ($tingkat) {
-                $q->where('tingkat', $tingkat);
-            });
-        }
-
-        // Filter by jurusan
-        if ($request->filled('jurusan')) {
-            $jurusan = $request->jurusan;
-            $query->whereHas('siswa.kelas', function ($q) use ($jurusan) {
-                $q->where('jurusan', $jurusan);
-            });
-        }
+        $this->applySiswaTahunFilters($query, $request, $tahunAjaranId);
 
         // Filter by sesi
         if ($request->has('sesi_id') && $request->sesi_id != '') {
@@ -108,9 +101,17 @@ class HasilUjianController extends Controller
         $hasilUjians = $query->latest()->paginate(15);
 
         // Get unique values for filters
-        $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
-        $sesiRuangans = SesiRuangan::orderBy('nama_sesi')->get();
-        $kelasList = \App\Models\Kelas::orderBy('nama_kelas', 'asc')->get();
+        $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->when($request->filled('paket_ujian_id'), fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id))
+            ->orderBy('tanggal', 'desc')
+            ->get();
+        $sesiRuangans = SesiRuangan::forTahunAjaran($tahunAjaranId)->orderBy('nama_sesi')->get();
+        $kelasList = \App\Models\Kelas::forTahunAjaran($tahunAjaranId)->orderBy('nama_kelas', 'asc')->get();
+        $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $paketUjians = PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
 
         return view('features.naskah.hasil.index', compact(
             'hasilUjians',
@@ -122,7 +123,10 @@ class HasilUjianController extends Controller
             'averageScore',
             'passRate',
             'passedCount',
-            'latestHasil'
+            'latestHasil',
+            'tahunAjarans',
+            'tahunAjaranId',
+            'paketUjians'
         ));
     }
 
@@ -274,7 +278,17 @@ class HasilUjianController extends Controller
      */
     public function export(Request $request)
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
         $query = HasilUjian::query();
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        }
 
         // Apply filters just like in the index method
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
@@ -282,27 +296,7 @@ class HasilUjianController extends Controller
         }
 
         // Filter by kelas
-        if ($request->has('kelas_id') && $request->kelas_id != '') {
-            $kelasId = $request->kelas_id;
-            $query->whereHas('siswa', function ($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
-            });
-        }
-        // Filter by tingkat
-        if ($request->filled('tingkat')) {
-            $tingkat = $request->tingkat;
-            $query->whereHas('siswa.kelas', function ($q) use ($tingkat) {
-                $q->where('tingkat', $tingkat);
-            });
-        }
-
-        // Filter by jurusan
-        if ($request->filled('jurusan')) {
-            $jurusan = $request->jurusan;
-            $query->whereHas('siswa.kelas', function ($q) use ($jurusan) {
-                $q->where('jurusan', $jurusan);
-            });
-        }
+        $this->applySiswaTahunFilters($query, $request, $tahunAjaranId);
 
         // Filter by sesi
         if ($request->has('sesi_id') && $request->sesi_id != '') {
@@ -502,27 +496,24 @@ class HasilUjianController extends Controller
      */
     public function analisis(Request $request)
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
         $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas', 'jawabanSiswas.soalUjian']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        }
 
         // Apply filters similar to index method
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
             $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
 
-        if ($request->has('kelas_id') && $request->kelas_id != '') {
-            $kelasId = $request->kelas_id;
-            $query->whereHas('siswa', function ($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
-            });
-        }
-
-        if ($request->filled('tingkat')) {
-            $query->whereHas('siswa.kelas', fn($q) => $q->where('tingkat', $request->tingkat));
-        }
-
-        if ($request->filled('jurusan')) {
-            $query->whereHas('siswa.kelas', fn($q) => $q->where('jurusan', $request->jurusan));
-        }
+        $this->applySiswaTahunFilters($query, $request, $tahunAjaranId);
 
         // Only consider completed tests for analysis
         $query->where('status', 'selesai');
@@ -620,10 +611,19 @@ class HasilUjianController extends Controller
             ->values();
 
         // Get filters for the view
-        $jadwalUjians = JadwalUjian::orderBy('tanggal', 'desc')->get();
-        $kelasList = \App\Models\Kelas::orderBy('nama_kelas', 'asc')->get();
-        $tingkatList = \App\Models\Kelas::select('tingkat')->distinct()->whereNotNull('tingkat')->orderBy('tingkat')->pluck('tingkat');
-        $jurusanList = \App\Models\Kelas::select('jurusan')->distinct()->whereNotNull('jurusan')->orderBy('jurusan')->pluck('jurusan');
+        $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->when($request->filled('paket_ujian_id'), fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id))
+            ->orderBy('tanggal', 'desc')
+            ->get();
+        $kelasQuery = \App\Models\Kelas::forTahunAjaran($tahunAjaranId);
+        $kelasList = (clone $kelasQuery)->orderBy('nama_kelas', 'asc')->get();
+        $tingkatList = (clone $kelasQuery)->select('tingkat')->distinct()->whereNotNull('tingkat')->orderBy('tingkat')->pluck('tingkat');
+        $jurusanList = (clone $kelasQuery)->select('jurusan')->distinct()->whereNotNull('jurusan')->orderBy('jurusan')->pluck('jurusan');
+        $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $paketUjians = PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
 
         return view('features.naskah.hasil.analisis', compact(
             'hasilUjians',
@@ -647,7 +647,10 @@ class HasilUjianController extends Controller
             'jadwalUjians',
             'kelasList',
             'tingkatList',
-            'jurusanList'
+            'jurusanList',
+            'tahunAjarans',
+            'tahunAjaranId',
+            'paketUjians'
         ));
     }
 
@@ -829,5 +832,30 @@ class HasilUjianController extends Controller
             ])
             ->sortBy('accuracy')
             ->values();
+    }
+
+    private function applySiswaTahunFilters($query, Request $request, $tahunAjaranId): void
+    {
+        if (!$request->filled('kelas_id') && !$request->filled('tingkat') && !$request->filled('jurusan')) {
+            return;
+        }
+
+        $query->whereHas('siswa.tahunAjaranRecords', function ($q) use ($request, $tahunAjaranId) {
+            if ($tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+
+            if ($request->filled('kelas_id')) {
+                $q->where('kelas_id', $request->kelas_id);
+            }
+
+            if ($request->filled('tingkat')) {
+                $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat));
+            }
+
+            if ($request->filled('jurusan')) {
+                $q->whereHas('kelas', fn($kelas) => $kelas->where('jurusan', $request->jurusan));
+            }
+        });
     }
 }

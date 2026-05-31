@@ -13,6 +13,7 @@ class Kelas extends Model
     protected $table = 'kelas';
 
     protected $fillable = [
+        'tahun_ajaran_id',
         'nama_kelas',
         'tingkat',
         'jurusan',
@@ -25,6 +26,11 @@ class Kelas extends Model
     public function siswa(): HasMany
     {
         return $this->hasMany(Siswa::class, 'kelas_id', 'id');
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
     /**
@@ -71,6 +77,11 @@ class Kelas extends Model
     public function scopeByJurusan($query, $jurusan)
     {
         return $query->where('jurusan', $jurusan);
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
     /**

@@ -13,6 +13,8 @@ class JadwalUjian extends Model
     protected $table = 'jadwal_ujian';
 
     protected $fillable = [
+        'tahun_ajaran_id',
+        'paket_ujian_id',
         'judul',
         'mapel_id',
         'tanggal',
@@ -55,6 +57,16 @@ class JadwalUjian extends Model
     public function mapel()
     {
         return $this->belongsTo(Mapel::class, 'mapel_id');
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+    }
+
+    public function paketUjian()
+    {
+        return $this->belongsTo(PaketUjian::class, 'paket_ujian_id');
     }
 
     /**
@@ -188,6 +200,16 @@ class JadwalUjian extends Model
         return $query->where('tanggal', '>=', Carbon::today())
             ->where('status', 'active')
             ->orderBy('tanggal');
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
+    }
+
+    public function scopeForPaketUjian($query, $paketUjianId)
+    {
+        return $paketUjianId ? $query->where('paket_ujian_id', $paketUjianId) : $query;
     }
 
     // Methods

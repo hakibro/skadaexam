@@ -62,6 +62,31 @@
                     <div class="flex flex-nowrap items-end gap-2 overflow-x-auto pb-2 lg:pb-0">
 
                         <div class="min-w-[180px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Tahun Ajaran</label>
+                            <select name="tahun_ajaran_id"
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                @foreach ($tahunAjarans as $tahun)
+                                    <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                        {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="min-w-[160px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Paket Ujian</label>
+                            <select name="paket_ujian_id"
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
+                                <option value="">Semua Paket</option>
+                                @foreach ($paketUjians as $paket)
+                                    <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                        {{ $paket->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="min-w-[180px] flex-1">
                             <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Cari Siswa</label>
                             <input type="text" name="siswa_search" value="{{ request('siswa_search') }}"
                                 placeholder="Nama / ID..."
@@ -75,7 +100,7 @@
                                 <option value="">Semua Kelas</option>
                                 @foreach ($kelasList as $kelas)
                                     <option value="{{ $kelas->id }}"
-                                        {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>{{ $kelas->nama }}
+                                        {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>{{ $kelas->nama_kelas }}
                                     </option>
                                 @endforeach
                             </select>
@@ -188,8 +213,11 @@
                                             {{ $enrollment->siswa->nama ?? 'N/A' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
+                                            @php
+                                                $kelasTahun = $enrollment->siswa?->kelasForTahunAjaran($enrollment->jadwalUjian?->tahun_ajaran_id);
+                                            @endphp
                                             <span
-                                                class="text-gray-600">{{ $enrollment->siswa->kelas->nama ?? '-' }}</span>
+                                                class="text-gray-600">{{ $kelasTahun->nama_kelas ?? ($enrollment->siswa->kelas->nama_kelas ?? '-') }}</span>
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="text-gray-900 font-medium">

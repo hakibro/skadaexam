@@ -16,6 +16,7 @@
 
                 <div class="p-4 sm:p-6 space-y-6">
                     <input type="hidden" name="jenis_ujian" value="uas">
+                    <input type="hidden" name="tahun_ajaran_id" value="{{ $activeYear->id }}">
 
                     <!-- Status Section - Added for better visibility -->
                     <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
@@ -25,8 +26,8 @@
                             </div>
                             <div class="ml-3">
                                 <p class="text-sm text-blue-700">
-                                    <strong>Informasi:</strong> Jadwal ujian baru akan dibuat dengan status <span
-                                        class="font-bold">Draft</span>.
+                                    <strong>Tahun Ajaran:</strong> {{ $activeYear->nama }}.
+                                    Jadwal ujian baru akan dibuat dengan status <span class="font-bold">Aktif</span>.
                                 </p>
                                 <p class="text-xs text-blue-700 mt-1">
                                     Status jadwal dapat diubah di halaman detail jadwal ujian setelah pembuatan.
@@ -36,6 +37,23 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700">Paket Ujian <span
+                                    class="text-red-500">*</span></label>
+                            <select name="paket_ujian_id" id="paket_ujian_id" required
+                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('paket_ujian_id') border-red-500 @enderror">
+                                @foreach ($paketUjians as $paket)
+                                    <option value="{{ $paket->id }}"
+                                        {{ (string) old('paket_ujian_id', $paketUjianId) === (string) $paket->id ? 'selected' : '' }}>
+                                        {{ $paket->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('paket_ujian_id')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <div>
                             <label for="mapel_id" class="block text-sm font-medium text-gray-700">Mata Pelajaran <span
                                     class="text-red-500">*</span></label>
