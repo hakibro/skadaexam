@@ -4,6 +4,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSoalRequest extends FormRequest
 {
@@ -20,34 +21,49 @@ class StoreSoalRequest extends FormRequest
      */
     public function rules(): array
     {
+        $soal = $this->route('soal');
+        $isUpdate = in_array($this->method(), ['PUT', 'PATCH'], true) && $soal;
+
         return [
             'bank_soal_id' => 'required|exists:bank_soal,id',
             'nomor_soal' => 'required|integer|min:1',
-            'pertanyaan' => 'required_unless:tipe_pertanyaan,gambar|string',
+            'pertanyaan' => [
+                Rule::requiredIf(fn() => in_array($this->input('tipe_pertanyaan'), ['teks', 'teks_gambar'], true)),
+                'nullable',
+                'string',
+            ],
             'tipe_pertanyaan' => 'required|in:teks,gambar,teks_gambar',
             'tipe_soal' => 'required|in:pilihan_ganda,essay',
-            'gambar_pertanyaan' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'gambar_pertanyaan' => [
+                Rule::requiredIf(fn() => in_array($this->input('tipe_pertanyaan'), ['gambar', 'teks_gambar'], true)
+                    && (!$isUpdate || empty($soal->gambar_pertanyaan))),
+                'nullable',
+                'file',
+                'image',
+                'mimes:jpeg,png,jpg,gif,webp',
+                'max:5120',
+            ],
 
             // Pilihan jawaban (hanya divalidasi jika tipe_soal = pilihan_ganda)
             'pilihan_a_teks' => 'required_if:pilihan_a_tipe,teks|nullable|string',
             'pilihan_a_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_a_gambar' => 'required_if:pilihan_a_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'pilihan_a_gambar' => $this->imageOptionRules('a', $soal, $isUpdate),
 
             'pilihan_b_teks' => 'required_if:pilihan_b_tipe,teks|nullable|string',
             'pilihan_b_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_b_gambar' => 'required_if:pilihan_b_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'pilihan_b_gambar' => $this->imageOptionRules('b', $soal, $isUpdate),
 
             'pilihan_c_teks' => 'required_if:pilihan_c_tipe,teks|nullable|string',
             'pilihan_c_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_c_gambar' => 'required_if:pilihan_c_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'pilihan_c_gambar' => $this->imageOptionRules('c', $soal, $isUpdate),
 
             'pilihan_d_teks' => 'required_if:pilihan_d_tipe,teks|nullable|string',
             'pilihan_d_tipe' => 'required_if:tipe_soal,pilihan_ganda|in:teks,gambar',
-            'pilihan_d_gambar' => 'required_if:pilihan_d_tipe,gambar|nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'pilihan_d_gambar' => $this->imageOptionRules('d', $soal, $isUpdate),
 
             'pilihan_e_teks' => 'nullable|string',
             'pilihan_e_tipe' => 'nullable|in:teks,gambar',
-            'pilihan_e_gambar' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'pilihan_e_gambar' => $this->imageOptionRules('e', $soal, $isUpdate, false),
 
             'kunci_jawaban' => 'required_if:tipe_soal,pilihan_ganda|nullable|in:A,B,C,D,E',
 
@@ -59,6 +75,24 @@ class StoreSoalRequest extends FormRequest
             'bobot' => 'nullable|numeric|min:0.01|max:100.00',
             'kategori' => 'nullable|string|max:50',
             'display_settings' => 'nullable|array',
+        ];
+    }
+
+    private function imageOptionRules(string $option, $soal, bool $isUpdate, bool $requiredForPilihanGanda = true): array
+    {
+        $typeField = "pilihan_{$option}_tipe";
+        $imageField = "pilihan_{$option}_gambar";
+
+        return [
+            Rule::requiredIf(fn() => $this->input('tipe_soal') === 'pilihan_ganda'
+                && $this->input($typeField) === 'gambar'
+                && (!$isUpdate || empty($soal->{$imageField}))
+                && ($requiredForPilihanGanda || $this->has($typeField))),
+            'nullable',
+            'file',
+            'image',
+            'mimes:jpeg,png,jpg,gif,webp',
+            'max:2048',
         ];
     }
 

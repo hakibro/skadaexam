@@ -849,6 +849,7 @@
             const tipePertanyaan = document.querySelector('input[name="tipe_pertanyaan"]:checked').value;
             const pertanyaan = document.querySelector('textarea[name="pertanyaan"]').value.trim();
             const gambarPertanyaan = document.querySelector('input[name="gambar_pertanyaan"]').files[0];
+            const hasExistingGambarPertanyaan = @json((bool) $soal->gambar_pertanyaan);
 
             // Check pertanyaan requirements
             if (tipePertanyaan === 'teks' && !pertanyaan) {
@@ -857,13 +858,13 @@
                 return false;
             }
 
-            if (tipePertanyaan === 'gambar' && !gambarPertanyaan) {
+            if (tipePertanyaan === 'gambar' && !gambarPertanyaan && !hasExistingGambarPertanyaan) {
                 e.preventDefault();
                 alert('Gambar pertanyaan wajib diupload untuk tipe yang dipilih');
                 return false;
             }
 
-            if (tipePertanyaan === 'teks_gambar' && (!pertanyaan || !gambarPertanyaan)) {
+            if (tipePertanyaan === 'teks_gambar' && (!pertanyaan || (!gambarPertanyaan && !hasExistingGambarPertanyaan))) {
                 e.preventDefault();
                 alert('Pertanyaan teks dan gambar wajib diisi untuk tipe yang dipilih');
                 return false;
@@ -881,6 +882,13 @@
 
                 // Check if at least options A and B are filled
                 let validOptions = 0;
+                const existingPilihanImages = @json([
+                    'a' => (bool) $soal->pilihan_a_gambar,
+                    'b' => (bool) $soal->pilihan_b_gambar,
+                    'c' => (bool) $soal->pilihan_c_gambar,
+                    'd' => (bool) $soal->pilihan_d_gambar,
+                    'e' => (bool) $soal->pilihan_e_gambar,
+                ]);
                 ['a', 'b'].forEach(pilihan => {
                     const tipe = document.querySelector(`input[name="pilihan_${pilihan}_tipe"]:checked`)
                         .value;
@@ -889,7 +897,7 @@
                     const gambar = document.querySelector(`input[name="pilihan_${pilihan}_gambar"]`).files[
                         0];
 
-                    if ((tipe === 'teks' && teks) || (tipe === 'gambar' && gambar)) {
+                    if ((tipe === 'teks' && teks) || (tipe === 'gambar' && (gambar || existingPilihanImages[pilihan]))) {
                         validOptions++;
                     }
                 });

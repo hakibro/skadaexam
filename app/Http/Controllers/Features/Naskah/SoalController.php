@@ -408,6 +408,12 @@ class SoalController extends Controller
                 ]);
             }
 
+            foreach (array_merge(['gambar_pertanyaan', 'pembahasan_gambar'], array_map(fn($pilihan) => "pilihan_{$pilihan}_gambar", ['a', 'b', 'c', 'd', 'e'])) as $imageField) {
+                if (!$request->hasFile($imageField)) {
+                    unset($data[$imageField]);
+                }
+            }
+
             // Update soal
             $soal->update($data);
 

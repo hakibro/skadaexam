@@ -402,6 +402,18 @@ class BankSoalController extends Controller
                 throw new \Exception('Gagal menyalin file untuk diproses. Harap coba lagi.');
             }
 
+            try {
+                $xmlImportResult = $this->processDocxXmlFile($tempFile, $banksoal);
+                if (($xmlImportResult['imported'] ?? 0) > 0) {
+                    @unlink($tempFile);
+                    return $xmlImportResult;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('DOCX XML parser failed, falling back to PhpWord parser', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             // Load the DOCX file with PhpWord
             try {
                 $phpWord = IOFactory::load($tempFile);
@@ -434,6 +446,7 @@ class BankSoalController extends Controller
             // Array for current question being processed
             $currentQuestion = null;
             $questionNumber = 0;
+            $lastImageTarget = null;
             $sectionCount = count($phpWord->getSections());
 
             Log::info("DOCX file structure", [
@@ -480,6 +493,7 @@ class BankSoalController extends Controller
 
                             // Start new question
                             $questionNumber = (int)$matches[1];
+                            $lastImageTarget = 'pertanyaan';
                             $currentQuestion = [
                                 'bank_soal_id' => $banksoal->id,
                                 'nomor_soal' => $questionNumber,
@@ -524,6 +538,7 @@ class BankSoalController extends Controller
 
                                 // Simpan teks jawaban meski kosong
                                 $currentQuestion['pilihan_' . $answerKey . '_teks'] = $answerText;
+                                $lastImageTarget = 'pilihan_' . $answerKey;
 
                                 // Tandai pilihan kosong sebagai pilihan untuk gambar
                                 if (empty(trim($answerText))) {
@@ -558,6 +573,7 @@ class BankSoalController extends Controller
                         // If it's not a new question or answer, check for pembahasan (explanation)
                         elseif ($currentQuestion && preg_match('/^Pembahasan:\s+(.+)$/i', $text, $matches)) {
                             $currentQuestion['pembahasan_teks'] = $matches[1];
+                            $lastImageTarget = 'pembahasan';
                             Log::info("Found explanation for question", [
                                 'question' => $questionNumber
                             ]);
@@ -567,62 +583,14 @@ class BankSoalController extends Controller
                             // Check if this is a continuation of an explanation
                             if (!empty($currentQuestion['pembahasan_teks'])) {
                                 $currentQuestion['pembahasan_teks'] .= "\n" . $text;
+                                $lastImageTarget = 'pembahasan';
                             } else {
                                 $currentQuestion['pertanyaan'] .= "\n" . $text;
+                                $lastImageTarget = 'pertanyaan';
                             }
                         }
-                    }
-                    // Process TextRun elements, but skip image extraction
-                    elseif ($element instanceof \PhpOffice\PhpWord\Element\TextRun) {
-                        foreach ($element->getElements() as $inline) {
-                            if ($inline instanceof \PhpOffice\PhpWord\Element\Image) {
-                                // Simply log that we found an image but are skipping it
-                                Log::info("Image found in document but skipping extraction per user request", [
-                                    'question' => $questionNumber ?? 'No active question'
-                                ]);
 
-                                // Add a note to indicate images were found but skipped
-                                if ($currentQuestion) {
-                                    // Check if this might be an answer option with image
-                                    if (!empty($currentQuestion['pilihan_a_teks']) && $currentQuestion['pilihan_a_teks'] === '') {
-                                        $currentQuestion['pilihan_a_teks'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        Log::info("Marked option A for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    } else if (!empty($currentQuestion['pilihan_b_teks']) && $currentQuestion['pilihan_b_teks'] === '') {
-                                        $currentQuestion['pilihan_b_teks'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        Log::info("Marked option B for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    } else if (!empty($currentQuestion['pilihan_c_teks']) && $currentQuestion['pilihan_c_teks'] === '') {
-                                        $currentQuestion['pilihan_c_teks'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        Log::info("Marked option C for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    } else if (!empty($currentQuestion['pilihan_d_teks']) && $currentQuestion['pilihan_d_teks'] === '') {
-                                        $currentQuestion['pilihan_d_teks'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        Log::info("Marked option D for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    } else if (!empty($currentQuestion['pilihan_e_teks']) && $currentQuestion['pilihan_e_teks'] === '') {
-                                        $currentQuestion['pilihan_e_teks'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        Log::info("Marked option E for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    } else {
-                                        // If no specific context, assume it's for the question itself
-                                        if (empty($currentQuestion['pertanyaan']) || $currentQuestion['pertanyaan'] === '') {
-                                            $currentQuestion['pertanyaan'] = '[Perlu Tambahkan Gambar Secara Manual]';
-                                        } else {
-                                            $currentQuestion['pertanyaan'] .= "\n[Perlu Tambahkan Gambar Secara Manual]";
-                                        }
-                                        Log::info("Marked question for manual image upload", [
-                                            'question' => $questionNumber
-                                        ]);
-                                    }
-                                }
-                            }
-                        }
+                        $this->attachImagesFromTextRun($element, $currentQuestion, $lastImageTarget, $banksoal);
                     }
                 }
             }
@@ -681,7 +649,284 @@ class BankSoalController extends Controller
         return $text;
     }
 
-    // Image saving functionality removed - images will be added manually through the edit interface
+    private function processDocxXmlFile(string $docxPath, BankSoal $banksoal): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            throw new \Exception('Gagal membuka file DOCX sebagai arsip.');
+        }
+
+        $documentXml = $zip->getFromName('word/document.xml');
+        $relsXml = $zip->getFromName('word/_rels/document.xml.rels') ?: '';
+
+        if (!$documentXml) {
+            $zip->close();
+            throw new \Exception('Struktur DOCX tidak memiliki word/document.xml.');
+        }
+
+        $mediaMap = $this->docxMediaRelationshipMap($relsXml);
+        $paragraphs = $this->docxParagraphs($documentXml);
+
+        $log = [
+            'imported' => 0,
+            'skipped' => 0,
+            'errors' => [],
+            'timestamp' => now()->toDateTimeString(),
+            'parser' => 'docx_xml',
+        ];
+
+        $currentQuestion = null;
+        $questionNumber = 0;
+        $lastImageTarget = null;
+
+        foreach ($paragraphs as $paragraph) {
+            $text = trim(preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $paragraph['text'])));
+
+            if (preg_match('/^(\d+)\.\s*(.*)$/u', $text, $matches)) {
+                if ($currentQuestion) {
+                    $this->saveQuestion($currentQuestion, $banksoal);
+                    $log['imported']++;
+                }
+
+                $questionNumber = (int) $matches[1];
+                $currentQuestion = $this->newImportedQuestionData($banksoal->id, $questionNumber, trim($matches[2] ?? ''));
+                $lastImageTarget = 'pertanyaan';
+            } elseif ($currentQuestion && preg_match('/^([A-E])\.\s*(.*)$/iu', $text, $matches)) {
+                $answerKey = strtolower($matches[1]);
+                $answerText = trim($matches[2] ?? '');
+                $isCorrect = preg_match('/\[\*\]\s*$/u', $answerText) === 1;
+                $answerText = trim(preg_replace('/\s*\[\*\]\s*$/u', '', $answerText));
+
+                $currentQuestion['pilihan_' . $answerKey . '_teks'] = $answerText;
+                $lastImageTarget = 'pilihan_' . $answerKey;
+
+                if ($isCorrect) {
+                    $currentQuestion['kunci_jawaban'] = strtoupper($answerKey);
+                }
+            } elseif ($currentQuestion && preg_match('/^Pembahasan:\s*(.*)$/iu', $text, $matches)) {
+                $currentQuestion['pembahasan_teks'] = trim($matches[1] ?? '');
+                $lastImageTarget = 'pembahasan';
+            } elseif ($currentQuestion && $text !== '') {
+                if ($lastImageTarget === 'pembahasan' || $currentQuestion['pembahasan_teks'] !== null) {
+                    $currentQuestion['pembahasan_teks'] = trim(($currentQuestion['pembahasan_teks'] ?? '') . "\n" . $text);
+                    $lastImageTarget = 'pembahasan';
+                } else {
+                    $currentQuestion['pertanyaan'] = trim(($currentQuestion['pertanyaan'] ?? '') . "\n" . $text);
+                    $lastImageTarget = 'pertanyaan';
+                }
+            }
+
+            if ($currentQuestion && !empty($paragraph['image_ids'])) {
+                foreach ($paragraph['image_ids'] as $relationId) {
+                    $mediaName = $mediaMap[$relationId] ?? null;
+                    if (!$mediaName) {
+                        continue;
+                    }
+
+                    $binary = $zip->getFromName('word/media/' . $mediaName);
+                    if (!$binary) {
+                        continue;
+                    }
+
+                    $target = $lastImageTarget ?: 'pertanyaan';
+                    $extension = pathinfo($mediaName, PATHINFO_EXTENSION) ?: 'png';
+                    $filename = $this->saveDocxImageBinary($binary, $extension, $banksoal->id, $questionNumber, $target);
+                    $this->attachSavedImageToQuestion($currentQuestion, $target, $filename);
+                }
+            }
+        }
+
+        if ($currentQuestion) {
+            $this->saveQuestion($currentQuestion, $banksoal);
+            $log['imported']++;
+        }
+
+        $zip->close();
+
+        Log::info('DOCX XML processing completed', [
+            'imported' => $log['imported'],
+            'media_count' => count($mediaMap),
+        ]);
+
+        return $log;
+    }
+
+    private function docxMediaRelationshipMap(string $relsXml): array
+    {
+        $map = [];
+        preg_match_all('/<Relationship\b[^>]*>/i', $relsXml, $relationships);
+
+        foreach ($relationships[0] ?? [] as $relationship) {
+            if (!preg_match('/\bId="([^"]+)"/i', $relationship, $idMatch)) {
+                continue;
+            }
+
+            if (!preg_match('/\bTarget="media\/([^"]+)"/i', $relationship, $targetMatch)) {
+                continue;
+            }
+
+            $map[$idMatch[1]] = html_entity_decode($targetMatch[1]);
+        }
+
+        return $map;
+    }
+
+    private function docxParagraphs(string $documentXml): array
+    {
+        preg_match_all('/<w:p\b[^>]*>.*?<\/w:p>/is', $documentXml, $matches);
+
+        return collect($matches[0] ?? [])->map(function ($paragraphXml) {
+            preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>/is', $paragraphXml, $textMatches);
+            preg_match_all('/r:embed="([^"]+)"/i', $paragraphXml, $imageMatches);
+
+            return [
+                'text' => html_entity_decode(implode('', $textMatches[1] ?? [])),
+                'image_ids' => $imageMatches[1] ?? [],
+            ];
+        })->all();
+    }
+
+    private function newImportedQuestionData(int $bankSoalId, int $questionNumber, string $questionText): array
+    {
+        return [
+            'bank_soal_id' => $bankSoalId,
+            'nomor_soal' => $questionNumber,
+            'pertanyaan' => $questionText,
+            'tipe_pertanyaan' => 'teks',
+            'tipe_soal' => 'pilihan_ganda',
+            'gambar_pertanyaan' => null,
+            'pilihan_a_teks' => null,
+            'pilihan_a_gambar' => null,
+            'pilihan_a_tipe' => 'teks',
+            'pilihan_b_teks' => null,
+            'pilihan_b_gambar' => null,
+            'pilihan_b_tipe' => 'teks',
+            'pilihan_c_teks' => null,
+            'pilihan_c_gambar' => null,
+            'pilihan_c_tipe' => 'teks',
+            'pilihan_d_teks' => null,
+            'pilihan_d_gambar' => null,
+            'pilihan_d_tipe' => 'teks',
+            'pilihan_e_teks' => null,
+            'pilihan_e_gambar' => null,
+            'pilihan_e_tipe' => 'teks',
+            'kunci_jawaban' => null,
+            'pembahasan_teks' => null,
+            'pembahasan_gambar' => null,
+            'pembahasan_tipe' => 'teks',
+            'bobot' => 1.00,
+        ];
+    }
+
+    private function attachImagesFromTextRun($textRun, ?array &$currentQuestion, ?string &$lastImageTarget, BankSoal $banksoal): void
+    {
+        if (!$currentQuestion) {
+            return;
+        }
+
+        foreach ($textRun->getElements() as $inline) {
+            if (!$inline instanceof \PhpOffice\PhpWord\Element\Image) {
+                continue;
+            }
+
+            $target = $lastImageTarget ?: 'pertanyaan';
+            $filename = $this->saveDocxImage($inline, $banksoal->id, (int) $currentQuestion['nomor_soal'], $target);
+
+            if (!$filename) {
+                Log::warning('DOCX image found but could not be saved', [
+                    'question' => $currentQuestion['nomor_soal'],
+                    'target' => $target,
+                ]);
+                continue;
+            }
+
+            $this->attachSavedImageToQuestion($currentQuestion, $target, $filename);
+
+            Log::info('DOCX image imported', [
+                'question' => $currentQuestion['nomor_soal'],
+                'target' => $target,
+                'filename' => $filename,
+            ]);
+        }
+    }
+
+    private function saveDocxImage(Image $image, int $bankSoalId, int $nomorSoal, string $target): ?string
+    {
+        $binary = null;
+        $source = method_exists($image, 'getSource') ? $image->getSource() : null;
+
+        if (method_exists($image, 'getImageStringData')) {
+            try {
+                $binary = $image->getImageStringData();
+            } catch (\Throwable $e) {
+                $binary = null;
+            }
+        }
+
+        if (!$binary && $source) {
+            try {
+                $binary = @file_get_contents($source) ?: null;
+            } catch (\Throwable $e) {
+                $binary = null;
+            }
+        }
+
+        if (!$binary) {
+            return null;
+        }
+
+        $extension = method_exists($image, 'getImageExtension') ? $image->getImageExtension() : null;
+        if (!$extension && $source) {
+            $extension = pathinfo(parse_url($source, PHP_URL_PATH) ?: $source, PATHINFO_EXTENSION);
+        }
+        $extension = strtolower($extension ?: 'png');
+        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
+
+        return $this->saveDocxImageBinary($binary, $extension, $bankSoalId, $nomorSoal, $target);
+    }
+
+    private function saveDocxImageBinary(string $binary, string $extension, int $bankSoalId, int $nomorSoal, string $target): string
+    {
+        $extension = strtolower($extension ?: 'png');
+        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
+
+        $folder = match (true) {
+            str_starts_with($target, 'pilihan_') => 'soal/pilihan',
+            $target === 'pembahasan' => 'soal/pembahasan',
+            default => 'soal/pertanyaan',
+        };
+
+        $filename = implode('_', [
+            'docx',
+            'bank' . $bankSoalId,
+            'soal' . $nomorSoal,
+            $target,
+            \Illuminate\Support\Str::random(8),
+        ]) . '.' . $extension;
+
+        Storage::disk('public')->put($folder . '/' . $filename, $binary);
+
+        return $filename;
+    }
+
+    private function attachSavedImageToQuestion(array &$question, string $target, string $filename): void
+    {
+        if ($target === 'pembahasan') {
+            $question['pembahasan_gambar'] = $filename;
+            $question['pembahasan_tipe'] = empty(trim((string) ($question['pembahasan_teks'] ?? ''))) ? 'gambar' : 'teks_gambar';
+            return;
+        }
+
+        if (str_starts_with($target, 'pilihan_')) {
+            $option = substr($target, -1);
+            $question["pilihan_{$option}_gambar"] = $filename;
+            $question["pilihan_{$option}_tipe"] = 'gambar';
+            return;
+        }
+
+        $question['gambar_pertanyaan'] = $filename;
+        $question['tipe_pertanyaan'] = empty(trim((string) ($question['pertanyaan'] ?? ''))) ? 'gambar' : 'teks_gambar';
+    }
 
     /**
      * Save a question to database
@@ -694,7 +939,7 @@ class BankSoalController extends Controller
                 throw new \Exception("Nomor soal tidak boleh kosong");
             }
 
-            if (empty($data['pertanyaan'])) {
+            if (empty($data['pertanyaan']) && empty($data['gambar_pertanyaan'])) {
                 throw new \Exception("Pertanyaan tidak boleh kosong");
             }
 
@@ -710,7 +955,9 @@ class BankSoalController extends Controller
 
                 // If there's an empty answer option, it's likely a placeholder for an image
                 // that will need to be added manually later
-                if (isset($data[$teksField]) && $data[$teksField] === '') {
+                $gambarField = 'pilihan_' . $option . '_gambar';
+
+                if (isset($data[$teksField]) && $data[$teksField] === '' && empty($data[$gambarField])) {
                     // Mark these empty options with a placeholder text
                     $data[$teksField] = '[Perlu Tambahkan Gambar Secara Manual]';
                     Log::info("Empty answer option detected - manual image upload required", [
