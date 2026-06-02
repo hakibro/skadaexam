@@ -50,7 +50,7 @@ class HasilUjianController extends Controller
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
-            $query->where('status', $request->status);
+            $this->applyStatusFilter($query, $request->status);
         }
 
         // Filter by lulus/tidak lulus
@@ -72,19 +72,19 @@ class HasilUjianController extends Controller
 
         // Get data for statistics
         $totalHasil = $statsQuery->count();
-        $completedHasil = $statsQuery->where('status', 'selesai')->count();
+        $completedHasil = $statsQuery->whereIn('status', $this->completedStatuses())->count();
 
         // Reset where clauses that were added by the count() calls
         $statsQuery = clone $query;
 
         // Get pass/fail statistics
-        $passedCount = $statsQuery->where('status', 'selesai')
+        $passedCount = $statsQuery->whereIn('status', $this->completedStatuses())
             ->where('lulus', true)
             ->count();
 
         // Calculate average score from completed tests only
         $statsQuery = clone $query;
-        $averageScoreResult = $statsQuery->where('status', 'selesai')
+        $averageScoreResult = $statsQuery->whereIn('status', $this->completedStatuses())
             ->avg('nilai');
         $averageScore = $averageScoreResult ? number_format($averageScoreResult, 2) : '0.00';
 
@@ -141,10 +141,12 @@ class HasilUjianController extends Controller
             'jadwalUjian.bankSoal',
             'sesiRuangan.ruangan',
             'siswa.kelas',
+            'siswa.tahunAjaranRecords.kelas',
             'jawabanSiswas.soalUjian',
             'pelanggaranUjian',
             'enrollment'
         ]);
+        $this->hydrateResultStudentClass($hasil);
 
         // Variabel tambahan untuk view
         $mapel = $hasil->jadwalUjian->mapel;
@@ -193,19 +195,19 @@ class HasilUjianController extends Controller
 
         // Calculate statistics
         $totalPeserta = $hasilUjians->count();
-        $selesai = $hasilUjians->where('status', 'selesai')->count();
+        $selesai = $hasilUjians->whereIn('status', $this->completedStatuses())->count();
         $belumMulai = $hasilUjians->where('status', 'belum_mulai')->count();
         $sedangUjian = $hasilUjians->where('status', 'sedang_ujian')->count();
 
         $lulus = $hasilUjians->where('lulus', true)->count();
-        $tidakLulus = $hasilUjians->where('status', 'selesai')->where('lulus', false)->count();
+        $tidakLulus = $hasilUjians->whereIn('status', $this->completedStatuses())->where('lulus', false)->count();
 
-        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai');
-        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai');
-        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai');
+        $rataRataNilai = $hasilUjians->whereIn('status', $this->completedStatuses())->avg('nilai');
+        $nilaiTertinggi = $hasilUjians->whereIn('status', $this->completedStatuses())->max('nilai');
+        $nilaiTerendah = $hasilUjians->whereIn('status', $this->completedStatuses())->min('nilai');
 
         // Group by grade
-        $grades = $hasilUjians->where('status', 'selesai')
+        $grades = $hasilUjians->whereIn('status', $this->completedStatuses())
             ->groupBy('grade')
             ->map(function ($items, $grade) {
                 return [
@@ -246,16 +248,16 @@ class HasilUjianController extends Controller
 
         // Calculate statistics
         $totalPeserta = $hasilUjians->count();
-        $selesai = $hasilUjians->where('status', 'selesai')->count();
+        $selesai = $hasilUjians->whereIn('status', $this->completedStatuses())->count();
         $belumMulai = $hasilUjians->where('status', 'belum_mulai')->count();
         $sedangUjian = $hasilUjians->where('status', 'sedang_ujian')->count();
 
         $lulus = $hasilUjians->where('lulus', true)->count();
-        $tidakLulus = $hasilUjians->where('status', 'selesai')->where('lulus', false)->count();
+        $tidakLulus = $hasilUjians->whereIn('status', $this->completedStatuses())->where('lulus', false)->count();
 
-        $rataRataNilai = $hasilUjians->where('status', 'selesai')->avg('nilai');
-        $nilaiTertinggi = $hasilUjians->where('status', 'selesai')->max('nilai');
-        $nilaiTerendah = $hasilUjians->where('status', 'selesai')->min('nilai');
+        $rataRataNilai = $hasilUjians->whereIn('status', $this->completedStatuses())->avg('nilai');
+        $nilaiTertinggi = $hasilUjians->whereIn('status', $this->completedStatuses())->max('nilai');
+        $nilaiTerendah = $hasilUjians->whereIn('status', $this->completedStatuses())->min('nilai');
 
         return view('features.naskah.hasil.by_sesi', compact(
             'jadwal',
@@ -305,7 +307,7 @@ class HasilUjianController extends Controller
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
-            $query->where('status', $request->status);
+            $this->applyStatusFilter($query, $request->status);
         }
 
         // Filter by lulus/tidak lulus
@@ -516,7 +518,7 @@ class HasilUjianController extends Controller
         $this->applySiswaTahunFilters($query, $request, $tahunAjaranId);
 
         // Only consider completed tests for analysis
-        $query->where('status', 'selesai');
+        $query->whereIn('status', $this->completedStatuses());
 
         $hasilUjians = $query->get();
 
@@ -760,10 +762,18 @@ class HasilUjianController extends Controller
 
     private function buildPeerStats(HasilUjian $hasil): array
     {
-        $sameJadwal = HasilUjian::where('jadwal_ujian_id', $hasil->jadwal_ujian_id)->where('status', 'selesai')->get();
+        $sameJadwal = HasilUjian::where('jadwal_ujian_id', $hasil->jadwal_ujian_id)
+            ->whereIn('status', $this->completedStatuses())
+            ->get();
+        $kelas = $this->kelasForResult($hasil);
         $sameKelas = HasilUjian::where('jadwal_ujian_id', $hasil->jadwal_ujian_id)
-            ->where('status', 'selesai')
-            ->whereHas('siswa', fn($q) => $q->where('kelas_id', $hasil->siswa->kelas_id))
+            ->whereIn('status', $this->completedStatuses())
+            ->when($kelas, function ($query) use ($hasil, $kelas) {
+                $query->whereHas('siswa.tahunAjaranRecords', function ($q) use ($hasil, $kelas) {
+                    $q->where('tahun_ajaran_id', $hasil->jadwalUjian?->tahun_ajaran_id)
+                        ->where('kelas_id', $kelas->id);
+                });
+            }, fn($query) => $query->whereRaw('1 = 0'))
             ->get();
 
         $rank = $sameJadwal->sortByDesc('nilai')->values()->search(fn($item) => $item->id === $hasil->id);
@@ -774,6 +784,24 @@ class HasilUjianController extends Controller
             'rank' => $rank === false ? null : $rank + 1,
             'total' => $sameJadwal->count(),
         ];
+    }
+
+    private function kelasForResult(HasilUjian $hasil)
+    {
+        $tahunAjaranId = $hasil->jadwalUjian?->tahun_ajaran_id;
+
+        if (!$hasil->siswa || !$tahunAjaranId) {
+            return $hasil->siswa?->kelas;
+        }
+
+        return $hasil->siswa->kelasForTahunAjaran($tahunAjaranId) ?: $hasil->siswa->kelas;
+    }
+
+    private function hydrateResultStudentClass(HasilUjian $hasil): void
+    {
+        if ($hasil->siswa) {
+            $hasil->siswa->setRelation('kelas', $this->kelasForResult($hasil));
+        }
     }
 
     private function buildResultTimeline(HasilUjian $hasil): array
@@ -857,5 +885,20 @@ class HasilUjianController extends Controller
                 $q->whereHas('kelas', fn($kelas) => $kelas->where('jurusan', $request->jurusan));
             }
         });
+    }
+
+    private function completedStatuses(): array
+    {
+        return ['selesai', 'auto-selesai'];
+    }
+
+    private function applyStatusFilter($query, string $status): void
+    {
+        if ($status === 'selesai') {
+            $query->whereIn('status', $this->completedStatuses());
+            return;
+        }
+
+        $query->where('status', $status);
     }
 }

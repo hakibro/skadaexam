@@ -3,7 +3,14 @@
 namespace App\Http\Controllers\Features\Ruangan;
 
 use App\Http\Controllers\Controller;
+use App\Models\JadwalUjian;
+use App\Models\Kelas;
+use App\Models\PaketUjian;
 use App\Models\Ruangan;
+use App\Models\SchoolSetting;
+use App\Models\Siswa;
+use App\Models\SiswaTahunAjaran;
+use App\Models\TahunAjaran;
 use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -477,11 +484,11 @@ class RuanganController extends Controller
                         throw $e; // biarkan error lain jalan normal
                     }
 
-                    // case 'hapus_paksa':
-                    //     foreach ($ids as $id) {
-                    //         Ruangan::where('id', $id)->forceDelete(); // atau delete dengan disable fk
-                    //     }
-                    //     return redirect()->back()->with('success', 'Ruangan dan semua data terkait berhasil dihapus paksa.');
+                // case 'hapus_paksa':
+                //     foreach ($ids as $id) {
+                //         Ruangan::where('id', $id)->forceDelete(); // atau delete dengan disable fk
+                //     }
+                //     return redirect()->back()->with('success', 'Ruangan dan semua data terkait berhasil dihapus paksa.');
 
                 case 'hapus_paksa':
                     foreach ($ids as $id) {
@@ -673,17 +680,18 @@ class RuanganController extends Controller
         // Mapping data
         $collection = collect($data)->map(function ($item) {
             return [
-                'ID Person'      => $item['idperson'] ?? '',
-                'Nama'           => $item['nama'] ?? '',
-                'Kelas'          => $item['KelasFormal'] ?? '',
-                'AsramaPondok'   => $item['AsramaPondok'] ?? '',
-                'KelasPondok'   => $item['KelasPondok'] ?? '',
-                'Kategori'       => $item['AsramaPondok'] ? 'Pondok' : 'Non Pondok',
+                'ID Person' => $item['idperson'] ?? '',
+                'Nama' => $item['nama'] ?? '',
+                'Kelas' => $item['KelasFormal'] ?? '',
+                'AsramaPondok' => $item['AsramaPondok'] ?? '',
+                'KelasPondok' => $item['KelasPondok'] ?? '',
+                'Kategori' => $item['AsramaPondok'] ? 'Pondok' : 'Non Pondok',
             ];
         });
 
         // Export ke Excel
-        return Excel::download(new class($collection) implements FromCollection, WithHeadings {
+        return Excel::download(
+            new class ($collection) implements FromCollection, WithHeadings {
             protected $collection;
 
             public function __construct(Collection $collection)
@@ -699,15 +707,181 @@ class RuanganController extends Controller
             public function headings(): array
             {
                 return [
-                    'ID Person',
-                    'Nama',
-                    'Kelas',
-                    'AsramaPondok',
-                    'KelasPondok',
-                    'Kategori'
+                'ID Person',
+                'Nama',
+                'Kelas',
+                'AsramaPondok',
+                'KelasPondok',
+                'Kategori'
                 ];
             }
-        }, 'data_siswa_pondok_nonpondok.xlsx');
+            },
+            'data_siswa_pondok_nonpondok.xlsx'
+        );
+    }
+
+    public function examCards(Request $request)
+    {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear->id);
+
+        $tingkatList = Kelas::forTahunAjaran($tahunAjaranId)
+            ->whereNotNull('tingkat')
+            ->select('tingkat')
+            ->distinct()
+            ->orderBy('tingkat')
+            ->pluck('tingkat');
+        $kelasList = Kelas::forTahunAjaran($tahunAjaranId)->orderBy('nama_kelas')->get();
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+        $selectedPaketId = $request->get('paket_ujian_id') ?: $paketUjians->firstWhere('status', 'aktif')?->id;
+
+        $studentQuery = Siswa::query()
+            ->with(['tahunAjaranRecords' => fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas')])
+            ->whereHas('tahunAjaranRecords', function ($q) use ($request, $tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+
+                if ($request->filled('kelas_id')) {
+                    $q->where('kelas_id', $request->kelas_id);
+                }
+
+                if ($request->filled('tingkat')) {
+                    $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat));
+                }
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $studentQuery->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('idyayasan', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $studentQuery
+            ->orderByRaw(
+                '(select kelas.nama_kelas from siswa_tahun_ajaran join kelas on kelas.id = siswa_tahun_ajaran.kelas_id where siswa_tahun_ajaran.siswa_id = siswa.id and siswa_tahun_ajaran.tahun_ajaran_id = ? limit 1) asc',
+                [$tahunAjaranId]
+            )
+            ->orderBy('nama')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('features.ruangan.kartu-ujian.index', compact(
+            'students',
+            'tingkatList',
+            'kelasList',
+            'paketUjians',
+            'tahunAjaranId',
+            'selectedPaketId'
+        ));
+    }
+
+    public function printExamCards(Request $request)
+    {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear->id);
+        $paketUjian = $request->filled('paket_ujian_id')
+            ? PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)->findOrFail($request->paket_ujian_id)
+            : PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)->where('status', 'aktif')->first();
+        $mode = $request->get('mode', 'front');
+
+        $records = SiswaTahunAjaran::with(['siswa', 'kelas'])
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->when($request->filled('tingkat'), fn($q) => $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)))
+            ->when($request->filled('kelas_id'), fn($q) => $q->where('kelas_id', $request->kelas_id))
+            ->whereHas('siswa', function ($q) use ($request) {
+                if ($request->filled('search')) {
+                    $search = $request->search;
+                    $q->where('nama', 'like', "%{$search}%")
+                        ->orWhere('idyayasan', 'like', "%{$search}%");
+                }
+            })
+            ->get()
+            ->sort(function ($a, $b) {
+                $kelasCompare = strnatcasecmp($a->kelas?->nama_kelas ?? '', $b->kelas?->nama_kelas ?? '');
+
+                if ($kelasCompare !== 0) {
+                    return $kelasCompare;
+                }
+
+                return strnatcasecmp($a->siswa?->nama ?? '', $b->siswa?->nama ?? '');
+            })
+            ->values();
+
+        $jadwals = JadwalUjian::with('mapel')
+            ->forTahunAjaran($tahunAjaranId)
+            ->when($paketUjian, fn($q) => $q->where('paket_ujian_id', $paketUjian->id))
+            ->orderBy('tanggal')
+            ->get();
+
+        $sourceSessions = $this->sourceSessionMapForCards($tahunAjaranId);
+        $cards = $records->map(function ($record) use ($jadwals, $sourceSessions) {
+            $kelas = $record->kelas;
+            $studentJadwals = $jadwals->filter(fn($jadwal) => $this->jadwalMatchesKelas($jadwal, $kelas))
+                ->groupBy(fn($jadwal) => $jadwal->tanggal?->format('Y-m-d') ?: '-');
+
+            return [
+                'siswa' => $record->siswa,
+                'kelas' => $kelas,
+                'source_session' => $sourceSessions[$record->siswa_id] ?? null,
+                'jadwals' => $studentJadwals,
+            ];
+        });
+
+        return view('features.ruangan.kartu-ujian.print', [
+            'cards' => $cards,
+            'settings' => SchoolSetting::allAsArray(),
+            'tahunAjaran' => TahunAjaran::find($tahunAjaranId),
+            'paketUjian' => $paketUjian,
+            'mode' => $mode,
+        ]);
+    }
+
+    private function sourceSessionMapForCards(int $tahunAjaranId): array
+    {
+        $rows = DB::table('sesi_ruangan_siswa')
+            ->join('sesi_ruangan', 'sesi_ruangan_siswa.sesi_ruangan_id', '=', 'sesi_ruangan.id')
+            ->join('ruangan', 'sesi_ruangan.ruangan_id', '=', 'ruangan.id')
+            ->where('sesi_ruangan.tahun_ajaran_id', $tahunAjaranId)
+            ->where('sesi_ruangan.sumber', 'sumber')
+            ->select(
+                'sesi_ruangan_siswa.siswa_id',
+                'sesi_ruangan.nama_sesi',
+                'sesi_ruangan.kode_sesi',
+                'sesi_ruangan.waktu_mulai',
+                'sesi_ruangan.waktu_selesai',
+                'ruangan.nama_ruangan',
+                'ruangan.kode_ruangan'
+            )
+            ->orderBy('ruangan.kode_ruangan')
+            ->orderBy('sesi_ruangan.nama_sesi')
+            ->get();
+
+        return $rows->keyBy('siswa_id')->all();
+    }
+
+    private function jadwalMatchesKelas(JadwalUjian $jadwal, ?Kelas $kelas): bool
+    {
+        if (!$kelas) {
+            return false;
+        }
+
+        $targets = collect($jadwal->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
+        if (!empty($targets) && !in_array((string) $kelas->id, $targets, true)) {
+            return false;
+        }
+
+        if ($jadwal->mapel?->tingkat && strtoupper((string) $jadwal->mapel->tingkat) !== strtoupper((string) $kelas->tingkat)) {
+            return false;
+        }
+
+        $mapelJurusan = strtoupper((string) ($jadwal->mapel?->jurusan ?? ''));
+        $kelasJurusan = strtoupper((string) ($kelas->jurusan ?? ''));
+
+        return $mapelJurusan === '' || $mapelJurusan === 'UMUM' || $mapelJurusan === $kelasJurusan;
     }
 
     /**

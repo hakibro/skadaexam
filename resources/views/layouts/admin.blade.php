@@ -133,6 +133,11 @@
                             <i class="fa-solid fa-book text-sm"></i>
                             <span class="text-sm">Mata Pelajaran</span>
                         </a>
+                        <a href="{{ route('naskah.import-komprehensif') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.import-komprehensif*') ? 'bg-green-600 text-white' : '' }}">
+                            <i class="fa-solid fa-file-import text-sm"></i>
+                            <span class="text-sm">Import Komprehensif</span>
+                        </a>
                         <a href="{{ route('naskah.banksoal.index') }}"
                             class="flex items-center space-x-2 px-8 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('naskah.banksoal.*') ? 'bg-green-600 text-white' : '' }}">
                             <i class="fa-solid fa-folder text-sm"></i>
@@ -270,6 +275,11 @@
                             <i class="fa-solid fa-search text-sm"></i>
                             <span class="text-sm">Cari Siswa</span>
                         </a>
+                        <a href="{{ route('ruangan.kartu-ujian.index') }}"
+                            class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('ruangan.kartu-ujian.*') ? 'bg-red-600 text-white' : '' }}">
+                            <i class="fa-solid fa-id-card text-sm"></i>
+                            <span class="text-sm">Cetak Kartu Ujian</span>
+                        </a>
                     </div>
                 @endif
                 <!-- Settings -->
@@ -282,6 +292,14 @@
                     <i class="fa-solid fa-user-cog"></i>
                     <span>Profile</span>
                 </a>
+
+                @role('admin')
+                    <a href="{{ route('admin.school-settings.edit') }}"
+                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.school-settings.*') ? 'bg-blue-600 text-white' : '' }}">
+                        <i class="fa-solid fa-school"></i>
+                        <span>Setting Sekolah</span>
+                    </a>
+                @endrole
 
             </nav>
         </div>

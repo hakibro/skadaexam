@@ -13,19 +13,6 @@
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="p-4 sm:p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Kode Mapel -->
-                        <div>
-                            <label for="kode_mapel" class="block text-sm font-medium text-gray-700">Kode Mapel <span
-                                    class="text-red-500">*</span></label>
-                            <input type="text" name="kode_mapel" id="kode_mapel"
-                                value="{{ old('kode_mapel', $mapel->kode_mapel) }}"
-                                class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm @error('kode_mapel') border-red-500 @else border-gray-300 @enderror rounded-md"
-                                required>
-                            @error('kode_mapel')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
                         <!-- Nama Mapel -->
                         <div>
                             <label for="nama_mapel" class="block text-sm font-medium text-gray-700">Nama Mata Pelajaran
@@ -37,6 +24,12 @@
                             @error('nama_mapel')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
+                        </div>
+
+                        <div class="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                            <div class="font-medium">Kode mapel</div>
+                            <div class="mt-1 text-lg font-semibold text-gray-900">{{ $mapel->kode_mapel }}</div>
+                            <div class="mt-1 text-xs text-gray-500">Kode dibuat oleh sistem dan tidak diedit manual.</div>
                         </div>
 
                         <!-- Tingkat -->

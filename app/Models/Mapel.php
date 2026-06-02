@@ -100,6 +100,32 @@ class Mapel extends Model
         return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
     }
 
+    public static function generateKode(string $namaMapel, ?string $tingkat = null, ?int $tahunAjaranId = null): string
+    {
+        $words = preg_split('/\s+/', strtoupper(preg_replace('/[^A-Za-z0-9\s]/', ' ', $namaMapel)));
+        $prefix = collect($words)
+            ->filter()
+            ->take(3)
+            ->map(fn($word) => substr($word, 0, 3))
+            ->implode('');
+
+        $prefix = substr($prefix ?: 'MAPEL', 0, 10);
+        $tingkatPart = $tingkat ? '-' . strtoupper((string) $tingkat) : '';
+        $base = $prefix . $tingkatPart;
+        $kode = $base;
+        $counter = 1;
+
+        while (static::query()
+            ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->where('kode_mapel', $kode)
+            ->exists()) {
+            $kode = $base . '-' . str_pad((string) $counter, 2, '0', STR_PAD_LEFT);
+            $counter++;
+        }
+
+        return $kode;
+    }
+
     // Accessors & Mutators
     public function getDefaultIconAttribute()
     {

@@ -40,16 +40,24 @@
                     <div>
                         <label for="mapel_id" class="block text-sm font-medium text-gray-700">Mata Pelajaran <span
                                 class="text-red-500">*</span></label>
-                        <select name="mapel_id" id="mapel_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            required>
-                            <option value="">Pilih Mata Pelajaran</option>
-                            @foreach ($mapels as $mapel)
-                                <option value="{{ $mapel->id }}" {{ old('mapel_id') == $mapel->id ? 'selected' : '' }}>
-                                    {{ $mapel->nama_mapel }} ({{ $mapel->kode_mapel }})
-                                </option>
-                            @endforeach
-                        </select>
+                        @if (isset($selectedMapel) && $selectedMapel)
+                            <input type="hidden" name="mapel_id" value="{{ $selectedMapel->id }}">
+                            <div class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {{ $selectedMapel->nama_mapel }} ({{ $selectedMapel->kode_mapel }})
+                            </div>
+                        @else
+                            <select name="mapel_id" id="mapel_id"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                required>
+                                <option value="">Pilih Mata Pelajaran</option>
+                                @foreach ($mapels as $mapel)
+                                    <option value="{{ $mapel->id }}" data-tingkat="{{ $mapel->tingkat }}"
+                                        {{ old('mapel_id') == $mapel->id ? 'selected' : '' }}>
+                                        {{ $mapel->nama_mapel }} ({{ $mapel->kode_mapel }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
                         @error('mapel_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -59,44 +67,28 @@
                     <div>
                         <label for="tingkat" class="block text-sm font-medium text-gray-700">Tingkat Kelas <span
                                 class="text-red-500">*</span></label>
-                        <select name="tingkat" id="tingkat"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            required>
-                            <option value="X" {{ old('tingkat') == 'X' ? 'selected' : '' }}>Kelas X</option>
-                            <option value="XI" {{ old('tingkat') == 'XI' ? 'selected' : '' }}>Kelas XI</option>
-                            <option value="XII" {{ old('tingkat') == 'XII' ? 'selected' : '' }}>Kelas XII</option>
-                        </select>
+                        <input type="hidden" name="tingkat" id="tingkat"
+                            value="{{ old('tingkat', isset($selectedMapel) && $selectedMapel ? $selectedMapel->tingkat : '') }}">
+                        <div id="tingkat_display" class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                            {{ isset($selectedMapel) && $selectedMapel ? 'Kelas ' . $selectedMapel->tingkat : 'Otomatis dari mata pelajaran' }}
+                        </div>
                         @error('tingkat')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
 
-                <!-- Status -->
-                <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700">Status <span
-                            class="text-red-500">*</span></label>
-                    <select name="status" id="status"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required>
-                        <option value="draft" {{ old('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="aktif" {{ old('status') == 'aktif' ? 'selected' : '' }}>Aktif</option>
-                        <option value="arsip" {{ old('status') == 'arsip' ? 'selected' : '' }}>Arsip</option>
-                    </select>
-                    @error('status')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+                <input type="hidden" name="status" value="aktif">
 
                 <!-- Jenis Soal -->
                 <div>
                     <label for="jenis_soal" class="block text-sm font-medium text-gray-700">Jenis Soal</label>
                     <select name="jenis_soal" id="jenis_soal"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="uts" {{ old('jenis_soal') == 'uts' ? 'selected' : '' }}>UTS</option>
-                        <option value="uas" {{ old('jenis_soal') == 'uas' ? 'selected' : '' }}>UAS</option>
-                        <option value="ulangan" {{ old('jenis_soal') == 'ulangan' ? 'selected' : '' }}>Ulangan</option>
-                        <option value="latihan" {{ old('jenis_soal') == 'latihan' ? 'selected' : '' }}>Latihan</option>
+                        <option value="uts" {{ old('jenis_soal', $defaultJenisSoal ?? 'ulangan') == 'uts' ? 'selected' : '' }}>UTS</option>
+                        <option value="uas" {{ old('jenis_soal', $defaultJenisSoal ?? 'ulangan') == 'uas' ? 'selected' : '' }}>UAS</option>
+                        <option value="ulangan" {{ old('jenis_soal', $defaultJenisSoal ?? 'ulangan') == 'ulangan' ? 'selected' : '' }}>Ulangan</option>
+                        <option value="latihan" {{ old('jenis_soal', $defaultJenisSoal ?? 'ulangan') == 'latihan' ? 'selected' : '' }}>Latihan</option>
                     </select>
                     @error('jenis_soal')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -116,4 +108,18 @@
             </div>
         </form>
     </div>
+
+    <script>
+        const mapelSelect = document.getElementById('mapel_id');
+        const tingkatInput = document.getElementById('tingkat');
+        const tingkatDisplay = document.getElementById('tingkat_display');
+
+        if (mapelSelect && tingkatInput && tingkatDisplay) {
+            mapelSelect.addEventListener('change', function () {
+                const tingkat = this.selectedOptions[0]?.dataset?.tingkat || '';
+                tingkatInput.value = tingkat;
+                tingkatDisplay.textContent = tingkat ? `Kelas ${tingkat}` : 'Otomatis dari mata pelajaran';
+            });
+        }
+    </script>
 @endsection

@@ -42,6 +42,8 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::post('/import-comprehensive/process', [RuanganController::class, 'processComprehensiveImport'])->name('import.comprehensive.process');
         Route::get('/import-comprehensive/template', [RuanganController::class, 'downloadComprehensiveTemplate'])->name('import.comprehensive.template');
         Route::get('/download-data-siswa', [RuanganController::class, 'downloadDataSiswa'])->name('download.data.siswa');
+        Route::get('/kartu-ujian', [RuanganController::class, 'examCards'])->name('kartu-ujian.index');
+        Route::get('/kartu-ujian/print', [RuanganController::class, 'printExamCards'])->name('kartu-ujian.print');
         Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 

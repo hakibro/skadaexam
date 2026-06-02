@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JadwalUjian;
 use App\Models\Mapel;
 use App\Models\Kelas;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -13,12 +14,17 @@ class UpdateJadwalTargetKelasController extends Controller
 {
     public function index()
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+
         // Debug output
         Log::info('UpdateJadwalTargetKelasController::index() called');
 
-        $jadwalUjianCount = JadwalUjian::count();
-        $jadwalWithEmptyKelasTarget = JadwalUjian::whereJsonLength('kelas_target', 0)
-            ->orWhereNull('kelas_target')
+        $jadwalUjianCount = JadwalUjian::forTahunAjaran($tahunAjaranId)->count();
+        $jadwalWithEmptyKelasTarget = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->where(function ($q) {
+                $q->whereJsonLength('kelas_target', 0)
+                    ->orWhereNull('kelas_target');
+            })
             ->count();
 
         Log::info('Counts', ['totalJadwal' => $jadwalUjianCount, 'emptyTargetCount' => $jadwalWithEmptyKelasTarget]);
@@ -31,6 +37,8 @@ class UpdateJadwalTargetKelasController extends Controller
 
     public function update(Request $request)
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+
         // Add detailed logging of the incoming request
         Log::info('UpdateJadwalTargetKelasController::update() called', [
             'request_content_type' => $request->header('Content-Type'),
@@ -54,6 +62,8 @@ class UpdateJadwalTargetKelasController extends Controller
 
         // Get jadwal ujian with empty kelas_target
         $query = JadwalUjian::with('mapel')
+            ->forTahunAjaran($tahunAjaranId)
+            ->whereDoesntHave('tahunAjaran', fn($q) => $q->where('status', 'arsip'))
             ->where(function ($q) {
                 $q->whereJsonLength('kelas_target', 0)
                     ->orWhereNull('kelas_target');
@@ -75,7 +85,7 @@ class UpdateJadwalTargetKelasController extends Controller
             }
 
             $mapel = $jadwal->mapel;
-            $query = Kelas::query();
+            $query = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id);
 
             // Filter by tingkat if mapel has it
             if ($mapel->tingkat) {

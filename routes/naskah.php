@@ -30,6 +30,9 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
 
     // ===== BANK SOAL & SOAL MANAGEMENT =====
     // Bank Soal routes
+    Route::get('import-komprehensif', [BankSoalController::class, 'comprehensiveImport'])->name('import-komprehensif');
+    Route::post('import-komprehensif', [BankSoalController::class, 'processComprehensiveImport'])->name('import-komprehensif.process');
+    Route::get('import-komprehensif/template', [BankSoalController::class, 'downloadComprehensiveTemplate'])->name('import-komprehensif.template');
     Route::resource('banksoal', BankSoalController::class);
     // Soal routes
     Route::resource('soal', SoalController::class);

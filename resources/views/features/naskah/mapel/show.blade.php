@@ -17,6 +17,10 @@
             </div>
 
             <div class="flex space-x-2">
+                <a href="{{ route('naskah.banksoal.create', ['mapel_id' => $mapel->id]) }}"
+                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <i class="fa-solid fa-folder-plus mr-2"></i> Buat Bank Soal
+                </a>
                 <a href="{{ route('naskah.mapel.edit', $mapel->id) }}"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100">
                     <i class="fa-solid fa-edit mr-2"></i> Edit

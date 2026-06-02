@@ -8,6 +8,7 @@ use App\Models\JadwalUjianSesiRuangan;
 use App\Models\EnrollmentUjian;
 use App\Models\HasilUjian;
 use App\Models\SesiRuangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -27,13 +28,17 @@ class PelanggaranController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
+            $activeYearId = app(TahunAjaranService::class)->activeId();
+
             // Base query to get violations
             $query = PelanggaranUjian::with([
                 'siswa',
                 'hasilUjian',
                 'jadwalUjian.mapel',
                 'sesiRuangan.ruangan'
-            ])->orderBy('waktu_pelanggaran', 'desc');
+            ])
+                ->whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($activeYearId))
+                ->orderBy('waktu_pelanggaran', 'desc');
 
             // If a specific session is requested, filter by that session
             if ($sesiRuanganId) {
@@ -54,6 +59,7 @@ class PelanggaranController extends Controller
                     $assignedSessionIds = JadwalUjianSesiRuangan::where('pengawas_id', $guru->id)
                         ->join('jadwal_ujian', 'jadwal_ujian_sesi_ruangan.jadwal_ujian_id', '=', 'jadwal_ujian.id')
                         ->whereDate('jadwal_ujian.tanggal', now()->format('Y-m-d'))
+                        ->when($activeYearId, fn($q) => $q->where('jadwal_ujian.tahun_ajaran_id', $activeYearId))
                         ->pluck('sesi_ruangan_id')
                         ->toArray();
 
@@ -95,6 +101,12 @@ class PelanggaranController extends Controller
             }
 
             $violation = PelanggaranUjian::findOrFail($violationId);
+            if ($violation->jadwalUjian?->tahunAjaran?->isReadOnly()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tahun ajaran arsip hanya dapat dilihat'
+                ], 422);
+            }
 
             // Validate the action
             $request->validate([

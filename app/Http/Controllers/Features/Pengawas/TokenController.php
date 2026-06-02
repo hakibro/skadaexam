@@ -18,7 +18,7 @@ class TokenController extends Controller
     public function showTokenForm($id)
     {
         try {
-            $sesiRuangan = SesiRuangan::with(['ruangan', 'jadwalUjians', 'jadwalUjians.mapel', 'sesiRuanganSiswa'])
+            $sesiRuangan = SesiRuangan::with(['ruangan', 'tahunAjaran', 'jadwalUjians', 'jadwalUjians.mapel', 'sesiRuanganSiswa'])
                 ->findOrFail($id);
 
             // Filter jadwal ujians to only show current/future exams (not past ones)
@@ -67,8 +67,12 @@ class TokenController extends Controller
      */
     public function generateToken(Request $request, $id)
     {
-        $sesiRuangan = SesiRuangan::with(['jadwalUjians', 'jadwalUjians.mapel'])
+        $sesiRuangan = SesiRuangan::with(['tahunAjaran', 'jadwalUjians', 'jadwalUjians.mapel'])
             ->findOrFail($id);
+
+        if ($sesiRuangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
 
         // Filter jadwal ujians to only show current/future exams (not past ones)
         $today = Carbon::today();

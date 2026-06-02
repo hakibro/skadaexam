@@ -14,6 +14,16 @@ use Illuminate\Support\Facades\Log;
 
 class BeritaAcaraController extends Controller
 {
+    private function redirectIfReadOnly(SesiRuangan $sesiRuangan)
+    {
+        if ($sesiRuangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->route('pengawas.berita-acara.show', $sesiRuangan->id)
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        return null;
+    }
+
     /**
      * Check if current pengawas has access to the given sesi ruangan
      */
@@ -39,6 +49,7 @@ class BeritaAcaraController extends Controller
     {
         $sesiRuangan = SesiRuangan::with([
             'ruangan',
+            'tahunAjaran',
             'jadwalUjians',
             'jadwalUjians.mapel',
             'sesiRuanganSiswa',
@@ -74,11 +85,16 @@ class BeritaAcaraController extends Controller
     {
         $sesiRuangan = SesiRuangan::with([
             'ruangan',
+            'tahunAjaran',
             'jadwalUjians',
             'jadwalUjians.mapel',
             'sesiRuanganSiswa',
             'sesiRuanganSiswa.siswa'
         ])->findOrFail($id);
+
+        if ($redirect = $this->redirectIfReadOnly($sesiRuangan)) {
+            return $redirect;
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         if (!$this->checkPengawasAccess($sesiRuangan)) {
@@ -110,7 +126,11 @@ class BeritaAcaraController extends Controller
      */
     public function store(Request $request, $id)
     {
-        $sesiRuangan = SesiRuangan::findOrFail($id);
+        $sesiRuangan = SesiRuangan::with('tahunAjaran')->findOrFail($id);
+
+        if ($redirect = $this->redirectIfReadOnly($sesiRuangan)) {
+            return $redirect;
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         if (!$this->checkPengawasAccess($sesiRuangan)) {
@@ -187,12 +207,17 @@ class BeritaAcaraController extends Controller
     {
         $sesiRuangan = SesiRuangan::with([
             'ruangan',
+            'tahunAjaran',
             'jadwalUjians',
             'jadwalUjians.mapel',
             'sesiRuanganSiswa',
             'sesiRuanganSiswa.siswa',
             'beritaAcaraUjian'
         ])->findOrFail($id);
+
+        if ($redirect = $this->redirectIfReadOnly($sesiRuangan)) {
+            return $redirect;
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         if (!$this->checkPengawasAccess($sesiRuangan)) {
@@ -222,7 +247,11 @@ class BeritaAcaraController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $sesiRuangan = SesiRuangan::findOrFail($id);
+        $sesiRuangan = SesiRuangan::with('tahunAjaran')->findOrFail($id);
+
+        if ($redirect = $this->redirectIfReadOnly($sesiRuangan)) {
+            return $redirect;
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         if (!$this->checkPengawasAccess($sesiRuangan)) {
@@ -288,7 +317,11 @@ class BeritaAcaraController extends Controller
      */
     public function finalize(Request $request, $id)
     {
-        $sesiRuangan = SesiRuangan::findOrFail($id);
+        $sesiRuangan = SesiRuangan::with('tahunAjaran')->findOrFail($id);
+
+        if ($redirect = $this->redirectIfReadOnly($sesiRuangan)) {
+            return $redirect;
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         if (!$this->checkPengawasAccess($sesiRuangan)) {

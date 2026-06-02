@@ -17,17 +17,6 @@
                 <div class="p-4 sm:p-6 space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="kode_mapel" class="block text-sm font-medium text-gray-700">Kode Mapel <span
-                                    class="text-red-500">*</span></label>
-                            <input type="text" name="kode_mapel" id="kode_mapel" required value="{{ old('kode_mapel') }}"
-                                class="mt-1 form-input block w-full @error('kode_mapel') border-red-500 @enderror"
-                                placeholder="Contoh: MTK-10">
-                            @error('kode_mapel')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
                             <label for="nama_mapel" class="block text-sm font-medium text-gray-700">Nama Mapel <span
                                     class="text-red-500">*</span></label>
                             <input type="text" name="nama_mapel" id="nama_mapel" required value="{{ old('nama_mapel') }}"
@@ -36,6 +25,11 @@
                             @error('nama_mapel')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                             @enderror
+                        </div>
+
+                        <div class="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                            <div class="font-medium">Kode mapel dibuat otomatis</div>
+                            <div class="mt-1">Sistem akan membuat kode unik berdasarkan nama mapel dan tingkat.</div>
                         </div>
 
                         <div>

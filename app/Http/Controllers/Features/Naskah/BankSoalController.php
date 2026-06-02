@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Features\Naskah;
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\Mapel;
+use App\Models\PaketUjian;
+use App\Exports\NaskahComprehensiveTemplateExport;
+use App\Imports\NaskahComprehensiveImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +18,7 @@ use PhpOffice\PhpWord\Element\Text;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Soal;
 use App\Services\TahunAjaranService;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BankSoalController extends Controller
 {
@@ -65,11 +69,52 @@ class BankSoalController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $activeYear = app(TahunAjaranService::class)->ensureActive();
         $mapels = Mapel::active()->forTahunAjaran($activeYear->id)->get(); // Ambil semua mata pelajaran aktif
-        return view('features.naskah.banksoal.create', compact('mapels'));
+        $selectedMapel = $request->filled('mapel_id')
+            ? Mapel::active()->forTahunAjaran($activeYear->id)->findOrFail($request->mapel_id)
+            : null;
+        $defaultJenisSoal = $this->jenisSoalFromActivePaket($activeYear->id);
+
+        return view('features.naskah.banksoal.create', compact('mapels', 'selectedMapel', 'defaultJenisSoal'));
+    }
+
+    public function comprehensiveImport()
+    {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
+        return view('features.naskah.import-komprehensif', compact('paketUjians', 'activeYear'));
+    }
+
+    public function processComprehensiveImport(Request $request)
+    {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'paket_ujian_id' => 'nullable|exists:paket_ujian,id',
+        ]);
+
+        $import = new NaskahComprehensiveImport($activeYear->id, $validated['paket_ujian_id'] ?? null);
+        Excel::import($import, $request->file('file'));
+
+        return redirect()->route('naskah.import-komprehensif')
+            ->with('success', 'Import komprehensif naskah selesai.')
+            ->with('import_results', $import->results());
+    }
+
+    public function downloadComprehensiveTemplate()
+    {
+        return Excel::download(
+            new NaskahComprehensiveTemplateExport(),
+            'template_import_komprehensif_naskah.xlsx'
+        );
     }
 
     /**
@@ -80,8 +125,8 @@ class BankSoalController extends Controller
         $request->validate([
             'judul' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
-            'tingkat' => 'required|in:X,XI,XII',
-            'status' => 'required|in:aktif,draft,arsip',
+            'tingkat' => 'nullable|in:X,XI,XII',
+            'status' => 'nullable|in:aktif,draft,arsip',
             'mapel_id' => 'required|exists:mapel,id',
             'jenis_soal' => 'nullable|in:uts,uas,ulangan,latihan',
         ]);
@@ -89,6 +134,7 @@ class BankSoalController extends Controller
         try {
             $activeYear = app(TahunAjaranService::class)->ensureActive();
             DB::beginTransaction();
+            $mapel = Mapel::active()->forTahunAjaran($activeYear->id)->findOrFail($request->mapel_id);
 
             // Generate kode bank soal unik
             $kodeBank = 'BS' . date('Ym') . rand(1000, 9999);
@@ -104,12 +150,12 @@ class BankSoalController extends Controller
                 'kode_bank' => $kodeBank,
                 'judul' => $request->judul,
                 'deskripsi' => $request->deskripsi,
-                'tingkat' => $request->tingkat,
-                'status' => $request->status,
-                'jenis_soal' => $request->jenis_soal ?? 'ulangan',
+                'tingkat' => $mapel->tingkat ?: $request->tingkat,
+                'status' => 'aktif',
+                'jenis_soal' => $request->jenis_soal ?: $this->jenisSoalFromActivePaket($activeYear->id),
                 'total_soal' => 0,
                 'created_by' => Auth::id(),
-                'mapel_id' => $request->mapel_id,
+                'mapel_id' => $mapel->id,
                 'pengaturan' => [
                     'created_at' => now()->toDateTimeString(),
                     'creator_name' => Auth::user()->name ?? 'System',
@@ -138,6 +184,23 @@ class BankSoalController extends Controller
             return redirect()->back()->withInput()
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    private function jenisSoalFromActivePaket(int $tahunAjaranId): string
+    {
+        $paket = PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('status', 'aktif')
+            ->orderByDesc('tanggal_mulai')
+            ->first();
+
+        $nama = strtolower($paket?->nama ?? '');
+
+        return match (true) {
+            str_contains($nama, 'uts') || str_contains($nama, 'tengah') => 'uts',
+            str_contains($nama, 'uas') || str_contains($nama, 'akhir') => 'uas',
+            str_contains($nama, 'latihan') => 'latihan',
+            default => 'ulangan',
+        };
     }
 
     /**

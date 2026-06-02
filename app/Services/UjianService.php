@@ -213,7 +213,7 @@ class UjianService
             'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
             'nilai' => $nilai,
             'lulus' => $lulus,
-            'status' => 'selesai',
+            'status' => 'auto-selesai',
             'is_final' => true
         ]);
 

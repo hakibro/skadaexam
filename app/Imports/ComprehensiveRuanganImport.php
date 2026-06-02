@@ -81,7 +81,14 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     protected function processRuangan($row)
     {
         try {
-            $kapasitas = $this->normalizeInteger($this->rowValue($row, ['kapasitas_ruangan', 'kapasitas']), 30);
+            $kapasitas = $this->normalizeInteger($this->rowValue($row, [
+                'kapasitas_ruangan',
+                'kapasitas',
+                'kapasitas_ruang',
+                'daya_tampung',
+                'jumlah_kursi',
+                'capacity',
+            ]), 30);
 
             // Check if ruangan exists by kode_ruangan
             $ruangan = Ruangan::where('tahun_ajaran_id', $this->tahunAjaranId)

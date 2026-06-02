@@ -163,6 +163,8 @@ class UjianController extends Controller
 
         // Kalau hasil ujian sudah ada, update waktunya biar sinkron
         if ($hasilUjian->wasRecentlyCreated === false) {
+            $isAutoSubmit = $request->boolean('is_auto_submit');
+
             $hasilUjian->update([
                 'waktu_mulai' => $enrollment->waktu_mulai_ujian,
                 'durasi_menit' => $jadwalUjian->durasi_menit
@@ -600,7 +602,7 @@ class UjianController extends Controller
                 'nilai' => $nilai,
                 'lulus' => $lulus,
                 'sesi_ruangan_id' => $currentSesiRuanganId,
-                'status' => 'selesai',
+                'status' => $isAutoSubmit ? 'auto-selesai' : 'selesai',
                 'is_final' => true
             ]);
 
@@ -623,7 +625,7 @@ class UjianController extends Controller
                 'siswa_id' => $siswa->id,
                 'hasil_ujian_id' => $hasilUjian->id,
                 'score' => $score,
-                'is_auto_submit' => $request->is_auto_submit ?? false
+                'is_auto_submit' => $isAutoSubmit
             ]);
 
             return response()->json([
@@ -1045,7 +1047,7 @@ class UjianController extends Controller
             'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
             'nilai' => $nilai,
             'lulus' => $lulus,
-            'status' => 'selesai',
+            'status' => 'auto-selesai',
             'is_final' => true
         ]);
 

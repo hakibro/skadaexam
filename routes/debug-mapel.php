@@ -4,10 +4,12 @@ use Illuminate\Support\Facades\Route;
 use App\Models\JadwalUjian;
 use App\Models\Mapel;
 use App\Models\SesiRuangan;
+use App\Services\TahunAjaranService;
 
 // Debug route for mapel relationships
 Route::get('/debug-mapel', function () {
-    $jadwals = JadwalUjian::with('mapel')->take(5)->get();
+    $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+    $jadwals = JadwalUjian::forTahunAjaran($tahunAjaranId)->with('mapel')->take(5)->get();
 
     $result = [];
     foreach ($jadwals as $jadwal) {
@@ -26,7 +28,7 @@ Route::get('/debug-mapel', function () {
     }
 
     // Check SesiRuangan with jadwalUjians and mapel
-    $sesiRuangans = SesiRuangan::with(['jadwalUjians', 'jadwalUjians.mapel'])->take(3)->get();
+    $sesiRuangans = SesiRuangan::forTahunAjaran($tahunAjaranId)->with(['jadwalUjians', 'jadwalUjians.mapel'])->take(3)->get();
 
     $sesiResults = [];
     foreach ($sesiRuangans as $sesi) {

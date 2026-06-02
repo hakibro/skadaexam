@@ -310,7 +310,6 @@
                             <input type="hidden" name="tingkat" value="{{ $banksoal->tingkat }}">
                             <input type="hidden" name="status" value="{{ $banksoal->status }}">
                             <input type="hidden" name="mapel_id" value="{{ $banksoal->mapel_id }}">
-                            <input type="hidden" name="jenis_soal" value="{{ $banksoal->jenis_soal }}">
 
                             <div class="mb-4">
                                 <div

@@ -456,14 +456,17 @@ class MonitoringController extends Controller
      */
     public function export(Request $request)
     {
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
         $date = $request->get('date', Carbon::today()->format('Y-m-d'));
         $status = $request->get('status', 'all');
         $room = $request->get('room', 'all');
 
         // Get sessions data
         $sessions = SesiRuangan::with(['ruangan', 'pengawas', 'sesiRuanganSiswa', 'jadwalUjians'])
-            ->whereHas('jadwalUjians', function ($q) use ($date) {
-                $q->whereDate('tanggal', $date);
+            ->forTahunAjaran($tahunAjaranId)
+            ->whereHas('jadwalUjians', function ($q) use ($date, $tahunAjaranId) {
+                $q->whereDate('tanggal', $date)
+                    ->when($tahunAjaranId, fn($query) => $query->where('jadwal_ujian.tahun_ajaran_id', $tahunAjaranId));
             })
             ->when($status !== 'all', function ($query) use ($status) {
                 return $query->where('status', $status);

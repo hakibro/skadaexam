@@ -8,7 +8,6 @@ use App\Models\SesiRuangan;
 use App\Models\SesiRuanganSiswa;
 use App\Models\Siswa;
 use App\Models\Ruangan;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -41,11 +40,10 @@ class EnrollmentService
 
         // If no specific session is provided, find one via berita acara
         if (!$sesiRuangan) {
-            $sesiRuangan = SesiRuangan::whereHas('beritaAcaraUjian', function ($query) use ($jadwalUjian) {
-                $query->where('jadwal_ujian_id', $jadwalUjian->id);
-            })
-                ->where('tanggal', '>=', Carbon::today())
-                ->orderBy('tanggal')
+            $sesiRuangan = SesiRuangan::where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
+                ->whereHas('jadwalUjians', function ($query) use ($jadwalUjian) {
+                    $query->where('jadwal_ujian.id', $jadwalUjian->id);
+                })
                 ->orderBy('waktu_mulai')
                 ->first();
 

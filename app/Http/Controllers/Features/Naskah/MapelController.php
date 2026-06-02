@@ -81,7 +81,6 @@ class MapelController extends Controller
         $activeYear = app(TahunAjaranService::class)->ensureActive();
 
         $request->validate([
-            'kode_mapel' => 'required|string|max:20|unique:mapel,kode_mapel',
             'nama_mapel' => 'required|string|max:255',
             'tingkat' => 'required|string|max:20',
             'jurusan' => 'nullable|string|max:100',
@@ -90,7 +89,7 @@ class MapelController extends Controller
 
         $mapel = Mapel::create([
             'tahun_ajaran_id' => $activeYear->id,
-            'kode_mapel' => $request->kode_mapel,
+            'kode_mapel' => Mapel::generateKode($request->nama_mapel, $request->tingkat, $activeYear->id),
             'nama_mapel' => $request->nama_mapel,
             'deskripsi' => $request->deskripsi,
             'tingkat' => $request->tingkat,
@@ -148,7 +147,6 @@ class MapelController extends Controller
         }
 
         $request->validate([
-            'kode_mapel' => 'required|string|max:20|unique:mapel,kode_mapel,' . $mapel->id,
             'nama_mapel' => 'required|string|max:255',
             'tingkat' => 'required|string|max:20',
             'jurusan' => 'nullable|string|max:100',
@@ -156,7 +154,6 @@ class MapelController extends Controller
         ]);
 
         $mapel->update([
-            'kode_mapel' => $request->kode_mapel,
             'nama_mapel' => $request->nama_mapel,
             'deskripsi' => $request->deskripsi,
             'tingkat' => $request->tingkat,

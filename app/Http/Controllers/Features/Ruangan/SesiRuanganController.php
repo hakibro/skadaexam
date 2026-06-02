@@ -11,6 +11,7 @@ use App\Models\Siswa;
 use App\Models\Kelas;
 use App\Models\EnrollmentUjian;
 use App\Models\JadwalUjian;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -497,7 +498,9 @@ class SesiRuanganController extends Controller
     public function jadwalIndex(Ruangan $ruangan, SesiRuangan $sesi)
     {
         $sesi->load('jadwalUjians');
-        $availableJadwals = \App\Models\JadwalUjian::whereDoesntHave('sesiRuangans', function ($query) use ($sesi) {
+        $availableJadwals = \App\Models\JadwalUjian::forTahunAjaran($sesi->tahun_ajaran_id)
+            ->whereDoesntHave('tahunAjaran', fn($q) => $q->where('status', 'arsip'))
+            ->whereDoesntHave('sesiRuangans', function ($query) use ($sesi) {
             $query->where('sesi_ruangan_id', $sesi->id);
         })->with('mapel')->get();
 
@@ -515,8 +518,16 @@ class SesiRuanganController extends Controller
         ]);
 
         try {
+            if ($sesi->tahunAjaran?->isReadOnly()) {
+                return redirect()->back()->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+            }
+
             foreach ($request->jadwal_ids as $jadwalId) {
                 $jadwal = \App\Models\JadwalUjian::findOrFail($jadwalId);
+                if ($jadwal->tahun_ajaran_id !== $sesi->tahun_ajaran_id || $jadwal->tahunAjaran?->isReadOnly()) {
+                    continue;
+                }
+
                 if (!$sesi->jadwalUjians()->where('jadwal_ujian_id', $jadwalId)->exists()) {
                     $sesi->jadwalUjians()->attach($jadwalId);
                 }
@@ -537,6 +548,10 @@ class SesiRuanganController extends Controller
     {
         try {
             $jadwal = \App\Models\JadwalUjian::findOrFail($jadwalId);
+            if ($sesi->tahunAjaran?->isReadOnly() || $jadwal->tahun_ajaran_id !== $sesi->tahun_ajaran_id) {
+                return redirect()->back()->with('error', 'Jadwal tidak dapat dilepas dari sesi tahun ajaran ini.');
+            }
+
             $sesi->jadwalUjians()->detach($jadwalId);
 
             return redirect()->route('ruangan.sesi.jadwal.index', [$ruangan->id, $sesi->id])
@@ -551,16 +566,35 @@ class SesiRuanganController extends Controller
     // Cari siswa di ruangan mana saja
     public function cariSiswa(Request $request)
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+        if (!$tahunAjaranId) {
+            return redirect()->route('tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu untuk mengatur siswa.');
+        }
+
         $search = $request->input('q');
         $siswas = collect();
         if ($search) {
-            $siswas = Siswa::with(['kelas', 'sesiRuanganSiswa.sesiRuangan.ruangan', 'sesiRuanganSiswa.sesiRuangan.jadwalUjians.mapel'])
-                ->where('nama', 'like', "%{$search}%")
-                ->orWhere('idyayasan', 'like', "%{$search}%")
+            $siswas = Siswa::with([
+                    'tahunAjaranRecords' => fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas'),
+                    'sesiRuanganSiswa.sesiRuangan.ruangan',
+                    'sesiRuanganSiswa.sesiRuangan.jadwalUjians.mapel'
+                ])
+                ->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+                ->where(function ($q) use ($search) {
+                    $q->where('nama', 'like', "%{$search}%")
+                        ->orWhere('idyayasan', 'like', "%{$search}%");
+                })
                 ->paginate(10);
+
+            $siswas->getCollection()->each(function ($siswa) use ($tahunAjaranId) {
+                $siswa->setRelation('kelas', $siswa->kelasForTahunAjaran($tahunAjaranId));
+            });
         }
 
         $sesiOptions = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel'])
+            ->forTahunAjaran($tahunAjaranId)
+            ->where('sumber', '<>', 'sumber')
             ->orderBy('ruangan_id')
             ->orderBy('waktu_mulai')
             ->get()
@@ -571,6 +605,11 @@ class SesiRuanganController extends Controller
 
     public function assignSiswaKeSesi(Request $request)
     {
+        if (!app(TahunAjaranService::class)->activeId()) {
+            return redirect()->route('tahun-ajaran.index')
+                ->with('error', 'Aktifkan tahun ajaran terlebih dahulu untuk mengatur siswa.');
+        }
+
         $validated = $request->validate([
             'siswa_ids' => 'required|array|min:1',
             'siswa_ids.*' => 'exists:siswa,id',
@@ -585,15 +624,23 @@ class SesiRuanganController extends Controller
         try {
             $assigned = 0;
             $enrolled = 0;
-            $siswas = Siswa::with('kelas')->whereIn('id', $validated['siswa_ids'])->get();
-            $sesis = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel'])->whereIn('id', $validated['sesi_ids'])->get();
+            $siswas = Siswa::with('tahunAjaranRecords.kelas')->whereIn('id', $validated['siswa_ids'])->get();
+            $sesis = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel', 'tahunAjaran'])
+                ->whereIn('id', $validated['sesi_ids'])
+                ->get();
             $manualJadwals = collect();
 
             if (!empty($validated['jadwal_ids'])) {
-                $manualJadwals = JadwalUjian::with('mapel')->whereIn('id', $validated['jadwal_ids'])->get();
+                $manualJadwals = JadwalUjian::with(['mapel', 'tahunAjaran'])
+                    ->whereIn('id', $validated['jadwal_ids'])
+                    ->get();
             }
 
             foreach ($sesis as $sesi) {
+                if ($sesi->tahunAjaran?->isReadOnly()) {
+                    continue;
+                }
+
                 foreach ($siswas as $siswa) {
                     $sesiSiswa = $sesi->sesiRuanganSiswa()->firstOrCreate(
                         ['siswa_id' => $siswa->id],
@@ -604,9 +651,7 @@ class SesiRuanganController extends Controller
                         $assigned++;
                     }
 
-                    $jadwalCandidates = $manualJadwals->isNotEmpty()
-                        ? $manualJadwals
-                        : $sesi->jadwalUjians;
+                    $jadwalCandidates = $manualJadwals->where('tahun_ajaran_id', $sesi->tahun_ajaran_id);
 
                     foreach ($jadwalCandidates as $jadwal) {
                         if (!$this->isSiswaEligibleForJadwal($siswa, $jadwal)) {
@@ -645,7 +690,7 @@ class SesiRuanganController extends Controller
             DB::commit();
 
             return redirect()->route('ruangan.cari-siswa', ['q' => $request->input('q')])
-                ->with('success', "{$assigned} siswa ditambahkan ke sesi, {$enrolled} enrollment dibuat.");
+                ->with('success', "{$assigned} siswa ditambahkan ke sesi, {$enrolled} enrollment dibuat dari jadwal yang dipilih.");
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -657,12 +702,14 @@ class SesiRuanganController extends Controller
 
     private function isSiswaEligibleForJadwal(Siswa $siswa, JadwalUjian $jadwal): bool
     {
-        if (!$siswa->kelas) {
+        $kelas = $siswa->kelasForTahunAjaran($jadwal->tahun_ajaran_id);
+
+        if (!$kelas) {
             return false;
         }
 
         $kelasTargets = collect($jadwal->kelas_target ?? [])->map(fn($id) => (string) $id)->all();
-        if (!empty($kelasTargets) && !in_array((string) $siswa->kelas_id, $kelasTargets, true)) {
+        if (!empty($kelasTargets) && !in_array((string) $kelas->id, $kelasTargets, true)) {
             return false;
         }
 
@@ -671,13 +718,13 @@ class SesiRuanganController extends Controller
         }
 
         $mapelTingkat = $this->normalizeEligibilityValue($jadwal->mapel->tingkat);
-        $siswaTingkat = $this->normalizeEligibilityValue($siswa->kelas->tingkat);
+        $siswaTingkat = $this->normalizeEligibilityValue($kelas->tingkat);
         if ($mapelTingkat && $siswaTingkat !== $mapelTingkat) {
             return false;
         }
 
         $mapelJurusan = $this->normalizeEligibilityValue($jadwal->mapel->jurusan);
-        $siswaJurusan = $this->normalizeEligibilityValue($siswa->kelas->jurusan);
+        $siswaJurusan = $this->normalizeEligibilityValue($kelas->jurusan);
         if ($mapelJurusan && $mapelJurusan !== 'UMUM' && $siswaJurusan !== $mapelJurusan) {
             return false;
         }

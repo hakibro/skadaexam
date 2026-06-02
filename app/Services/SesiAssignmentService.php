@@ -189,7 +189,9 @@ class SesiAssignmentService
      */
     public function autoAssignForAllEligibleJadwal(): int
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
         $eligibleJadwal = JadwalUjian::where('auto_assign_sesi', true)
+            ->forTahunAjaran($activeYearId)
             ->whereIn('status', ['draft', 'aktif'])
             ->get();
 
@@ -279,6 +281,7 @@ class SesiAssignmentService
 
             foreach ($templateSesis as $templateSesi) {
                 $newSesi = SesiRuangan::where('sumber', $templateSesi->kode_sesi)
+                    ->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
                     ->whereHas('jadwalUjians', function ($query) use ($targetDate) {
                         $query->whereDate('jadwal_ujian.tanggal', $targetDate);
                     })

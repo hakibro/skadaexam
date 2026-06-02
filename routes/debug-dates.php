@@ -3,10 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Models\JadwalUjian;
 use App\Models\SesiRuangan;
+use App\Services\TahunAjaranService;
 use Carbon\Carbon;
 
 // Debug route for date assignments
 Route::get('/debug-dates', function () {
+    $tahunAjaranId = app(TahunAjaranService::class)->activeId();
     $today = Carbon::today();
     $yesterday = Carbon::yesterday();
     $tomorrow = Carbon::tomorrow();
@@ -17,42 +19,42 @@ Route::get('/debug-dates', function () {
     echo "<p>Tomorrow: " . $tomorrow->format('Y-m-d') . "</p>";
 
     // Today's jadwal
-    $todayJadwal = JadwalUjian::whereDate('tanggal', $today)->get();
+    $todayJadwal = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', $today)->get();
     echo "<h2>Today's Jadwal: " . $todayJadwal->count() . "</h2>";
     foreach ($todayJadwal as $jadwal) {
         echo "<p>" . $jadwal->id . ": " . $jadwal->tanggal . " - " . $jadwal->judul . "</p>";
     }
 
     // Yesterday's jadwal
-    $yesterdayJadwal = JadwalUjian::whereDate('tanggal', $yesterday)->get();
+    $yesterdayJadwal = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', $yesterday)->get();
     echo "<h2>Yesterday's Jadwal: " . $yesterdayJadwal->count() . "</h2>";
     foreach ($yesterdayJadwal as $jadwal) {
         echo "<p>" . $jadwal->id . ": " . $jadwal->tanggal . " - " . $jadwal->judul . "</p>";
     }
 
     // Tomorrow's jadwal
-    $tomorrowJadwal = JadwalUjian::whereDate('tanggal', $tomorrow)->get();
+    $tomorrowJadwal = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', $tomorrow)->get();
     echo "<h2>Tomorrow's Jadwal: " . $tomorrowJadwal->count() . "</h2>";
     foreach ($tomorrowJadwal as $jadwal) {
         echo "<p>" . $jadwal->id . ": " . $jadwal->tanggal . " - " . $jadwal->judul . "</p>";
     }
 
     // Future jadwal
-    $futureJadwal = JadwalUjian::whereDate('tanggal', '>', $today)->orderBy('tanggal')->get();
+    $futureJadwal = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', '>', $today)->orderBy('tanggal')->get();
     echo "<h2>Future Jadwal: " . $futureJadwal->count() . "</h2>";
     foreach ($futureJadwal as $jadwal) {
         echo "<p>" . $jadwal->id . ": " . $jadwal->tanggal . " - " . $jadwal->judul . "</p>";
     }
 
     // Past jadwal
-    $pastJadwal = JadwalUjian::whereDate('tanggal', '<', $today)->orderBy('tanggal', 'desc')->take(5)->get();
+    $pastJadwal = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', '<', $today)->orderBy('tanggal', 'desc')->take(5)->get();
     echo "<h2>Past Jadwal: " . $pastJadwal->count() . " (showing 5)</h2>";
     foreach ($pastJadwal as $jadwal) {
         echo "<p>" . $jadwal->id . ": " . $jadwal->tanggal . " - " . $jadwal->judul . "</p>";
     }
 
     // Check the SQL query that is being executed for future jadwal
-    $futureQueryBuilder = JadwalUjian::whereDate('tanggal', '>', $today);
+    $futureQueryBuilder = JadwalUjian::forTahunAjaran($tahunAjaranId)->whereDate('tanggal', '>', $today);
     $futureQuery = $futureQueryBuilder->toSql();
     $futureBindings = $futureQueryBuilder->getBindings();
 

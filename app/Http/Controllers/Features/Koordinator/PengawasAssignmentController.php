@@ -7,6 +7,7 @@ use App\Models\Guru;
 use App\Models\JadwalUjian;
 use App\Models\JadwalUjianSesiRuangan;
 use App\Models\SesiRuangan;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,13 +20,16 @@ class PengawasAssignmentController extends Controller
      */
     public function index(Request $request)
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+
         // Filter by date, default to today
         $tanggal = $request->filled('tanggal') ? $request->tanggal : now()->format('Y-m-d');
 
         // Get all session pivot data for the selected date
         // We use the pivot model directly to get all jadwals for that date
-        $pivotQuery = JadwalUjianSesiRuangan::whereHas('jadwalUjian', function ($q) use ($tanggal) {
-            $q->whereDate('tanggal', $tanggal);
+        $pivotQuery = JadwalUjianSesiRuangan::whereHas('jadwalUjian', function ($q) use ($tanggal, $tahunAjaranId) {
+            $q->forTahunAjaran($tahunAjaranId)
+                ->whereDate('tanggal', $tanggal);
         })
             ->with(['sesiRuangan.ruangan', 'jadwalUjian.mapel', 'pengawas']);
 
@@ -76,7 +80,9 @@ class PengawasAssignmentController extends Controller
         ];
 
         // Pass jadwalUjians for filter dropdown if needed, or just date
-        $jadwalUjians = JadwalUjian::whereDate('tanggal', $tanggal)->get();
+        $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->whereDate('tanggal', $tanggal)
+            ->get();
 
         return view('features.koordinator.pengawas_assignment.index', compact(
             'jadwalUjians',
@@ -129,12 +135,14 @@ class PengawasAssignmentController extends Controller
      */
     public function getSchedule($pengawasId, $tanggal)
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
         $pengawas = Guru::findOrFail($pengawasId);
 
         // Get all session assignments for this pengawas on the specified date
         $assignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawasId)
-            ->whereHas('jadwalUjian', function ($q) use ($tanggal) {
-                $q->whereDate('tanggal', $tanggal);
+            ->whereHas('jadwalUjian', function ($q) use ($tanggal, $tahunAjaranId) {
+                $q->forTahunAjaran($tahunAjaranId)
+                    ->whereDate('tanggal', $tanggal);
             })
             ->with(['jadwalUjian', 'sesiRuangan.ruangan'])
             ->get();
@@ -171,6 +179,14 @@ class PengawasAssignmentController extends Controller
 
         $jadwalUjian = JadwalUjian::findOrFail($request->jadwal_ujian_id);
         $sesiRuangan = SesiRuangan::findOrFail($request->sesi_ruangan_id);
+        if ($jadwalUjian->tahun_ajaran_id !== $sesiRuangan->tahun_ajaran_id) {
+            return response()->json([
+                'available' => [],
+                'unavailable' => [],
+                'message' => 'Jadwal dan sesi ruangan harus berada pada tahun ajaran yang sama.'
+            ], 422);
+        }
+
         $date = $jadwalUjian->tanggal->format('Y-m-d');
 
         // Get all pengawas
@@ -190,11 +206,13 @@ class PengawasAssignmentController extends Controller
 
             // Get all assignments for this pengawas that overlap with the current session
             $existingAssignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawas->id)
-                ->whereHas('jadwalUjian', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
+                ->whereHas('jadwalUjian', function ($q) use ($date, $jadwalUjian) {
+                    $q->forTahunAjaran($jadwalUjian->tahun_ajaran_id)
+                        ->whereDate('tanggal', $date);
                 })
                 ->whereHas('sesiRuangan', function ($q) use ($sesiRuangan) {
-                    $q->where(function ($query) use ($sesiRuangan) {
+                    $q->where('tahun_ajaran_id', $sesiRuangan->tahun_ajaran_id)
+                        ->where(function ($query) use ($sesiRuangan) {
                         $query->where(function ($q) use ($sesiRuangan) {
                             $q->where('waktu_mulai', '<=', $sesiRuangan->waktu_mulai)
                                 ->where('waktu_selesai', '>', $sesiRuangan->waktu_mulai);
@@ -358,6 +376,20 @@ class PengawasAssignmentController extends Controller
     private function assignPengawasToSession(JadwalUjian $jadwal, SesiRuangan $sesi, $pengawasId)
     {
         try {
+            if ($jadwal->tahun_ajaran_id !== $sesi->tahun_ajaran_id) {
+                return [
+                    'success' => false,
+                    'message' => 'Jadwal dan sesi ruangan harus berada pada tahun ajaran yang sama'
+                ];
+            }
+
+            if ($jadwal->tahunAjaran?->isReadOnly() || $sesi->tahunAjaran?->isReadOnly()) {
+                return [
+                    'success' => false,
+                    'message' => 'Tahun ajaran arsip hanya dapat dilihat'
+                ];
+            }
+
             // Verify that the selected guru has pengawas role
             $pengawas = Guru::findOrFail($pengawasId);
             if (!$pengawas->user || !$pengawas->user->hasRole('pengawas')) {
@@ -381,12 +413,14 @@ class PengawasAssignmentController extends Controller
 
             // Check if pengawas is already assigned to another room at the same date and session time
             $conflictAssignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawasId)
-                ->whereHas('jadwalUjian', function ($q) use ($date) {
-                    $q->whereDate('tanggal', $date);
+                ->whereHas('jadwalUjian', function ($q) use ($date, $jadwal) {
+                    $q->forTahunAjaran($jadwal->tahun_ajaran_id)
+                        ->whereDate('tanggal', $date);
                 })
                 ->whereHas('sesiRuangan', function ($q) use ($sesi) {
                     // Check for time overlap
-                    $q->where(function ($query) use ($sesi) {
+                    $q->where('tahun_ajaran_id', $sesi->tahun_ajaran_id)
+                        ->where(function ($query) use ($sesi) {
                         $query->where(function ($q) use ($sesi) {
                             $q->where('waktu_mulai', '<=', $sesi->waktu_mulai)
                                 ->where('waktu_selesai', '>', $sesi->waktu_mulai);
@@ -422,7 +456,9 @@ class PengawasAssignmentController extends Controller
 
             // --- NEW LOGIC START ---
             // Find all Jadwal IDs that occur on the same date
-            $jadwalIdsOnDate = JadwalUjian::whereDate('tanggal', $date)->pluck('id');
+            $jadwalIdsOnDate = JadwalUjian::forTahunAjaran($jadwal->tahun_ajaran_id)
+                ->whereDate('tanggal', $date)
+                ->pluck('id');
 
             // Update all pivot records for this session and those jadwal IDs
             // This assigns the pengawas to this session for ALL jadwals on this date
@@ -466,11 +502,27 @@ class PengawasAssignmentController extends Controller
     private function removePengawasFromSession(JadwalUjian $jadwal, SesiRuangan $sesi)
     {
         try {
+            if ($jadwal->tahun_ajaran_id !== $sesi->tahun_ajaran_id) {
+                return [
+                    'success' => false,
+                    'message' => 'Jadwal dan sesi ruangan harus berada pada tahun ajaran yang sama'
+                ];
+            }
+
+            if ($jadwal->tahunAjaran?->isReadOnly() || $sesi->tahunAjaran?->isReadOnly()) {
+                return [
+                    'success' => false,
+                    'message' => 'Tahun ajaran arsip hanya dapat dilihat'
+                ];
+            }
+
             $date = $jadwal->tanggal->format('Y-m-d');
 
             // --- NEW LOGIC START ---
             // Find all Jadwal IDs that occur on the same date
-            $jadwalIdsOnDate = JadwalUjian::whereDate('tanggal', $date)->pluck('id');
+            $jadwalIdsOnDate = JadwalUjian::forTahunAjaran($jadwal->tahun_ajaran_id)
+                ->whereDate('tanggal', $date)
+                ->pluck('id');
 
             // Update all pivot records for this session and those jadwal IDs
             $updatedCount = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesi->id)
@@ -522,10 +574,12 @@ class PengawasAssignmentController extends Controller
      */
     public function getAllSchedules($pengawasId)
     {
+        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
         $pengawas = Guru::findOrFail($pengawasId);
 
         // Get all session assignments for this pengawas on any date
         $assignments = JadwalUjianSesiRuangan::where('pengawas_id', $pengawasId)
+            ->whereHas('jadwalUjian', fn($q) => $q->forTahunAjaran($tahunAjaranId))
             ->with(['jadwalUjian.mapel', 'sesiRuangan.ruangan'])
             ->get();
 
@@ -588,7 +642,8 @@ class PengawasAssignmentController extends Controller
 
         $assignments = JadwalUjianSesiRuangan::where('pengawas_id', $request->pengawas_id)
             ->whereHas('jadwalUjian', function ($q) use ($request) {
-                $q->whereBetween('tanggal', [$request->start_date, $request->end_date]);
+                $q->forTahunAjaran(app(TahunAjaranService::class)->activeId())
+                    ->whereBetween('tanggal', [$request->start_date, $request->end_date]);
             })
             ->with(['jadwalUjian.mapel', 'sesiRuangan.ruangan'])
             ->get();

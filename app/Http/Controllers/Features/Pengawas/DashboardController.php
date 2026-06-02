@@ -26,6 +26,9 @@ class DashboardController extends Controller
         }
 
         $jadwalUjian = JadwalUjian::findOrFail($jadwalUjianId);
+        if ($jadwalUjian->tahunAjaran?->isReadOnly()) {
+            return response()->json(['error' => 'Tahun ajaran arsip hanya dapat dilihat'], 422);
+        }
 
         // Get the current state and toggle it
         $currentState = $jadwalUjian->aktifkan_auto_logout ?? true;
@@ -192,7 +195,8 @@ class DashboardController extends Controller
             'ruangan',
             'sesiRuanganSiswa',
             'sesiRuanganSiswa.siswa',
-            'sesiRuanganSiswa.siswa.kelas'
+            'sesiRuanganSiswa.siswa.kelas',
+            'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'
         ])->findOrFail($id);
 
         // Check if current guru is assigned to this sesi ruangan
@@ -235,6 +239,9 @@ class DashboardController extends Controller
     public function updateAttendance(Request $request, $id)
     {
         $sesiRuangan = SesiRuangan::findOrFail($id);
+        if ($sesiRuangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
 
         // Check if current guru is assigned to this sesi ruangan
         $user = Auth::user();
@@ -284,6 +291,10 @@ class DashboardController extends Controller
     public function toggleSubmitButton(Request $request, $sesiId)
     {
         $sesi = SesiRuangan::findOrFail($sesiId);
+        if ($sesi->tahunAjaran?->isReadOnly()) {
+            return back()->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
         $sesi->tampilkan_tombol_submit = $request->input('tampilkan', false);
         $sesi->save();
 
@@ -303,6 +314,7 @@ class DashboardController extends Controller
 
         // Today's date
         $today = Carbon::today();
+        $activeYearId = app(TahunAjaranService::class)->activeId();
 
         // Legacy direct assignments (no longer possible with removed pengawas_id column)
         $directAssignments = collect();
@@ -315,8 +327,10 @@ class DashboardController extends Controller
 
             if ($pivotSesiIds->count() > 0) {
                 $pivotAssignments = SesiRuangan::whereIn('id', $pivotSesiIds)
-                    ->whereHas('jadwalUjians', function ($query) use ($today) {
-                        $query->whereDate('tanggal', $today);
+                    ->when($activeYearId, fn($q) => $q->where('tahun_ajaran_id', $activeYearId))
+                    ->whereHas('jadwalUjians', function ($query) use ($today, $activeYearId) {
+                        $query->whereDate('tanggal', $today)
+                            ->when($activeYearId, fn($q) => $q->where('jadwal_ujian.tahun_ajaran_id', $activeYearId));
                     })
                     ->get();
             }
@@ -326,17 +340,22 @@ class DashboardController extends Controller
         $assignments = collect();
         if ($user->isAdmin()) {
             $assignments = SesiRuangan::with(['jadwalUjians', 'ruangan', 'sesiRuanganSiswa'])
-                ->whereHas('jadwalUjians', function ($query) use ($today) {
-                    $query->whereDate('tanggal', $today);
+                ->when($activeYearId, fn($q) => $q->where('tahun_ajaran_id', $activeYearId))
+                ->whereHas('jadwalUjians', function ($query) use ($today, $activeYearId) {
+                    $query->whereDate('tanggal', $today)
+                        ->when($activeYearId, fn($q) => $q->where('jadwal_ujian.tahun_ajaran_id', $activeYearId));
                 })
                 ->get();
         } else if ($guru) {
             $assignments = SesiRuangan::with(['jadwalUjians', 'ruangan', 'sesiRuanganSiswa'])
-                ->whereHas('jadwalUjians', function ($q) use ($guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
+                ->when($activeYearId, fn($q) => $q->where('tahun_ajaran_id', $activeYearId))
+                ->whereHas('jadwalUjians', function ($q) use ($guru, $activeYearId) {
+                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id)
+                        ->when($activeYearId, fn($q) => $q->where('jadwal_ujian.tahun_ajaran_id', $activeYearId));
                 })
-                ->whereHas('jadwalUjians', function ($query) use ($today) {
-                    $query->whereDate('tanggal', $today);
+                ->whereHas('jadwalUjians', function ($query) use ($today, $activeYearId) {
+                    $query->whereDate('tanggal', $today)
+                        ->when($activeYearId, fn($q) => $q->where('jadwal_ujian.tahun_ajaran_id', $activeYearId));
                 })
                 ->get();
         }
