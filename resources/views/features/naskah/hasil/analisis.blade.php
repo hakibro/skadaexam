@@ -258,6 +258,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Soal</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Benar</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parsial</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salah</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kosong</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akurasi</th>
@@ -271,6 +272,7 @@
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ \Illuminate\Support\Str::limit($question['text'], 90) }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $question['category'] }}</td>
                                 <td class="px-4 py-3 text-sm text-green-700">{{ $question['correct'] }}</td>
+                                <td class="px-4 py-3 text-sm text-yellow-700">{{ $question['partial'] ?? 0 }}</td>
                                 <td class="px-4 py-3 text-sm text-red-700">{{ $question['incorrect'] }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $question['blank'] }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $question['accuracy'] }}%</td>
@@ -281,7 +283,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail jawaban untuk dianalisis.</td></tr>
+                            <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail jawaban untuk dianalisis.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -129,6 +129,8 @@ class BankSoalController extends Controller
             'status' => 'nullable|in:aktif,draft,arsip',
             'mapel_id' => 'required|exists:mapel,id',
             'jenis_soal' => 'nullable|in:uts,uas,ulangan,latihan',
+            'jumlah_pilihan' => 'nullable|integer|in:2,3,4,5',
+            'tipe_soal_default' => 'nullable|in:' . implode(',', array_keys(\App\Models\Soal::QUESTION_TYPES)),
         ]);
 
         try {
@@ -159,6 +161,8 @@ class BankSoalController extends Controller
                 'pengaturan' => [
                     'created_at' => now()->toDateTimeString(),
                     'creator_name' => Auth::user()->name ?? 'System',
+                    'jumlah_pilihan' => (int) $request->input('jumlah_pilihan', 5),
+                    'tipe_soal_default' => $request->input('tipe_soal_default', 'pilihan_ganda'),
                 ],
             ]);
 
@@ -246,11 +250,17 @@ class BankSoalController extends Controller
             'status' => 'required|in:aktif,draft,arsip',
             'mapel_id' => 'required|exists:mapel,id',
             'jenis_soal' => 'nullable|in:uts,uas,ulangan,latihan',
+            'jumlah_pilihan' => 'nullable|integer|in:2,3,4,5',
+            'tipe_soal_default' => 'nullable|in:' . implode(',', array_keys(\App\Models\Soal::QUESTION_TYPES)),
             'docx_file' => 'nullable|file|mimes:docx|max:10240', // 10MB max
         ]);
 
         try {
             Mapel::forTahunAjaran($banksoal->tahun_ajaran_id)->findOrFail($request->mapel_id);
+
+            $pengaturan = $banksoal->pengaturan ?? [];
+            $pengaturan['jumlah_pilihan'] = (int) $request->input('jumlah_pilihan', $banksoal->jumlah_pilihan);
+            $pengaturan['tipe_soal_default'] = $request->input('tipe_soal_default', $banksoal->tipe_soal_default);
 
             // Update basic info
             $banksoal->update([
@@ -260,6 +270,7 @@ class BankSoalController extends Controller
                 'status' => $request->status,
                 'mapel_id' => $request->mapel_id,
                 'jenis_soal' => $request->jenis_soal ?? $banksoal->jenis_soal,
+                'pengaturan' => $pengaturan,
             ]);
 
             // Process DOCX file if uploaded
@@ -681,6 +692,7 @@ class BankSoalController extends Controller
 
         foreach ($paragraphs as $paragraph) {
             $text = trim(preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $paragraph['text'])));
+            $imagesHandledInline = false;
 
             if (preg_match('/^(\d+)\.\s*(.*)$/u', $text, $matches)) {
                 if ($currentQuestion) {
@@ -691,14 +703,31 @@ class BankSoalController extends Controller
                 $questionNumber = (int) $matches[1];
                 $currentQuestion = $this->newImportedQuestionData($banksoal->id, $questionNumber, trim($matches[2] ?? ''));
                 $lastImageTarget = 'pertanyaan';
+
+                if (!empty($paragraph['image_ids']) && trim($matches[2] ?? '') !== '') {
+                    $currentQuestion['pertanyaan'] = $this->stripDocxQuestionNumber(
+                        $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, 'pertanyaan')
+                    );
+                    $currentQuestion['tipe_pertanyaan'] = 'teks';
+                    $imagesHandledInline = true;
+                }
             } elseif ($currentQuestion && preg_match('/^([A-E])\.\s*(.*)$/iu', $text, $matches)) {
                 $answerKey = strtolower($matches[1]);
                 $answerText = trim($matches[2] ?? '');
                 $isCorrect = preg_match('/\[\*\]\s*$/u', $answerText) === 1;
                 $answerText = trim(preg_replace('/\s*\[\*\]\s*$/u', '', $answerText));
 
-                $currentQuestion['pilihan_' . $answerKey . '_teks'] = $answerText;
                 $lastImageTarget = 'pilihan_' . $answerKey;
+
+                if (!empty($paragraph['image_ids']) && $answerText !== '') {
+                    $currentQuestion['pilihan_' . $answerKey . '_teks'] = $this->stripDocxAnswerPrefix(
+                        $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, $lastImageTarget)
+                    );
+                    $currentQuestion['pilihan_' . $answerKey . '_tipe'] = 'teks';
+                    $imagesHandledInline = true;
+                } else {
+                    $currentQuestion['pilihan_' . $answerKey . '_teks'] = $answerText;
+                }
 
                 if ($isCorrect) {
                     $currentQuestion['kunci_jawaban'] = strtoupper($answerKey);
@@ -706,17 +735,31 @@ class BankSoalController extends Controller
             } elseif ($currentQuestion && preg_match('/^Pembahasan:\s*(.*)$/iu', $text, $matches)) {
                 $currentQuestion['pembahasan_teks'] = trim($matches[1] ?? '');
                 $lastImageTarget = 'pembahasan';
+
+                if (!empty($paragraph['image_ids']) && trim($matches[1] ?? '') !== '') {
+                    $currentQuestion['pembahasan_teks'] = $this->stripDocxPembahasanPrefix(
+                        $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, 'pembahasan')
+                    );
+                    $currentQuestion['pembahasan_tipe'] = 'teks';
+                    $imagesHandledInline = true;
+                }
             } elseif ($currentQuestion && $text !== '') {
+                $inlineHtml = !empty($paragraph['image_ids'])
+                    ? $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, $lastImageTarget ?: 'pertanyaan')
+                    : null;
+
                 if ($lastImageTarget === 'pembahasan' || $currentQuestion['pembahasan_teks'] !== null) {
-                    $currentQuestion['pembahasan_teks'] = trim(($currentQuestion['pembahasan_teks'] ?? '') . "\n" . $text);
+                    $currentQuestion['pembahasan_teks'] = trim(($currentQuestion['pembahasan_teks'] ?? '') . "\n" . ($inlineHtml ?: $text));
                     $lastImageTarget = 'pembahasan';
                 } else {
-                    $currentQuestion['pertanyaan'] = trim(($currentQuestion['pertanyaan'] ?? '') . "\n" . $text);
+                    $currentQuestion['pertanyaan'] = trim(($currentQuestion['pertanyaan'] ?? '') . "\n" . ($inlineHtml ?: $text));
                     $lastImageTarget = 'pertanyaan';
                 }
+
+                $imagesHandledInline = $inlineHtml !== null;
             }
 
-            if ($currentQuestion && !empty($paragraph['image_ids'])) {
+            if ($currentQuestion && !$imagesHandledInline && !empty($paragraph['image_ids'])) {
                 foreach ($paragraph['image_ids'] as $relationId) {
                     $mediaName = $mediaMap[$relationId] ?? null;
                     if (!$mediaName) {
@@ -778,12 +821,66 @@ class BankSoalController extends Controller
         return collect($matches[0] ?? [])->map(function ($paragraphXml) {
             preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>/is', $paragraphXml, $textMatches);
             preg_match_all('/r:embed="([^"]+)"/i', $paragraphXml, $imageMatches);
+            preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>|r:embed="([^"]+)"/is', $paragraphXml, $segmentMatches, PREG_SET_ORDER);
 
             return [
                 'text' => html_entity_decode(implode('', $textMatches[1] ?? [])),
                 'image_ids' => $imageMatches[1] ?? [],
+                'segments' => collect($segmentMatches)->map(function ($match) {
+                    if (!empty($match[1])) {
+                        return ['type' => 'text', 'value' => html_entity_decode($match[1])];
+                    }
+
+                    return ['type' => 'image', 'value' => $match[2] ?? null];
+                })->filter(fn($segment) => $segment['value'] !== null && $segment['value'] !== '')->values()->all(),
             ];
         })->all();
+    }
+
+    private function docxParagraphHtml(array $paragraph, \ZipArchive $zip, array $mediaMap, BankSoal $banksoal, int $questionNumber, string $target): string
+    {
+        $html = '';
+
+        foreach ($paragraph['segments'] ?? [] as $segment) {
+            if ($segment['type'] === 'text') {
+                $html .= e(str_replace("\xc2\xa0", ' ', $segment['value']));
+                continue;
+            }
+
+            $mediaName = $mediaMap[$segment['value']] ?? null;
+            if (!$mediaName) {
+                continue;
+            }
+
+            $binary = $zip->getFromName('word/media/' . $mediaName);
+            if (!$binary) {
+                continue;
+            }
+
+            $extension = pathinfo($mediaName, PATHINFO_EXTENSION) ?: 'png';
+            $filename = $this->saveDocxImageBinary($binary, $extension, $banksoal->id, $questionNumber, $target);
+            $folder = $this->docxImageFolder($target);
+            $src = e(\Illuminate\Support\Facades\Storage::url($folder . '/' . $filename));
+            $html .= '<img src="' . $src . '" alt="Gambar soal" style="max-width:100%;height:auto;vertical-align:middle;display:inline-block;margin:0 4px;">';
+        }
+
+        return trim($html);
+    }
+
+    private function stripDocxQuestionNumber(string $html): string
+    {
+        return trim(preg_replace('/^\s*\d+\.\s*/u', '', $html));
+    }
+
+    private function stripDocxAnswerPrefix(string $html): string
+    {
+        $html = preg_replace('/^\s*[A-E]\.\s*/iu', '', $html);
+        return trim(preg_replace('/\s*\[\*\]\s*/u', '', $html));
+    }
+
+    private function stripDocxPembahasanPrefix(string $html): string
+    {
+        return trim(preg_replace('/^\s*Pembahasan:\s*/iu', '', $html));
     }
 
     private function newImportedQuestionData(int $bankSoalId, int $questionNumber, string $questionText): array
@@ -890,11 +987,7 @@ class BankSoalController extends Controller
         $extension = strtolower($extension ?: 'png');
         $extension = $extension === 'jpeg' ? 'jpg' : $extension;
 
-        $folder = match (true) {
-            str_starts_with($target, 'pilihan_') => 'soal/pilihan',
-            $target === 'pembahasan' => 'soal/pembahasan',
-            default => 'soal/pertanyaan',
-        };
+        $folder = $this->docxImageFolder($target);
 
         $filename = implode('_', [
             'docx',
@@ -907,6 +1000,15 @@ class BankSoalController extends Controller
         Storage::disk('public')->put($folder . '/' . $filename, $binary);
 
         return $filename;
+    }
+
+    private function docxImageFolder(string $target): string
+    {
+        return match (true) {
+            str_starts_with($target, 'pilihan_') => 'soal/pilihan',
+            $target === 'pembahasan' => 'soal/pembahasan',
+            default => 'soal/pertanyaan',
+        };
     }
 
     private function attachSavedImageToQuestion(array &$question, string $target, string $filename): void
@@ -968,7 +1070,7 @@ class BankSoalController extends Controller
             }
 
             // Pastikan kunci jawaban tidak null
-            if ($data['tipe_soal'] == 'pilihan_ganda' && empty($data['kunci_jawaban'])) {
+            if (in_array($data['tipe_soal'], \App\Models\Soal::OBJECTIVE_TYPES, true) && empty($data['kunci_jawaban'])) {
                 Log::warning("Soal pilihan ganda tanpa kunci jawaban. Mencoba mendeteksi dari tanda [*]", [
                     'bank_soal_id' => $banksoal->id,
                     'nomor_soal' => $data['nomor_soal']

@@ -112,6 +112,7 @@ class SoalController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+            unset($data['interactive_left'], $data['interactive_right'], $data['interactive_items'], $data['interactive_drag_items'], $data['interactive_zones']);
             $activeYear = app(TahunAjaranService::class)->ensureActive();
             BankSoal::forTahunAjaran($activeYear->id)->findOrFail($data['bank_soal_id']);
 
@@ -209,6 +210,15 @@ class SoalController extends Controller
                 ]);
             }
 
+            if (($data['tipe_soal'] ?? null) === 'listening' && $request->hasFile('soal_audio')) {
+                $filename = time() . '_' . uniqid('audio_') . '.' . $request->file('soal_audio')->getClientOriginalExtension();
+                $request->file('soal_audio')->storeAs('soal/audio', $filename, 'public');
+                $settings = $data['display_settings'] ?? [];
+                $settings['audio'] = $filename;
+                $data['display_settings'] = $settings;
+            }
+            unset($data['soal_audio']);
+
             // Set default values
             $data['bobot'] = $data['bobot'] ?? 1.00;
             $data['display_settings'] = $data['display_settings'] ?? [];
@@ -290,6 +300,7 @@ class SoalController extends Controller
             DB::beginTransaction();
 
             $data = $request->validated();
+            unset($data['interactive_left'], $data['interactive_right'], $data['interactive_items'], $data['interactive_drag_items'], $data['interactive_zones']);
             $soal->load('bankSoal.tahunAjaran');
 
             if ($soal->bankSoal?->tahunAjaran?->isReadOnly()) {
@@ -407,6 +418,36 @@ class SoalController extends Controller
                     'filename' => $data['pembahasan_gambar']
                 ]);
             }
+
+            if (($data['tipe_soal'] ?? null) !== 'listening') {
+                $oldAudio = data_get($soal->display_settings, 'audio');
+                if ($oldAudio) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete('soal/audio/' . $oldAudio);
+                }
+
+                $settings = $data['display_settings'] ?? ($soal->display_settings ?? []);
+                unset($settings['audio']);
+                $data['display_settings'] = $settings;
+            } elseif ($request->hasFile('soal_audio')) {
+                $oldAudio = data_get($soal->display_settings, 'audio');
+                if ($oldAudio) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete('soal/audio/' . $oldAudio);
+                }
+
+                $filename = time() . '_' . uniqid('audio_') . '.' . $request->file('soal_audio')->getClientOriginalExtension();
+                $request->file('soal_audio')->storeAs('soal/audio', $filename, 'public');
+                $settings = $data['display_settings'] ?? ($soal->display_settings ?? []);
+                $settings['audio'] = $filename;
+                $data['display_settings'] = $settings;
+            } elseif (($data['tipe_soal'] ?? null) === 'listening') {
+                $oldAudio = data_get($soal->display_settings, 'audio');
+                if ($oldAudio) {
+                    $settings = $data['display_settings'] ?? ($soal->display_settings ?? []);
+                    $settings['audio'] = $oldAudio;
+                    $data['display_settings'] = $settings;
+                }
+            }
+            unset($data['soal_audio']);
 
             foreach (array_merge(['gambar_pertanyaan', 'pembahasan_gambar'], array_map(fn($pilihan) => "pilihan_{$pilihan}_gambar", ['a', 'b', 'c', 'd', 'e'])) as $imageField) {
                 if (!$request->hasFile($imageField)) {

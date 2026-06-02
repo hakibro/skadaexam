@@ -47,10 +47,14 @@
 
             <div class="bg-white rounded-lg shadow p-5">
                 <p class="text-sm text-gray-500">Jawaban</p>
-                <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div class="mt-3 grid grid-cols-4 gap-2 text-center">
                     <div>
                         <p class="text-2xl font-semibold text-green-600">{{ $hasil->jumlah_benar ?? $jawabanStats['benar'] }}</p>
                         <p class="text-xs text-gray-500">Benar</p>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-semibold text-yellow-600">{{ $jawabanStats['parsial'] ?? 0 }}</p>
+                        <p class="text-xs text-gray-500">Parsial</p>
                     </div>
                     <div>
                         <p class="text-2xl font-semibold text-red-600">{{ $hasil->jumlah_salah ?? $jawabanStats['salah'] }}</p>
@@ -126,7 +130,7 @@
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ \Illuminate\Support\Str::limit($row['text'], 110) }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $row['jawaban'] ?: '-' }}</td>
                                         <td class="px-4 py-3">
-                                            <span class="px-2 py-1 text-xs rounded-full {{ $row['status'] === 'benar' ? 'bg-green-100 text-green-700' : ($row['status'] === 'salah' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700') }}">
+                                            <span class="px-2 py-1 text-xs rounded-full {{ $row['status'] === 'benar' ? 'bg-green-100 text-green-700' : ($row['status'] === 'parsial' ? 'bg-yellow-100 text-yellow-700' : ($row['status'] === 'salah' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700')) }}">
                                                 {{ ucfirst($row['status']) }}
                                             </span>
                                         </td>

@@ -823,32 +823,22 @@
                 importBtn.addEventListener('click', function() {
                     if (!confirm('Are you sure you want to import students data from SIKEU API?')) return;
 
-                    // Show the progress section
                     if (importProgressSection) {
                         importProgressSection.classList.remove('hidden');
                     }
 
-                    // Reset progress
                     if (importProgressBar) importProgressBar.style.width = '0%';
                     if (importPercentage) importPercentage.textContent = '0%';
                     if (importStatusText) importStatusText.textContent = 'Starting import...';
                     if (importMessage) importMessage.textContent = 'Connecting to SIKEU API...';
 
-                    // Hide result sections
                     if (importResultsSection) importResultsSection.classList.add('hidden');
                     if (importErrorSection) importErrorSection.classList.add('hidden');
 
-                    // Debug UI elements
-                    console.log('Debugging UI elements:');
-                    console.log('- importProgressBar exists:', !!importProgressBar);
-                    console.log('- importPercentage exists:', !!importPercentage);
-                    console.log('- importStatusText exists:', !!importStatusText);
-                    console.log('- importMessage exists:', !!importMessage);
-
-                    // Start the import process
                     isImporting = true;
-
-                    console.log('Starting Quick Import process...');
+                    importBtn.disabled = true;
+                    importBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                    pollImportProgress();
 
                     fetch('{{ route('data.siswa.import-from-api-ajax') }}', {
                             method: 'POST',
@@ -867,16 +857,10 @@
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Import initiated response:', data);
-
                             if (data.success) {
-                                console.log(
-                                    'Import process started successfully, starting progress polling'
-                                );
-                                // Start progress polling
-                                pollImportProgress();
+                                stopImportProgress();
+                                showImportResults(data.message || 'Import selesai.');
                             } else {
-                                console.error('Import failed:', data.error);
                                 stopImportProgress();
                                 showImportError(data.error || 'Unknown error occurred');
                             }
@@ -895,19 +879,19 @@
                     clearInterval(importProgressInterval);
                 }
 
-                console.log('Starting import progress polling');
+                fetchImportProgress();
 
                 importProgressInterval = setInterval(() => {
                     if (!isImporting) {
-                        console.log('Import process stopped, clearing interval');
                         clearInterval(importProgressInterval);
                         return;
                     }
 
-                    console.log('Polling import progress from:',
-                        '{{ route('data.siswa.import-progress') }}');
+                    fetchImportProgress();
+                }, 1000);
+            }
 
-                    // Add a cache-busting parameter to prevent caching
+            function fetchImportProgress() {
                     const url = new URL('{{ route('data.siswa.import-progress') }}', window.location
                         .origin);
                     url.searchParams.append('_', new Date().getTime());
@@ -932,32 +916,22 @@
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Import progress update:', data);
-
-                            // Update progress UI with more detailed logging
                             if (importProgressBar) {
                                 importProgressBar.style.width = data.progress + '%';
-                                console.log('Updated progress bar to ' + data.progress + '%');
                             }
                             if (importPercentage) {
                                 importPercentage.textContent = data.progress + '%';
-                                console.log('Updated progress percentage text to ' + data.progress +
-                                    '%');
                             }
                             if (importStatusText) {
                                 importStatusText.textContent = data.status;
-                                console.log('Updated status text to: ' + data.status);
                             }
                             if (importMessage) {
                                 importMessage.textContent = data.message;
-                                console.log('Updated message to: ' + data.message);
-                            } // Check if import is complete
+                            }
                             if (data.status === 'completed') {
-                                console.log('Import completed');
                                 stopImportProgress();
                                 showImportResults(data.message);
                             } else if (data.status === 'error') {
-                                console.log('Import error:', data.message);
                                 stopImportProgress();
                                 showImportError(data.message);
                             }
@@ -969,19 +943,19 @@
                                 error.message;
                             // Don't stop polling on network errors
                         });
-                }, 1000);
             }
 
             function stopImportProgress() {
-                console.log('Stopping import progress');
                 isImporting = false;
+                if (importBtn) {
+                    importBtn.disabled = false;
+                    importBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                }
                 if (importProgressInterval) {
                     clearInterval(importProgressInterval);
                     importProgressInterval = null;
                 }
 
-                // Clear session data
-                console.log('Clearing import progress session data');
                 fetch('{{ route('data.siswa.clear-import-progress') }}', {
                         method: 'POST',
                         headers: {
@@ -994,7 +968,6 @@
                         if (!response.ok) {
                             throw new Error(`Clear progress request failed with status: ${response.status}`);
                         }
-                        console.log('Import progress session cleared successfully');
                         return response.json();
                     })
                     .catch(error => {
@@ -1067,22 +1040,21 @@
                 syncApiBtn.addEventListener('click', function() {
                     if (!confirm('Are you sure you want to sync data with SIKEU API?')) return;
 
-                    // Show the progress section
                     if (syncProgressSection) {
                         syncProgressSection.classList.remove('hidden');
                     }
 
-                    // Reset progress
                     if (syncProgressBar) syncProgressBar.style.width = '0%';
                     if (syncPercentage) syncPercentage.textContent = '0%';
                     if (syncStatusText) syncStatusText.textContent = 'Starting sync...';
                     if (syncMessage) syncMessage.textContent = 'Connecting to SIKEU API...';
 
-                    // Hide result sections
                     if (syncResultsSection) syncResultsSection.classList.add('hidden');
 
-                    // Start the sync process
                     isSyncing = true;
+                    syncApiBtn.disabled = true;
+                    syncApiBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                    pollSyncProgress();
 
                     fetch('{{ route('data.siswa.sync-from-api') }}', {
                             method: 'POST',
@@ -1096,8 +1068,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                // Start progress polling
-                                pollSyncProgress();
+                                stopSyncProgress();
+                                showSyncResults(data.message || 'Sync selesai.');
                             } else {
                                 stopSyncProgress();
                                 showSyncError(data.error || 'Unknown error occurred');
@@ -1117,12 +1089,19 @@
                     clearInterval(syncProgressInterval);
                 }
 
+                fetchSyncProgress();
+
                 syncProgressInterval = setInterval(() => {
                     if (!isSyncing) {
                         clearInterval(syncProgressInterval);
                         return;
                     }
 
+                    fetchSyncProgress();
+                }, 1000);
+            }
+
+            function fetchSyncProgress() {
                     fetch('{{ route('data.siswa.sync-progress') }}', {
                             method: 'GET',
                             headers: {
@@ -1161,17 +1140,20 @@
                             showToast('Sync progress polling error: ' + error.message, 'warning');
                             // Don't stop polling on network errors, it might recover
                         });
-                }, 1000);
             }
 
             function stopSyncProgress() {
                 isSyncing = false;
+                if (syncApiBtn) {
+                    syncApiBtn.disabled = false;
+                    syncApiBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                }
                 if (syncProgressInterval) {
                     clearInterval(syncProgressInterval);
                     syncProgressInterval = null;
                 }
 
-                // Clear session data
+                // Clear cached progress data
                 fetch('{{ route('data.siswa.clear-sync-progress') }}', {
                     method: 'POST',
                     headers: {

@@ -20,10 +20,6 @@ class Siswa extends Authenticatable
         'nama',
         'email',
         'password',
-        'kelas_id',
-        'status_pembayaran',
-        'rekomendasi',
-        'catatan_rekomendasi',
     ];
 
     protected $hidden = [
@@ -34,8 +30,6 @@ class Siswa extends Authenticatable
     protected $casts = [
         'password' => 'hashed',
         'email_verified_at' => 'datetime',
-        'status_pembayaran' => 'string', // Enum: Lunas, Belum Lunas
-        'rekomendasi' => 'string', // Enum: ya, tidak
     ];
 
     // Override guard name untuk Spatie Permission
@@ -60,11 +54,27 @@ class Siswa extends Authenticatable
                 $siswa->password = 'password'; // Will be hashed by cast
             }
 
-            // Set default rekomendasi if not provided
-            if (empty($siswa->rekomendasi)) {
-                $siswa->rekomendasi = 'tidak';
-            }
         });
+    }
+
+    public function getKelasIdAttribute($value)
+    {
+        return $this->activeTahunAjaranRecord()?->kelas_id ?? $value;
+    }
+
+    public function getStatusPembayaranAttribute($value)
+    {
+        return $this->activeTahunAjaranRecord()?->status_pembayaran ?? $value ?? 'Belum Lunas';
+    }
+
+    public function getRekomendasiAttribute($value)
+    {
+        return $this->activeTahunAjaranRecord()?->rekomendasi ?? $value ?? 'tidak';
+    }
+
+    public function getCatatanRekomendasiAttribute($value)
+    {
+        return $this->activeTahunAjaranRecord()?->catatan ?? $value;
     }
 
     // Status pembayaran options
@@ -140,6 +150,24 @@ class Siswa extends Authenticatable
         return $this->hasMany(SiswaTahunAjaran::class);
     }
 
+    public function activeTahunAjaranRecord(): ?SiswaTahunAjaran
+    {
+        $tahunAjaranId = app(\App\Services\TahunAjaranService::class)->activeId();
+
+        if (!$tahunAjaranId) {
+            return null;
+        }
+
+        if ($this->relationLoaded('tahunAjaranRecords')) {
+            return $this->tahunAjaranRecords->firstWhere('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        return $this->tahunAjaranRecords()
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->with('kelas')
+            ->first();
+    }
+
     public function kelasForTahunAjaran($tahunAjaranId)
     {
         return $this->tahunAjaranRecords()
@@ -207,7 +235,11 @@ class Siswa extends Authenticatable
      */
     public function scopeByKelas($query, $kelas_id)
     {
-        return $query->where('kelas_id', $kelas_id);
+        $tahunAjaranId = app(\App\Services\TahunAjaranService::class)->activeId();
+
+        return $query->whereHas('tahunAjaranRecords', fn($q) => $q
+            ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+            ->where('kelas_id', $kelas_id));
     }
 
     /**
@@ -219,7 +251,11 @@ class Siswa extends Authenticatable
      */
     public function scopeByStatus($query, $status)
     {
-        return $query->where('status_pembayaran', $status);
+        $tahunAjaranId = app(\App\Services\TahunAjaranService::class)->activeId();
+
+        return $query->whereHas('tahunAjaranRecords', fn($q) => $q
+            ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+            ->where('status_pembayaran', $status));
     }
 
     /**
@@ -231,7 +267,11 @@ class Siswa extends Authenticatable
      */
     public function scopeByRekomendasi($query, $rekomendasi)
     {
-        return $query->where('rekomendasi', $rekomendasi);
+        $tahunAjaranId = app(\App\Services\TahunAjaranService::class)->activeId();
+
+        return $query->whereHas('tahunAjaranRecords', fn($q) => $q
+            ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId))
+            ->where('rekomendasi', $rekomendasi));
     }
 
     /**
@@ -242,7 +282,7 @@ class Siswa extends Authenticatable
      */
     public function scopeLunas($query)
     {
-        return $query->where('status_pembayaran', 'Lunas');
+        return $query->byStatus('Lunas');
     }
 
     /**
@@ -253,7 +293,7 @@ class Siswa extends Authenticatable
      */
     public function scopeBelumLunas($query)
     {
-        return $query->where('status_pembayaran', 'Belum Lunas');
+        return $query->byStatus('Belum Lunas');
     }
 
     /**
@@ -264,7 +304,7 @@ class Siswa extends Authenticatable
      */
     public function scopeRecommended($query)
     {
-        return $query->where('rekomendasi', 'ya');
+        return $query->byRekomendasi('ya');
     }
 
     /**
@@ -275,7 +315,7 @@ class Siswa extends Authenticatable
      */
     public function scopeNotRecommended($query)
     {
-        return $query->where('rekomendasi', 'tidak');
+        return $query->byRekomendasi('tidak');
     }
 
     /**

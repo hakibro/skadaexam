@@ -40,7 +40,6 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
 
     // Import routes
     Route::get('siswa/import', [SiswaController::class, 'import'])->name('siswa.import');
-    Route::post('siswa/import-from-api', [SiswaController::class, 'importFromApi'])->name('siswa.import-from-api');
     Route::post('siswa/import-from-api-ajax', [SiswaController::class, 'importFromApiAjax'])->name('siswa.import-from-api-ajax');
     Route::get('siswa/import-progress', [SiswaController::class, 'getImportProgress'])->name('siswa.import-progress');
     Route::post('siswa/clear-import-progress', [SiswaController::class, 'clearImportProgress'])->name('siswa.clear-import-progress');

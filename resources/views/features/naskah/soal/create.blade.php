@@ -26,6 +26,8 @@
                                 <option value="">Pilih Bank Soal</option>
                                 @foreach ($bankSoals as $bank)
                                     <option value="{{ $bank->id }}"
+                                        data-jumlah-pilihan="{{ $bank->jumlah_pilihan }}"
+                                        data-tipe-default="{{ $bank->tipe_soal_default }}"
                                         {{ old('bank_soal_id', $selectedBankSoal?->id) == $bank->id ? 'selected' : '' }}>
                                         {{ $bank->judul }} ({{ $bank->total_soal }} soal)
                                     </option>
@@ -56,12 +58,12 @@
                             </label>
                             <select name="tipe_soal" id="tipe_soal" required
                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="pilihan_ganda" {{ old('tipe_soal') == 'pilihan_ganda' ? 'selected' : '' }}>
-                                    Pilihan Ganda
-                                </option>
-                                <option value="essay" {{ old('tipe_soal') == 'essay' ? 'selected' : '' }}>
-                                    Essay
-                                </option>
+                                @foreach (\App\Models\Soal::QUESTION_TYPES as $value => $label)
+                                    <option value="{{ $value }}"
+                                        {{ old('tipe_soal', $selectedBankSoal?->tipe_soal_default ?? 'pilihan_ganda') == $value ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
                             </select>
                             @error('tipe_soal')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -170,12 +172,22 @@
                     </div>
                 </div>
 
+                <div id="listening-audio-section" class="bg-white shadow rounded-lg p-6 hidden">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Audio Listening</h3>
+                    <input type="file" name="soal_audio" id="soal_audio" accept="audio/*"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-xs text-gray-500 mt-2">Format: MP3, WAV, OGG, M4A, AAC. Maksimal 10MB.</p>
+                    @error('soal_audio')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Pilihan Jawaban (untuk pilihan ganda) -->
                 <div id="pilihan-jawaban-section" class="bg-white shadow rounded-lg p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Pilihan Jawaban</h3>
 
                     @foreach (['A' => 'a', 'B' => 'b', 'C' => 'c', 'D' => 'd', 'E' => 'e'] as $label => $value)
-                        <div class="mb-6 p-4 border border-gray-200 rounded-lg">
+                        <div class="mb-6 p-4 border border-gray-200 rounded-lg pilihan-option" data-option="{{ $label }}">
                             <div class="flex items-center justify-between mb-3">
                                 <h4 class="font-medium text-gray-900">Pilihan {{ $label }}</h4>
                                 <div class="flex items-center space-x-4">
@@ -234,15 +246,72 @@
                         <div class="flex space-x-4">
                             @foreach (['A', 'B', 'C', 'D', 'E'] as $kunci)
                                 <label class="flex items-center">
-                                    <input type="radio" name="kunci_jawaban" value="{{ $kunci }}"
-                                        {{ old('kunci_jawaban') == $kunci ? 'checked' : '' }} class="mr-2 text-blue-600">
+                                    <input type="radio" name="kunci_jawaban_single" value="{{ $kunci }}" class="kunci-single mr-2 text-blue-600"
+                                        {{ old('kunci_jawaban') == $kunci ? 'checked' : '' }}>
+                                    <input type="checkbox" name="kunci_jawaban_multi[]" value="{{ $kunci }}" class="kunci-multi mr-2 text-blue-600 hidden"
+                                        {{ in_array($kunci, old('kunci_jawaban_multi', [])) ? 'checked' : '' }}>
                                     <span class="font-medium">{{ $kunci }}</span>
                                 </label>
                             @endforeach
                         </div>
+                        <input type="hidden" name="kunci_jawaban" id="kunci_jawaban_hidden" value="{{ old('kunci_jawaban') }}">
                         @error('kunci_jawaban')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                         @enderror
+                    </div>
+                </div>
+
+                <div id="kunci-teks-section" class="bg-white shadow rounded-lg p-6 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Kunci Jawaban Teks <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="kunci_jawaban_text" rows="2"
+                        placeholder="Pisahkan beberapa jawaban benar dengan tanda |, contoh: fotosintesis|fotosintesa"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">{{ old('kunci_jawaban') }}</textarea>
+                    <p class="text-xs text-gray-500 mt-1">Dipakai untuk Isian Singkat dan Teks Rumpang.</p>
+                </div>
+
+                <div id="interactive-section" class="bg-white shadow rounded-lg p-6 hidden">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Konfigurasi Soal Interaktif</h3>
+
+                    <div id="matching-editor" class="space-y-3 hidden">
+                        @for ($i = 0; $i < 5; $i++)
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input type="text" name="interactive_left[]" value="{{ old('interactive_left.' . $i) }}"
+                                    placeholder="Item kiri {{ $i + 1 }}"
+                                    class="border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" name="interactive_right[]" value="{{ old('interactive_right.' . $i) }}"
+                                    placeholder="Pasangan kanan {{ $i + 1 }}"
+                                    class="border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        @endfor
+                    </div>
+
+                    <div id="ordering-editor" class="space-y-3 hidden">
+                        @for ($i = 0; $i < 8; $i++)
+                            <input type="text" name="interactive_items[]" value="{{ old('interactive_items.' . $i) }}"
+                                placeholder="Item urutan benar {{ $i + 1 }}"
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        @endfor
+                    </div>
+
+                    <div id="dragdrop-editor" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700">Item</label>
+                            @for ($i = 0; $i < 6; $i++)
+                                <input type="text" name="interactive_drag_items[]" value="{{ old('interactive_drag_items.' . $i) }}"
+                                    placeholder="Item {{ $i + 1 }}"
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            @endfor
+                        </div>
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700">Area Tujuan</label>
+                            @for ($i = 0; $i < 6; $i++)
+                                <input type="text" name="interactive_zones[]" value="{{ old('interactive_zones.' . $i) }}"
+                                    placeholder="Area {{ $i + 1 }}"
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            @endfor
+                        </div>
                     </div>
                 </div>
 
@@ -361,6 +430,11 @@
 
             // Handle tipe soal changes  
             document.getElementById('tipe_soal').addEventListener('change', handleTipeSoalChange);
+            document.getElementById('bank_soal_id').addEventListener('change', handleBankSoalChange);
+            document.querySelectorAll('.kunci-single, .kunci-multi').forEach(input => {
+                input.addEventListener('change', syncAnswerKey);
+            });
+            document.getElementById('kunci_jawaban_text')?.addEventListener('input', syncAnswerKey);
 
             // Handle pilihan tipe changes
             @foreach (['a', 'b', 'c', 'd', 'e'] as $value)
@@ -384,6 +458,7 @@
             @endforeach
 
             // Initialize form state
+            handleBankSoalChange(false);
             handleTipePertanyaanChange();
             handleTipeSoalChange();
             handlePembahasanTipeChange();
@@ -435,12 +510,93 @@
         function handleTipeSoalChange() {
             const tipe = document.getElementById('tipe_soal').value;
             const pilihanSection = document.getElementById('pilihan-jawaban-section');
+            const textKeySection = document.getElementById('kunci-teks-section');
+            const listeningAudioSection = document.getElementById('listening-audio-section');
+            const interactiveSection = document.getElementById('interactive-section');
+            const matchingEditor = document.getElementById('matching-editor');
+            const orderingEditor = document.getElementById('ordering-editor');
+            const dragdropEditor = document.getElementById('dragdrop-editor');
+            const usesOptions = ['pilihan_ganda', 'pilihan_kompleks', 'benar_salah', 'listening'].includes(tipe);
+            const usesTextKey = ['isian_singkat', 'teks_rumpang'].includes(tipe);
+            const usesInteractive = ['menjodohkan', 'mengurutkan', 'drag_drop'].includes(tipe);
+            const singleInputs = document.querySelectorAll('.kunci-single');
+            const multiInputs = document.querySelectorAll('.kunci-multi');
 
-            if (tipe === 'pilihan_ganda') {
+            if (usesOptions) {
                 pilihanSection.classList.remove('hidden');
             } else {
                 pilihanSection.classList.add('hidden');
             }
+
+            textKeySection?.classList.toggle('hidden', !usesTextKey);
+            listeningAudioSection?.classList.toggle('hidden', tipe !== 'listening');
+            interactiveSection?.classList.toggle('hidden', !usesInteractive);
+            matchingEditor?.classList.toggle('hidden', tipe !== 'menjodohkan');
+            orderingEditor?.classList.toggle('hidden', tipe !== 'mengurutkan');
+            dragdropEditor?.classList.toggle('hidden', tipe !== 'drag_drop');
+
+            singleInputs.forEach(input => input.classList.toggle('hidden', tipe === 'pilihan_kompleks'));
+            multiInputs.forEach(input => input.classList.toggle('hidden', tipe !== 'pilihan_kompleks'));
+
+            if (tipe === 'benar_salah') {
+                setOptionText('a', 'Benar');
+                setOptionText('b', 'Salah');
+                applyOptionCount(2);
+            } else {
+                applyOptionCount(getSelectedOptionCount());
+            }
+
+            syncAnswerKey();
+        }
+
+        function handleBankSoalChange(applyDefaultType = true) {
+            const selected = document.getElementById('bank_soal_id').selectedOptions[0];
+            if (!selected) return;
+
+            if (applyDefaultType && selected.dataset.tipeDefault) {
+                document.getElementById('tipe_soal').value = selected.dataset.tipeDefault;
+            }
+
+            handleTipeSoalChange();
+        }
+
+        function getSelectedOptionCount() {
+            const selected = document.getElementById('bank_soal_id').selectedOptions[0];
+            return parseInt(selected?.dataset?.jumlahPilihan || '5', 10);
+        }
+
+        function applyOptionCount(count) {
+            const allowed = ['A', 'B', 'C', 'D', 'E'].slice(0, count);
+            document.querySelectorAll('.pilihan-option').forEach(option => {
+                option.classList.toggle('hidden', !allowed.includes(option.dataset.option));
+            });
+        }
+
+        function setOptionText(option, text) {
+            const textarea = document.querySelector(`textarea[name="pilihan_${option}_teks"]`);
+            const typeInput = document.querySelector(`input[name="pilihan_${option}_tipe"][value="teks"]`);
+            if (textarea && !textarea.value.trim()) textarea.value = text;
+            if (typeInput) typeInput.checked = true;
+            handlePilihanTipeChange(option);
+        }
+
+        function syncAnswerKey() {
+            const tipe = document.getElementById('tipe_soal').value;
+            const hidden = document.getElementById('kunci_jawaban_hidden');
+            if (!hidden) return;
+
+            if (tipe === 'pilihan_kompleks') {
+                hidden.value = Array.from(document.querySelectorAll('.kunci-multi:checked')).map(input => input.value).join(',');
+                return;
+            }
+
+            if (['isian_singkat', 'teks_rumpang'].includes(tipe)) {
+                hidden.value = document.getElementById('kunci_jawaban_text')?.value || '';
+                return;
+            }
+
+            const selected = document.querySelector('.kunci-single:checked');
+            hidden.value = selected ? selected.value : hidden.value;
         }
 
         function handlePilihanTipeChange(pilihan) {
@@ -847,11 +1003,13 @@
 
             // Validate pilihan jawaban for multiple choice
             const tipeSoal = document.getElementById('tipe_soal').value;
-            if (tipeSoal === 'pilihan_ganda') {
-                const kunciJawaban = document.querySelector('input[name="kunci_jawaban"]:checked');
-                if (!kunciJawaban) {
+            syncAnswerKey();
+            if (['pilihan_ganda', 'pilihan_kompleks', 'benar_salah', 'listening', 'isian_singkat', 'teks_rumpang'].includes(tipeSoal)) {
+                const kunciJawaban = document.getElementById('kunci_jawaban_hidden').value;
+                const hasInlineClozeKey = tipeSoal === 'teks_rumpang' && /\[\[(.+?)\]\]/.test(pertanyaan);
+                if (!kunciJawaban && !hasInlineClozeKey) {
                     e.preventDefault();
-                    alert('Kunci jawaban wajib dipilih untuk soal pilihan ganda');
+                    alert('Kunci jawaban wajib diisi untuk tipe soal objektif');
                     return false;
                 }
 

@@ -264,10 +264,13 @@ class JadwalUjian extends Model
      */
     public function getSiswaEligible()
     {
-        return Siswa::whereIn('kelas_id', $this->kelas_target ?? [])
-            ->where(function ($query) {
-                $query->where('status_pembayaran', 'Lunas')
-                    ->orWhere('rekomendasi', 'ya');
+        return Siswa::whereHas('tahunAjaranRecords', function ($query) {
+                $query->where('tahun_ajaran_id', $this->tahun_ajaran_id)
+                    ->whereIn('kelas_id', $this->kelas_target ?? [])
+                    ->where(function ($eligibility) {
+                        $eligibility->where('status_pembayaran', 'Lunas')
+                            ->orWhere('rekomendasi', 'ya');
+                    });
             })
             ->get();
     }

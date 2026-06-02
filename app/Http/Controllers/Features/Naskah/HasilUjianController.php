@@ -12,6 +12,7 @@ use App\Models\SoalUjian;
 use App\Models\PaketUjian;
 use App\Models\TahunAjaran;
 use App\Services\TahunAjaranService;
+use App\Support\SoalAnswerEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -688,9 +689,11 @@ class HasilUjianController extends Controller
                     continue;
                 }
 
-                $kunci = strtoupper((string) ($soal->kunci_jawaban ?? ''));
-                $jawabanSiswa = strtoupper((string) ($jawaban->jawaban ?? ''));
-                $status = $jawabanSiswa === '' ? 'kosong' : ($jawabanSiswa === $kunci ? 'benar' : 'salah');
+                $jawabanRaw = (string) ($jawaban->jawaban ?? '');
+                $kunciRaw = (string) ($soal->kunci_jawaban ?? '');
+                $evaluation = SoalAnswerEvaluator::evaluate($soal, $jawabanRaw, $kunciRaw);
+                $isCorrect = $evaluation['is_correct'];
+                $status = $evaluation['status'];
 
                 $rows[] = [
                     'soal_id' => $soal->id,
@@ -698,10 +701,17 @@ class HasilUjianController extends Controller
                     'pertanyaan' => $soal->pertanyaan ?? $soal->soal ?? '-',
                     'text' => strip_tags($soal->pertanyaan ?? $soal->soal ?? '-'),
                     'pilihan' => $this->getQuestionOptions($soal),
-                    'jawaban' => $jawabanSiswa,
-                    'kunci' => $kunci,
+                    'jawaban' => $this->formatAnswerValue($soal, $jawabanRaw),
+                    'kunci' => $this->formatAnswerValue($soal, $kunciRaw, true),
+                    'jawaban_raw' => $jawabanRaw,
+                    'kunci_raw' => $kunciRaw,
+                    'jawaban_options' => $this->answerLetters($jawabanRaw),
+                    'kunci_options' => $this->answerLetters($kunciRaw),
+                    'score_fraction' => $evaluation['score_fraction'] ?? 0,
+                    'evaluation_details' => $evaluation['details'] ?? [],
+                    'evaluation_summary' => $this->formatEvaluationDetails($evaluation['details'] ?? []),
                     'status' => $status,
-                    'is_correct' => $status === 'benar',
+                    'is_correct' => $isCorrect,
                     'kategori' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
                     'category' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
                     'pembahasan' => $soal->pembahasan_teks ?? null,
@@ -715,9 +725,15 @@ class HasilUjianController extends Controller
         foreach (($hasil->jawaban ?? []) as $index => $item) {
             $soalId = $item['soal_id'] ?? $item['id'] ?? null;
             $soal = $soalId ? SoalUjian::find($soalId) : null;
-            $jawabanSiswa = strtoupper((string) ($item['jawaban'] ?? ''));
-            $kunci = strtoupper((string) ($item['kunci'] ?? $soal?->kunci_jawaban ?? ''));
-            $isCorrect = $item['is_correct'] ?? ($jawabanSiswa && $kunci ? $jawabanSiswa === $kunci : null);
+            $jawabanRaw = (string) ($item['jawaban'] ?? '');
+            $kunciRaw = (string) ($item['kunci'] ?? $soal?->kunci_jawaban ?? '');
+            $evaluation = $soal ? SoalAnswerEvaluator::evaluate($soal, $jawabanRaw, $kunciRaw) : [
+                'status' => $jawabanRaw === '' ? 'kosong' : ((bool) ($item['is_correct'] ?? false) ? 'benar' : 'salah'),
+                'is_correct' => (bool) ($item['is_correct'] ?? false),
+                'score_fraction' => (bool) ($item['is_correct'] ?? false) ? 1 : 0,
+                'details' => [],
+            ];
+            $isCorrect = $evaluation['is_correct'];
 
             $rows[] = [
                 'soal_id' => $soalId,
@@ -725,9 +741,16 @@ class HasilUjianController extends Controller
                 'pertanyaan' => $soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1),
                 'text' => strip_tags($soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1)),
                 'pilihan' => $soal ? $this->getQuestionOptions($soal) : [],
-                'jawaban' => $jawabanSiswa,
-                'kunci' => $kunci,
-                'status' => $jawabanSiswa === '' ? 'kosong' : ($isCorrect ? 'benar' : 'salah'),
+                'jawaban' => $soal ? $this->formatAnswerValue($soal, $jawabanRaw) : strtoupper($jawabanRaw),
+                'kunci' => $soal ? $this->formatAnswerValue($soal, $kunciRaw, true) : strtoupper($kunciRaw),
+                'jawaban_raw' => $jawabanRaw,
+                'kunci_raw' => $kunciRaw,
+                'jawaban_options' => $this->answerLetters($jawabanRaw),
+                'kunci_options' => $this->answerLetters($kunciRaw),
+                'score_fraction' => $evaluation['score_fraction'] ?? 0,
+                'evaluation_details' => $evaluation['details'] ?? [],
+                'evaluation_summary' => $this->formatEvaluationDetails($evaluation['details'] ?? []),
+                'status' => $evaluation['status'],
                 'is_correct' => (bool) $isCorrect,
                 'kategori' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
                 'category' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
@@ -750,14 +773,135 @@ class HasilUjianController extends Controller
             ->all();
     }
 
+    private function formatAnswerValue($soal, ?string $value, bool $isKey = false): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        $tipe = $soal->tipe_soal ?? 'pilihan_ganda';
+
+        if ($tipe === 'menjodohkan') {
+            $decoded = json_decode($value, true);
+            $pairs = $isKey ? data_get($decoded, 'data.pairs', []) : $decoded;
+
+            if ($isKey) {
+                return collect($pairs)
+                    ->map(fn($pair) => ($pair['left'] ?? '') . ' = ' . ($pair['right'] ?? ''))
+                    ->filter(fn($line) => trim(str_replace('=', '', $line)) !== '')
+                    ->implode('; ');
+            }
+
+            return collect($pairs ?? [])
+                ->map(fn($right, $left) => $left . ' = ' . $right)
+                ->implode('; ');
+        }
+
+        if ($tipe === 'mengurutkan') {
+            $decoded = json_decode($value, true);
+            $items = $isKey ? data_get($decoded, 'data.items', []) : $decoded;
+
+            return collect($items ?? [])
+                ->filter()
+                ->values()
+                ->map(fn($item, $index) => ($index + 1) . '. ' . $item)
+                ->implode('; ');
+        }
+
+        if ($tipe === 'teks_rumpang') {
+            $decoded = json_decode($value, true);
+            $items = $isKey ? data_get($decoded, 'data.answers', []) : $decoded;
+
+            if (is_array($items)) {
+                return collect($items)
+                    ->filter()
+                    ->values()
+                    ->map(fn($item, $index) => 'Rumpang ' . ($index + 1) . ': ' . (is_array($item) ? implode('|', $item) : $item))
+                    ->implode('; ');
+            }
+
+            return $value;
+        }
+
+        if ($tipe === 'drag_drop') {
+            $decoded = json_decode($value, true);
+
+            if ($isKey) {
+                $items = data_get($decoded, 'data.items', []);
+                $zones = data_get($decoded, 'data.zones', []);
+
+                return collect($items)
+                    ->map(fn($item, $index) => $item . ' -> ' . ($zones[$index] ?? '-'))
+                    ->implode('; ');
+            }
+
+            return collect($decoded ?? [])
+                ->map(fn($zone, $item) => $item . ' -> ' . $zone)
+                ->implode('; ');
+        }
+
+        return in_array($tipe, ['isian_singkat', 'teks_rumpang'], true) ? $value : strtoupper($value);
+    }
+
+    private function answerLetters(?string $value): array
+    {
+        return collect(explode(',', strtoupper((string) $value)))
+            ->map(fn($letter) => trim($letter))
+            ->filter(fn($letter) => preg_match('/^[A-E]$/', $letter))
+            ->values()
+            ->all();
+    }
+
+    private function formatEvaluationDetails(array $details): array
+    {
+        if (isset($details['correct_selected']) || isset($details['wrong_selected']) || isset($details['missing'])) {
+            return array_filter([
+                'Dipilih benar: ' . implode(', ', $details['correct_selected'] ?? []),
+                'Dipilih salah: ' . implode(', ', $details['wrong_selected'] ?? []),
+                'Belum dipilih: ' . implode(', ', $details['missing'] ?? []),
+            ], fn($line) => !str_ends_with($line, ': '));
+        }
+
+        if (isset($details['pairs'])) {
+            return collect($details['pairs'])
+                ->map(fn($pair) => ($pair['left'] ?? '-') . ' -> ' . ($pair['actualRight'] ?? '-') . (($pair['isCorrect'] ?? false) ? ' (benar)' : ' (salah, seharusnya ' . ($pair['right'] ?? '-') . ')'))
+                ->all();
+        }
+
+        if (isset($details['items'])) {
+            return collect($details['items'])
+                ->map(function ($item) {
+                    if (array_key_exists('actualValue', $item)) {
+                        return 'Posisi ' . (($item['index'] ?? 0) + 1) . ': ' . ($item['actualValue'] ?? '-') . (($item['isCorrect'] ?? false) ? ' (benar)' : ' (salah, seharusnya ' . ($item['item'] ?? '-') . ')');
+                    }
+
+                    if (array_key_exists('actualZone', $item)) {
+                        return ($item['item'] ?? '-') . ' -> ' . ($item['actualZone'] ?? '-') . (($item['isCorrect'] ?? false) ? ' (benar)' : ' (salah, seharusnya ' . ($item['zone'] ?? '-') . ')');
+                    }
+
+                    if (array_key_exists('expected', $item)) {
+                        return 'Rumpang ' . (($item['index'] ?? 0) + 1) . ': ' . ($item['actual'] ?? '-') . (($item['is_correct'] ?? false) ? ' (benar)' : ' (salah)');
+                    }
+
+                    return null;
+                })
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return [];
+    }
+
     private function summarizeAnswerRows(array $rows): array
     {
         $total = count($rows);
         $benar = collect($rows)->where('status', 'benar')->count();
+        $parsial = collect($rows)->where('status', 'parsial')->count();
         $salah = collect($rows)->where('status', 'salah')->count();
         $kosong = collect($rows)->where('status', 'kosong')->count();
 
-        return compact('total', 'benar', 'salah', 'kosong');
+        return compact('total', 'benar', 'parsial', 'salah', 'kosong');
     }
 
     private function buildPeerStats(HasilUjian $hasil): array
@@ -825,15 +969,20 @@ class HasilUjianController extends Controller
                         'text' => $row['text'],
                         'category' => $row['category'],
                         'correct' => 0,
+                        'partial' => 0,
                         'incorrect' => 0,
                         'blank' => 0,
+                        'score_sum' => 0,
                         'total' => 0,
                     ];
                 }
 
                 $questionStats[$key]['total']++;
+                $questionStats[$key]['score_sum'] += (float) ($row['score_fraction'] ?? ($row['is_correct'] ? 1 : 0));
                 if ($row['status'] === 'benar') {
                     $questionStats[$key]['correct']++;
+                } elseif ($row['status'] === 'parsial') {
+                    $questionStats[$key]['partial']++;
                 } elseif ($row['status'] === 'salah') {
                     $questionStats[$key]['incorrect']++;
                 } else {
@@ -843,7 +992,7 @@ class HasilUjianController extends Controller
         }
 
         return collect($questionStats)->map(function ($item) {
-            $item['accuracy'] = $item['total'] > 0 ? round(($item['correct'] / $item['total']) * 100, 1) : 0;
+            $item['accuracy'] = $item['total'] > 0 ? round(($item['score_sum'] / $item['total']) * 100, 1) : 0;
             $item['difficulty_label'] = $item['accuracy'] >= 75 ? 'Mudah' : ($item['accuracy'] >= 45 ? 'Sedang' : 'Sulit');
             return $item;
         })->sortBy('nomor')->values();

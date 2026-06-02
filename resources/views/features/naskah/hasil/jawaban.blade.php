@@ -76,6 +76,9 @@
                             @if ($soal['status'] === 'benar')
                                 <span
                                     class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Benar</span>
+                            @elseif($soal['status'] === 'parsial')
+                                <span
+                                    class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parsial</span>
                             @elseif($soal['status'] === 'salah')
                                 <span
                                     class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Salah</span>
@@ -103,20 +106,26 @@
                             <h5 class="text-sm font-medium text-gray-700">Pilihan Jawaban:</h5>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 @forelse ($soal['pilihan'] as $key => $pilihan)
+                                    @php
+                                        $kunciOptions = $soal['kunci_options'] ?? [$soal['kunci']];
+                                        $jawabanOptions = $soal['jawaban_options'] ?? [$soal['jawaban']];
+                                        $isKunciOption = in_array((string) $key, $kunciOptions, true);
+                                        $isJawabanOption = in_array((string) $key, $jawabanOptions, true);
+                                    @endphp
                                     <div
                                         class="flex items-start space-x-2 p-2 rounded-md 
-                                    {{ $soal['kunci'] == $key
+                                    {{ $isKunciOption
                                         ? 'bg-green-50 border border-green-200'
-                                        : ($soal['jawaban'] == $key
+                                        : ($isJawabanOption
                                             ? 'bg-red-50 border border-red-200'
                                             : '') }}">
                                         <div class="flex-shrink-0 pt-1">
-                                            @if ($soal['kunci'] == $key)
+                                            @if ($isKunciOption)
                                                 <span
                                                     class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-green-100 text-green-800">
                                                     <i class="fa-solid fa-check text-xs"></i>
                                                 </span>
-                                            @elseif($soal['jawaban'] == $key)
+                                            @elseif($isJawabanOption)
                                                 <span
                                                     class="inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-800">
                                                     <i class="fa-solid fa-times text-xs"></i>
@@ -147,8 +156,8 @@
                                     <span class="text-sm font-medium text-gray-600">Jawaban Siswa:</span>
                                     @if ($soal['jawaban'])
                                         <span
-                                            class="ml-2 text-sm {{ $soal['status'] === 'benar' ? 'font-bold text-green-600' : 'font-bold text-red-600' }}">
-                                            {{ strtoupper($soal['jawaban']) }}
+                                            class="ml-2 text-sm {{ $soal['status'] === 'benar' ? 'font-bold text-green-600' : ($soal['status'] === 'parsial' ? 'font-bold text-yellow-700' : 'font-bold text-red-600') }}">
+                                            {{ $soal['jawaban'] }}
                                         </span>
                                     @else
                                         <span class="ml-2 text-sm italic text-gray-500">Tidak dijawab</span>
@@ -157,7 +166,7 @@
                                 <div>
                                     <span class="text-sm font-medium text-gray-600">Kunci Jawaban:</span>
                                     <span
-                                        class="ml-2 text-sm font-bold text-green-600">{{ strtoupper($soal['kunci']) }}</span>
+                                        class="ml-2 text-sm font-bold text-green-600">{{ $soal['kunci'] }}</span>
                                 </div>
                                 @if (isset($soal['waktu_jawab']))
                                     <div>
@@ -166,6 +175,21 @@
                                     </div>
                                 @endif
                             </div>
+                            @if (($soal['status'] ?? null) === 'parsial')
+                                <div class="mt-3 text-sm text-yellow-700">
+                                    Skor parsial: {{ number_format(($soal['score_fraction'] ?? 0) * 100, 1) }}%
+                                </div>
+                            @endif
+                            @if (!empty($soal['evaluation_summary']))
+                                <div class="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                                    <div class="font-medium text-gray-800 mb-1">Rincian Koreksi</div>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        @foreach ($soal['evaluation_summary'] as $line)
+                                            <li>{{ $line }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Pembahasan -->

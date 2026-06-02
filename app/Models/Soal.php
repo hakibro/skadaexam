@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SoalAnswerEvaluator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,41 @@ class Soal extends Model
     use HasFactory;
 
     protected $table = 'soal';
+
+    public const OBJECTIVE_TYPES = [
+        'pilihan_ganda',
+        'pilihan_kompleks',
+        'benar_salah',
+        'isian_singkat',
+        'teks_rumpang',
+        'listening',
+    ];
+
+    public const INTERACTIVE_TYPES = [
+        'menjodohkan',
+        'mengurutkan',
+        'drag_drop',
+    ];
+
+    public const QUESTION_TYPES = [
+        'pilihan_ganda' => 'Pilihan Ganda Standar',
+        'pilihan_kompleks' => 'Pilihan Ganda Kompleks',
+        'benar_salah' => 'Benar / Salah',
+        'isian_singkat' => 'Isian Singkat',
+        'teks_rumpang' => 'Melengkapi Teks Rumpang',
+        'listening' => 'Listening',
+        'menjodohkan' => 'Menjodohkan',
+        'mengurutkan' => 'Mengurutkan',
+        'drag_drop' => 'Seret dan Lepas',
+        'essay' => 'Essay',
+    ];
+
+    public const OPTION_BASED_TYPES = [
+        'pilihan_ganda',
+        'pilihan_kompleks',
+        'benar_salah',
+        'listening',
+    ];
 
     protected $fillable = [
         'bank_soal_id',
@@ -349,10 +385,17 @@ class Soal extends Model
      */
     public function checkJawaban($jawaban)
     {
-        if (empty($this->kunci_jawaban)) {
-            return false; // No answer key, always false
-        }
-        return strtoupper($jawaban) === strtoupper($this->kunci_jawaban);
+        return SoalAnswerEvaluator::isCorrect($this, $jawaban);
+    }
+
+    public function usesOptions(): bool
+    {
+        return in_array($this->tipe_soal, self::OPTION_BASED_TYPES, true);
+    }
+
+    public function isAutoCorrected(): bool
+    {
+        return in_array($this->tipe_soal, array_merge(self::OBJECTIVE_TYPES, self::INTERACTIVE_TYPES), true);
     }
 
     /**

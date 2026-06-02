@@ -12,6 +12,7 @@ use App\Models\PelanggaranUjian;
 use App\Models\Siswa;
 use App\Models\Soal;
 use App\Services\UjianService;
+use App\Support\SoalAnswerEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -163,8 +164,6 @@ class UjianController extends Controller
 
         // Kalau hasil ujian sudah ada, update waktunya biar sinkron
         if ($hasilUjian->wasRecentlyCreated === false) {
-            $isAutoSubmit = $request->boolean('is_auto_submit');
-
             $hasilUjian->update([
                 'waktu_mulai' => $enrollment->waktu_mulai_ujian,
                 'durasi_menit' => $jadwalUjian->durasi_menit
@@ -233,6 +232,11 @@ class UjianController extends Controller
                 $keys = array_keys($options);
                 shuffle($keys);
                 $shuffledOptions = [];
+                $mappedCorrectAnswers = [];
+                $originalCorrectAnswers = collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))
+                    ->map(fn($value) => trim($value))
+                    ->filter()
+                    ->all();
 
                 foreach ($keys as $i => $key) {
                     $newKey = chr(65 + $i); // A, B, C, D, E
@@ -242,8 +246,17 @@ class UjianController extends Controller
                     if ($key === $soal->kunci_jawaban) {
                         $correctAnswerAfterShuffle = $newKey;
                     }
+
+                    if (in_array(strtoupper((string) $key), $originalCorrectAnswers, true)) {
+                        $mappedCorrectAnswers[] = $newKey;
+                    }
                 }
                 $options = $shuffledOptions;
+
+                if (($soal->tipe_soal ?? 'pilihan_ganda') === 'pilihan_kompleks' && !empty($mappedCorrectAnswers)) {
+                    sort($mappedCorrectAnswers);
+                    $correctAnswerAfterShuffle = implode(',', $mappedCorrectAnswers);
+                }
 
                 // Reset random seed
                 mt_srand();
@@ -256,6 +269,7 @@ class UjianController extends Controller
                 'tipe_soal' => $soal->tipe_soal ?? 'pilihan_ganda',
                 'tipe_pertanyaan' => $soal->tipe_pertanyaan ?? 'teks',
                 'options' => $options,
+                'display_settings' => $soal->display_settings ?? [],
                 'gambar_soal' => $soal->gambar_pertanyaan,
                 'kunci_jawaban' => $soal->kunci_jawaban, // Original key for reference
                 'kunci_jawaban_acak' => $correctAnswerAfterShuffle // Shuffled key for validation
@@ -370,36 +384,13 @@ class UjianController extends Controller
 
             // Update nilai-nilai terkait
             if ($hasilUjian->jumlah_soal > 0) {
-                // Hitung benar dan salah
-                $benarCount = 0;
-                $salahCount = 0;
+                // Hitung benar, salah, dan skor parsial
+                $score = $this->calculateScore($hasilUjian);
+                $benarCount = $score['jumlah_benar'];
+                $salahCount = $score['jumlah_salah'];
 
-                $jawabanList = JawabanSiswa::with('soalUjian')
-                    ->where('hasil_ujian_id', $request->hasil_ujian_id)
-                    ->whereNotNull('jawaban')
-                    ->get();
-
-                foreach ($jawabanList as $jwb) {
-                    if ($jwb->soalUjian) {
-                        // Get the correct answer key considering randomization
-                        $correctAnswer = $this->getCorrectAnswerForStudent(
-                            $jwb->soalUjian,
-                            $siswa,
-                            $hasilUjian->jadwalUjian
-                        );
-
-                        if ($jwb->jawaban === $correctAnswer) {
-                            $benarCount++;
-                        } else {
-                            $salahCount++;
-                        }
-                    } else {
-                        $salahCount++;
-                    }
-                }
-
-                // Hitung nilai sebagai persentase dari jumlah benar
-                $nilai = ($benarCount / $hasilUjian->jumlah_soal) * 100;
+                // Hitung nilai sebagai persentase dari skor parsial berbobot
+                $nilai = $score['persentase'];
 
                 // Update hasil ujian
                 $hasilUjian->update([
@@ -407,6 +398,7 @@ class UjianController extends Controller
                     'jumlah_salah' => $salahCount,
                     'jumlah_dijawab' => $totalAnswered,
                     'jumlah_tidak_dijawab' => $hasilUjian->jumlah_soal - $totalAnswered,
+                    'skor' => $score['total_skor'],
                     'nilai' => $nilai
                 ]);
             } else {
@@ -541,6 +533,7 @@ class UjianController extends Controller
                 'hasil_ujian_id' => 'required|exists:hasil_ujian,id',
                 'is_auto_submit' => 'boolean'
             ]);
+            $isAutoSubmit = $request->boolean('is_auto_submit');
 
             // Verify hasil ujian belongs to current siswa
             $hasilUjian = HasilUjian::where('id', $request->hasil_ujian_id)
@@ -577,11 +570,8 @@ class UjianController extends Controller
             $waktuSelesai = now();
             $durasiMenit = $waktuMulai ? $waktuSelesai->diffInMinutes($waktuMulai) : $hasilUjian->jadwalUjian->durasi_menit;
 
-            // Hitung nilai (persentase) berdasarkan jumlah_benar dibanding total soal
-            $nilai = 0;
-            if (isset($score['total_soal']) && $score['total_soal'] > 0) {
-                $nilai = ($score['jumlah_benar'] / $score['total_soal']) * 100;
-            }
+            // Hitung nilai berdasarkan skor parsial berbobot
+            $nilai = $score['persentase'] ?? 0;
 
             // Tentukan status lulus berdasarkan nilai > 75
             $kkm = 75; // Standar KKM
@@ -952,18 +942,22 @@ class UjianController extends Controller
 
                 $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
 
-                if ($jawaban->jawaban === $correctAnswer) {
+                $evaluation = SoalAnswerEvaluator::evaluate($soal, $jawaban->jawaban, $correctAnswer);
+
+                if ($evaluation['status'] === 'benar') {
                     $jumlahBenar++;
                     $totalSkor += $soal->bobot ?? 1;
                 } else {
                     $jumlahSalah++;
+                    $totalSkor += ($soal->bobot ?? 1) * ($evaluation['score_fraction'] ?? 0);
                 }
             }
         }
 
         $totalSoal = $soalUjians->count();
         $jumlahTidakDijawab = $totalSoal - $jumlahDijawab;
-        $persentase = $totalSoal > 0 ? ($jumlahBenar / $totalSoal) * 100 : 0;
+        $totalBobot = $soalUjians->sum(fn($soal) => (float) ($soal->bobot ?? 1));
+        $persentase = $totalBobot > 0 ? ($totalSkor / $totalBobot) * 100 : 0;
 
         return [
             'jumlah_benar' => $jumlahBenar,
@@ -974,6 +968,11 @@ class UjianController extends Controller
             'total_soal' => $totalSoal,
             'persentase' => $persentase
         ];
+    }
+
+    private function isJawabanBenar($soal, ?string $jawaban, ?string $correctAnswer = null): bool
+    {
+        return SoalAnswerEvaluator::isCorrect($soal, $jawaban, $correctAnswer);
     }
 
     /**
@@ -1012,13 +1011,30 @@ class UjianController extends Controller
         $keys = array_keys($options);
         shuffle($keys);
 
+        $mappedCorrectAnswers = [];
+        $originalCorrectAnswers = collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))
+            ->map(fn($value) => trim($value))
+            ->filter()
+            ->all();
+
         // Find where the original correct answer ended up
         foreach ($keys as $i => $originalKey) {
+            $newKey = chr(65 + $i); // A, B, C, D, E
+
+            if (in_array(strtoupper((string) $originalKey), $originalCorrectAnswers, true)) {
+                $mappedCorrectAnswers[] = $newKey;
+            }
+
             if ($originalKey === $soal->kunci_jawaban) {
-                $newKey = chr(65 + $i); // A, B, C, D, E
                 mt_srand(); // Reset seed
                 return $newKey;
             }
+        }
+
+        if (($soal->tipe_soal ?? 'pilihan_ganda') === 'pilihan_kompleks' && !empty($mappedCorrectAnswers)) {
+            mt_srand(); // Reset seed
+            sort($mappedCorrectAnswers);
+            return implode(',', $mappedCorrectAnswers);
         }
 
         mt_srand(); // Reset seed
@@ -1034,7 +1050,7 @@ class UjianController extends Controller
         }
 
         $score = $this->calculateScore($hasilUjian);
-        $nilai = $hasilUjian->jumlah_soal > 0 ? ($score['jumlah_benar'] / $hasilUjian->jumlah_soal) * 100 : 0;
+        $nilai = $score['persentase'] ?? 0;
         $kkm = 75;
         $lulus = $nilai >= $kkm;
 

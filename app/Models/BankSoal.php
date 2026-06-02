@@ -32,6 +32,25 @@ class BankSoal extends Model
         'status' => 'string',
     ];
 
+    public function getJumlahPilihanAttribute(): int
+    {
+        $value = (int) data_get($this->pengaturan, 'jumlah_pilihan', 5);
+
+        return in_array($value, [2, 3, 4, 5], true) ? $value : 5;
+    }
+
+    public function getTipeSoalDefaultAttribute(): string
+    {
+        return data_get($this->pengaturan, 'tipe_soal_default', 'pilihan_ganda');
+    }
+
+    public function setPengaturanValue(string $key, mixed $value): void
+    {
+        $pengaturan = $this->pengaturan ?? [];
+        data_set($pengaturan, $key, $value);
+        $this->pengaturan = $pengaturan;
+    }
+
     /**
      * Get the creator (user) who created this question bank.
      *

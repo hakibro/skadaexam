@@ -94,6 +94,38 @@
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="jumlah_pilihan" class="block text-sm font-medium text-gray-700">Jumlah Pilihan Jawaban</label>
+                        <select name="jumlah_pilihan" id="jumlah_pilihan"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            @foreach ([2, 3, 4, 5] as $jumlah)
+                                <option value="{{ $jumlah }}" {{ old('jumlah_pilihan', 5) == $jumlah ? 'selected' : '' }}>
+                                    {{ $jumlah }} pilihan
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('jumlah_pilihan')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label for="tipe_soal_default" class="block text-sm font-medium text-gray-700">Tipe Soal Default</label>
+                        <select name="tipe_soal_default" id="tipe_soal_default"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            @foreach (\App\Models\Soal::QUESTION_TYPES as $value => $label)
+                                <option value="{{ $value }}" {{ old('tipe_soal_default', 'pilihan_ganda') === $value ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('tipe_soal_default')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
             </div>
 
             <div class="px-6 py-4 bg-gray-50 text-right">

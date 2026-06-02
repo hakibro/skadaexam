@@ -453,14 +453,26 @@
 
                         <!-- Question Text -->
                         <div class="mb-6 sm:mb-8">
-                            <div class="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
-                                {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
-                            </div>
-
                             @php
                                 $currentQuestionData = $examData['questions'][$examData['currentQuestionIndex']];
                                 $gambarSoal = $currentQuestionData['gambar_soal'];
+                                $audioSoal = data_get($currentQuestionData, 'display_settings.audio');
+                                $currentTipeSoal = $currentQuestionData['tipe_soal'] ?? 'pilihan_ganda';
                             @endphp
+
+                            @if ($currentTipeSoal !== 'teks_rumpang')
+                                <div class="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
+                                    {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
+                                </div>
+                            @endif
+
+                            @if (!empty($audioSoal))
+                                <div class="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+                                    <audio controls class="w-full">
+                                        <source src="{{ asset('storage/soal/audio/' . $audioSoal) }}">
+                                    </audio>
+                                </div>
+                            @endif
 
                             @if (!empty($gambarSoal))
                                 <div class="mt-4 text-center">
@@ -476,40 +488,183 @@
                                 $currentQuestion = $examData['questions'][$examData['currentQuestionIndex']];
                                 // Use options directly from controller
                                 $options = $currentQuestion['options'] ?? [];
+                                $tipeSoal = $currentQuestion['tipe_soal'] ?? 'pilihan_ganda';
+                                $savedAnswer = $examData['answers'][$currentQuestion['id']] ?? '';
+                                $selectedAnswers = collect(explode(',', (string) $savedAnswer))
+                                    ->map(fn($value) => trim($value))
+                                    ->filter()
+                                    ->values()
+                                    ->all();
                             @endphp
 
-                            @foreach ($options as $key => $option)
-                                <button
-                                    class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left 
-                                           hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100
-                                           {{ isset($examData['answers'][$currentQuestion['id']]) && $examData['answers'][$currentQuestion['id']] == $key ? 'option-selected border-indigo-500' : '' }}"
-                                    data-option="{{ $key }}"
-                                    onclick="selectAnswer('{{ $currentQuestion['id'] }}', '{{ $key }}')">
-                                    <div class="flex items-start space-x-3 sm:space-x-4">
-                                        <div
-                                            class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 
-                                               flex items-center justify-center text-white font-bold text-xs sm:text-sm">
-                                            {{ strtoupper($key) }}
+                            @if ($tipeSoal === 'teks_rumpang')
+                                @php
+                                    $clozeSource = $currentQuestion['soal'] ?? '';
+                                    preg_match_all('/\[\[(.+?)\]\]|___/', $clozeSource, $clozeMatches);
+                                    $clozeParts = preg_split('/\[\[(.+?)\]\]|___/', $clozeSource);
+                                    $clozeAnswer = json_decode((string) $savedAnswer, true) ?: [];
+                                @endphp
+                                <div class="rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">
+                                    @foreach ($clozeParts as $partIndex => $part)
+                                        {!! $part !!}
+                                        @if ($partIndex < count($clozeParts) - 1)
+                                            <input type="text"
+                                                value="{{ $clozeAnswer[$partIndex] ?? '' }}"
+                                                class="cloze-answer mx-1 inline-block min-w-32 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                data-cloze-index="{{ $partIndex }}"
+                                                oninput="setClozeAnswer('{{ $currentQuestion['id'] }}')">
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @elseif ($tipeSoal === 'isian_singkat')
+                                <textarea
+                                    class="answer-text w-full min-h-32 p-4 sm:p-5 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500"
+                                    placeholder="Tulis jawaban Anda di sini"
+                                    oninput="setTextAnswer('{{ $currentQuestion['id'] }}', this.value)">{{ $savedAnswer }}</textarea>
+                            @elseif ($tipeSoal === 'menjodohkan')
+                                @php
+                                    $pairs = data_get($currentQuestion, 'display_settings.interactive.pairs', []);
+                                    $rightOptions = collect($pairs)->pluck('right')->filter()->shuffle()->values();
+                                    $matchingAnswer = json_decode((string) $savedAnswer, true) ?: [];
+                                @endphp
+                                <div class="space-y-3">
+                                    @foreach ($pairs as $pair)
+                                        @php
+                                            $left = (string) data_get($pair, 'left');
+                                        @endphp
+                                        <div class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
+                                            <div class="font-medium text-gray-800">{{ $left }}</div>
+                                            <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
+                                                data-left="{{ $left }}"
+                                                onchange="setMatchingAnswer('{{ $currentQuestion['id'] }}', this.dataset.left, this.value)">
+                                                <option value="">Pilih pasangan</option>
+                                                @foreach ($rightOptions as $right)
+                                                    <option value="{{ $right }}" {{ ($matchingAnswer[$left] ?? '') === $right ? 'selected' : '' }}>
+                                                        {{ $right }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
-                                        <div class="flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
-                                            @if (is_array($option))
-                                                @if ($option['tipe'] == 'gambar' && $option['gambar'])
-                                                    <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
-                                                        alt="Pilihan {{ $key }}"
-                                                        class="max-w-full sm:max-w-sm mx-auto rounded-lg shadow-md">
-                                                    @if ($option['teks'])
-                                                        <div class="mt-2">{!! $option['teks'] !!}</div>
-                                                    @endif
-                                                @else
-                                                    {!! $option['teks'] !!}
+                                    @endforeach
+                                </div>
+                            @elseif ($tipeSoal === 'mengurutkan')
+                                @php
+                                    $items = collect(data_get($currentQuestion, 'display_settings.interactive.items', []))->filter()->values();
+                                    $orderingAnswer = json_decode((string) $savedAnswer, true) ?: [];
+                                    $displayItems = !empty($orderingAnswer) ? collect($orderingAnswer)->filter()->values() : $items->shuffle()->values();
+                                @endphp
+                                <div class="space-y-3" data-ordering-question="{{ $currentQuestion['id'] }}">
+                                    @foreach ($displayItems as $item)
+                                        <div draggable="true" data-ordering-item="{{ $item }}"
+                                            ondragstart="handleOrderingDragStart(event)"
+                                            ondragover="handleOrderingDragOver(event)"
+                                            ondrop="handleOrderingDrop(event, '{{ $currentQuestion['id'] }}')"
+                                            class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                            <span class="font-medium text-gray-800">{{ $item }}</span>
+                                            <div class="flex gap-1">
+                                                <button type="button" onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', -1)"
+                                                    class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
+                                                <button type="button" onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', 1)"
+                                                    class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Turun</button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif ($tipeSoal === 'drag_drop')
+                                @php
+                                    $items = collect(data_get($currentQuestion, 'display_settings.interactive.items', []))->filter()->values();
+                                    $zones = collect(data_get($currentQuestion, 'display_settings.interactive.zones', []))->filter()->values();
+                                    $dragAnswer = json_decode((string) $savedAnswer, true) ?: [];
+                                @endphp
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" data-dragdrop-question="{{ $currentQuestion['id'] }}">
+                                    <div class="space-y-3">
+                                        <div class="text-sm font-semibold text-gray-700">Item</div>
+                                        <div class="min-h-32 rounded-xl border-2 border-dashed border-gray-300 p-3 space-y-2"
+                                            data-drag-source="1">
+                                            @foreach ($items as $item)
+                                                @if (empty($dragAnswer[$item]))
+                                                    <div draggable="true" data-drag-item="{{ $item }}"
+                                                        ondragstart="handleDragStart(event)"
+                                                        class="dragdrop-item cursor-move rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800 shadow-sm">
+                                                        {{ $item }}
+                                                    </div>
                                                 @endif
-                                            @else
-                                                {!! $option !!}
-                                            @endif
+                                            @endforeach
                                         </div>
                                     </div>
-                                </button>
-                            @endforeach
+                                    <div class="space-y-3">
+                                        <div class="text-sm font-semibold text-gray-700">Area Tujuan</div>
+                                        @foreach ($zones as $zone)
+                                            @php
+                                                $zoneItems = collect($dragAnswer)
+                                                    ->filter(fn($answerZone) => $answerZone === $zone)
+                                                    ->keys();
+                                            @endphp
+                                            <div class="dragdrop-zone min-h-24 rounded-xl border-2 border-dashed border-gray-300 p-3"
+                                                data-zone="{{ $zone }}"
+                                                ondragover="handleDragOver(event)"
+                                                ondragleave="handleDragLeave(event)"
+                                                ondrop="handleDrop(event, '{{ $currentQuestion['id'] }}', this.dataset.zone)">
+                                                <div class="mb-2 text-sm font-medium text-gray-800">{{ $zone }}</div>
+                                                <div class="space-y-2" data-zone-items="1">
+                                                    @foreach ($zoneItems as $item)
+                                                        <div draggable="true" data-drag-item="{{ $item }}"
+                                                            ondragstart="handleDragStart(event)"
+                                                            class="dragdrop-item cursor-move rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-sm">
+                                                            {{ $item }}
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @else
+                                @foreach ($options as $key => $option)
+                                    @php
+                                        $isSelected = $tipeSoal === 'pilihan_kompleks'
+                                            ? in_array((string) $key, $selectedAnswers, true)
+                                            : $savedAnswer == $key;
+                                    @endphp
+                                    <button
+                                        class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left 
+                                               hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100
+                                               {{ $isSelected ? 'option-selected border-indigo-500' : '' }}"
+                                        data-option="{{ $key }}"
+                                        onclick="selectAnswer('{{ $currentQuestion['id'] }}', '{{ $key }}', '{{ $tipeSoal }}')">
+                                        <div class="flex items-start space-x-3 sm:space-x-4">
+                                            <div
+                                                class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 
+                                                   flex items-center justify-center text-white font-bold text-xs sm:text-sm">
+                                                {{ strtoupper($key) }}
+                                            </div>
+                                            <div class="flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
+                                                @if (is_array($option))
+                                                    @if ($option['tipe'] == 'gambar' && $option['gambar'])
+                                                        <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
+                                                            alt="Pilihan {{ $key }}"
+                                                            class="max-w-full sm:max-w-sm mx-auto rounded-lg shadow-md">
+                                                        @if ($option['teks'])
+                                                            <div class="mt-2">{!! $option['teks'] !!}</div>
+                                                        @endif
+                                                    @else
+                                                        {!! $option['teks'] !!}
+                                                    @endif
+                                                @else
+                                                    {!! $option !!}
+                                                @endif
+                                            </div>
+                                            @if ($tipeSoal === 'pilihan_kompleks')
+                                                <div data-checkmark="1" class="flex-shrink-0 w-6 h-6 rounded border-2 {{ $isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300' }} flex items-center justify-center text-white">
+                                                    @if ($isSelected)
+                                                        <i class="fas fa-check text-xs"></i>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </button>
+                                @endforeach
+                            @endif
                         </div>
 
                         <!-- Navigation Buttons -->
@@ -757,25 +912,227 @@
             }
         }
 
-        function selectAnswer(questionId, option) {
-            // Update UI - remove selection from all options
-            document.querySelectorAll('.option-card').forEach(card => {
-                card.classList.remove('option-selected', 'border-indigo-500');
-                card.classList.add('border-gray-200');
-            });
+        function selectAnswer(questionId, option, tipeSoal = 'pilihan_ganda') {
+            if (tipeSoal === 'pilihan_kompleks') {
+                const currentAnswers = (answers[questionId] || '')
+                    .split(',')
+                    .map(value => value.trim())
+                    .filter(Boolean);
+                const optionIndex = currentAnswers.indexOf(option);
 
-            // Add selection to clicked option
-            event.currentTarget.classList.add('option-selected', 'border-indigo-500');
-            event.currentTarget.classList.remove('border-gray-200');
+                if (optionIndex >= 0) {
+                    currentAnswers.splice(optionIndex, 1);
+                    event.currentTarget.classList.remove('option-selected', 'border-indigo-500');
+                    event.currentTarget.classList.add('border-gray-200');
+                    const checkmark = event.currentTarget.querySelector('[data-checkmark]');
+                    if (checkmark) {
+                        checkmark.classList.remove('bg-indigo-500', 'border-indigo-500');
+                        checkmark.classList.add('border-gray-300');
+                        checkmark.innerHTML = '';
+                    }
+                } else {
+                    currentAnswers.push(option);
+                    event.currentTarget.classList.add('option-selected', 'border-indigo-500');
+                    event.currentTarget.classList.remove('border-gray-200');
+                    const checkmark = event.currentTarget.querySelector('[data-checkmark]');
+                    if (checkmark) {
+                        checkmark.classList.add('bg-indigo-500', 'border-indigo-500');
+                        checkmark.classList.remove('border-gray-300');
+                        checkmark.innerHTML = '<i class="fas fa-check text-xs"></i>';
+                    }
+                }
 
-            // Update answers object
-            answers[questionId] = option;
+                currentAnswers.sort();
+                answers[questionId] = currentAnswers.join(',');
+            } else {
+                // Update UI - remove selection from all options
+                document.querySelectorAll('.option-card').forEach(card => {
+                    card.classList.remove('option-selected', 'border-indigo-500');
+                    card.classList.add('border-gray-200');
+                });
+
+                // Add selection to clicked option
+                event.currentTarget.classList.add('option-selected', 'border-indigo-500');
+                event.currentTarget.classList.remove('border-gray-200');
+
+                // Update answers object
+                answers[questionId] = option;
+            }
 
             // Update progress and navigation
             updateProgress();
 
             // Auto-save after short delay
             setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        function setTextAnswer(questionId, value) {
+            answers[questionId] = value.trim();
+            updateProgress();
+            setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        function setClozeAnswer(questionId) {
+            const values = Array.from(document.querySelectorAll('.cloze-answer'))
+                .sort((a, b) => parseInt(a.dataset.clozeIndex || '0', 10) - parseInt(b.dataset.clozeIndex || '0', 10))
+                .map(input => input.value.trim());
+            answers[questionId] = JSON.stringify(values);
+            updateProgress();
+            setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        function setMatchingAnswer(questionId, left, right) {
+            const current = safeJsonParse(answers[questionId], {});
+            if (right) {
+                current[left] = right;
+            } else {
+                delete current[left];
+            }
+            answers[questionId] = JSON.stringify(current);
+            updateProgress();
+            setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        function setOrderingAnswer(questionId) {
+            const values = Array.from(document.querySelectorAll('[data-ordering-question] .ordering-item'))
+                .map(item => item.dataset.orderingItem)
+                .filter(Boolean);
+            answers[questionId] = JSON.stringify(values);
+            updateProgress();
+            setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        let draggedOrderingItem = null;
+
+        function handleOrderingDragStart(event) {
+            draggedOrderingItem = event.currentTarget;
+            event.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleOrderingDragOver(event) {
+            event.preventDefault();
+        }
+
+        function handleOrderingDrop(event, questionId) {
+            event.preventDefault();
+            if (!draggedOrderingItem || draggedOrderingItem === event.currentTarget) return;
+
+            const container = event.currentTarget.parentElement;
+            const items = Array.from(container.children);
+            const draggedIndex = items.indexOf(draggedOrderingItem);
+            const targetIndex = items.indexOf(event.currentTarget);
+
+            if (draggedIndex < targetIndex) {
+                container.insertBefore(draggedOrderingItem, event.currentTarget.nextSibling);
+            } else {
+                container.insertBefore(draggedOrderingItem, event.currentTarget);
+            }
+
+            draggedOrderingItem = null;
+            setOrderingAnswer(questionId);
+        }
+
+        function moveOrderingItem(button, questionId, direction) {
+            const item = button.closest('.ordering-item');
+            if (!item) return;
+
+            if (direction < 0 && item.previousElementSibling) {
+                item.parentElement.insertBefore(item, item.previousElementSibling);
+            }
+
+            if (direction > 0 && item.nextElementSibling) {
+                item.parentElement.insertBefore(item.nextElementSibling, item);
+            }
+
+            setOrderingAnswer(questionId);
+        }
+
+        let draggedItemValue = null;
+
+        function handleDragStart(event) {
+            draggedItemValue = event.currentTarget.dataset.dragItem;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedItemValue);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('border-indigo-400', 'bg-indigo-50');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('border-indigo-400', 'bg-indigo-50');
+        }
+
+        function handleDrop(event, questionId, zone) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('border-indigo-400', 'bg-indigo-50');
+
+            const item = event.dataTransfer.getData('text/plain') || draggedItemValue;
+            if (!item) return;
+
+            const draggedElement = document.querySelector(`[data-drag-item="${cssEscape(item)}"]`);
+            const zoneItems = event.currentTarget.querySelector('[data-zone-items]');
+
+            if (draggedElement && zoneItems) {
+                draggedElement.classList.remove('border-indigo-200', 'bg-indigo-50', 'text-indigo-800');
+                draggedElement.classList.add('border-green-200', 'bg-green-50', 'text-green-800');
+                zoneItems.appendChild(draggedElement);
+            }
+
+            setDragDropAnswer(questionId, item, zone);
+            draggedItemValue = null;
+        }
+
+        function setDragDropAnswer(questionId, item, zone) {
+            const current = safeJsonParse(answers[questionId], {});
+            if (zone) {
+                current[item] = zone;
+            } else {
+                delete current[item];
+            }
+            answers[questionId] = JSON.stringify(current);
+            updateProgress();
+            setTimeout(() => saveCurrentAnswer(), 500);
+        }
+
+        document.querySelectorAll('[data-drag-source]').forEach(source => {
+            source.addEventListener('dragover', handleDragOver);
+            source.addEventListener('dragleave', handleDragLeave);
+            source.addEventListener('drop', function(event) {
+                event.preventDefault();
+                this.classList.remove('border-indigo-400', 'bg-indigo-50');
+                const item = event.dataTransfer.getData('text/plain') || draggedItemValue;
+                const questionId = this.closest('[data-dragdrop-question]')?.dataset.dragdropQuestion;
+                if (!item || !questionId) return;
+
+                const draggedElement = document.querySelector(`[data-drag-item="${cssEscape(item)}"]`);
+                if (draggedElement) {
+                    draggedElement.classList.remove('border-green-200', 'bg-green-50', 'text-green-800');
+                    draggedElement.classList.add('border-indigo-200', 'bg-indigo-50', 'text-indigo-800');
+                    this.appendChild(draggedElement);
+                }
+
+                setDragDropAnswer(questionId, item, '');
+                draggedItemValue = null;
+            });
+        });
+
+        function cssEscape(value) {
+            if (window.CSS && typeof window.CSS.escape === 'function') {
+                return window.CSS.escape(value);
+            }
+
+            return String(value).replace(/"/g, '\\"');
+        }
+
+        function safeJsonParse(value, fallback) {
+            if (!value || typeof value !== 'string') return fallback;
+            try {
+                return JSON.parse(value);
+            } catch (error) {
+                return fallback;
+            }
         }
 
         // Save current answer

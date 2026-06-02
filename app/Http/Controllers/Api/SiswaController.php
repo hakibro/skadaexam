@@ -7,6 +7,7 @@ use App\Http\Controllers\Features\Data\SiswaController as FeatureSiswaController
 use App\Services\SikeuApiService;
 use App\Services\TahunAjaranService;
 use App\Models\Siswa;
+use App\Models\SiswaTahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -119,11 +120,26 @@ class SiswaController extends Controller
             'catatan_rekomendasi' => 'nullable|string|max:500',
         ]);
 
-        $siswa = Siswa::create($validated)->load('kelas');
+        $tahunAjaranId = app(TahunAjaranService::class)->ensureActive()->id;
+        $siswa = Siswa::create(collect($validated)->only(['idyayasan', 'nama', 'email'])->all());
+
+        SiswaTahunAjaran::updateOrCreate(
+            [
+                'siswa_id' => $siswa->id,
+                'tahun_ajaran_id' => $tahunAjaranId,
+            ],
+            [
+                'kelas_id' => $validated['kelas_id'] ?? null,
+                'status_siswa' => 'aktif',
+                'status_pembayaran' => $validated['status_pembayaran'] ?? 'Belum Lunas',
+                'rekomendasi' => $validated['rekomendasi'] ?? 'tidak',
+                'catatan' => $validated['catatan_rekomendasi'] ?? null,
+            ]
+        );
 
         return response()->json([
             'success' => true,
-            'data' => $this->formatSiswa($siswa),
+            'data' => $this->formatSiswa($siswa->fresh('tahunAjaranRecords.kelas')),
         ], 201);
     }
 
@@ -144,11 +160,23 @@ class SiswaController extends Controller
             'catatan_rekomendasi' => 'nullable|string|max:500',
         ]);
 
-        $siswa->update($validated);
+        $siswa->update(collect($validated)->only(['idyayasan', 'nama', 'email'])->all());
+
+        $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
+        if ($tahunAjaranId && array_intersect(array_keys($validated), ['kelas_id', 'status_pembayaran', 'rekomendasi', 'catatan_rekomendasi'])) {
+            $record = $siswa->tahunAjaranRecords()->firstOrNew(['tahun_ajaran_id' => $tahunAjaranId]);
+            $record->fill([
+                'kelas_id' => $validated['kelas_id'] ?? $record->kelas_id,
+                'status_siswa' => $record->status_siswa ?? 'aktif',
+                'status_pembayaran' => $validated['status_pembayaran'] ?? $record->status_pembayaran ?? 'Belum Lunas',
+                'rekomendasi' => $validated['rekomendasi'] ?? $record->rekomendasi ?? 'tidak',
+                'catatan' => $validated['catatan_rekomendasi'] ?? $record->catatan,
+            ])->save();
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $this->formatSiswa($siswa->fresh('kelas')),
+            'data' => $this->formatSiswa($siswa->fresh('tahunAjaranRecords.kelas')),
         ]);
     }
 
@@ -177,29 +205,25 @@ class SiswaController extends Controller
             'catatan_rekomendasi' => 'nullable|string|max:500',
         ]);
 
-        $siswa->update([
-            'rekomendasi' => $validated['rekomendasi'] ?? $validated['status_rekomendasi'],
-            'catatan_rekomendasi' => $validated['catatan_rekomendasi'] ?? $siswa->catatan_rekomendasi,
-        ]);
-
         $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
         if ($tahunAjaranId) {
             $record = $siswa->tahunAjaranRecords()
                 ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->first();
+                ->firstOrNew(['tahun_ajaran_id' => $tahunAjaranId]);
 
-            if ($record) {
-                $record->update([
-                    'rekomendasi' => $validated['rekomendasi'] ?? $validated['status_rekomendasi'],
-                    'catatan' => $validated['catatan_rekomendasi'] ?? $record->catatan,
-                ]);
-            }
+            $record->fill([
+                'kelas_id' => $record->kelas_id ?? $siswa->kelas_id,
+                'status_siswa' => $record->status_siswa ?? 'aktif',
+                'status_pembayaran' => $record->status_pembayaran ?? $siswa->status_pembayaran,
+                'rekomendasi' => $validated['rekomendasi'] ?? $validated['status_rekomendasi'],
+                'catatan' => $validated['catatan_rekomendasi'] ?? $record->catatan,
+            ])->save();
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Status rekomendasi siswa berhasil diperbarui',
-            'data' => $this->formatSiswa($siswa->fresh('kelas')),
+            'data' => $this->formatSiswa($siswa->fresh('tahunAjaranRecords.kelas')),
         ]);
     }
 
@@ -211,7 +235,7 @@ class SiswaController extends Controller
                 ? $siswa->tahunAjaranRecords->firstWhere('tahun_ajaran_id', (int) $tahunAjaranId)
                 : $siswa->tahunAjaranRecords()->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas')->first())
             : null;
-        $kelas = $tahunRecord?->kelas ?: $siswa->kelas;
+        $kelas = $tahunRecord?->kelas;
 
         return [
             'id' => $siswa->id,
@@ -225,9 +249,9 @@ class SiswaController extends Controller
                 'tingkat' => $kelas->tingkat,
                 'jurusan' => $kelas->jurusan,
             ] : null,
-            'status_pembayaran' => $tahunRecord?->status_pembayaran ?? $siswa->status_pembayaran,
-            'rekomendasi' => $tahunRecord?->rekomendasi ?? $siswa->rekomendasi,
-            'catatan_rekomendasi' => $tahunRecord?->catatan ?? $siswa->catatan_rekomendasi,
+            'status_pembayaran' => $tahunRecord?->status_pembayaran ?? 'Belum Lunas',
+            'rekomendasi' => $tahunRecord?->rekomendasi ?? 'tidak',
+            'catatan_rekomendasi' => $tahunRecord?->catatan,
         ];
     }
 }

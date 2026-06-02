@@ -406,7 +406,7 @@ class EnrollmentService
                 }
             });
         } elseif ($kelasIds) {
-            $query->whereIn('kelas_id', $kelasIds);
+            $query->whereHas('tahunAjaranRecords', fn($q) => $q->whereIn('kelas_id', $kelasIds));
         }
 
         return $query;

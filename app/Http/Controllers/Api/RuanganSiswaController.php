@@ -65,7 +65,7 @@ class RuanganSiswaController extends Controller
                     ->orderBy('waktu_mulai');
             },
             'sesiRuangan.siswa' => function ($query) use ($studentFilter) {
-                $query->select('siswa.id', 'siswa.nis', 'siswa.idyayasan', 'siswa.nama', 'siswa.kelas_id');
+                $query->select('siswa.id', 'siswa.nis', 'siswa.idyayasan', 'siswa.nama');
                 $studentFilter($query);
             },
             'sesiRuangan.siswa.kelas:id,nama_kelas,tingkat,jurusan',
