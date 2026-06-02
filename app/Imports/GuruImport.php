@@ -91,7 +91,6 @@ class GuruImport implements
                         'role_id' => $role->id,
                         'model_type' => User::class,
                         'model_id' => $userId,
-                        'created_at' => now(),
                     ];
                     $this->successCount++;
                 }
