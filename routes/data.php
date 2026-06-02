@@ -20,6 +20,7 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     Route::get('guru/import', [GuruController::class, 'import'])->name('guru.import');
     Route::post('guru/import-process', [GuruController::class, 'processImport'])->name('guru.import.process');
     Route::get('guru/template', [GuruController::class, 'downloadTemplate'])->name('guru.template');
+    Route::get('guru/export', [GuruController::class, 'export'])->name('guru.export');
     Route::post('guru/bulk-delete', [GuruController::class, 'bulkDelete'])->name('guru.bulk-delete');
     Route::post('guru/bulk-update-role', [GuruController::class, 'bulkUpdateRole'])->name('guru.bulk-update-role');
     Route::resource('guru', GuruController::class);

@@ -35,6 +35,10 @@ class GuruImport implements
         $guruBatch = [];
         $rolesBatch = [];
 
+        // OPTIMIZATION: Pre-hash password once (avoid repeated Hash::make calls)
+        // Default password = 'password123'
+        $defaultPassword = Hash::make('password123');
+
         // Ambil last user id
         $lastId = DB::table('users')->max('id') ?? 0;
         $nextId = $lastId + 1;
@@ -45,7 +49,7 @@ class GuruImport implements
                     'id' => $nextId,
                     'name' => $row['nama'],
                     'email' => $row['email'],
-                    'password' => Hash::make($row['password']),
+                    'password' => $defaultPassword,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -77,13 +81,25 @@ class GuruImport implements
             User::insert($userBatch);
             Guru::insert($guruBatch);
 
-            // Assign role per user
-            foreach ($rolesBatch as $userId => $role) {
-                $user = User::find($userId);
-                if ($user) {
-                    $user->assignRole($role);
+            // OPTIMIZATION: Batch assign roles using raw SQL instead of per-user queries
+            $roleInserts = [];
+            foreach ($rolesBatch as $userId => $roleName) {
+                // Get role ID from roles table
+                $role = DB::table('roles')->where('name', $roleName)->where('guard_name', 'web')->first();
+                if ($role) {
+                    $roleInserts[] = [
+                        'role_id' => $role->id,
+                        'model_type' => User::class,
+                        'model_id' => $userId,
+                        'created_at' => now(),
+                    ];
                     $this->successCount++;
                 }
+            }
+
+            // Batch insert all role assignments at once
+            if (!empty($roleInserts)) {
+                DB::table('model_has_roles')->insert($roleInserts);
             }
         });
     }
@@ -93,7 +109,7 @@ class GuruImport implements
         return [
             'nama' => 'required|string|max:255',
             'email' => 'required|email|unique:guru,email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'password' => 'nullable|string|min:6',  // Password is optional, default = password123
             'role' => 'required|string',
         ];
     }

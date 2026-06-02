@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Imports\GuruImport;
+use App\Exports\GuruExport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class GuruController extends Controller
@@ -230,12 +231,12 @@ class GuruController extends Controller
             'Content-Disposition' => 'attachment; filename="guru-template.xlsx"',
         ];
 
-        // Create sample data
+        // Create sample data without password (optional field, default = password123)
         $sampleData = [
-            ['nama', 'nip', 'email', 'password', 'role'],
-            ['John Doe', '123456789', 'john@example.com', 'password123', 'guru'],
-            ['Jane Smith', '987654321', 'jane@example.com', 'password123', 'data'],
-            ['Bob Johnson', '', 'bob@example.com', 'password123', 'naskah'],
+            ['nama', 'nip', 'email', 'role'],
+            ['John Doe', '123456789', 'john@example.com', 'guru'],
+            ['Jane Smith', '987654321', 'jane@example.com', 'data'],
+            ['Bob Johnson', '', 'bob@example.com', 'naskah'],
         ];
 
         return Excel::download(
@@ -255,6 +256,17 @@ class GuruController extends Controller
             'guru-template.xlsx',
             \Maatwebsite\Excel\Excel::XLSX,
             $headers
+        );
+    }
+
+    /**
+     * Export guru data to Excel
+     */
+    public function export()
+    {
+        return Excel::download(
+            new GuruExport(),
+            'guru-data-' . now()->format('Y-m-d-His') . '.xlsx'
         );
     }
 
