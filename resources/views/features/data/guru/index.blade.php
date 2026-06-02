@@ -35,9 +35,14 @@
             <div class="flex space-x-3">
                 <!-- Import Button -->
                 <a href="{{ route('data.guru.import') }}"
-                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2">
+                    class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 flex items-center space-x-2">
                     <i class="fa-solid fa-file-excel"></i>
                     <span>Import Excel</span>
+                </a>
+                <a href="{{ route('data.guru.export') }}"
+                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>Export Excel</span>
                 </a>
                 <!-- Add New Button -->
                 <a href="{{ route('data.guru.create') }}"
