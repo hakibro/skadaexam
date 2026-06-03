@@ -81,40 +81,49 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
     protected function processRuangan($row)
     {
         try {
-            $kapasitas = $this->normalizeInteger($this->rowValue($row, [
+            $rawKapasitas = $this->rowValue($row, [
                 'kapasitas_ruangan',
                 'kapasitas',
                 'kapasitas_ruang',
                 'daya_tampung',
                 'jumlah_kursi',
                 'capacity',
-            ]), 30);
+            ]);
+
+            $kodeRuangan = $this->rowValue($row, ['kode_ruangan']);
 
             // Check if ruangan exists by kode_ruangan
             $ruangan = Ruangan::where('tahun_ajaran_id', $this->tahunAjaranId)
-                ->where('kode_ruangan', $this->rowValue($row, ['kode_ruangan']))
+                ->where('kode_ruangan', $kodeRuangan)
                 ->first();
 
             if ($ruangan) {
-                // Update existing ruangan
-                $ruangan->update([
+                $updateData = [
                     'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], $ruangan->nama_ruangan),
-                    'kapasitas' => $kapasitas,
                     'lokasi' => $this->rowValue($row, ['lokasi'], $ruangan->lokasi),
                     'status' => $this->rowValue($row, ['status'], $ruangan->status),
-                    // Only update other fields if provided
-                ]);
+                ];
+
+                // Kapasitas hanya di-update kalau kolom Excel memang berisi nilai
+                if ($rawKapasitas !== null && $rawKapasitas !== '') {
+                    $updateData['kapasitas'] = $this->normalizeInteger($rawKapasitas, $ruangan->kapasitas ?? 30);
+                }
+
+                $ruangan->update($updateData);
+
                 $this->results['ruangan_updated']++;
             } else {
-                // Create new ruangan
+                $kapasitas = $this->normalizeInteger($rawKapasitas, 30);
+
                 $ruangan = Ruangan::create([
                     'tahun_ajaran_id' => $this->tahunAjaranId,
-                    'kode_ruangan' => $this->rowValue($row, ['kode_ruangan']),
-                    'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], 'Ruangan ' . $this->rowValue($row, ['kode_ruangan'])),
+                    'kode_ruangan' => $kodeRuangan,
+                    'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], 'Ruangan ' . $kodeRuangan),
                     'kapasitas' => $kapasitas,
                     'lokasi' => $this->rowValue($row, ['lokasi']),
                     'status' => $this->rowValue($row, ['status'], 'aktif'),
                 ]);
+
                 $this->results['ruangan_created']++;
             }
 
