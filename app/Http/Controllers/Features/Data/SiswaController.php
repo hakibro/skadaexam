@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Siswa;
 use App\Models\SiswaTahunAjaran;
 use App\Services\SikeuApiService;
+use App\Services\SiswaQuickSyncService;
 use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -17,11 +18,17 @@ class SiswaController extends Controller
 {
     protected $sikeuApiService;
     protected $tahunAjaranService;
+    protected $siswaQuickSyncService;
 
-    public function __construct(SikeuApiService $sikeuApiService, ?TahunAjaranService $tahunAjaranService = null)
+    public function __construct(
+        SikeuApiService $sikeuApiService,
+        ?TahunAjaranService $tahunAjaranService = null,
+        ?SiswaQuickSyncService $siswaQuickSyncService = null
+    )
     {
         $this->sikeuApiService = $sikeuApiService;
         $this->tahunAjaranService = $tahunAjaranService ?: app(TahunAjaranService::class);
+        $this->siswaQuickSyncService = $siswaQuickSyncService ?: app(SiswaQuickSyncService::class);
     }
 
     private function hydrateKelasForTahun($siswas, ?int $tahunAjaranId): void
@@ -759,296 +766,26 @@ class SiswaController extends Controller
     public function syncFromApi(Request $request)
     {
         try {
-            @set_time_limit(0);
-            @ini_set('memory_limit', '512M');
+            $result = $this->siswaQuickSyncService->sync(fn(array $progress) => $this->setSyncProgress($progress));
 
-            $activeYear = $this->tahunAjaranService->ensureActive();
-            Log::info('Starting SIKEU API sync process');
-
-            // Initialize cache progress so polling can read it while this request is still running.
-            $this->setSyncProgress(['progress' => 0]);
-            $this->setSyncProgress(['status' => 'starting']);
-            $this->setSyncProgress(['message' => 'Starting sync process...']);
-
-            // Fetch data from API
-            $this->setSyncProgress(['message' => 'Fetching latest data from SIKEU API...']);
-            $this->setSyncProgress(['progress' => 10]);
-
-            $apiResult = $this->sikeuApiService->fetchSiswaData();
-
-            if (!$apiResult['success']) {
-                $this->setSyncProgress(['status' => 'error']);
-                $this->setSyncProgress(['message' => 'API Error: ' . $apiResult['error']]);
-
+            if (!$result['success']) {
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'API Error: ' . $apiResult['error']
+                        'error' => $result['error'] ?? null,
+                        'warning' => $result['warning'] ?? null,
                     ]);
                 }
-                return back()->with('error', 'API Error: ' . $apiResult['error']);
+
+                if (!empty($result['warning'])) {
+                    return back()->with('warning', $result['warning']);
+                }
+
+                return back()->with('error', $result['error'] ?? 'Sync failed.');
             }
 
-            $apiData = $apiResult['data'];
-
-            if (empty($apiData)) {
-                $this->setSyncProgress(['status' => 'warning']);
-                $this->setSyncProgress(['message' => 'No data received from API']);
-
-                if ($request->ajax()) {
-                    return response()->json([
-                        'success' => false,
-                        'warning' => 'No data received from API'
-                    ]);
-                }
-                return back()->with('warning', 'No data received from API');
-            }
-
-            $this->setSyncProgress(['message' => 'Extracting class data...']);
-            $this->setSyncProgress(['progress' => 20]);
-
-            $results = [
-                'total_api_records' => count($apiData),
-                'total_db_records' => Siswa::count(),
-                'created_kelas' => 0,
-                'updated_kelas' => 0,
-                'updated_siswa' => 0,
-                'created_siswa' => 0,
-                'restored_siswa' => 0,
-                'deleted_siswa' => 0,
-                'skipped' => 0,
-                'errors' => []
-            ];
-
-            DB::beginTransaction();
-
-            // ===== LANGKAH 1: EXTRACT & BATCH PROCESS KELAS (20% - 35%) =====
-            $this->setSyncProgress(['message' => 'Extracting unique class data...', 'progress' => 20]);
-
-            $uniqueKelas = $this->extractUniqueKelasFromApiData($apiData);
-            Log::info('Extracted unique kelas for sync', ['count' => count($uniqueKelas)]);
-
-            $this->setSyncProgress(['message' => 'Processing class data...', 'progress' => 25]);
-
-            // Get all existing kelas in one query
-            $existingKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
-                ->get()
-                ->keyBy('nama_kelas');
-
-            $kelasToCreate = [];
-            $kelasToUpdate = [];
-
-            foreach ($uniqueKelas as $kelasName => $kelasData) {
-                if ($existingKelas->has($kelasName)) {
-                    $existing = $existingKelas->get($kelasName);
-                    if ($existing->tingkat !== $kelasData['tingkat'] || $existing->jurusan !== $kelasData['jurusan']) {
-                        $kelasToUpdate[$existing->id] = [
-                            'tingkat' => $kelasData['tingkat'],
-                            'jurusan' => $kelasData['jurusan']
-                        ];
-                    }
-                } else {
-                    $kelasToCreate[] = array_merge($kelasData, [
-                        'tahun_ajaran_id' => $activeYear->id,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                }
-            }
-
-            // Batch insert new kelas
-            if (!empty($kelasToCreate)) {
-                \App\Models\Kelas::insert($kelasToCreate);
-                $results['created_kelas'] = count($kelasToCreate);
-                Log::info('Batch inserted kelas', ['count' => count($kelasToCreate)]);
-            }
-
-            // Batch update existing kelas
-            if (!empty($kelasToUpdate)) {
-                foreach ($kelasToUpdate as $kelasId => $updateData) {
-                    \App\Models\Kelas::where('id', $kelasId)->update($updateData);
-                }
-                $results['updated_kelas'] = count($kelasToUpdate);
-                Log::info('Batch updated kelas', ['count' => count($kelasToUpdate)]);
-            }
-
-            // Refresh kelas lookup map
-            $allKelas = \App\Models\Kelas::where('tahun_ajaran_id', $activeYear->id)
-                ->pluck('id', 'nama_kelas')
-                ->toArray();
-
-            $this->setSyncProgress(['message' => 'Analyzing student data differences...', 'progress' => 40]);
-
-            $apiStudents = collect($apiData)
-                ->filter(fn($student) => !empty($student['idyayasan']))
-                ->keyBy('idyayasan');
-
-            $this->setSyncProgress(['message' => 'Synchronizing student data...', 'progress' => 45]);
-
-            // ===== LANGKAH 2: CHUNK PROCESS SISWA (45% - 90%) =====
-            $chunkSize = 200;
-            $totalChunks = ceil(count($apiData) / $chunkSize);
-            $progressStep = 45 / max($totalChunks, 1);
-            $currentProgress = 45;
-
-            // Pre-load all existing siswa (withTrashed) for fast lookup
-            $existingSiswaList = Siswa::withTrashed()
-                ->pluck('id', 'idyayasan')
-                ->toArray();
-
-            $siswaResults = ['created' => 0, 'updated' => 0, 'restored' => 0, 'deleted' => 0, 'skipped' => 0, 'errors' => []];
-            $chunkIndex = 0;
-
-            foreach (array_chunk($apiData, $chunkSize) as $chunk) {
-                $chunkIndex++;
-
-                // Update progress less frequently (every chunk)
-                $currentProgress += $progressStep;
-                $this->setSyncProgress([
-                    'progress' => min(88, (int) $currentProgress),
-                    'message' => "Syncing students... Batch $chunkIndex/$totalChunks"
-                ]);
-
-                $siswaToCreate = [];
-                $siswaToUpdate = [];
-                $siswaToRestore = [];
-                $pivotDataByChunk = [];
-
-                foreach ($chunk as $studentData) {
-                    try {
-                        if (empty($studentData['idyayasan'])) {
-                            $siswaResults['errors'][] = "Missing idyayasan";
-                            $siswaResults['skipped']++;
-                            continue;
-                        }
-
-                        $idyayasan = $studentData['idyayasan'];
-                        $kelasId = null;
-                        if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
-                            $kelasId = $allKelas[trim($studentData['kelas'])];
-                        }
-
-                        if (isset($existingSiswaList[$idyayasan])) {
-                            $siswaId = $existingSiswaList[$idyayasan];
-
-                            // Check if siswa was soft-deleted
-                            $existingSiswa = Siswa::withTrashed()->find($siswaId);
-                            if ($existingSiswa->trashed()) {
-                                $siswaToRestore[] = $siswaId;
-                                $siswaResults['restored']++;
-                            }
-
-                            // Update name if different
-                            if ($existingSiswa->nama !== ($studentData['nama'] ?? null)) {
-                                $siswaToUpdate[$siswaId] = [
-                                    'nama' => $studentData['nama'] ?? null,
-                                    'updated_at' => now()
-                                ];
-                                $siswaResults['updated']++;
-                            }
-
-                            // Collect pivot data for later update
-                            $pivotDataByChunk[$siswaId] = [
-                                'siswa_id' => $siswaId,
-                                'tahun_ajaran_id' => $activeYear->id,
-                                'kelas_id' => $kelasId,
-                                'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas'
-                            ];
-                        } else {
-                            $siswaToCreate[] = [
-                                'idyayasan' => $idyayasan,
-                                'nama' => $studentData['nama'] ?? null,
-                                'email' => $studentData['email'] ?? $this->generateEmail($idyayasan),
-                                'password' => bcrypt('password'),
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ];
-                            $siswaResults['created']++;
-                        }
-                    } catch (\Exception $e) {
-                        $siswaResults['errors'][] = "Error processing {$studentData['idyayasan']}: " . $e->getMessage();
-                        $siswaResults['skipped']++;
-                    }
-                }
-
-                // Batch restore soft-deleted siswa
-                if (!empty($siswaToRestore)) {
-                    Siswa::withTrashed()->whereIn('id', $siswaToRestore)->restore();
-                }
-
-                // Batch insert new siswa and collect their data
-                if (!empty($siswaToCreate)) {
-                    foreach ($siswaToCreate as $siswaData) {
-                        $newSiswa = Siswa::create($siswaData);
-                        // Store the mapping for pivot data
-                        foreach ($chunk as $studentData) {
-                            if ($studentData['idyayasan'] === $siswaData['idyayasan']) {
-                                $kelasId = null;
-                                if (!empty($studentData['kelas']) && isset($allKelas[trim($studentData['kelas'])])) {
-                                    $kelasId = $allKelas[trim($studentData['kelas'])];
-                                }
-                                $pivotDataByChunk[$newSiswa->id] = [
-                                    'siswa_id' => $newSiswa->id,
-                                    'tahun_ajaran_id' => $activeYear->id,
-                                    'kelas_id' => $kelasId,
-                                    'status_pembayaran' => $studentData['status_pembayaran'] ?? 'Belum Lunas'
-                                ];
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Batch update siswa
-                if (!empty($siswaToUpdate)) {
-                    foreach ($siswaToUpdate as $siswaId => $data) {
-                        Siswa::where('id', $siswaId)->update($data);
-                    }
-                }
-
-                // Batch upsert pivot records for the chunk
-                foreach ($pivotDataByChunk as $siswaId => $pivotData) {
-                    SiswaTahunAjaran::updateOrCreate(
-                        ['siswa_id' => $siswaId, 'tahun_ajaran_id' => $activeYear->id],
-                        array_merge($pivotData, [
-                            'status_siswa' => 'aktif',
-                            'updated_at' => now()
-                        ])
-                    );
-                }
-            }
-
-            // Delete siswa not in API data
-            $apiIdyayasan = $apiStudents->keys()->all();
-            if (!empty($apiIdyayasan)) {
-                $siswaResults['deleted'] = Siswa::whereNotIn('idyayasan', $apiIdyayasan)->delete();
-            }
-
-            $results['updated_siswa'] = $siswaResults['updated'];
-            $results['created_siswa'] = $siswaResults['created'];
-            $results['restored_siswa'] = $siswaResults['restored'];
-            $results['deleted_siswa'] = $siswaResults['deleted'];
-            $results['skipped'] = $siswaResults['skipped'];
-            $results['errors'] = array_merge($results['errors'], $siswaResults['errors']);
-
-            $this->setSyncProgress(['progress' => 95, 'message' => 'Finalizing sync...']);
-
-            DB::commit();
-
-            $this->setSyncProgress(['progress' => 100, 'status' => 'completed']);
-            $message = sprintf(
-                "Sync completed! Kelas: %d created, %d updated | Students: %d created, %d updated, %d restored, %d deleted, %d skipped",
-                $results['created_kelas'],
-                $results['updated_kelas'],
-                $siswaResults['created'],
-                $siswaResults['updated'],
-                $siswaResults['restored'],
-                $siswaResults['deleted'],
-                $siswaResults['skipped']
-            );
-            $this->setSyncProgress(['message' => $message]);
-
-            Log::info('SIKEU API sync completed', $results);
+            $results = $result['data'];
+            $message = $result['message'];
 
             if ($request->ajax()) {
                 return response()->json([
@@ -1060,8 +797,6 @@ class SiswaController extends Controller
 
             return redirect()->route('data.siswa.index')->with('success', $message);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             $this->setSyncProgress(['status' => 'error']);
             $this->setSyncProgress(['message' => 'Sync failed: ' . $e->getMessage()]);
 

@@ -9,6 +9,7 @@ use App\Services\TahunAjaranService;
 use App\Models\Siswa;
 use App\Models\SiswaTahunAjaran;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SiswaController extends Controller
@@ -190,11 +191,69 @@ class SiswaController extends Controller
         return response()->json(['message' => 'Siswa berhasil dihapus']);
     }
 
+
     public function quickSync(Request $request, SikeuApiService $sikeuApiService)
     {
-        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+        $startedAt = microtime(true);
 
-        return app(FeatureSiswaController::class)->syncFromApi($request);
+        try {
+            $request->headers->set('X-Requested-With', 'XMLHttpRequest');
+            $request->headers->set('Accept', 'application/json');
+
+            $response = app(FeatureSiswaController::class)->syncFromApi($request);
+            $payload = method_exists($response, 'getData') ? $response->getData(true) : [];
+            $success = (bool) ($payload['success'] ?? false);
+            $data = $payload['data'] ?? [];
+            $durationMs = round((microtime(true) - $startedAt) * 1000, 2);
+
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'failed',
+                    'message' => $payload['error'] ?? $payload['message'] ?? 'Quick sync gagal.',
+                    'error' => $payload['error'] ?? null,
+                    'duration_ms' => $durationMs,
+                ], method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'status' => 'completed',
+                'message' => $payload['message'] ?? 'Quick sync selesai.',
+                'tahun_ajaran_id' => $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId()),
+                'summary' => [
+                    'total_api_records' => $data['total_api_records'] ?? 0,
+                    'total_db_records' => $data['total_db_records'] ?? 0,
+                    'kelas' => [
+                        'created' => $data['created_kelas'] ?? 0,
+                        'updated' => $data['updated_kelas'] ?? 0,
+                    ],
+                    'siswa' => [
+                        'created' => $data['created_siswa'] ?? 0,
+                        'updated' => $data['updated_siswa'] ?? 0,
+                        'restored' => $data['restored_siswa'] ?? 0,
+                        'deleted' => $data['deleted_siswa'] ?? 0,
+                        'skipped' => $data['skipped'] ?? 0,
+                    ],
+                    'errors_count' => count($data['errors'] ?? []),
+                ],
+                'data' => $data,
+                'duration_ms' => $durationMs,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('API siswa quick sync failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'status' => 'error',
+                'message' => 'Quick sync gagal: ' . $e->getMessage(),
+                'exception' => get_class($e),
+                'duration_ms' => round((microtime(true) - $startedAt) * 1000, 2),
+            ], 500);
+        }
     }
 
     public function setRekomendasi(Request $request, Siswa $siswa)

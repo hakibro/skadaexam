@@ -21,6 +21,15 @@ class SchoolSetting extends Model
         'kepala_sekolah',
         'info_lain',
         'logo_path',
+        'sync_siswa_enabled',
+        'sync_siswa_interval_minutes',
+        'sync_siswa_date_start',
+        'sync_siswa_date_end',
+        'sync_siswa_time_start',
+        'sync_siswa_time_end',
+        'sync_siswa_last_run_at',
+        'sync_siswa_last_status',
+        'sync_siswa_last_message',
     ];
 
     public static function allAsArray(): array
