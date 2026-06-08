@@ -88,7 +88,7 @@ class DashboardController extends Controller
                 ->get();
 
             // Get upcoming exams - Fix, using tanggal
-            $upcomingExams = JadwalUjian::with(['bankSoal', 'mapel'])
+            $upcomingExams = JadwalUjian::with(['bankSoal', 'mapel', 'paketUjian'])
                 ->forTahunAjaran($activeYearId)
                 ->where('tanggal', '>=', Carbon::today())
                 ->where('status', 'aktif') // Changed from 'active' to 'aktif' to match status values

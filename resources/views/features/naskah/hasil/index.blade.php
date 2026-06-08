@@ -119,7 +119,7 @@
             </div>
 
             <div class="p-6">
-                <form action="{{ route('naskah.hasil.index') }}" method="GET"
+                <form action="{{ route('naskah.hasil.index') }}" method="GET" data-auto-submit
                     class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>

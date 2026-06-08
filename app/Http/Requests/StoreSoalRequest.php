@@ -101,6 +101,10 @@ class StoreSoalRequest extends FormRequest
                 $validator->errors()->add('soal_audio', 'Audio wajib diupload untuk tipe soal Listening.');
             }
 
+            if ($tipe === 'benar_salah' && !in_array(strtoupper((string) $this->input('kunci_jawaban')), ['A', 'B'], true)) {
+                $validator->errors()->add('kunci_jawaban', 'Kunci jawaban Benar/Salah hanya boleh A atau B.');
+            }
+
             if ($tipe === 'teks_rumpang' && !$this->hasClozeKeyPlaceholder() && empty(trim((string) $this->input('kunci_jawaban')))) {
                 $validator->errors()->add('pertanyaan', 'Teks rumpang wajib memiliki placeholder [[jawaban]] atau kunci jawaban manual.');
             }

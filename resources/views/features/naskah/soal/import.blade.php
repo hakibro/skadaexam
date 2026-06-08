@@ -6,7 +6,7 @@
 
 @section('content')
     <div class="max-w-3xl mx-auto">
-        <form action="{{ route('naskah.soal.store') }}" method="POST" enctype="multipart/form-data"
+        <form action="{{ route('naskah.soal.import.process') }}" method="POST" enctype="multipart/form-data"
             class="bg-white shadow-md rounded-lg overflow-hidden">
             @csrf
 
@@ -32,14 +32,22 @@
 
                 <!-- Upload File -->
                 <div class="mt-6">
-                    <label for="docx_file" class="block text-sm font-medium text-gray-700">Upload File .docx</label>
-                    <input type="file" name="docx_file" id="docx_file" accept=".docx"
+                    <label for="file" class="block text-sm font-medium text-gray-700">Upload File Soal</label>
+                    <input type="file" name="file" id="file" accept=".docx,.xlsx,.xls,.csv"
                         class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    <p class="mt-1 text-xs text-gray-500">Pastikan format dokumen sesuai dengan template yang ditentukan.
+                    <p class="mt-1 text-xs text-gray-500">DOCX untuk pilihan ganda, Excel/CSV untuk tipe soal kaya.
                     </p>
-                    @error('docx_file')
+                    @error('file')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div class="rounded-md border border-blue-100 bg-blue-50 p-4">
+                    <a href="{{ route('naskah.soal.import.template') }}"
+                        class="inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-900">
+                        <i class="fa-solid fa-file-excel mr-2"></i>
+                        Download Template Excel Tipe Soal Kaya
+                    </a>
                 </div>
 
                 <!-- Panduan Format Dokumen -->
@@ -55,9 +63,11 @@
                                     <li>Setiap soal dimulai dengan nomor diikuti tanda titik (1., 2., dst)</li>
                                     <li>Jawaban pilihan ganda ditulis dengan format A., B., C., dst</li>
                                     <li>Tandai jawaban benar dengan [*] setelah pilihan (contoh: A. Jawaban benar [*])</li>
+                                    <li>DOCX dapat diberi baris <strong>Tipe: pilihan_kompleks</strong>,
+                                        <strong>Tipe: benar_salah</strong>, atau tipe lain sebelum pilihan.</li>
+                                    <li>Untuk matching, ordering, drag-drop, listening, dan teks rumpang kompleks, gunakan
+                                        template Excel.</li>
                                     <li>Untuk pilihan jawaban berupa gambar, tulis pilihan kosong (contoh: B.)</li>
-                                    <li><strong>Penting:</strong> Gambar harus ditambahkan secara manual setelah soal
-                                        diimpor (sistem tidak mengekstrak gambar dari DOCX)</li>
                                     <li><strong>Baru:</strong> Pembahasan diawali dengan kata "Pembahasan:" (contoh:
                                         Pembahasan: Jawaban A benar karena...)</li>
                                 </ul>

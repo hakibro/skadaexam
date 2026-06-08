@@ -30,7 +30,11 @@ class RuanganController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
-        $query = Ruangan::forTahunAjaran($tahunAjaranId)->withCount('sesiRuangan');
+        $paketUjianId = $request->get('paket_ujian_id');
+        $query = Ruangan::forTahunAjaran($tahunAjaranId)
+            ->forPaketUjian($paketUjianId)
+            ->with(['paketUjian'])
+            ->withCount('sesiRuangan');
 
         // Filter by status
         if ($request->filled('status')) {
@@ -65,14 +69,18 @@ class RuanganController extends Controller
 
         // Calculate statistics for the view
         $statistics = [
-            'total' => Ruangan::forTahunAjaran($tahunAjaranId)->count(),
-            'aktif' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'aktif')->count(),
-            'nonaktif' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'tidak_aktif')->count(),
-            'perbaikan' => Ruangan::forTahunAjaran($tahunAjaranId)->where('status', 'perbaikan')->count(),
+            'total' => Ruangan::forTahunAjaran($tahunAjaranId)->forPaketUjian($paketUjianId)->count(),
+            'aktif' => Ruangan::forTahunAjaran($tahunAjaranId)->forPaketUjian($paketUjianId)->where('status', 'aktif')->count(),
+            'nonaktif' => Ruangan::forTahunAjaran($tahunAjaranId)->forPaketUjian($paketUjianId)->where('status', 'tidak_aktif')->count(),
+            'perbaikan' => Ruangan::forTahunAjaran($tahunAjaranId)->forPaketUjian($paketUjianId)->where('status', 'perbaikan')->count(),
         ];
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $paketUjians = PaketUjian::when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
 
-        return view('features.ruangan.index', compact('ruangans', 'statistics', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.ruangan.index', compact('ruangans', 'statistics', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
     }
 
     /**
@@ -87,7 +95,15 @@ class RuanganController extends Controller
                 ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum membuat ruangan.');
         }
 
-        return view('features.ruangan.create');
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+        $defaultPaketId = app(TahunAjaranService::class)->defaultPaketFor($activeYear)?->id;
+
+        return view('features.ruangan.create', compact('paketUjians', 'defaultPaketId'));
     }
 
     /**
@@ -102,6 +118,7 @@ class RuanganController extends Controller
             'lokasi' => 'nullable|string|max:191',
             'fasilitas' => 'nullable|array',
             'status' => 'required|in:aktif,perbaikan,tidak_aktif',
+            'paket_ujian_id' => 'nullable|exists:paket_ujian,id',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -109,6 +126,7 @@ class RuanganController extends Controller
             $activeYear = app(TahunAjaranService::class)->ensureActive();
             $ruangan = Ruangan::create([
                 'tahun_ajaran_id' => $activeYear->id,
+                'paket_ujian_id' => $request->paket_ujian_id ?: null,
                 'nama_ruangan' => $request->nama_ruangan,
                 'kode_ruangan' => $request->kode_ruangan,
                 'kapasitas' => $request->kapasitas,
@@ -265,7 +283,13 @@ class RuanganController extends Controller
      */
     public function edit(Ruangan $ruangan)
     {
-        return view('features.ruangan.edit', compact('ruangan'));
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $ruangan->tahun_ajaran_id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
+        return view('features.ruangan.edit', compact('ruangan', 'paketUjians'));
     }
 
     /**
@@ -280,6 +304,7 @@ class RuanganController extends Controller
             'lokasi' => 'nullable|string|max:191',
             'fasilitas' => 'nullable|array',
             'status' => 'required|in:aktif,perbaikan,tidak_aktif',
+            'paket_ujian_id' => 'nullable|exists:paket_ujian,id',
             'keterangan' => 'nullable|string',
         ]);
 
@@ -287,12 +312,17 @@ class RuanganController extends Controller
             $ruangan->update([
                 'nama_ruangan' => $request->nama_ruangan,
                 'kode_ruangan' => $request->kode_ruangan,
+                'paket_ujian_id' => $request->paket_ujian_id ?: null,
                 'kapasitas' => $request->kapasitas,
                 'lokasi' => $request->lokasi,
                 'fasilitas' => $request->fasilitas ?? [],
                 'status' => $request->status,
                 'keterangan' => $request->keterangan,
             ]);
+
+            $ruangan->sesiRuangan()
+                ->where('sumber', 'sumber')
+                ->update(['paket_ujian_id' => $ruangan->paket_ujian_id]);
 
             return redirect()->route('ruangan.show', $ruangan)
                 ->with('success', 'Ruangan berhasil diperbarui');
@@ -599,13 +629,19 @@ class RuanganController extends Controller
     public function importComprehensive()
     {
         try {
-            app(TahunAjaranService::class)->ensureActive();
+            $activeYear = app(TahunAjaranService::class)->ensureActive();
         } catch (\RuntimeException $e) {
             return redirect()->route('admin.tahun-ajaran.index')
                 ->with('error', 'Aktifkan tahun ajaran terlebih dahulu sebelum import komprehensif.');
         }
 
-        return view('features.ruangan.import-comprehensive');
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
+        return view('features.ruangan.import-comprehensive', compact('paketUjians'));
     }
 
     /**
@@ -615,6 +651,7 @@ class RuanganController extends Controller
     {
         $request->validate([
             'import_file' => 'required|file|mimes:xlsx,xls,csv',
+            'paket_ujian_id' => 'nullable|exists:paket_ujian,id',
         ]);
 
         try {
@@ -622,7 +659,7 @@ class RuanganController extends Controller
 
             $file = $request->file('import_file');
             $activeYear = app(TahunAjaranService::class)->ensureActive();
-            $import = new \App\Imports\ComprehensiveRuanganImport($activeYear->id);
+            $import = new \App\Imports\ComprehensiveRuanganImport($activeYear->id, $request->paket_ujian_id ?: null);
             \Maatwebsite\Excel\Facades\Excel::import($import, $file);
 
             $results = $import->getImportResults();
@@ -740,6 +777,13 @@ class RuanganController extends Controller
 
         $studentQuery = Siswa::query()
             ->with(['tahunAjaranRecords' => fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas')])
+            ->when($selectedPaketId, function ($q) use ($tahunAjaranId, $selectedPaketId) {
+                $q->whereHas('sesiRuangan', function ($sesi) use ($tahunAjaranId, $selectedPaketId) {
+                    $sesi->where('sesi_ruangan.tahun_ajaran_id', $tahunAjaranId)
+                        ->where('sesi_ruangan.sumber', 'sumber')
+                        ->where('sesi_ruangan.paket_ujian_id', $selectedPaketId);
+                });
+            }, fn($q) => $q->whereRaw('1 = 0'))
             ->whereHas('tahunAjaranRecords', function ($q) use ($request, $tahunAjaranId) {
                 $q->where('tahun_ajaran_id', $tahunAjaranId);
 
@@ -790,6 +834,13 @@ class RuanganController extends Controller
 
         $records = SiswaTahunAjaran::with(['siswa', 'kelas'])
             ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->when($paketUjian, function ($q) use ($tahunAjaranId, $paketUjian) {
+                $q->whereHas('siswa.sesiRuangan', function ($sesi) use ($tahunAjaranId, $paketUjian) {
+                    $sesi->where('sesi_ruangan.tahun_ajaran_id', $tahunAjaranId)
+                        ->where('sesi_ruangan.sumber', 'sumber')
+                        ->where('sesi_ruangan.paket_ujian_id', $paketUjian->id);
+                });
+            }, fn($q) => $q->whereRaw('1 = 0'))
             ->when($request->filled('tingkat'), fn($q) => $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)))
             ->when($request->filled('kelas_id'), fn($q) => $q->where('kelas_id', $request->kelas_id))
             ->whereHas('siswa', function ($q) use ($request) {
@@ -817,7 +868,7 @@ class RuanganController extends Controller
             ->orderBy('tanggal')
             ->get();
 
-        $sourceSessions = $this->sourceSessionMapForCards($tahunAjaranId);
+        $sourceSessions = $this->sourceSessionMapForCards($tahunAjaranId, $paketUjian?->id);
         $cards = $records->map(function ($record) use ($jadwals, $sourceSessions) {
             $kelas = $record->kelas;
             $studentJadwals = $jadwals->filter(fn($jadwal) => $this->jadwalMatchesKelas($jadwal, $kelas))
@@ -840,13 +891,14 @@ class RuanganController extends Controller
         ]);
     }
 
-    private function sourceSessionMapForCards(int $tahunAjaranId): array
+    private function sourceSessionMapForCards(int $tahunAjaranId, ?int $paketUjianId = null): array
     {
         $rows = DB::table('sesi_ruangan_siswa')
             ->join('sesi_ruangan', 'sesi_ruangan_siswa.sesi_ruangan_id', '=', 'sesi_ruangan.id')
             ->join('ruangan', 'sesi_ruangan.ruangan_id', '=', 'ruangan.id')
             ->where('sesi_ruangan.tahun_ajaran_id', $tahunAjaranId)
             ->where('sesi_ruangan.sumber', 'sumber')
+            ->when($paketUjianId, fn($q) => $q->where('sesi_ruangan.paket_ujian_id', $paketUjianId))
             ->select(
                 'sesi_ruangan_siswa.siswa_id',
                 'sesi_ruangan.nama_sesi',

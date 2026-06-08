@@ -79,7 +79,8 @@
                     <select id="tahun-ajaran-filter"
                         class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                         @foreach ($tahunAjarans as $tahun)
-                            <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                            <option value="{{ $tahun->id }}"
+                                {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                 {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
                             </option>
                         @endforeach
@@ -99,6 +100,24 @@
                             class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             value="{{ request('search') }}">
                     </div>
+                </div>
+
+                <!-- Paket Ujian Filter -->
+                <div class="md:col-span-2">
+                    <label for="paket-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-box mr-1 text-gray-400"></i>
+                        Paket Ujian
+                    </label>
+                    <select id="paket-filter"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Semua Paket</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}"
+                                {{ request('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
+                                {{ $paket->nama }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <!-- Mapel Filter -->
@@ -147,23 +166,6 @@
                     </select>
                 </div>
 
-                <!-- Clear Filters Button -->
-                <!-- Jenis Soal Filter -->
-                <div class="md:col-span-1">
-                    <label for="jenis-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fa-solid fa-list-check mr-1 text-gray-400"></i>
-                        Jenis
-                    </label>
-                    <select id="jenis-filter"
-                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Semua</option>
-                        <option value="uts" {{ request('jenis_soal') == 'uts' ? 'selected' : '' }}>UTS</option>
-                        <option value="uas" {{ request('jenis_soal') == 'uas' ? 'selected' : '' }}>UAS</option>
-                        <option value="ulangan" {{ request('jenis_soal') == 'ulangan' ? 'selected' : '' }}>Ulangan</option>
-                        <option value="latihan" {{ request('jenis_soal') == 'latihan' ? 'selected' : '' }}>Latihan</option>
-                    </select>
-                </div>
-
                 <div class="md:col-span-1">
                     <button id="clear-filters"
                         class="w-full bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-md transition-colors flex items-center justify-center">
@@ -196,10 +198,6 @@
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Jumlah Soal
-                                </th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Jenis Soal
                                 </th>
                                 <th scope="col"
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -237,35 +235,6 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $bank->total_soal }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        @php
-                                            $jenisClasses = [
-                                                'pilihan_ganda' => 'bg-blue-100 text-blue-800',
-                                                'essay' => 'bg-purple-100 text-purple-800',
-                                                'campuran' => 'bg-indigo-100 text-indigo-800',
-                                                'uts' => 'bg-purple-100 text-purple-800',
-                                                'uas' => 'bg-indigo-100 text-indigo-800',
-                                                'ulangan' => 'bg-blue-100 text-blue-800',
-                                                'latihan' => 'bg-green-100 text-green-800',
-                                            ];
-                                            $jenisClass =
-                                                $jenisClasses[$bank->jenis_soal] ?? 'bg-gray-100 text-gray-800';
-                                            $jenisLabel =
-                                                [
-                                                    'pilihan_ganda' => 'Pilihan Ganda',
-                                                    'essay' => 'Essay',
-                                                    'campuran' => 'Campuran',
-                                                    'uts' => 'UTS',
-                                                    'uas' => 'UAS',
-                                                    'ulangan' => 'Ulangan',
-                                                    'latihan' => 'Latihan',
-                                                ][$bank->jenis_soal] ?? ucfirst($bank->jenis_soal);
-                                        @endphp
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $jenisClass }}">
-                                            {{ $jenisLabel }}
-                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
@@ -400,10 +369,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('search-input');
             const tahunAjaranFilter = document.getElementById('tahun-ajaran-filter');
+            const paketFilter = document.getElementById('paket-filter');
             const mapelFilter = document.getElementById('mapel-filter'); // Filter mata pelajaran
             const tingkatFilter = document.getElementById('tingkat-filter');
             const statusFilter = document.getElementById('status-filter');
-            const jenisFilter = document.getElementById('jenis-filter');
             const clearFiltersBtn = document.getElementById('clear-filters');
 
             // Auto-hide alerts after 5 seconds
@@ -517,10 +486,10 @@
             function applyFilters() {
                 const searchValue = searchInput.value.trim();
                 const tahunAjaranValue = tahunAjaranFilter ? tahunAjaranFilter.value : '';
+                const paketValue = paketFilter ? paketFilter.value : '';
                 const mapelValue = mapelFilter.value; // Tambahkan mata pelajaran
                 const tingkatValue = tingkatFilter.value;
                 const statusValue = statusFilter.value;
-                const jenisValue = jenisFilter ? jenisFilter.value : '';
 
                 // Build URL with filters
                 const url = new URL(window.location.href);
@@ -532,6 +501,9 @@
                 if (tahunAjaranValue) url.searchParams.set('tahun_ajaran_id', tahunAjaranValue);
                 else url.searchParams.delete('tahun_ajaran_id');
 
+                if (paketValue) url.searchParams.set('paket_ujian_id', paketValue);
+                else url.searchParams.delete('paket_ujian_id');
+
                 if (mapelValue) url.searchParams.set('mapel_id', mapelValue); // Filter mata pelajaran
                 else url.searchParams.delete('mapel_id');
 
@@ -540,9 +512,6 @@
 
                 if (statusValue) url.searchParams.set('status', statusValue);
                 else url.searchParams.delete('status');
-
-                if (jenisValue) url.searchParams.set('jenis_soal', jenisValue);
-                else url.searchParams.delete('jenis_soal');
 
                 // Navigate to filtered URL
                 window.location.href = url.toString();
@@ -562,6 +531,10 @@
                 mapelFilter.addEventListener('change', applyFilters);
             }
 
+            if (paketFilter) {
+                paketFilter.addEventListener('change', applyFilters);
+            }
+
             if (tahunAjaranFilter) {
                 tahunAjaranFilter.addEventListener('change', applyFilters);
             }
@@ -574,19 +547,15 @@
                 statusFilter.addEventListener('change', applyFilters);
             }
 
-            if (jenisFilter) {
-                jenisFilter.addEventListener('change', applyFilters);
-            }
-
             if (clearFiltersBtn) {
                 clearFiltersBtn.addEventListener('click', function() {
                     // Reset all filters
                     if (searchInput) searchInput.value = '';
                     if (tahunAjaranFilter) tahunAjaranFilter.value = '';
+                    if (paketFilter) paketFilter.value = '';
                     if (mapelFilter) mapelFilter.value = '';
                     if (tingkatFilter) tingkatFilter.value = '';
                     if (statusFilter) statusFilter.value = '';
-                    if (jenisFilter) jenisFilter.value = '';
 
                     // Go to base URL without parameters
                     window.location.href = '{{ route('naskah.banksoal.index') }}';

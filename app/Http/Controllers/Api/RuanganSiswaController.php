@@ -18,6 +18,7 @@ class RuanganSiswaController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjianId = $request->get('paket_ujian_id');
 
         $studentFilter = function ($query) use ($request, $tahunAjaranId) {
             if ($request->filled('search') || $request->filled('q')) {
@@ -56,8 +57,10 @@ class RuanganSiswaController extends Controller
         };
 
         $ruangan = Ruangan::with([
-            'sesiRuangan' => function ($query) use ($request, $studentFilter) {
+            'paketUjian:id,nama',
+            'sesiRuangan' => function ($query) use ($request, $studentFilter, $paketUjianId) {
                 $query->where('sumber', 'sumber')
+                    ->forPaketUjian($paketUjianId)
                     ->when($this->hasStudentFilter($request), function ($q) use ($studentFilter) {
                         $q->whereHas('siswa', $studentFilter);
                     })
@@ -70,11 +73,15 @@ class RuanganSiswaController extends Controller
             },
             'sesiRuangan.siswa.kelas:id,nama_kelas,tingkat,jurusan',
             'sesiRuangan.siswa.tahunAjaranRecords.kelas:id,nama_kelas,tingkat,jurusan',
-            'sesiRuangan.jadwalUjians' => function ($query) {
+            'sesiRuangan.jadwalUjians' => function ($query) use ($paketUjianId) {
                 $query->with('mapel:id,nama_mapel');
+                if ($paketUjianId && $paketUjianId !== '__null') {
+                    $query->where('paket_ujian_id', $paketUjianId);
+                }
             }
         ])
             ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->forPaketUjian($paketUjianId)
             ->when($this->hasStudentFilter($request), function ($query) use ($studentFilter) {
                 $query->whereHas('sesiRuangan', function ($q) use ($studentFilter) {
                     $q->where('sumber', 'sumber')
@@ -91,6 +98,10 @@ class RuanganSiswaController extends Controller
                 'nama_ruangan' => $ruang->nama_ruangan,
                 'lokasi' => $ruang->lokasi,
                 'kapasitas' => $ruang->kapasitas,
+                'paket_ujian' => $ruang->paketUjian ? [
+                    'id' => $ruang->paketUjian->id,
+                    'nama' => $ruang->paketUjian->nama,
+                ] : null,
                 'sesi' => $ruang->sesiRuangan->map(function ($sesi) {
                     // Format siswa
                     $siswa = $sesi->siswa->map(function ($s) use ($sesi, $tahunAjaranId) {
@@ -149,7 +160,7 @@ class RuanganSiswaController extends Controller
 
         return response()->json([
             'success' => true,
-            'filters' => $request->only(['search', 'q', 'nama', 'idyayasan', 'tingkat', 'kelas', 'kelas_id', 'tahun_ajaran_id']),
+            'filters' => $request->only(['search', 'q', 'nama', 'idyayasan', 'tingkat', 'kelas', 'kelas_id', 'tahun_ajaran_id', 'paket_ujian_id']),
             'data' => $result
         ]);
     }

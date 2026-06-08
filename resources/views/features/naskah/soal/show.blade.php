@@ -55,27 +55,20 @@
                 <div>
                     <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Tipe Soal</h4>
                     <p class="text-base text-gray-900">
-                        @if ($soal->tipe_soal === 'pilihan_ganda')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Pilihan Ganda
-                            </span>
-                        @else
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                Essay
-                            </span>
-                        @endif
+                        <span
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ $soal->tipe_soal_label }}
+                        </span>
                     </p>
                 </div>
 
                 <div>
                     <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Kunci Jawaban</h4>
                     <p class="text-base text-gray-900">
-                        @if ($soal->tipe_soal === 'pilihan_ganda' && $soal->kunci_jawaban)
+                        @if ($soal->kunci_jawaban)
                             <span
                                 class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                {{ $soal->kunci_jawaban }}
+                                {{ $soal->kunci_jawaban_label }}
                             </span>
                         @else
                             <span class="text-gray-500">-</span>

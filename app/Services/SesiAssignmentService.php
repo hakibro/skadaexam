@@ -263,6 +263,7 @@ class SesiAssignmentService
     {
         $activeRooms = \App\Models\Ruangan::where('status', 'aktif')
             ->when($jadwalUjian->tahun_ajaran_id, fn($query) => $query->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id))
+            ->when($jadwalUjian->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwalUjian->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
             ->get();
         $createdCount = 0;
 
@@ -271,6 +272,7 @@ class SesiAssignmentService
             $templateSesis = SesiRuangan::where('ruangan_id', $room->id)
                 ->where('sumber', 'sumber')
                 ->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
+                ->when($jadwalUjian->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwalUjian->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
                 ->orderBy('waktu_mulai')
                 ->get();
 
@@ -282,6 +284,7 @@ class SesiAssignmentService
             foreach ($templateSesis as $templateSesi) {
                 $newSesi = SesiRuangan::where('sumber', $templateSesi->kode_sesi)
                     ->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id)
+                    ->when($jadwalUjian->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwalUjian->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
                     ->whereHas('jadwalUjians', function ($query) use ($targetDate) {
                         $query->whereDate('jadwal_ujian.tanggal', $targetDate);
                     })
@@ -290,6 +293,7 @@ class SesiAssignmentService
                 if (!$newSesi) {
                     $newSesi = SesiRuangan::create([
                         'tahun_ajaran_id' => $jadwalUjian->tahun_ajaran_id,
+                        'paket_ujian_id' => $jadwalUjian->paket_ujian_id,
                         'ruangan_id' => $room->id,
                         'nama_sesi' => $templateSesi->nama_sesi,
                         'waktu_mulai' => $templateSesi->waktu_mulai,
@@ -335,6 +339,7 @@ class SesiAssignmentService
     {
         $activeRooms = \App\Models\Ruangan::where('status', 'aktif')
             ->when($jadwalUjian->tahun_ajaran_id, fn($query) => $query->where('tahun_ajaran_id', $jadwalUjian->tahun_ajaran_id))
+            ->when($jadwalUjian->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwalUjian->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
             ->get();
         $createdCount = 0;
 
@@ -342,6 +347,7 @@ class SesiAssignmentService
             // Create basic sesi with default timing
             $newSesi = SesiRuangan::create([
                 'tahun_ajaran_id' => $jadwalUjian->tahun_ajaran_id,
+                'paket_ujian_id' => $jadwalUjian->paket_ujian_id,
                 'ruangan_id' => $room->id,
                 'nama_sesi' => 'Sesi Ujian - ' . $room->nama_ruangan,
                 'waktu_mulai' => $jadwalUjian->waktu_mulai,

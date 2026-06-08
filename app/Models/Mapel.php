@@ -14,6 +14,7 @@ class Mapel extends Model
 
     protected $fillable = [
         'tahun_ajaran_id',
+        'paket_ujian_id',
         'kode_mapel',
         'nama_mapel',
         'deskripsi',
@@ -24,10 +25,6 @@ class Mapel extends Model
 
     protected $casts = [];
 
-    // Relationships
-    /**
-     * Get all bank soal associated with this mapel.
-     */
     public function bankSoals()
     {
         return $this->hasMany(BankSoal::class);
@@ -38,17 +35,16 @@ class Mapel extends Model
         return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
-    /**
-     * Get all soal associated with this mapel (through bank soal).
-     */
+    public function paketUjian()
+    {
+        return $this->belongsTo(PaketUjian::class, 'paket_ujian_id');
+    }
+
     public function soals()
     {
         return $this->hasManyThrough(Soal::class, BankSoal::class);
     }
 
-    /**
-     * Get all jadwal ujian for this mapel.
-     */
     public function jadwalUjians()
     {
         return $this->hasMany(JadwalUjian::class);
@@ -59,16 +55,13 @@ class Mapel extends Model
         return $this->hasManyThrough(
             PelanggaranUjian::class,
             JadwalUjian::class,
-            'mapel_id',       // foreign key di JadwalUjian
-            'jadwal_ujian_id', // foreign key di PelanggaranUjian
-            'id',             // local key di Mapel
-            'id'              // local key di JadwalUjian
+            'mapel_id',
+            'jadwal_ujian_id',
+            'id',
+            'id'
         );
     }
 
-    /**
-     * Get all siswa enrolled in this mapel.
-     */
     public function siswa()
     {
         return $this->belongsToMany(Siswa::class, 'mapel_siswa')
@@ -76,15 +69,11 @@ class Mapel extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Get all enrolled students.
-     */
     public function enrolledStudents()
     {
         return $this->siswa();
     }
 
-    // Scopes
     public function scopeActive($query)
     {
         return $query->where('status', 'aktif');
@@ -98,6 +87,11 @@ class Mapel extends Model
     public function scopeForTahunAjaran($query, $tahunAjaranId)
     {
         return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
+    }
+
+    public function scopeByPaketUjian($query, $paketUjianId)
+    {
+        return $paketUjianId ? $query->where('paket_ujian_id', $paketUjianId) : $query;
     }
 
     public static function generateKode(string $namaMapel, ?string $tingkat = null, ?int $tahunAjaranId = null): string
@@ -115,10 +109,12 @@ class Mapel extends Model
         $kode = $base;
         $counter = 1;
 
-        while (static::query()
-            ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
-            ->where('kode_mapel', $kode)
-            ->exists()) {
+        while (
+            static::query()
+                ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+                ->where('kode_mapel', $kode)
+                ->exists()
+        ) {
             $kode = $base . '-' . str_pad((string) $counter, 2, '0', STR_PAD_LEFT);
             $counter++;
         }
@@ -126,7 +122,6 @@ class Mapel extends Model
         return $kode;
     }
 
-    // Accessors & Mutators
     public function getDefaultIconAttribute()
     {
         return asset('images/default-mapel-cover.png');

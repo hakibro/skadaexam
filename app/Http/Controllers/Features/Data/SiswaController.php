@@ -4,6 +4,7 @@
 namespace App\Http\Controllers\Features\Data;
 
 use App\Http\Controllers\Controller;
+use App\Models\SchoolSetting;
 use App\Models\Siswa;
 use App\Models\SiswaTahunAjaran;
 use App\Services\SikeuApiService;
@@ -156,6 +157,33 @@ class SiswaController extends Controller
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
         return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa', 'tahunAjarans', 'tahunAjaranId'));
+    }
+
+    public function settings()
+    {
+        $settings = SchoolSetting::allAsArray();
+
+        return view('features.data.siswa.settings', compact('settings'));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'sync_siswa_enabled' => 'nullable|boolean',
+            'sync_siswa_interval_minutes' => 'required|integer|min:1|max:1440',
+            'sync_siswa_date_start' => 'nullable|date',
+            'sync_siswa_date_end' => 'nullable|date|after_or_equal:sync_siswa_date_start',
+            'sync_siswa_time_start' => 'nullable|date_format:H:i',
+            'sync_siswa_time_end' => 'nullable|date_format:H:i',
+        ]);
+
+        $validated['sync_siswa_enabled'] = $request->boolean('sync_siswa_enabled') ? '1' : '0';
+
+        SchoolSetting::setMany($validated);
+
+        return redirect()
+            ->route('data.siswa.settings')
+            ->with('success', 'Setting sinkronisasi siswa berhasil disimpan.');
     }
 
     /**

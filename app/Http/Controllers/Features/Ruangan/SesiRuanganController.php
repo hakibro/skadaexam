@@ -98,6 +98,7 @@ class SesiRuanganController extends Controller
             // Create the session data
             $sesiData = [
                 'tahun_ajaran_id' => $ruangan->tahun_ajaran_id,
+                'paket_ujian_id' => $ruangan->paket_ujian_id,
                 'ruangan_id' => $ruangan->id,
                 'nama_sesi' => $request->nama_sesi,
                 'waktu_mulai' => $request->waktu_mulai,
@@ -211,6 +212,7 @@ class SesiRuanganController extends Controller
                 'waktu_selesai' => $request->waktu_selesai,
                 'status' => $request->status,
                 'kode_sesi' => $request->kode_sesi,
+                'paket_ujian_id' => $ruangan->paket_ujian_id,
             ]);
 
             DB::commit();

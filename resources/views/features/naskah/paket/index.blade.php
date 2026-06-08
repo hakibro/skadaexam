@@ -18,7 +18,7 @@
         </div>
 
         <div class="p-4 border-b">
-            <form method="GET" class="flex flex-wrap gap-2">
+            <form method="GET" class="flex flex-wrap gap-2" data-auto-submit>
                 <select name="tahun_ajaran_id" class="rounded border-gray-300 text-sm">
                     <option value="">Semua Tahun Ajaran</option>
                     @foreach ($tahunAjarans as $tahunAjaran)
@@ -52,10 +52,48 @@
                                 {{ $paket->tanggal_mulai?->format('d/m/Y') ?? '-' }} -
                                 {{ $paket->tanggal_selesai?->format('d/m/Y') ?? '-' }}
                             </td>
-                            <td class="px-4 py-3">{{ ucfirst($paket->status) }}</td>
+                            <td class="px-4 py-3">
+                                <form method="POST" action="{{ route('naskah.paket-ujian.status', $paket) }}">
+                                    @csrf
+                                    @method('PUT')
+                                    <select name="status"
+                                        onchange="this.form.submit()"
+                                        @disabled($paket->tahunAjaran?->isReadOnly())
+                                        class="rounded border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500
+                                            {{ $paket->status === 'aktif' ? 'bg-green-50 text-green-800 border-green-200' : '' }}
+                                            {{ $paket->status === 'draft' ? 'bg-gray-50 text-gray-800 border-gray-200' : '' }}
+                                            {{ $paket->status === 'arsip' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' : '' }}">
+                                        <option value="draft" @selected($paket->status === 'draft')>Draft</option>
+                                        <option value="aktif" @selected($paket->status === 'aktif')>Aktif</option>
+                                        <option value="arsip" @selected($paket->status === 'arsip')>Arsip</option>
+                                    </select>
+                                </form>
+                            </td>
                             <td class="px-4 py-3 text-center">{{ $paket->jadwal_ujian_count }}</td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('naskah.paket-ujian.show', $paket) }}" class="text-blue-600 hover:underline">Detail</a>
+                                <div class="inline-flex items-center justify-end gap-2">
+                                    <a href="{{ route('naskah.paket-ujian.show', $paket) }}"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded border border-blue-200 text-blue-600 hover:bg-blue-50"
+                                        title="Lihat">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('naskah.paket-ujian.edit', $paket) }}"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded border border-amber-200 text-amber-600 hover:bg-amber-50"
+                                        title="Edit">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </a>
+                                    <form method="POST" action="{{ route('naskah.paket-ujian.destroy', $paket) }}"
+                                        onsubmit="return confirm('Hapus paket ujian ini?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            title="Hapus"
+                                            @disabled($paket->tahunAjaran?->isReadOnly() || $paket->jadwal_ujian_count > 0)>
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty

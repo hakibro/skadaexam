@@ -158,61 +158,12 @@
                 </div>
 
                 <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Tipe Soal</h4>
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Tipe Soal Default</h4>
                     <p class="text-base text-gray-900">
-                        @if ($banksoal->jenis_soal === 'pilihan_ganda')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Pilihan Ganda
-                            </span>
-                        @elseif($banksoal->jenis_soal === 'essay')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Essay
-                            </span>
-                        @elseif($banksoal->jenis_soal === 'campuran')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                Campuran
-                            </span>
-                        @else
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ ucfirst($banksoal->jenis_soal ?? 'Tidak Ditentukan') }}
-                            </span>
-                        @endif
-                    </p>
-                </div>
-
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Jenis Soal</h4>
-                    <p class="text-base text-gray-900">
-                        @if ($banksoal->jenis_soal === 'uts')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                UTS
-                            </span>
-                        @elseif($banksoal->jenis_soal === 'uas')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                UAS
-                            </span>
-                        @elseif($banksoal->jenis_soal === 'ulangan')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Ulangan
-                            </span>
-                        @elseif($banksoal->jenis_soal === 'latihan')
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Latihan
-                            </span>
-                        @else
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ ucfirst($banksoal->jenis_soal ?? 'Tidak ada') }}
-                            </span>
-                        @endif
+                        <span
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            {{ \App\Models\Soal::QUESTION_TYPES[$banksoal->tipe_soal_default] ?? ucfirst(str_replace('_', ' ', $banksoal->tipe_soal_default ?? 'pilihan_ganda')) }}
+                        </span>
                     </p>
                 </div>
 
@@ -221,6 +172,20 @@
                     <p class="text-base text-gray-900">
                         @if ($banksoal->mapel)
                             {{ $banksoal->mapel->nama }}
+                        @else
+                            <span class="text-gray-500 italic">Tidak ada</span>
+                        @endif
+                    </p>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Paket Ujian</h4>
+                    <p class="text-base text-gray-900">
+                        @if ($banksoal->paketUjian)
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {{ $banksoal->paketUjian->nama }}
+                            </span>
                         @else
                             <span class="text-gray-500 italic">Tidak ada</span>
                         @endif
@@ -265,13 +230,18 @@
                 <div class="flex flex-col md:flex-row md:items-start">
                     <div class="flex-1 mb-4 md:mb-0 md:mr-6">
                         <p class="text-sm text-gray-600 mb-2">
-                            Import soal dari file dokumen (.docx) ke dalam bank soal ini.
+                            Import soal dari file DOCX atau gunakan template Excel untuk tipe soal kaya.
                         </p>
 
                         <div class="flex space-x-4 mb-3">
                             <a href="{{ asset('templates/template_import_soal.docx') }}"
                                 class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
                                 <i class="fa-solid fa-file-download mr-1"></i> Download Template Impor
+                            </a>
+
+                            <a href="{{ route('naskah.soal.import.template') }}"
+                                class="text-green-600 hover:text-green-800 inline-flex items-center text-sm">
+                                <i class="fa-solid fa-file-excel mr-1"></i> Template Excel Tipe Kaya
                             </a>
 
                             <a href="{{ route('naskah.panduan.format-docx') }}" target="_blank"
@@ -310,6 +280,7 @@
                             <input type="hidden" name="tingkat" value="{{ $banksoal->tingkat }}">
                             <input type="hidden" name="status" value="{{ $banksoal->status }}">
                             <input type="hidden" name="mapel_id" value="{{ $banksoal->mapel_id }}">
+                            <input type="hidden" name="paket_ujian_id" value="{{ $banksoal->paket_ujian_id }}">
 
                             <div class="mb-4">
                                 <div
@@ -424,22 +395,10 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        @if ($soal->tipe_soal == 'pilihan_ganda')
-                                            <span
-                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                Pilihan Ganda
-                                            </span>
-                                        @elseif($soal->tipe_soal == 'essay')
-                                            <span
-                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Essay
-                                            </span>
-                                        @else
-                                            <span
-                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                {{ ucfirst($soal->tipe_soal) }}
-                                            </span>
-                                        @endif
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            {{ $soal->tipe_soal_label }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if ($soal->tipe_pertanyaan == 'teks')
@@ -460,14 +419,10 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        @if ($soal->tipe_soal == 'pilihan_ganda')
-                                            <span
-                                                class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                {{ $soal->kunci_jawaban }}
-                                            </span>
-                                        @else
-                                            <span class="text-gray-400 italic">-</span>
-                                        @endif
+                                        <span
+                                            class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            {{ \Illuminate\Support\Str::limit($soal->kunci_jawaban_label, 80) }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex space-x-2 justify-end">

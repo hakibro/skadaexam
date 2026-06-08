@@ -35,6 +35,26 @@ class PaketUjian extends Model
         return $this->hasMany(JadwalUjian::class, 'paket_ujian_id');
     }
 
+    public function bankSoals()
+    {
+        return $this->hasMany(BankSoal::class, 'paket_ujian_id');
+    }
+
+    public function mapels()
+    {
+        return $this->hasMany(Mapel::class, 'paket_ujian_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'aktif');
+    }
+
+    public function scopeForTahunAjaran($query, $tahunAjaranId)
+    {
+        return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
+    }
+
     public function isReadOnly(): bool
     {
         return $this->status === 'arsip' || $this->tahunAjaran?->isReadOnly();

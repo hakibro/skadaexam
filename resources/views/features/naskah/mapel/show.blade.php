@@ -89,7 +89,20 @@
                             <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $mapel->jurusan ?? 'Umum' }}
                             </dd>
                         </div>
-                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b">
+                            <dt class="text-sm font-medium text-gray-500">Paket Ujian</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                @if ($mapel->paketUjian)
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        {{ $mapel->paketUjian->nama }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-500 italic">Tidak ada</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                             <dt class="text-sm font-medium text-gray-500">Status</dt>
                             <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ ucfirst($mapel->status) }}</dd>
                         </div>

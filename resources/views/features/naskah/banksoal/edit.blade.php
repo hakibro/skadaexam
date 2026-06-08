@@ -36,6 +36,26 @@
                     @enderror
                 </div>
 
+                <!-- Paket Ujian -->
+                <div>
+                    <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700">Paket Ujian <span
+                            class="text-red-500">*</span></label>
+                    <select name="paket_ujian_id" id="paket_ujian_id"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        required>
+                        <option value="">Pilih Paket Ujian</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}"
+                                {{ old('paket_ujian_id', $banksoal->paket_ujian_id) == $paket->id ? 'selected' : '' }}>
+                                {{ $paket->nama }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('paket_ujian_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Mata Pelajaran -->
                     <div>
@@ -96,32 +116,15 @@
                     @enderror
                 </div>
 
-                <!-- Jenis Soal -->
-                <div>
-                    <label for="jenis_soal" class="block text-sm font-medium text-gray-700">Jenis Soal</label>
-                    <select name="jenis_soal" id="jenis_soal"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="uts" {{ old('jenis_soal', $banksoal->jenis_soal) == 'uts' ? 'selected' : '' }}>
-                            UTS</option>
-                        <option value="uas" {{ old('jenis_soal', $banksoal->jenis_soal) == 'uas' ? 'selected' : '' }}>
-                            UAS</option>
-                        <option value="ulangan"
-                            {{ old('jenis_soal', $banksoal->jenis_soal) == 'ulangan' ? 'selected' : '' }}>Ulangan</option>
-                        <option value="latihan"
-                            {{ old('jenis_soal', $banksoal->jenis_soal) == 'latihan' ? 'selected' : '' }}>Latihan</option>
-                    </select>
-                    @error('jenis_soal')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="jumlah_pilihan" class="block text-sm font-medium text-gray-700">Jumlah Pilihan Jawaban</label>
+                        <label for="jumlah_pilihan" class="block text-sm font-medium text-gray-700">Jumlah Pilihan
+                            Jawaban</label>
                         <select name="jumlah_pilihan" id="jumlah_pilihan"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ([2, 3, 4, 5] as $jumlah)
-                                <option value="{{ $jumlah }}" {{ old('jumlah_pilihan', $banksoal->jumlah_pilihan) == $jumlah ? 'selected' : '' }}>
+                                <option value="{{ $jumlah }}"
+                                    {{ old('jumlah_pilihan', $banksoal->jumlah_pilihan) == $jumlah ? 'selected' : '' }}>
                                     {{ $jumlah }} pilihan
                                 </option>
                             @endforeach
@@ -132,11 +135,13 @@
                     </div>
 
                     <div>
-                        <label for="tipe_soal_default" class="block text-sm font-medium text-gray-700">Tipe Soal Default</label>
+                        <label for="tipe_soal_default" class="block text-sm font-medium text-gray-700">Tipe Soal
+                            Default</label>
                         <select name="tipe_soal_default" id="tipe_soal_default"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach (\App\Models\Soal::QUESTION_TYPES as $value => $label)
-                                <option value="{{ $value }}" {{ old('tipe_soal_default', $banksoal->tipe_soal_default) === $value ? 'selected' : '' }}>
+                                <option value="{{ $value }}"
+                                    {{ old('tipe_soal_default', $banksoal->tipe_soal_default) === $value ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                             @endforeach
@@ -292,24 +297,14 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($soal->tipe_soal === 'pilihan_ganda')
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                Pilihan Ganda
-                                            </span>
-                                        @else
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                Essay
-                                            </span>
-                                        @endif
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ $soal->tipe_soal_label }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        @if ($soal->tipe_soal === 'pilihan_ganda')
-                                            <span class="font-medium">{{ $soal->kunci_jawaban ?? '-' }}</span>
-                                        @else
-                                            <span class="text-gray-400">-</span>
-                                        @endif
+                                        <span
+                                            class="font-medium">{{ \Illuminate\Support\Str::limit($soal->kunci_jawaban_label, 80) }}</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right space-x-2">
                                         <a href="{{ route('naskah.soal.show', $soal) }}"

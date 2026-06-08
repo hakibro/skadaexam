@@ -54,7 +54,6 @@ class JadwalUjianSeeder extends Seeder
 
                 // kolom tambahan wajib
                 'kode_ujian'      => strtoupper(Str::random(6)), // misal: ABX92F
-                'jenis_ujian'     => $examType,                  // sesuai jenis (UH/UTS/UAS/Quiz)
                 'acak_soal'       => (bool)rand(0, 1),
                 'acak_jawaban'    => (bool)rand(0, 1),
             ]);

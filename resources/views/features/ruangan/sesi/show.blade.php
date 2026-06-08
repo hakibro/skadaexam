@@ -134,7 +134,7 @@
                                                             @elseif($jadwal->mapel)
                                                                 <span class="italic">(Semua Jurusan)</span>
                                                             @endif
-                                                            • {{ $jadwal->jenis_ujian }} •
+                                                            • {{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }} •
                                                             <span
                                                                 class="text-gray-700 font-semibold">{{ $jadwal->durasi_menit }}
                                                                 menit</span>

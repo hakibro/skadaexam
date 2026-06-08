@@ -57,7 +57,7 @@
                     @error('file') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="rounded-md bg-blue-50 p-4 text-sm text-blue-800">
-                    Kolom: nama_mapel, tingkat, jurusan, judul_bank_soal, jenis_soal, judul_ujian, tanggal, durasi_menit, kelas_target.
+                    Kolom: nama_mapel, tingkat, jurusan, judul_bank_soal, judul_ujian, tanggal, durasi_menit, kelas_target.
                     Jika kelas_target kosong, sistem memakai kelas yang cocok dengan tingkat dan jurusan mapel.
                 </div>
                 <div class="flex justify-between">

@@ -15,7 +15,6 @@
                 </div>
 
                 <div class="p-4 sm:p-6 space-y-6">
-                    <input type="hidden" name="jenis_ujian" value="uas">
                     <input type="hidden" name="tahun_ajaran_id" value="{{ $activeYear->id }}">
 
                     <!-- Status Section - Added for better visibility -->

@@ -6,8 +6,24 @@
 
 @section('content')
     <div class="space-y-6">
-        <form method="GET" action="{{ route('ruangan.kartu-ujian.index') }}" class="bg-white rounded-lg shadow p-4">
+        <form method="GET" action="{{ route('ruangan.kartu-ujian.index') }}" class="bg-white rounded-lg shadow p-4" data-auto-submit>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Paket Ujian</label>
+                    <select name="paket_ujian_id" class="mt-1 w-full rounded-md border-gray-300">
+                        <option value="">Pilih paket ujian</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}" {{ (string) $selectedPaketId === (string) $paket->id ? 'selected' : '' }}>
+                                {{ $paket->nama }} - {{ ucfirst($paket->status) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Cari Siswa</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="mt-1 w-full rounded-md border-gray-300"
+                        placeholder="Nama / ID Yayasan">
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Tingkat</label>
                     <select name="tingkat" class="mt-1 w-full rounded-md border-gray-300">
@@ -29,21 +45,6 @@
                             </option>
                         @endforeach
                     </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Paket Ujian</label>
-                    <select name="paket_ujian_id" class="mt-1 w-full rounded-md border-gray-300">
-                        @foreach ($paketUjians as $paket)
-                            <option value="{{ $paket->id }}" {{ (string) $selectedPaketId === (string) $paket->id ? 'selected' : '' }}>
-                                {{ $paket->nama }} - {{ ucfirst($paket->status) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Cari Siswa</label>
-                    <input type="text" name="search" value="{{ request('search') }}" class="mt-1 w-full rounded-md border-gray-300"
-                        placeholder="Nama / ID Yayasan">
                 </div>
                 <div class="flex items-end gap-2">
                     <button class="px-4 py-2 rounded-md bg-blue-600 text-white">Filter</button>

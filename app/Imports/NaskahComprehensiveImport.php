@@ -63,11 +63,13 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
                     $mapel->update([
                         'jurusan' => $jurusan,
                         'status' => 'aktif',
+                        'paket_ujian_id' => $paket?->id,
                     ]);
                     $this->results['mapel_updated']++;
                 } else {
                     $mapel = Mapel::create([
                         'tahun_ajaran_id' => $this->tahunAjaranId,
+                        'paket_ujian_id' => $paket?->id,
                         'kode_mapel' => Mapel::generateKode($namaMapel, $tingkat, $this->tahunAjaranId),
                         'nama_mapel' => $namaMapel,
                         'tingkat' => $tingkat,
@@ -87,18 +89,18 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
                     $bank->update([
                         'tingkat' => $mapel->tingkat,
                         'status' => 'aktif',
-                        'jenis_soal' => $this->jenisSoal($row, $paket),
+                        'paket_ujian_id' => $paket?->id,
                     ]);
                     $this->results['bank_updated']++;
                 } else {
                     $bank = BankSoal::create([
                         'tahun_ajaran_id' => $this->tahunAjaranId,
+                        'paket_ujian_id' => $paket?->id,
                         'kode_bank' => $this->generateBankCode(),
                         'judul' => $judulBank,
                         'deskripsi' => $this->value($row, ['deskripsi_bank', 'deskripsi']),
                         'tingkat' => $mapel->tingkat,
                         'status' => 'aktif',
-                        'jenis_soal' => $this->jenisSoal($row, $paket),
                         'total_soal' => 0,
                         'created_by' => Auth::id(),
                         'mapel_id' => $mapel->id,
@@ -131,7 +133,6 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
                     'bank_soal_id' => $bank->id,
                     'created_by' => Auth::id(),
                     'kode_ujian' => $this->generateExamCode(),
-                    'jenis_ujian' => $this->jenisUjian($paket),
                     'acak_soal' => true,
                     'acak_jawaban' => true,
                     'auto_assign_sesi' => false,
@@ -231,23 +232,6 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
             ->when($mapel->jurusan, fn($q) => $q->where(fn($sub) => $sub->where('jurusan', $mapel->jurusan)->orWhere('jurusan', 'UMUM')))
             ->pluck('id')
             ->all();
-    }
-
-    private function jenisSoal($row, ?PaketUjian $paket): string
-    {
-        return $this->value($row, ['jenis_soal'], $this->jenisUjian($paket)) ?: 'ulangan';
-    }
-
-    private function jenisUjian(?PaketUjian $paket): string
-    {
-        $name = strtolower($paket?->nama ?? '');
-
-        return match (true) {
-            str_contains($name, 'uts') || str_contains($name, 'tengah') => 'uts',
-            str_contains($name, 'uas') || str_contains($name, 'akhir') => 'uas',
-            str_contains($name, 'latihan') => 'latihan',
-            default => 'ulangan',
-        };
     }
 
     private function generateBankCode(): string

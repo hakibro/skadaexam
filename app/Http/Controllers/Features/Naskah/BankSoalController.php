@@ -29,7 +29,7 @@ class BankSoalController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
-        $query = BankSoal::with('mapel')->forTahunAjaran($tahunAjaranId); // Tambahkan relasi mapel
+        $query = BankSoal::with('mapel', 'paketUjian')->forTahunAjaran($tahunAjaranId);
 
         // Apply search filter
         if ($request->filled('search')) {
@@ -43,6 +43,11 @@ class BankSoalController extends Controller
             $query->where('mapel_id', $request->mapel_id);
         }
 
+        // Apply paket ujian filter
+        if ($request->filled('paket_ujian_id')) {
+            $query->where('paket_ujian_id', $request->paket_ujian_id);
+        }
+
         // Apply tingkat filter
         if ($request->filled('tingkat')) {
             $query->where('tingkat', $request->tingkat);
@@ -53,17 +58,17 @@ class BankSoalController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Apply jenis_soal filter
-        if ($request->filled('jenis_soal')) {
-            $query->where('jenis_soal', $request->jenis_soal);
-        }
-
         $perPage = $request->get('per_page', 10);
         $bankSoals = $query->orderBy('created_at', 'desc')->paginate($perPage);
-        $mapels = Mapel::active()->forTahunAjaran($tahunAjaranId)->get(); // Ambil semua mata pelajaran aktif
+        $mapels = Mapel::active()->forTahunAjaran($tahunAjaranId)->get();
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels', 'paketUjians', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -72,13 +77,17 @@ class BankSoalController extends Controller
     public function create(Request $request)
     {
         $activeYear = app(TahunAjaranService::class)->ensureActive();
-        $mapels = Mapel::active()->forTahunAjaran($activeYear->id)->get(); // Ambil semua mata pelajaran aktif
+        $mapels = Mapel::active()->forTahunAjaran($activeYear->id)->get();
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
         $selectedMapel = $request->filled('mapel_id')
             ? Mapel::active()->forTahunAjaran($activeYear->id)->findOrFail($request->mapel_id)
             : null;
-        $defaultJenisSoal = $this->jenisSoalFromActivePaket($activeYear->id);
 
-        return view('features.naskah.banksoal.create', compact('mapels', 'selectedMapel', 'defaultJenisSoal'));
+        return view('features.naskah.banksoal.create', compact('mapels', 'paketUjians', 'selectedMapel'));
     }
 
     public function comprehensiveImport()
@@ -128,7 +137,6 @@ class BankSoalController extends Controller
             'tingkat' => 'nullable|in:X,XI,XII',
             'status' => 'nullable|in:aktif,draft,arsip',
             'mapel_id' => 'required|exists:mapel,id',
-            'jenis_soal' => 'nullable|in:uts,uas,ulangan,latihan',
             'jumlah_pilihan' => 'nullable|integer|in:2,3,4,5',
             'tipe_soal_default' => 'nullable|in:' . implode(',', array_keys(\App\Models\Soal::QUESTION_TYPES)),
         ]);
@@ -149,12 +157,12 @@ class BankSoalController extends Controller
             // Simpan data bank soal
             $bankSoal = BankSoal::create([
                 'tahun_ajaran_id' => $activeYear->id,
+                'paket_ujian_id' => $request->paket_ujian_id,
                 'kode_bank' => $kodeBank,
                 'judul' => $request->judul,
                 'deskripsi' => $request->deskripsi,
                 'tingkat' => $mapel->tingkat ?: $request->tingkat,
                 'status' => 'aktif',
-                'jenis_soal' => $request->jenis_soal ?: $this->jenisSoalFromActivePaket($activeYear->id),
                 'total_soal' => 0,
                 'created_by' => Auth::id(),
                 'mapel_id' => $mapel->id,
@@ -190,29 +198,12 @@ class BankSoalController extends Controller
         }
     }
 
-    private function jenisSoalFromActivePaket(int $tahunAjaranId): string
-    {
-        $paket = PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
-            ->where('status', 'aktif')
-            ->orderByDesc('tanggal_mulai')
-            ->first();
-
-        $nama = strtolower($paket?->nama ?? '');
-
-        return match (true) {
-            str_contains($nama, 'uts') || str_contains($nama, 'tengah') => 'uts',
-            str_contains($nama, 'uas') || str_contains($nama, 'akhir') => 'uas',
-            str_contains($nama, 'latihan') => 'latihan',
-            default => 'ulangan',
-        };
-    }
-
     /**
      * Display the specified resource.
      */
     public function show(BankSoal $banksoal)
     {
-        $banksoal->load('creator', 'mapel'); // Tambahkan load mapel
+        $banksoal->load('creator', 'mapel', 'paketUjian');
         $soals = $banksoal->soals()->orderBy('nomor_soal')->paginate(10);
 
         return view('features.naskah.banksoal.show', compact('banksoal', 'soals'));
@@ -228,9 +219,14 @@ class BankSoalController extends Controller
                 ->with('error', 'Bank soal pada tahun ajaran arsip hanya dapat dilihat.');
         }
 
-        $mapels = Mapel::active()->forTahunAjaran($banksoal->tahun_ajaran_id)->get(); // Ambil semua mata pelajaran aktif
-        $soals = $banksoal->soals()->orderBy('nomor_soal', 'asc')->paginate(10); // Tambahkan daftar soal
-        return view('features.naskah.banksoal.edit', compact('banksoal', 'mapels', 'soals'));
+        $mapels = Mapel::active()->forTahunAjaran($banksoal->tahun_ajaran_id)->get();
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $banksoal->tahun_ajaran_id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+        $soals = $banksoal->soals()->orderBy('nomor_soal', 'asc')->paginate(10);
+        return view('features.naskah.banksoal.edit', compact('banksoal', 'mapels', 'paketUjians', 'soals'));
     }
 
     /**
@@ -249,7 +245,6 @@ class BankSoalController extends Controller
             'tingkat' => 'required|in:X,XI,XII',
             'status' => 'required|in:aktif,draft,arsip',
             'mapel_id' => 'required|exists:mapel,id',
-            'jenis_soal' => 'nullable|in:uts,uas,ulangan,latihan',
             'jumlah_pilihan' => 'nullable|integer|in:2,3,4,5',
             'tipe_soal_default' => 'nullable|in:' . implode(',', array_keys(\App\Models\Soal::QUESTION_TYPES)),
             'docx_file' => 'nullable|file|mimes:docx|max:10240', // 10MB max
@@ -269,7 +264,7 @@ class BankSoalController extends Controller
                 'tingkat' => $request->tingkat,
                 'status' => $request->status,
                 'mapel_id' => $request->mapel_id,
-                'jenis_soal' => $request->jenis_soal ?? $banksoal->jenis_soal,
+                'paket_ujian_id' => $request->paket_ujian_id,
                 'pengaturan' => $pengaturan,
             ]);
 
@@ -382,6 +377,11 @@ class BankSoalController extends Controller
     /**
      * Process the DOCX file and extract questions
      */
+    public function importDocxToBankSoal($file, BankSoal $banksoal): array
+    {
+        return $this->processDocxFile($file, $banksoal);
+    }
+
     private function processDocxFile($file, BankSoal $banksoal)
     {
         try {
@@ -503,14 +503,14 @@ class BankSoalController extends Controller
                             }
 
                             // Start new question
-                            $questionNumber = (int)$matches[1];
+                            $questionNumber = (int) $matches[1];
                             $lastImageTarget = 'pertanyaan';
                             $currentQuestion = [
                                 'bank_soal_id' => $banksoal->id,
                                 'nomor_soal' => $questionNumber,
                                 'pertanyaan' => $matches[2],
                                 'tipe_pertanyaan' => 'teks', // default
-                                'tipe_soal' => 'pilihan_ganda',
+                                'tipe_soal' => $banksoal->tipe_soal_default ?: 'pilihan_ganda',
                                 'gambar_pertanyaan' => null,
                                 'pilihan_a_teks' => null,
                                 'pilihan_a_gambar' => null,
@@ -561,7 +561,7 @@ class BankSoalController extends Controller
 
                                 // Jika pilihan ini adalah jawaban yang benar
                                 if ($isCorrect) {
-                                    $currentQuestion['kunci_jawaban'] = strtoupper($answerKey);
+                                    $this->markImportedCorrectOption($currentQuestion, strtoupper($answerKey));
                                     Log::info("Found correct answer", [
                                         'question' => $questionNumber,
                                         'option' => strtoupper($answerKey)
@@ -588,6 +588,10 @@ class BankSoalController extends Controller
                             Log::info("Found explanation for question", [
                                 'question' => $questionNumber
                             ]);
+                        } elseif ($currentQuestion && $this->applyDocxKeyMarker($text, $currentQuestion)) {
+                            // Kunci marker handled.
+                        } elseif ($currentQuestion && $this->applyDocxTypeMarker($text, $currentQuestion)) {
+                            // Tipe marker handled.
                         }
                         // If it's not a new question or answer or explicit explanation, append to current question text
                         elseif ($currentQuestion && trim($text) !== '') {
@@ -702,6 +706,7 @@ class BankSoalController extends Controller
 
                 $questionNumber = (int) $matches[1];
                 $currentQuestion = $this->newImportedQuestionData($banksoal->id, $questionNumber, trim($matches[2] ?? ''));
+                $currentQuestion['tipe_soal'] = $banksoal->tipe_soal_default ?: 'pilihan_ganda';
                 $lastImageTarget = 'pertanyaan';
 
                 if (!empty($paragraph['image_ids']) && trim($matches[2] ?? '') !== '') {
@@ -730,7 +735,7 @@ class BankSoalController extends Controller
                 }
 
                 if ($isCorrect) {
-                    $currentQuestion['kunci_jawaban'] = strtoupper($answerKey);
+                    $this->markImportedCorrectOption($currentQuestion, strtoupper($answerKey));
                 }
             } elseif ($currentQuestion && preg_match('/^Pembahasan:\s*(.*)$/iu', $text, $matches)) {
                 $currentQuestion['pembahasan_teks'] = trim($matches[1] ?? '');
@@ -743,6 +748,10 @@ class BankSoalController extends Controller
                     $currentQuestion['pembahasan_tipe'] = 'teks';
                     $imagesHandledInline = true;
                 }
+            } elseif ($currentQuestion && $this->applyDocxTypeMarker($text, $currentQuestion)) {
+                // Tipe marker handled.
+            } elseif ($currentQuestion && $this->applyDocxKeyMarker($text, $currentQuestion)) {
+                // Kunci marker handled.
             } elseif ($currentQuestion && $text !== '') {
                 $inlineHtml = !empty($paragraph['image_ids'])
                     ? $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, $lastImageTarget ?: 'pertanyaan')
@@ -915,6 +924,69 @@ class BankSoalController extends Controller
         ];
     }
 
+    private function applyDocxTypeMarker(string $text, array &$question): bool
+    {
+        if (!preg_match('/^Tipe\s*:\s*(.+)$/iu', trim($text), $matches)) {
+            return false;
+        }
+
+        $type = $this->normalizeImportedQuestionType($matches[1] ?? '');
+        if (array_key_exists($type, Soal::QUESTION_TYPES)) {
+            $question['tipe_soal'] = $type;
+        }
+
+        return true;
+    }
+
+    private function applyDocxKeyMarker(string $text, array &$question): bool
+    {
+        if (!preg_match('/^Kunci\s*:\s*(.+)$/iu', trim($text), $matches)) {
+            return false;
+        }
+
+        $question['kunci_jawaban'] = trim((string) ($matches[1] ?? ''));
+
+        return true;
+    }
+
+    private function markImportedCorrectOption(array &$question, string $option): void
+    {
+        if (($question['tipe_soal'] ?? 'pilihan_ganda') === 'pilihan_kompleks') {
+            $keys = collect(explode(',', strtoupper((string) ($question['kunci_jawaban'] ?? ''))))
+                ->map(fn($item) => trim($item))
+                ->filter()
+                ->push($option)
+                ->unique()
+                ->sort()
+                ->values()
+                ->implode(',');
+            $question['kunci_jawaban'] = $keys;
+            return;
+        }
+
+        $question['kunci_jawaban'] = $option;
+    }
+
+    private function normalizeImportedQuestionType(string $type): string
+    {
+        $type = strtolower(trim($type));
+        $aliases = [
+            'pg' => 'pilihan_ganda',
+            'pilihan ganda' => 'pilihan_ganda',
+            'pilihan kompleks' => 'pilihan_kompleks',
+            'benar salah' => 'benar_salah',
+            'isian' => 'isian_singkat',
+            'isian singkat' => 'isian_singkat',
+            'rumpang' => 'teks_rumpang',
+            'teks rumpang' => 'teks_rumpang',
+            'matching' => 'menjodohkan',
+            'ordering' => 'mengurutkan',
+            'dragdrop' => 'drag_drop',
+        ];
+
+        return $aliases[$type] ?? str_replace(' ', '_', $type);
+    }
+
     private function attachImagesFromTextRun($textRun, ?array &$currentQuestion, ?string &$lastImageTarget, BankSoal $banksoal): void
     {
         if (!$currentQuestion) {
@@ -1069,8 +1141,31 @@ class BankSoalController extends Controller
                 }
             }
 
+            if (($data['tipe_soal'] ?? null) === 'teks_rumpang') {
+                preg_match_all('/\[\[(.+?)\]\]/', (string) ($data['pertanyaan'] ?? ''), $matches);
+                $answers = collect($matches[1] ?? [])
+                    ->map(fn($answer) => trim(strip_tags((string) $answer)))
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if (!empty($answers)) {
+                    $data['display_settings'] = array_merge($data['display_settings'] ?? [], [
+                        'cloze' => ['answers' => $answers],
+                    ]);
+                    $data['kunci_jawaban'] = json_encode([
+                        'type' => 'teks_rumpang',
+                        'data' => ['answers' => $answers],
+                    ], JSON_UNESCAPED_UNICODE);
+                }
+            }
+
             // Pastikan kunci jawaban tidak null
-            if (in_array($data['tipe_soal'], \App\Models\Soal::OBJECTIVE_TYPES, true) && empty($data['kunci_jawaban'])) {
+            if (in_array($data['tipe_soal'], Soal::OBJECTIVE_TYPES, true) && empty($data['kunci_jawaban'])) {
+                if (in_array($data['tipe_soal'], ['isian_singkat', 'teks_rumpang'], true)) {
+                    throw new \Exception("Kunci jawaban wajib diisi untuk tipe soal {$data['tipe_soal']} pada nomor {$data['nomor_soal']}");
+                }
+
                 Log::warning("Soal pilihan ganda tanpa kunci jawaban. Mencoba mendeteksi dari tanda [*]", [
                     'bank_soal_id' => $banksoal->id,
                     'nomor_soal' => $data['nomor_soal']

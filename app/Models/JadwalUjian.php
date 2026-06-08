@@ -27,7 +27,6 @@ class JadwalUjian extends Model
         'bank_soal_id',
         'created_by',
         'kode_ujian',
-        'jenis_ujian',
         'acak_soal',
         'acak_jawaban',
         'auto_assign_sesi',

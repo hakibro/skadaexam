@@ -39,6 +39,22 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
+                        <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700 mb-1">Paket Ujian</label>
+                        <select name="paket_ujian_id" id="paket_ujian_id"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 @error('paket_ujian_id') border-red-500 @enderror">
+                            <option value="">Belum Terikat Paket</option>
+                            @foreach ($paketUjians as $paket)
+                                <option value="{{ $paket->id }}" {{ (string) old('paket_ujian_id', $ruangan->paket_ujian_id) === (string) $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('paket_ujian_id')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
                         <label for="kapasitas" class="block text-sm font-medium text-gray-700 mb-1">Kapasitas <span
                                 class="text-red-500">*</span></label>
                         <input type="number" name="kapasitas" id="kapasitas"

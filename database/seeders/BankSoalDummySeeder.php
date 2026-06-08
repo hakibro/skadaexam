@@ -54,7 +54,6 @@ class BankSoalDummySeeder extends Seeder
                     'deskripsi' => 'Kumpulan soal untuk ' . $mapel->nama_mapel . ' kelas ' . $tingkat,
                     'mapel_id' => $mapelId,
                     'tingkat' => $tingkat,
-                    'jenis_soal' => 'pilihan_ganda', // Multiple choice
                     'created_by' => $user->id,
                     'status' => 'published'
                 ]);

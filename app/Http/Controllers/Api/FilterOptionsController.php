@@ -17,6 +17,7 @@ class FilterOptionsController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjianId = $request->get('paket_ujian_id');
 
         $kelas = Kelas::query()
             ->select('id', 'nama_kelas', 'tingkat', 'jurusan')
@@ -28,12 +29,14 @@ class FilterOptionsController extends Controller
         $ruangan = Ruangan::query()
             ->select('id', 'kode_ruangan', 'nama_ruangan', 'kapasitas', 'status')
             ->forTahunAjaran($tahunAjaranId)
+            ->forPaketUjian($paketUjianId)
             ->orderBy('nama_ruangan')
             ->get();
 
         $namaSesi = SesiRuangan::query()
             ->select('nama_sesi')
             ->forTahunAjaran($tahunAjaranId)
+            ->forPaketUjian($paketUjianId)
             ->whereNotNull('nama_sesi')
             ->distinct()
             ->orderBy('nama_sesi')

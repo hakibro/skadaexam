@@ -18,7 +18,26 @@
         </div>
 
         <div class="ml-11">
-            @if ($soal->tipe_soal == 'pilihan_ganda')
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    {{ $soal->tipe_soal_label }}
+                </span>
+                @if ($soal->kunci_jawaban)
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Kunci: {{ \Illuminate\Support\Str::limit($soal->kunci_jawaban_label, 120) }}
+                    </span>
+                @endif
+            </div>
+
+            @if (data_get($soal->display_settings, 'audio'))
+                <div class="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+                    <audio controls class="w-full">
+                        <source src="{{ asset('storage/soal/audio/' . data_get($soal->display_settings, 'audio')) }}">
+                    </audio>
+                </div>
+            @endif
+
+            @if (in_array($soal->tipe_soal, \App\Models\Soal::OPTION_BASED_TYPES, true))
                 <div class="grid grid-cols-1 gap-3 mb-4">
                     @foreach (['A', 'B', 'C', 'D', 'E'] as $opsi)
                         @php
@@ -26,7 +45,7 @@
                             $pilihanText = $soal->{"pilihan_{$opsiLower}_teks"};
                             $pilihanGambar = $soal->{"pilihan_{$opsiLower}_gambar"};
                             $pilihanTipe = $soal->{"pilihan_{$opsiLower}_tipe"} ?? 'teks';
-                            $isCorrect = strtoupper($soal->kunci_jawaban) == $opsi;
+                            $isCorrect = in_array($opsi, collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))->map(fn($item) => trim($item))->all(), true);
                         @endphp
 
                         @if ($pilihanText || $pilihanGambar)
@@ -53,6 +72,40 @@
                                 </div>
                             </div>
                         @endif
+                    @endforeach
+                </div>
+            @elseif ($soal->tipe_soal === 'isian_singkat')
+                <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                    Jawaban diterima: {{ $soal->kunci_jawaban_label }}
+                </div>
+            @elseif ($soal->tipe_soal === 'teks_rumpang')
+                <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                    {{ $soal->kunci_jawaban_label }}
+                </div>
+            @elseif ($soal->tipe_soal === 'menjodohkan')
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    @foreach (data_get($soal->display_settings, 'interactive.pairs', []) as $pair)
+                        <div class="rounded-lg border border-gray-200 p-3 text-sm">
+                            <span class="font-medium text-gray-800">{{ data_get($pair, 'left') }}</span>
+                            <span class="mx-2 text-gray-400">=</span>
+                            <span class="text-gray-700">{{ data_get($pair, 'right') }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @elseif ($soal->tipe_soal === 'mengurutkan')
+                <ol class="mb-4 list-decimal pl-5 text-sm text-gray-700 space-y-1">
+                    @foreach (data_get($soal->display_settings, 'interactive.items', []) as $item)
+                        <li>{{ $item }}</li>
+                    @endforeach
+                </ol>
+            @elseif ($soal->tipe_soal === 'drag_drop')
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    @foreach (data_get($soal->display_settings, 'interactive.items', []) as $index => $item)
+                        <div class="rounded-lg border border-gray-200 p-3 text-sm">
+                            <span class="font-medium text-gray-800">{{ $item }}</span>
+                            <span class="mx-2 text-gray-400">-></span>
+                            <span class="text-gray-700">{{ data_get($soal->display_settings, 'interactive.zones.' . $index, '-') }}</span>
+                        </div>
                     @endforeach
                 </div>
             @endif

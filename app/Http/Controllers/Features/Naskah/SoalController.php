@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Features\Naskah;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSoalRequest;
+use App\Exports\SoalRichTemplateExport;
+use App\Imports\SoalRichImport;
 use App\Models\BankSoal;
 use App\Models\Mapel;
 use App\Models\Soal;
@@ -12,6 +14,7 @@ use App\Services\SoalImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SoalController extends Controller
 {
@@ -699,6 +702,41 @@ class SoalController extends Controller
 
         $bankSoals = BankSoal::forTahunAjaran($activeYear->id)->active()->get();
         return view('features.naskah.soal.import', compact('bankSoals'));
+    }
+
+    public function processImport(Request $request)
+    {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $validated = $request->validate([
+            'bank_soal_id' => 'required|exists:bank_soal,id',
+            'file' => 'required|file|mimes:xlsx,xls,csv,docx|max:20480',
+        ]);
+
+        $bankSoal = BankSoal::forTahunAjaran($activeYear->id)->findOrFail($validated['bank_soal_id']);
+        $extension = strtolower($request->file('file')->getClientOriginalExtension());
+
+        if ($extension === 'docx') {
+            $result = app(BankSoalController::class)->importDocxToBankSoal($request->file('file'), $bankSoal);
+        } else {
+            $import = new SoalRichImport($bankSoal);
+            Excel::import($import, $request->file('file'));
+            $result = $import->results();
+        }
+
+        $pengaturan = $bankSoal->pengaturan ?? [];
+        $pengaturan['source_file'] = $request->file('file')->getClientOriginalName();
+        $pengaturan['import_log'] = $result;
+        $pengaturan['last_updated'] = now()->toDateTimeString();
+        $bankSoal->update(['pengaturan' => $pengaturan]);
+
+        return redirect()
+            ->route('naskah.banksoal.show', $bankSoal)
+            ->with('success', 'Import soal selesai. Imported: ' . ($result['imported'] ?? 0) . ', Updated: ' . ($result['updated'] ?? 0) . ', Error: ' . count($result['errors'] ?? []));
+    }
+
+    public function downloadImportTemplate()
+    {
+        return Excel::download(new SoalRichTemplateExport(), 'template_import_soal_kaya.xlsx');
     }
 
     /**

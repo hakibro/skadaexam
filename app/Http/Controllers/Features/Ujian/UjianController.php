@@ -379,7 +379,8 @@ class UjianController extends Controller
 
             // Update jumlah_dijawab in hasil_ujian
             $totalAnswered = JawabanSiswa::where('hasil_ujian_id', $request->hasil_ujian_id)
-                ->whereNotNull('jawaban')
+                ->get()
+                ->filter(fn($jawaban) => $this->isMeaningfulAnswer($jawaban->jawaban))
                 ->count();
 
             // Update nilai-nilai terkait
@@ -937,7 +938,7 @@ class UjianController extends Controller
         foreach ($soalUjians as $soal) {
             $jawaban = $jawabanSiswas->get($soal->id);
 
-            if ($jawaban && !empty($jawaban->jawaban)) { // pastikan bukan null/empty
+            if ($jawaban && $this->isMeaningfulAnswer($jawaban->jawaban)) { // pastikan bukan null/empty
                 $jumlahDijawab++;
 
                 $correctAnswer = $this->getCorrectAnswerForStudent($soal, $hasilUjian->siswa, $jadwalUjian);
@@ -973,6 +974,27 @@ class UjianController extends Controller
     private function isJawabanBenar($soal, ?string $jawaban, ?string $correctAnswer = null): bool
     {
         return SoalAnswerEvaluator::isCorrect($soal, $jawaban, $correctAnswer);
+    }
+
+    private function isMeaningfulAnswer(?string $answer): bool
+    {
+        if ($answer === null || trim($answer) === '') {
+            return false;
+        }
+
+        $decoded = json_decode($answer, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            if (is_array($decoded)) {
+                return collect($decoded)
+                    ->flatten()
+                    ->filter(fn($value) => trim((string) $value) !== '')
+                    ->isNotEmpty();
+            }
+
+            return trim((string) $decoded) !== '';
+        }
+
+        return true;
     }
 
     /**

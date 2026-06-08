@@ -393,6 +393,60 @@ class Soal extends Model
         return in_array($this->tipe_soal, self::OPTION_BASED_TYPES, true);
     }
 
+    public function getTipeSoalLabelAttribute(): string
+    {
+        return self::QUESTION_TYPES[$this->tipe_soal] ?? ucfirst(str_replace('_', ' ', (string) $this->tipe_soal));
+    }
+
+    public function getKunciJawabanLabelAttribute(): string
+    {
+        $key = (string) ($this->kunci_jawaban ?? '');
+
+        if ($key === '') {
+            return '-';
+        }
+
+        if ($this->tipe_soal === 'menjodohkan') {
+            $decoded = json_decode($key, true);
+            return collect(data_get($decoded, 'data.pairs', []))
+                ->map(fn($pair) => ($pair['left'] ?? '') . ' = ' . ($pair['right'] ?? ''))
+                ->filter(fn($line) => trim(str_replace('=', '', $line)) !== '')
+                ->implode('; ') ?: '-';
+        }
+
+        if ($this->tipe_soal === 'mengurutkan') {
+            $decoded = json_decode($key, true);
+            return collect(data_get($decoded, 'data.items', []))
+                ->filter()
+                ->values()
+                ->map(fn($item, $index) => ($index + 1) . '. ' . $item)
+                ->implode('; ') ?: '-';
+        }
+
+        if ($this->tipe_soal === 'drag_drop') {
+            $decoded = json_decode($key, true);
+            $items = data_get($decoded, 'data.items', []);
+            $zones = data_get($decoded, 'data.zones', []);
+
+            return collect($items)
+                ->map(fn($item, $index) => $item . ' -> ' . ($zones[$index] ?? '-'))
+                ->implode('; ') ?: '-';
+        }
+
+        if ($this->tipe_soal === 'teks_rumpang') {
+            $decoded = json_decode($key, true);
+            $answers = data_get($decoded, 'data.answers');
+
+            if (is_array($answers)) {
+                return collect($answers)
+                    ->map(fn($answer, $index) => 'Rumpang ' . ($index + 1) . ': ' . (is_array($answer) ? implode('|', $answer) : $answer))
+                    ->implode('; ') ?: '-';
+            }
+        }
+
+        return $key;
+    }
+
     public function isAutoCorrected(): bool
     {
         return in_array($this->tipe_soal, array_merge(self::OBJECTIVE_TYPES, self::INTERACTIVE_TYPES), true);

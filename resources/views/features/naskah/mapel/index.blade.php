@@ -53,13 +53,15 @@
             </div>
 
             <div class="p-4 bg-gray-50">
-                <form action="{{ route('naskah.mapel.index') }}" method="GET" class="flex flex-wrap gap-4">
+                <form action="{{ route('naskah.mapel.index') }}" method="GET" class="flex flex-wrap gap-4"
+                    data-auto-submit>
                     <div class="w-full md:w-auto">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
                         <select name="tahun_ajaran_id"
                             class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             @foreach ($tahunAjarans as $tahun)
-                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                <option value="{{ $tahun->id }}"
+                                    {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                     {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
@@ -88,7 +90,8 @@
                             class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Semua Tingkat</option>
                             @foreach ($tingkats as $tingkat)
-                                <option value="{{ $tingkat }}" {{ request('tingkat') == $tingkat ? 'selected' : '' }}>
+                                <option value="{{ $tingkat }}"
+                                    {{ request('tingkat') == $tingkat ? 'selected' : '' }}>
                                     {{ $tingkat }}
                                 </option>
                             @endforeach
@@ -100,8 +103,22 @@
                             class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Semua Jurusan</option>
                             @foreach ($jurusans as $jurusan)
-                                <option value="{{ $jurusan }}" {{ request('jurusan') == $jurusan ? 'selected' : '' }}>
+                                <option value="{{ $jurusan }}"
+                                    {{ request('jurusan') == $jurusan ? 'selected' : '' }}>
                                     {{ $jurusan }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="w-full md:w-auto">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Paket Ujian</label>
+                        <select name="paket_ujian_id"
+                            class="form-select w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua Paket</option>
+                            @foreach ($paketUjians as $paket)
+                                <option value="{{ $paket->id }}"
+                                    {{ request('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }}
                                 </option>
                             @endforeach
                         </select>
@@ -138,8 +155,11 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Jurusan</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Paket Ujian</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Aksi</th>
                             </tr>
                         </thead>
@@ -172,6 +192,16 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ $mapel->jurusan ?? 'Umum' }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        @if ($mapel->paketUjian)
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                {{ $mapel->paketUjian->nama }}
+                                            </span>
+                                        @else
+                                            <span class="text-gray-400 italic">-</span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span
                                             class="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full {{ $mapel->status == 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">

@@ -32,6 +32,9 @@ Route::middleware(['auth:web', 'role:admin,data'])->prefix('data')->name('data.'
     });
 
     // ===== SISWA MANAGEMENT =====
+    Route::get('siswa/settings', [SiswaController::class, 'settings'])->name('siswa.settings');
+    Route::put('siswa/settings', [SiswaController::class, 'updateSettings'])->name('siswa.settings.update');
+
     // Search functionality
     Route::match(['GET', 'POST'], 'siswa/search', [SiswaController::class, 'search'])->name('siswa.search');
 

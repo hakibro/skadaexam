@@ -85,6 +85,16 @@
                         <i class="fa-solid fa-calendar-days"></i>
                         <span>Tahun Ajaran</span>
                     </a>
+                    <a href="{{ route('admin.school-settings.edit') }}"
+                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.school-settings.*') ? 'bg-purple-600 text-white' : '' }}">
+                        <i class="fa-solid fa-school"></i>
+                        <span>Setting Sekolah</span>
+                    </a>
+                    <a href="{{ route('admin.reset-tabel.index') }}"
+                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.reset-tabel.*') ? 'bg-purple-600 text-white' : '' }}">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset Tabel</span>
+                    </a>
                 @endif
 
                 <!-- Feature Modules -->
@@ -111,6 +121,11 @@
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('data.siswa.*') ? 'bg-blue-600 text-white' : '' }}">
                             <i class="fa-solid fa-user-graduate text-sm"></i>
                             <span class="text-sm">Siswa</span>
+                        </a>
+                        <a href="{{ route('data.siswa.settings') }}"
+                            class="flex items-center space-x-2 px-8 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('data.siswa.settings') ? 'bg-blue-600 text-white' : '' }}">
+                            <i class="fa-solid fa-gear text-sm"></i>
+                            <span class="text-sm">Settings</span>
                         </a>
                         <a href="{{ route('data.kelas.index') }}"
                             class="flex items-center space-x-2 px-6 py-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('data.kelas.*') ? 'bg-blue-600 text-white' : '' }}">
@@ -293,14 +308,6 @@
                     <span>Profile</span>
                 </a>
 
-                @role('admin')
-                    <a href="{{ route('admin.school-settings.edit') }}"
-                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.school-settings.*') ? 'bg-blue-600 text-white' : '' }}">
-                        <i class="fa-solid fa-school"></i>
-                        <span>Setting Sekolah</span>
-                    </a>
-                @endrole
-
             </nav>
         </div>
 
@@ -427,6 +434,23 @@
                 setTimeout(function() {
                     message.style.display = 'none';
                 }, 5000);
+            });
+
+            document.querySelectorAll('form[data-auto-submit]').forEach(function(form) {
+                const elements = form.querySelectorAll(
+                    'select:not([data-manual-submit]), input[type="date"]:not([data-manual-submit]), input[type="checkbox"]:not([data-manual-submit]), input[type="radio"]:not([data-manual-submit])'
+                );
+
+                elements.forEach(function(element) {
+                    element.addEventListener('change', function() {
+                        if (form.dataset.submitting === 'true') {
+                            return;
+                        }
+
+                        form.dataset.submitting = 'true';
+                        form.submit();
+                    });
+                });
             });
         });
         // Dropdown toggle function

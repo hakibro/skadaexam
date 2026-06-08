@@ -142,7 +142,7 @@
                                             </span>
                                             <span class="text-sm text-gray-500">
                                                 <i class="fa-solid fa-clipboard mr-1"></i>
-                                                {{ $jadwal->jenis_ujian }}
+                                                {{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}
                                             </span>
                                             <span class="text-sm text-gray-700">
                                                 <i class="fa-solid fa-clock mr-1"></i>
@@ -234,7 +234,7 @@
                                                 </span>
                                                 <span class="text-sm text-gray-500 jadwal-jenis">
                                                     <i class="fa-solid fa-clipboard mr-1"></i>
-                                                    {{ $jadwal->jenis_ujian }}
+                                                    {{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}
                                                 </span>
                                                 <span class="text-sm text-gray-700">
                                                     <i class="fa-solid fa-clock mr-1"></i>

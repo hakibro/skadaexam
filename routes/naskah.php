@@ -33,15 +33,21 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::get('import-komprehensif', [BankSoalController::class, 'comprehensiveImport'])->name('import-komprehensif');
     Route::post('import-komprehensif', [BankSoalController::class, 'processComprehensiveImport'])->name('import-komprehensif.process');
     Route::get('import-komprehensif/template', [BankSoalController::class, 'downloadComprehensiveTemplate'])->name('import-komprehensif.template');
-    Route::resource('banksoal', BankSoalController::class);
     // Soal routes
+    Route::get('soal/import', [SoalController::class, 'import'])->name('soal.import');
+    Route::post('soal/import', [SoalController::class, 'processImport'])->name('soal.import.process');
+    Route::get('soal/import/template', [SoalController::class, 'downloadImportTemplate'])->name('soal.import.template');
+    Route::resource('banksoal', BankSoalController::class);
     Route::resource('soal', SoalController::class);
     Route::post('soal/bulk-delete', [SoalController::class, 'bulkDelete'])->name('soal.bulk-delete');
     Route::get('soal/{soal}/duplicate', [SoalController::class, 'duplicate'])->name('soal.duplicate');
-    Route::get('soal/import', [SoalController::class, 'import'])->name('soal.import');
     Route::get('soal/{soal}/preview', [SoalController::class, 'preview'])->name('soal.preview');
 
     // ===== JADWAL UJIAN MANAGEMENT =====
+    Route::put('paket-ujian/{paketUjian}/status', [PaketUjianController::class, 'updateStatus'])
+        ->name('paket-ujian.status');
+    Route::delete('paket-ujian/{paketUjian}', [PaketUjianController::class, 'destroy'])
+        ->name('paket-ujian.destroy');
     Route::resource('paket-ujian', PaketUjianController::class)
         ->parameters(['paket-ujian' => 'paketUjian'])
         ->except(['destroy']);

@@ -26,10 +26,12 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
         'siswa_assigned' => 0,
     ];
     protected $tahunAjaranId;
+    protected $paketUjianId;
 
-    public function __construct(?int $tahunAjaranId = null)
+    public function __construct(?int $tahunAjaranId = null, ?int $paketUjianId = null)
     {
         $this->tahunAjaranId = $tahunAjaranId ?: app(TahunAjaranService::class)->ensureActive()->id;
+        $this->paketUjianId = $paketUjianId;
     }
 
     /**
@@ -95,11 +97,17 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             // Check if ruangan exists by kode_ruangan
             $ruangan = Ruangan::where('tahun_ajaran_id', $this->tahunAjaranId)
                 ->where('kode_ruangan', $kodeRuangan)
+                ->when(
+                    $this->paketUjianId,
+                    fn($query) => $query->where('paket_ujian_id', $this->paketUjianId),
+                    fn($query) => $query->whereNull('paket_ujian_id')
+                )
                 ->first();
 
             if ($ruangan) {
                 $updateData = [
                     'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], $ruangan->nama_ruangan),
+                    'paket_ujian_id' => $this->paketUjianId,
                     'lokasi' => $this->rowValue($row, ['lokasi'], $ruangan->lokasi),
                     'status' => $this->rowValue($row, ['status'], $ruangan->status),
                 ];
@@ -117,6 +125,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
 
                 $ruangan = Ruangan::create([
                     'tahun_ajaran_id' => $this->tahunAjaranId,
+                    'paket_ujian_id' => $this->paketUjianId,
                     'kode_ruangan' => $kodeRuangan,
                     'nama_ruangan' => $this->rowValue($row, ['nama_ruangan'], 'Ruangan ' . $kodeRuangan),
                     'kapasitas' => $kapasitas,
@@ -145,6 +154,11 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             $kodeSesi = $this->rowValue($row, ['kode_sesi']);
             $sesi = SesiRuangan::where('tahun_ajaran_id', $this->tahunAjaranId)
                 ->where('kode_sesi', $kodeSesi)
+                ->when(
+                    $this->paketUjianId,
+                    fn($query) => $query->where('paket_ujian_id', $this->paketUjianId),
+                    fn($query) => $query->whereNull('paket_ujian_id')
+                )
                 ->first();
 
             // Validate time format
@@ -156,6 +170,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 $sesi->update([
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], $sesi->nama_sesi),
                     'tahun_ajaran_id' => $this->tahunAjaranId,
+                    'paket_ujian_id' => $this->paketUjianId,
                     'waktu_mulai' => $waktuMulai,
                     'waktu_selesai' => $waktuSelesai,
                     'status' => $this->rowValue($row, ['status_sesi'], $sesi->status),
@@ -167,6 +182,7 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 // Create new sesi
                 $sesi = new SesiRuangan([
                     'tahun_ajaran_id' => $this->tahunAjaranId,
+                    'paket_ujian_id' => $this->paketUjianId,
                     'kode_sesi' => $kodeSesi,
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], 'Sesi ' . $kodeSesi),
                     'waktu_mulai' => $waktuMulai,

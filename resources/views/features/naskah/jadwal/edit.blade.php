@@ -60,33 +60,10 @@
                         </div>
 
                         <div>
-                            <label for="jenis_ujian" class="block text-sm font-medium text-gray-700">Jenis Ujian <span
-                                    class="text-red-500">*</span></label>
-                            <select name="jenis_ujian" id="jenis_ujian" required
-                                class="mt-1 form-select block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('jenis_ujian') border-red-500 @enderror">
-                                <option value="reguler"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'reguler' ? 'selected' : '' }}>Reguler
-                                </option>
-                                <option value="susulan"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'susulan' ? 'selected' : '' }}>Susulan
-                                </option>
-                                <option value="remedial"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'remedial' ? 'selected' : '' }}>Remedial
-                                </option>
-                                <option value="tryout"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'tryout' ? 'selected' : '' }}>Try Out
-                                </option>
-                                <option value="penilaian_harian"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'penilaian_harian' ? 'selected' : '' }}>
-                                    Penilaian Harian</option>
-                                <option value="uts"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'uts' ? 'selected' : '' }}>UTS</option>
-                                <option value="uas"
-                                    {{ old('jenis_ujian', $jadwal->jenis_ujian) == 'uas' ? 'selected' : '' }}>UAS</option>
-                            </select>
-                            @error('jenis_ujian')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
+                            <span class="block text-sm font-medium text-gray-700">Paket Ujian</span>
+                            <div class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">
+                                {{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}
+                            </div>
                         </div>
 
                         <div>

@@ -60,7 +60,7 @@
 
             <!-- Filter Form - Compact -->
             <div class="p-3 bg-white border-b">
-                <form action="{{ route('naskah.jadwal.index') }}" method="get" class="jadwal-filter-form">
+                <form action="{{ route('naskah.jadwal.index') }}" method="get" class="jadwal-filter-form" data-auto-submit>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-2">
                         <div class="col-span-1">
                             <select name="tahun_ajaran_id"
@@ -178,7 +178,7 @@
                                     <td class="px-3 py-2 whitespace-nowrap font-mono">{{ $jadwal->kode_ujian }}</td>
                                     <td class="px-3 py-2">
                                         <div class="font-medium text-gray-900">{{ $jadwal->judul }}</div>
-                                        <div class="text-gray-500">{{ $jadwal->paketUjian->nama ?? $jadwal->jenis_ujian }}</div>
+                                        <div class="text-gray-500">{{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}</div>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap hidden md:table-cell">
                                         {{ $jadwal->mapel->nama_mapel ?? '-' }}
@@ -412,19 +412,3 @@
         </form>
     @endif
 @endpush
-
-
-@section('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Auto-submit filter form when selecting status, mapel, or date
-            const autoSubmitElements = document.querySelectorAll(
-                '.jadwal-filter-form select, .jadwal-filter-form input[type="date"]');
-            autoSubmitElements.forEach(element => {
-                element.addEventListener('change', function() {
-                    this.closest('form').submit();
-                });
-            });
-        });
-    </script>
-@endsection

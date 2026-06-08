@@ -10,6 +10,16 @@
 @endpush
 
 @section('content')
+    @php
+        $existingPilihanImages = [
+            'a' => (bool) $soal->pilihan_a_gambar,
+            'b' => (bool) $soal->pilihan_b_gambar,
+            'c' => (bool) $soal->pilihan_c_gambar,
+            'd' => (bool) $soal->pilihan_d_gambar,
+            'e' => (bool) $soal->pilihan_e_gambar,
+        ];
+    @endphp
+
     <div class="max-w-4xl mx-auto">
         <form action="{{ route('naskah.soal.update', $soal) }}" method="POST" enctype="multipart/form-data" id="soal-form">
             @csrf
@@ -1077,13 +1087,7 @@
 
                 // Check if at least options A and B are filled
                 let validOptions = 0;
-                const existingPilihanImages = @json([
-                    'a' => (bool) $soal->pilihan_a_gambar,
-                    'b' => (bool) $soal->pilihan_b_gambar,
-                    'c' => (bool) $soal->pilihan_c_gambar,
-                    'd' => (bool) $soal->pilihan_d_gambar,
-                    'e' => (bool) $soal->pilihan_e_gambar,
-                ]);
+                const existingPilihanImages = @json($existingPilihanImages);
                 ['a', 'b'].forEach(pilihan => {
                     const tipe = document.querySelector(`input[name="pilihan_${pilihan}_tipe"]:checked`)
                         .value;

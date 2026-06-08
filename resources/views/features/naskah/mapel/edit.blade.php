@@ -69,6 +69,24 @@
                             @enderror
                         </div>
 
+                        <div>
+                            <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700">Paket Ujian <span
+                                    class="text-red-500">*</span></label>
+                            <select name="paket_ujian_id" id="paket_ujian_id" required
+                                class="mt-1 form-select block w-full @error('paket_ujian_id') border-red-500 @enderror">
+                                <option value="">-- Pilih Paket Ujian --</option>
+                                @foreach ($paketUjians as $paket)
+                                    <option value="{{ $paket->id }}"
+                                        {{ old('paket_ujian_id', $mapel->paket_ujian_id) == $paket->id ? 'selected' : '' }}>
+                                        {{ $paket->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('paket_ujian_id')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <!-- Status -->
                         <div>
                             <label for="status" class="block text-sm font-medium text-gray-700">Status</label>

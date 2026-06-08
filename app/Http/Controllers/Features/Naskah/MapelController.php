@@ -23,11 +23,16 @@ class MapelController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
-        $query = Mapel::forTahunAjaran($tahunAjaranId);
+        $query = Mapel::with('paketUjian')->forTahunAjaran($tahunAjaranId);
 
         // Filter by status
         if ($request->has('status') && $request->status != '') {
             $query->where('status', $request->status);
+        }
+
+        // Filter by paket_ujian_id
+        if ($request->filled('paket_ujian_id')) {
+            $query->where('paket_ujian_id', $request->paket_ujian_id);
         }
 
         // Filter by tingkat
@@ -52,14 +57,18 @@ class MapelController extends Controller
 
         $mapels = $query->orderBy('nama_mapel', 'asc')->paginate(10);
 
-
         // Get unique values for filters
         $tingkats = Mapel::forTahunAjaran($tahunAjaranId)->select('tingkat')->distinct()->pluck('tingkat')->sort();
         $jurusans = Mapel::forTahunAjaran($tahunAjaranId)->select('jurusan')->distinct()->whereNotNull('jurusan')->pluck('jurusan')->sort();
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
 
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.naskah.mapel.index', compact('mapels', 'tingkats', 'jurusans', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.naskah.mapel.index', compact('mapels', 'tingkats', 'jurusans', 'paketUjians', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**
@@ -70,7 +79,12 @@ class MapelController extends Controller
         $activeYear = app(TahunAjaranService::class)->ensureActive();
         $tingkatList = Kelas::forTahunAjaran($activeYear->id)->pluck('tingkat')->unique();
         $jurusanList = Kelas::forTahunAjaran($activeYear->id)->pluck('jurusan')->unique();
-        return view('features.naskah.mapel.create', compact('tingkatList', 'jurusanList'));
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $activeYear->id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+        return view('features.naskah.mapel.create', compact('tingkatList', 'jurusanList', 'paketUjians'));
     }
 
     /**
@@ -84,11 +98,13 @@ class MapelController extends Controller
             'nama_mapel' => 'required|string|max:255',
             'tingkat' => 'required|string|max:20',
             'jurusan' => 'nullable|string|max:100',
+            'paket_ujian_id' => 'required|exists:paket_ujians,id',
             'deskripsi' => 'nullable|string'
         ]);
 
         $mapel = Mapel::create([
             'tahun_ajaran_id' => $activeYear->id,
+            'paket_ujian_id' => $request->paket_ujian_id,
             'kode_mapel' => Mapel::generateKode($request->nama_mapel, $request->tingkat, $activeYear->id),
             'nama_mapel' => $request->nama_mapel,
             'deskripsi' => $request->deskripsi,
@@ -106,7 +122,7 @@ class MapelController extends Controller
      */
     public function show(Mapel $mapel)
     {
-        $mapel->load(['bankSoals']);
+        $mapel->load(['bankSoals', 'paketUjian']);
 
         // Get exam statistics
         $totalJadwal = $mapel->jadwalUjians()->count();
@@ -132,8 +148,13 @@ class MapelController extends Controller
 
         $tingkatList = Kelas::forTahunAjaran($mapel->tahun_ajaran_id)->pluck('tingkat')->unique();
         $jurusanList = Kelas::forTahunAjaran($mapel->tahun_ajaran_id)->pluck('jurusan')->unique();
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $mapel->tahun_ajaran_id)
+            ->where('status', '!=', 'arsip')
+            ->orderByDesc('status')
+            ->orderByDesc('tanggal_mulai')
+            ->get();
 
-        return view('features.naskah.mapel.edit', compact('mapel', 'tingkatList', 'jurusanList'));
+        return view('features.naskah.mapel.edit', compact('mapel', 'tingkatList', 'jurusanList', 'paketUjians'));
     }
 
     /**
@@ -150,6 +171,7 @@ class MapelController extends Controller
             'nama_mapel' => 'required|string|max:255',
             'tingkat' => 'required|string|max:20',
             'jurusan' => 'nullable|string|max:100',
+            'paket_ujian_id' => 'required|exists:paket_ujians,id',
             'deskripsi' => 'nullable|string'
         ]);
 
@@ -158,6 +180,7 @@ class MapelController extends Controller
             'deskripsi' => $request->deskripsi,
             'tingkat' => $request->tingkat,
             'jurusan' => $request->jurusan,
+            'paket_ujian_id' => $request->paket_ujian_id,
         ]);
 
         return redirect()->route('naskah.mapel.show', $mapel->id)
@@ -261,7 +284,8 @@ class MapelController extends Controller
                 DB::transaction(function () use ($mapelIds, &$count, &$errors) {
                     foreach ($mapelIds as $id) {
                         $mapel = Mapel::find($id);
-                        if (!$mapel) continue;
+                        if (!$mapel)
+                            continue;
 
                         if ($mapel->bankSoals()->exists()) {
                             $errors[] = "Mata pelajaran '{$mapel->nama_mapel}' tidak dapat dihapus karena digunakan dalam bank soal";
@@ -292,7 +316,8 @@ class MapelController extends Controller
                 DB::transaction(function () use ($mapelIds, &$count) {
                     foreach ($mapelIds as $id) {
                         $mapel = Mapel::find($id);
-                        if (!$mapel) continue;
+                        if (!$mapel)
+                            continue;
 
                         foreach ($mapel->jadwalUjians as $jadwal) {
                             // Hapus pelanggaran ujian terkait

@@ -13,6 +13,7 @@ class Ruangan extends Model
 
     protected $fillable = [
         'tahun_ajaran_id',
+        'paket_ujian_id',
         'kode_ruangan',
         'nama_ruangan',
         'lokasi',
@@ -44,6 +45,11 @@ class Ruangan extends Model
     public function tahunAjaran()
     {
         return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+    }
+
+    public function paketUjian()
+    {
+        return $this->belongsTo(PaketUjian::class, 'paket_ujian_id');
     }
 
     /**
@@ -88,6 +94,15 @@ class Ruangan extends Model
     public function scopeForTahunAjaran($query, $tahunAjaranId)
     {
         return $tahunAjaranId ? $query->where('tahun_ajaran_id', $tahunAjaranId) : $query;
+    }
+
+    public function scopeForPaketUjian($query, $paketUjianId)
+    {
+        if ($paketUjianId === '__null') {
+            return $query->whereNull('paket_ujian_id');
+        }
+
+        return $paketUjianId ? $query->where('paket_ujian_id', $paketUjianId) : $query;
     }
 
     /**

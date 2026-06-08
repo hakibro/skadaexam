@@ -58,7 +58,7 @@
 
             <!-- Filter Form -->
             <div class="p-3 bg-white border-b border-gray-200">
-                <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form">
+                <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form" data-auto-submit>
                     <div class="flex flex-nowrap items-end gap-2 overflow-x-auto pb-2 lg:pb-0">
 
                         <div class="min-w-[180px] flex-1">

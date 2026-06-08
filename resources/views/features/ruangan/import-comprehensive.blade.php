@@ -69,6 +69,21 @@
                     @csrf
 
                     <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Paket Ujian</label>
+                        <select name="paket_ujian_id" class="w-full rounded-md border-gray-300">
+                            <option value="">Belum Terikat Paket</option>
+                            @foreach ($paketUjians as $paket)
+                                <option value="{{ $paket->id }}" {{ old('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }} - {{ ucfirst($paket->status) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('paket_ujian_id')
+                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-2">File Excel/CSV</label>
                         <div
                             class="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">

@@ -193,7 +193,6 @@ class JadwalUjianController extends Controller
             'deskripsi' => $request->deskripsi,
             'mapel_id' => $request->mapel_id,
             'bank_soal_id' => $bankSoal->id,
-            'jenis_ujian' => 'uas',
             'tanggal' => $request->tanggal,
             'durasi_menit' => $durasiMenit,
             'jumlah_soal' => $jumlahSoal,
@@ -299,6 +298,7 @@ class JadwalUjianController extends Controller
                 ->withCount('sesiRuanganSiswa')
                 ->where('sumber', 'sumber')
                 ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+                ->when($jadwal->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwal->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
                 ->orderBy('ruangan_id')
                 ->orderBy('waktu_mulai')
                 ->get();
@@ -377,7 +377,6 @@ class JadwalUjianController extends Controller
             'tanggal' => 'required|date',
             'durasi_menit' => 'required|integer|min:1',
             'jumlah_soal' => 'required|integer|min:1',
-            'jenis_ujian' => 'required|string',
             'deskripsi' => 'nullable|string',
             'kelas_target' => 'nullable|array',
             'kelas_target.*' => 'exists:kelas,id',
@@ -421,7 +420,6 @@ class JadwalUjianController extends Controller
             'deskripsi' => $request->deskripsi,
             'mapel_id' => $request->mapel_id,
             'bank_soal_id' => $request->bank_soal_id,
-            'jenis_ujian' => $request->jenis_ujian,
             'tanggal' => $request->tanggal,
             'durasi_menit' => $request->durasi_menit,
             'jumlah_soal' => $request->jumlah_soal,
@@ -510,6 +508,7 @@ class JadwalUjianController extends Controller
                 ->whereIn('id', $request->sesi_ids)
                 ->where('sumber', 'sumber')
                 ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+                ->when($jadwal->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwal->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
                 ->get();
 
             foreach ($sourceSesis as $sourceSesi) {
@@ -523,6 +522,7 @@ class JadwalUjianController extends Controller
                 if (!$duplicateSesi) {
                     $duplicateSesi = SesiRuangan::create([
                         'tahun_ajaran_id' => $jadwal->tahun_ajaran_id,
+                        'paket_ujian_id' => $jadwal->paket_ujian_id,
                         'ruangan_id' => $sourceSesi->ruangan_id,
                         'nama_sesi' => $sourceSesi->nama_sesi,
                         'waktu_mulai' => $sourceSesi->waktu_mulai,
@@ -1098,6 +1098,7 @@ class JadwalUjianController extends Controller
                 'nama_ruangan' => 'Ruang Ujian Susulan ' . date('Y-m-d H:i'),
                 'kapasitas' => $totalSiswa,
                 'status' => 'aktif',
+                'paket_ujian_id' => $paketUjianId,
                 // tambahkan field lain sesuai kebutuhan (lokasi, dll)
             ]);
 
@@ -1109,6 +1110,7 @@ class JadwalUjianController extends Controller
                 'waktu_mulai' => $request->waktu_mulai,
                 'waktu_selesai' => $request->waktu_selesai,
                 'status' => 'belum_mulai',
+                'paket_ujian_id' => $paketUjianId,
                 'pengaturan' => null,
             ]);
 

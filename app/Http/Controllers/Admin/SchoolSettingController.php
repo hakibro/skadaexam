@@ -31,12 +31,6 @@ class SchoolSettingController extends Controller
             'info_lain' => 'nullable|string|max:2000',
             'logo' => 'nullable|image|max:2048',
             'hapus_logo' => 'nullable|boolean',
-            'sync_siswa_enabled' => 'nullable|boolean',
-            'sync_siswa_interval_minutes' => 'required|integer|min:1|max:1440',
-            'sync_siswa_date_start' => 'nullable|date',
-            'sync_siswa_date_end' => 'nullable|date|after_or_equal:sync_siswa_date_start',
-            'sync_siswa_time_start' => 'nullable|date_format:H:i',
-            'sync_siswa_time_end' => 'nullable|date_format:H:i',
         ]);
 
         $settings = SchoolSetting::allAsArray();
@@ -55,7 +49,6 @@ class SchoolSettingController extends Controller
         }
 
         unset($validated['logo'], $validated['hapus_logo']);
-        $validated['sync_siswa_enabled'] = $request->boolean('sync_siswa_enabled') ? '1' : '0';
 
         SchoolSetting::setMany($validated);
 

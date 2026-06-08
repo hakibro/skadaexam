@@ -33,13 +33,26 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <form action="{{ route('ruangan.index') }}" method="GET" class="flex items-center gap-2">
+                <form action="{{ route('ruangan.index') }}" method="GET" class="flex items-center gap-2" data-auto-submit>
                     <div class="relative">
                         <select name="tahun_ajaran_id" id="tahun_ajaran_id"
                             class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             @foreach ($tahunAjarans as $tahun)
                                 <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                     {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="relative">
+                        <select name="paket_ujian_id" id="paket_ujian_id"
+                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Semua Paket</option>
+                            <option value="__null" {{ $paketUjianId === '__null' ? 'selected' : '' }}>Belum Terikat Paket</option>
+                            @foreach ($paketUjians as $paket)
+                                <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }}
                                 </option>
                             @endforeach
                         </select>
@@ -97,7 +110,7 @@
                         Filter
                     </button>
 
-                    @if (request('search') || request('status') || request('tahun_ajaran_id') || request('sort') != 'nama_asc')
+                    @if (request('search') || request('status') || request('tahun_ajaran_id') || request('paket_ujian_id') || request('sort') != 'nama_asc')
                         <a href="{{ route('ruangan.index') }}"
                             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200">
                             <i class="fa-solid fa-times mr-2"></i> Reset

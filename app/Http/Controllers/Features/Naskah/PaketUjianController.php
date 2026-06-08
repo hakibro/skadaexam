@@ -102,4 +102,39 @@ class PaketUjianController extends Controller
         return redirect()->route('naskah.paket-ujian.show', $paketUjian)
             ->with('success', 'Paket ujian berhasil diperbarui.');
     }
+
+    public function updateStatus(Request $request, PaketUjian $paketUjian)
+    {
+        if ($paketUjian->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Paket ujian pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:draft,aktif,arsip',
+        ]);
+
+        $paketUjian->update($validated);
+
+        return redirect()->back()
+            ->with('success', 'Status paket ujian berhasil diperbarui.');
+    }
+
+    public function destroy(PaketUjian $paketUjian)
+    {
+        if ($paketUjian->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Paket ujian pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        if ($paketUjian->jadwalUjian()->exists()) {
+            return redirect()->back()
+                ->with('error', 'Paket ujian tidak dapat dihapus karena masih memiliki jadwal ujian.');
+        }
+
+        $paketUjian->delete();
+
+        return redirect()->route('naskah.paket-ujian.index')
+            ->with('success', 'Paket ujian berhasil dihapus.');
+    }
 }

@@ -38,12 +38,18 @@
             <h1 class="text-2xl font-bold">Detail Jadwal Ujian</h1>
 
 
-            <div class="space-x-2">
-                <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
-                    class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 flex items-center">
-                    <i class="fas fa-edit mr-2"></i> Edit Jadwal
-                </a>
-            </div>
+            @if ($canManageJadwal)
+                <div class="flex space-x-2">
+                    <button type="button" id="openAturSesiModal"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-layer-group mr-2"></i> Atur Sesi Ujian Ini
+                    </button>
+                    <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
+                        class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                        <i class="fas fa-edit mr-2"></i> Edit Jadwal
+                    </a>
+                </div>
+            @endif
         </div>
 
         <!-- Hidden debug info (can be revealed with ?debug=1 parameter) -->
@@ -98,7 +104,7 @@
 
                             <div>
                                 <p class="text-sm text-gray-500">Jenis Ujian</p>
-                                <p class="font-semibold">{{ $jadwal->jenis_ujian ?? 'Tidak tersedia' }}</p>
+                                <p class="font-semibold">{{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}</p>
                             </div>
 
                             <div>
@@ -359,18 +365,7 @@
             <div class="border-b px-6 py-3 flex justify-between items-center">
                 <h2 class="font-medium text-lg">Sesi Ruangan</h2>
 
-                @if ($canManageJadwal)
-                    <div class="flex space-x-2">
-                        <button type="button" id="openAturSesiModal"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <i class="fas fa-layer-group mr-2"></i> Atur Sesi Ujian Ini
-                        </button>
-                        <a href="{{ route('naskah.jadwal.edit', $jadwal) }}"
-                            class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                            <i class="fas fa-edit mr-2"></i> Edit Jadwal
-                        </a>
-                    </div>
-                @endif
+
             </div>
             <div class="p-6">
                 @if ($jadwal->sesiRuangans->count() > 0)
@@ -418,11 +413,14 @@
                                                 <div class="text-sm font-medium text-gray-900">
                                                     {{ $sesi->nama_sesi ?? 'Tidak tersedia' }}</div>
                                                 @if (!empty($sesi->sumber) && $sesi->sumber !== 'sumber')
-                                                    <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                                        <i class="fa-regular fa-copy mr-1"></i>Duplikat dari {{ $sesi->sumber }}
+                                                    <span
+                                                        class="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                        <i class="fa-regular fa-copy mr-1"></i>Duplikat dari
+                                                        {{ $sesi->sumber }}
                                                     </span>
                                                 @elseif ($sesi->sumber === 'sumber')
-                                                    <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    <span
+                                                        class="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                         <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
                                                     </span>
                                                 @endif
@@ -510,7 +508,8 @@
                 <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                     @if (($sourceSesiOptions ?? collect())->count() > 0)
                         <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                            Pilihan di bawah ini adalah sesi ruangan sumber. Saat ditambahkan, sistem akan membuat sesi duplikat untuk jadwal ini dan enroll siswa sesuai peserta di sesi sumber.
+                            Pilihan di bawah ini adalah sesi ruangan sumber. Saat ditambahkan, sistem akan membuat sesi
+                            duplikat untuk jadwal ini dan enroll siswa sesuai peserta di sesi sumber.
                         </div>
                         <div class="flex justify-end">
                             <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -523,34 +522,43 @@
                             @foreach ($sourceSesiOptions->groupBy(fn($sesi) => $sesi->ruangan->nama_ruangan ?? 'Ruangan tidak tersedia') as $ruanganNama => $sesiGroup)
                                 @php $groupKey = 'sesi-group-' . \Illuminate\Support\Str::slug($ruanganNama); @endphp
                                 <div class="border border-emerald-200 rounded-md overflow-hidden">
-                                    <div class="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-100/70 border-b border-emerald-200">
+                                    <div
+                                        class="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-100/70 border-b border-emerald-200">
                                         <div>
                                             <div class="text-sm font-semibold text-emerald-900">{{ $ruanganNama }}</div>
-                                            <div class="text-xs text-emerald-700">{{ $sesiGroup->count() }} sesi sumber</div>
+                                            <div class="text-xs text-emerald-700">{{ $sesiGroup->count() }} sesi sumber
+                                            </div>
                                         </div>
-                                        <label class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800">
-                                            <input type="checkbox" class="select-sesi-group rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        <label
+                                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800">
+                                            <input type="checkbox"
+                                                class="select-sesi-group rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                 data-group="{{ $groupKey }}">
                                             Select all sesi
                                         </label>
                                     </div>
                                     <div class="divide-y divide-emerald-100">
                                         @foreach ($sesiGroup as $sesiOption)
-                                            <label class="flex items-start gap-3 p-3 bg-emerald-50/60 hover:bg-emerald-50 cursor-pointer">
+                                            <label
+                                                class="flex items-start gap-3 p-3 bg-emerald-50/60 hover:bg-emerald-50 cursor-pointer">
                                                 <input type="checkbox" name="sesi_ids[]" value="{{ $sesiOption->id }}"
                                                     class="sesi-source-checkbox mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                     data-group="{{ $groupKey }}">
                                                 <span class="flex-1">
-                                                    <span class="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
+                                                    <span
+                                                        class="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
                                                         <span>{{ $sesiOption->nama_sesi }}</span>
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                             <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
                                                         </span>
                                                     </span>
                                                     <span class="block text-xs text-gray-500">
                                                         {{ $sesiOption->kode_sesi }} |
-                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_mulai)->format('H:i') }} -
-                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_selesai)->format('H:i') }} |
+                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_mulai)->format('H:i') }}
+                                                        -
+                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_selesai)->format('H:i') }}
+                                                        |
                                                         {{ $sesiOption->sesi_ruangan_siswa_count }} siswa
                                                     </span>
                                                 </span>
@@ -562,7 +570,8 @@
                         </div>
                     @else
                         <div class="text-center py-8 text-gray-500">
-                            Belum ada sesi ruangan sumber. Import komprehensif atau buat sesi ruangan sumber terlebih dahulu.
+                            Belum ada sesi ruangan sumber. Import komprehensif atau buat sesi ruangan sumber terlebih
+                            dahulu.
                         </div>
                     @endif
                 </div>
@@ -571,8 +580,7 @@
                         class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Batal
                     </button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
                         Tambahkan Sesi dan Enroll Siswa ke Ujian
                     </button>
                 </div>
@@ -588,7 +596,7 @@
                 <pre>{{ print_r($jadwal->toArray(), true) }}</pre>
             </div>
         </div>
-@endif
+    @endif
 @endsection
 
 @section('scripts')

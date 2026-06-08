@@ -1135,6 +1135,25 @@
             }
         }
 
+        function isAnswerMeaningful(value) {
+            if (value === null || value === undefined) return false;
+            if (typeof value !== 'string') return true;
+            if (!value.trim()) return false;
+
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                    return parsed.some(item => String(item ?? '').trim() !== '');
+                }
+                if (parsed && typeof parsed === 'object') {
+                    return Object.values(parsed).some(item => String(item ?? '').trim() !== '');
+                }
+                return String(parsed ?? '').trim() !== '';
+            } catch (error) {
+                return true;
+            }
+        }
+
         // Save current answer
         async function saveCurrentAnswer() {
             if (!questions[currentQuestionIndex]) return Promise.resolve();
@@ -1142,7 +1161,7 @@
             const currentQuestion = questions[currentQuestionIndex];
             const selectedAnswer = answers[currentQuestion.id];
 
-            if (!selectedAnswer) return Promise.resolve();
+            if (!isAnswerMeaningful(selectedAnswer)) return Promise.resolve();
 
             try {
                 const response = await fetch('{{ route('ujian.save-answer') }}', {
@@ -1225,7 +1244,7 @@
         }
 
         function updateProgress() {
-            const answeredCount = Object.keys(answers).length;
+            const answeredCount = Object.values(answers).filter(isAnswerMeaningful).length;
             const totalQuestions = questions.length;
 
             // Update both progress rings
@@ -1272,7 +1291,7 @@
                     // Current question - keep current styling (blue)
                     btn.className =
                         'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-indigo-500 text-white border-indigo-500';
-                } else if (answers[question.id]) {
+                } else if (isAnswerMeaningful(answers[question.id])) {
                     // Answered question - green
                     btn.className =
                         'question-nav-btn w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 font-bold text-xs sm:text-sm transition-all duration-300 bg-green-500 text-white border-green-500';
