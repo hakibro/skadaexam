@@ -83,7 +83,7 @@
                         <div class="col-span-1">
                             <select name="paket_ujian_id"
                                 class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Semua Paket</option>
+                                <option value="__all" {{ $showAllPaket ? 'selected' : '' }}>Semua Paket</option>
                                 @foreach ($paketUjians as $paket)
                                     <option value="{{ $paket->id }}"
                                         {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>

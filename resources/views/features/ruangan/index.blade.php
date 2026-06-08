@@ -2,242 +2,185 @@
 
 @section('title', 'Daftar Ruangan')
 @section('page-title', 'Manajemen Ruangan')
-@section('page-description', 'Daftar dan kelola semua ruangan ujian')
+@section('page-description', 'Kelola ruangan ujian berdasarkan tahun ajaran dan paket ujian')
 
 @section('content')
-    <div class="py-4">
-        <!-- Action Bar -->
-        <div class="flex flex-wrap gap-4 justify-between items-center mb-6">
-            <div class="flex items-center gap-2">
-                <a href="{{ route('ruangan.create') }}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Tambah Ruangan</span>
-                </a>
-                <a href="{{ route('ruangan.import') }}"
-                    class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
-                    <i class="fa-solid fa-file-import"></i>
-                    <span>Import Data</span>
-                </a>
-                <a href="{{ route('ruangan.import.comprehensive') }}"
-                    class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
-                    <i class="fa-solid fa-file-import"></i>
-                    <span>Import Komprehensif</span>
-                </a>
-                <a href="{{ route('ruangan.export') }}"
-                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded flex items-center gap-2">
-                    <i class="fa-solid fa-file-export"></i>
-                    <span>Export Data</span>
-                </a>
+    @php
+        $hasFilters = request('search')
+            || request('status')
+            || request('tahun_ajaran_id')
+            || request('paket_ujian_id')
+            || request('sort', 'nama_asc') !== 'nama_asc';
+    @endphp
 
+    <div class="space-y-4">
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Daftar Ruangan</h3>
+                    <p class="text-sm text-gray-500">{{ $ruangans->total() }} ruangan ditemukan</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('ruangan.create') }}"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 text-sm font-medium text-white hover:bg-blue-700">
+                        <i class="fa-solid fa-plus"></i>
+                        Tambah
+                    </a>
+                    <a href="{{ route('ruangan.import.comprehensive') }}"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <i class="fa-solid fa-file-import"></i>
+                        Import
+                    </a>
+                    <a href="{{ route('ruangan.export') }}"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <i class="fa-solid fa-file-export"></i>
+                        Export
+                    </a>
+                </div>
             </div>
 
-            <div class="flex flex-wrap gap-2">
-                <form action="{{ route('ruangan.index') }}" method="GET" class="flex items-center gap-2" data-auto-submit>
-                    <div class="relative">
+            <form action="{{ route('ruangan.index') }}" method="GET" class="px-4 py-3 border-b border-gray-200" data-auto-submit>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+                    <label class="block">
+                        <span class="sr-only">Tahun Ajaran</span>
                         <select name="tahun_ajaran_id" id="tahun_ajaran_id"
-                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ($tahunAjarans as $tahun)
-                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                <option value="{{ $tahun->id }}" @selected((string) $tahunAjaranId === (string) $tahun->id)>
                                     {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
                         </select>
-                    </div>
+                    </label>
 
-                    <div class="relative">
+                    <label class="block">
+                        <span class="sr-only">Paket Ujian</span>
                         <select name="paket_ujian_id" id="paket_ujian_id"
-                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                            <option value="">Semua Paket</option>
-                            <option value="__null" {{ $paketUjianId === '__null' ? 'selected' : '' }}>Belum Terikat Paket</option>
+                            class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="__all" @selected($showAllPaket)>Semua Paket</option>
+                            <option value="__null" @selected($paketUjianId === '__null')>Belum Terikat Paket</option>
                             @foreach ($paketUjians as $paket)
-                                <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
-                                    {{ $paket->nama }}
+                                <option value="{{ $paket->id }}" @selected((string) $paketUjianId === (string) $paket->id)>
+                                    {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
                         </select>
-                    </div>
+                    </label>
 
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-search text-gray-400"></i>
+                    <label class="block lg:col-span-2">
+                        <span class="sr-only">Cari Ruangan</span>
+                        <div class="relative">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" name="search" id="search" value="{{ request('search') }}"
+                                placeholder="Cari nama, kode, atau lokasi"
+                                class="w-full rounded-md border-gray-300 pl-9 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         </div>
-                        <input type="text" name="search" id="search" placeholder="Cari ruangan..."
-                            value="{{ request('search') }}"
-                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    </div>
+                    </label>
 
-                    <div class="relative">
+                    <label class="block">
+                        <span class="sr-only">Status</span>
                         <select name="status" id="status"
-                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Semua Status</option>
-                            <option value="aktif" {{ request('status') == 'aktif' ? 'selected' : '' }}>Aktif
-                            </option>
-                            <option value="nonaktif" {{ request('status') == 'nonaktif' ? 'selected' : '' }}>
-                                Non-aktif
-                            </option>
-                            <option value="perbaikan" {{ request('status') == 'perbaikan' ? 'selected' : '' }}>
-                                Perbaikan</option>
+                            <option value="aktif" @selected(request('status') === 'aktif')>Aktif</option>
+                            <option value="tidak_aktif" @selected(request('status') === 'tidak_aktif')>Tidak Aktif</option>
+                            <option value="perbaikan" @selected(request('status') === 'perbaikan')>Perbaikan</option>
                         </select>
-                    </div>
+                    </label>
 
-                    <div class="relative">
+                    <label class="block">
+                        <span class="sr-only">Urutkan</span>
                         <select name="sort" id="sort"
-                            class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                            <option value="nama_asc" {{ request('sort', 'nama_asc') == 'nama_asc' ? 'selected' : '' }}>
-                                Nama (A-Z)
-                            </option>
-                            <option value="nama_desc" {{ request('sort') == 'nama_desc' ? 'selected' : '' }}>
-                                Nama
-                                (Z-A)</option>
-                            <option value="kapasitas_asc" {{ request('sort') == 'kapasitas_asc' ? 'selected' : '' }}>
-                                Kapasitas (Terkecil)
-                            </option>
-                            <option value="kapasitas_desc" {{ request('sort') == 'kapasitas_desc' ? 'selected' : '' }}>
-                                Kapasitas (Terbesar)
-                            </option>
-                            <option value="created_at_desc" {{ request('sort') == 'created_at_desc' ? 'selected' : '' }}>
-                                Terbaru
-                            </option>
-                            <option value="created_at_asc" {{ request('sort') == 'created_at_asc' ? 'selected' : '' }}>
-                                Terlama
-                            </option>
+                            class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="nama_asc" @selected(request('sort', 'nama_asc') === 'nama_asc')>Nama A-Z</option>
+                            <option value="nama_desc" @selected(request('sort') === 'nama_desc')>Nama Z-A</option>
+                            <option value="kapasitas_asc" @selected(request('sort') === 'kapasitas_asc')>Kapasitas kecil</option>
+                            <option value="kapasitas_desc" @selected(request('sort') === 'kapasitas_desc')>Kapasitas besar</option>
+                            <option value="created_at_desc" @selected(request('sort') === 'created_at_desc')>Terbaru</option>
+                            <option value="created_at_asc" @selected(request('sort') === 'created_at_asc')>Terlama</option>
                         </select>
-                    </div>
+                    </label>
+                </div>
 
+                <div class="mt-3 flex flex-wrap items-center gap-2">
                     <button type="submit"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Filter
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                        <i class="fa-solid fa-filter"></i>
+                        Terapkan
                     </button>
-
-                    @if (request('search') || request('status') || request('tahun_ajaran_id') || request('paket_ujian_id') || request('sort') != 'nama_asc')
+                    @if ($hasFilters)
                         <a href="{{ route('ruangan.index') }}"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200">
-                            <i class="fa-solid fa-times mr-2"></i> Reset
+                            class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100">
+                            <i class="fa-solid fa-times"></i>
+                            Reset
                         </a>
                     @endif
-                </form>
-            </div>
+                </div>
+            </form>
 
-
-        </div>
-        <!-- Room Statistics -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                <div class="flex justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 mb-1">Total Ruangan</p>
-                        <h3 class="text-3xl font-bold text-gray-900">{{ $statistics['total'] }}</h3>
-                    </div>
-                    <div class="bg-blue-100 rounded-full p-3 text-blue-500">
-                        <i class="fa-solid fa-door-open text-xl"></i>
-                    </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-gray-200 border-b border-gray-200">
+                <div class="p-4">
+                    <p class="text-xs font-medium uppercase text-gray-500">Total</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{ $statistics['total'] }}</p>
+                </div>
+                <div class="p-4">
+                    <p class="text-xs font-medium uppercase text-gray-500">Aktif</p>
+                    <p class="mt-1 text-2xl font-semibold text-green-700">{{ $statistics['aktif'] }}</p>
+                </div>
+                <div class="p-4">
+                    <p class="text-xs font-medium uppercase text-gray-500">Tidak Aktif</p>
+                    <p class="mt-1 text-2xl font-semibold text-red-700">{{ $statistics['nonaktif'] }}</p>
+                </div>
+                <div class="p-4">
+                    <p class="text-xs font-medium uppercase text-gray-500">Perbaikan</p>
+                    <p class="mt-1 text-2xl font-semibold text-yellow-700">{{ $statistics['perbaikan'] }}</p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                <div class="flex justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 mb-1">Ruangan Aktif</p>
-                        <h3 class="text-3xl font-bold text-gray-900">{{ $statistics['aktif'] }}</h3>
-                    </div>
-                    <div class="bg-green-100 rounded-full p-3 text-green-500">
-                        <i class="fa-solid fa-check-circle text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
-                <div class="flex justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 mb-1">Ruangan Nonaktif</p>
-                        <h3 class="text-3xl font-bold text-gray-900">{{ $statistics['nonaktif'] }}</h3>
-                    </div>
-                    <div class="bg-red-100 rounded-full p-3 text-red-500">
-                        <i class="fa-solid fa-times-circle text-xl"></i>
+            @if (session('error_with_force'))
+                <div class="m-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span><strong>Gagal.</strong> {{ session('error_with_force')['message'] }}</span>
+                        <form action="{{ route('ruangan.bulk-action') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="action" value="hapus_paksa">
+                            <input type="hidden" name="ids" value="{{ session('error_with_force')['ids'] }}">
+                            <button type="submit"
+                                onclick="return confirm('Yakin ingin HAPUS PAKSA ruangan ini beserta semua data terkait?')"
+                                class="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                                Hapus Paksa
+                            </button>
+                        </form>
                     </div>
                 </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-                <div class="flex justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600 mb-1">Dalam Perbaikan</p>
-                        <h3 class="text-3xl font-bold text-gray-900">{{ $statistics['perbaikan'] }}</h3>
-                    </div>
-                    <div class="bg-yellow-100 rounded-full p-3 text-yellow-500">
-                        <i class="fa-solid fa-tools text-xl"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        @if (session('error_with_force'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                <strong class="font-bold">Gagal!</strong>
-                <span class="block sm:inline">{{ session('error_with_force')['message'] }}</span>
-
-                <form action="{{ route('ruangan.bulk-action') }}" method="POST" class="inline ml-2">
-                    @csrf
-                    <input type="hidden" name="action" value="hapus_paksa">
-                    <input type="hidden" name="ids" value="{{ session('error_with_force')['ids'] }}">
-                    <button type="submit"
-                        onclick="return confirm('Yakin ingin HAPUS PAKSA ruangan ini beserta semua data terkait?')"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded">
-                        Hapus Paksa
-                    </button>
-                </form>
-            </div>
-        @endif
-
-        <!-- Room List -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-800">
-                    <i class="fa-solid fa-door-open text-blue-600 mr-2"></i>
-                    Daftar Ruangan
-                </h3>
-                <span class="text-sm text-gray-600">{{ $ruangans->total() }} ruangan ditemukan</span>
-            </div>
+            @endif
 
             @if ($ruangans->count() > 0)
-                <!-- Bulk Actions Controls -->
-                <!-- Bulk Actions Controls -->
-                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 mb-2">
-                    <div class="flex flex-wrap items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="select-all"
-                                    class="h-4 w-4 text-blue-600 border-gray-300 rounded">
-                                <label for="select-all" class="ml-2 text-sm text-gray-700">Pilih Semua</label>
-                            </div>
-                            <span id="selected-count" class="text-sm text-gray-600" style="display:none;">0 ruangan
-                                dipilih</span>
-                        </div>
-
-                        <div id="bulk-buttons" class="flex flex-wrap gap-2 mt-2 sm:mt-0" style="display:none;">
-                            <button onclick="confirmBulkAction('aktifkan')"
-                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
-                                <i class="fa-solid fa-check-circle mr-2"></i> Aktifkan
+                <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" id="select-all" class="h-4 w-4 rounded border-gray-300 text-blue-600">
+                        Pilih semua
+                    </label>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="selected-count" class="hidden text-sm text-gray-600">0 ruangan dipilih</span>
+                        <div id="bulk-buttons" class="hidden flex-wrap gap-2">
+                            <button type="button" onclick="confirmBulkAction('aktifkan')"
+                                class="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+                                Aktifkan
                             </button>
-
-                            <button onclick="confirmBulkAction('nonaktifkan')"
-                                class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
-                                <i class="fa-solid fa-times-circle mr-2"></i> Non-aktifkan
+                            <button type="button" onclick="confirmBulkAction('nonaktifkan')"
+                                class="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+                                Nonaktifkan
                             </button>
-
-                            <button onclick="confirmBulkAction('perbaikan')"
-                                class="inline-flex items-center px-3 py-1.5 bg-yellow-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition">
-                                <i class="fa-solid fa-tools mr-2"></i> Perbaikan
+                            <button type="button" onclick="confirmBulkAction('perbaikan')"
+                                class="rounded-md bg-yellow-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-yellow-600">
+                                Perbaikan
                             </button>
-
-                            <button onclick="confirmBulkAction('hapus')"
-                                class="inline-flex items-center px-3 py-1.5 bg-gray-800 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
-                                <i class="fa-solid fa-trash mr-2"></i> Hapus
+                            <button type="button" onclick="confirmBulkAction('hapus')"
+                                class="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-900">
+                                Hapus
                             </button>
                         </div>
-
                     </div>
                 </div>
 
@@ -247,127 +190,72 @@
                     <input type="hidden" name="ids" id="bulk-ids">
                 </form>
 
-                <!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="w-12 px-6 py-3 text-left"><span class="sr-only">Pilih</span></th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Nama Ruangan</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kode</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Kapasitas</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sesi</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sesi Hari Ini</th>
-                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                <th class="w-12 px-4 py-3 text-left"><span class="sr-only">Pilih</span></th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Ruangan</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Paket & Kapasitas</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Sesi</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="divide-y divide-gray-200 bg-white">
                             @foreach ($ruangans as $ruangan)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" name="selected_ids[]" value="{{ $ruangan->id }}"
-                                                class="room-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded">
-
-                                        </div>
+                                    <td class="px-4 py-3 align-top">
+                                        <input type="checkbox" name="selected_ids[]" value="{{ $ruangan->id }}"
+                                            class="room-checkbox h-4 w-4 rounded border-gray-300 text-blue-600">
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm font-medium text-gray-900">{{ $ruangan->nama_ruangan }}</div>
-                                        <div class="text-xs text-gray-500">
-                                            {{ $ruangan->lokasi ?? 'Lokasi tidak disetel' }}
+                                    <td class="px-4 py-3 align-top">
+                                        <div class="font-medium text-gray-900">{{ $ruangan->nama_ruangan }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                            <span class="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+                                                {{ $ruangan->kode_ruangan }}
+                                            </span>
+                                            <span>{{ $ruangan->lokasi ?: 'Lokasi belum diisi' }}</span>
                                         </div>
-                                        @if ($ruangan->catatan)
-                                            <div class="text-xs text-gray-500 italic mt-1">
-                                                Catatan: {{ Str::limit($ruangan->catatan, 30) }}
-                                            </div>
+                                        @if ($ruangan->keterangan)
+                                            <div class="mt-1 text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($ruangan->keterangan, 60) }}</div>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                            {{ $ruangan->kode_ruangan }}
-                                        </span>
+                                    <td class="px-4 py-3 align-top">
+                                        <div class="text-sm text-gray-900">{{ $ruangan->paketUjian->nama ?? 'Belum terikat paket' }}</div>
+                                        <div class="mt-1 text-xs text-gray-500">{{ $ruangan->kapasitas }} siswa</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $ruangan->kapasitas }} siswa</div>
-                                        @if ($ruangan->today_capacity_used)
-                                            <div class="w-24 bg-gray-200 rounded-full h-2 mt-2">
-                                                <div class="bg-blue-600 h-2 rounded-full"
-                                                    style="width: {{ min($ruangan->today_capacity_percentage, 100) }}%">
-                                                </div>
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                {{ $ruangan->today_capacity_used }}/{{ $ruangan->kapasitas }} hari ini
-                                            </div>
-                                        @endif
+                                    <td class="px-4 py-3 align-top">
+                                        <div class="text-sm text-gray-900">{{ $ruangan->sesi_ruangan_count ?? 0 }} sesi</div>
+                                        <a href="{{ route('ruangan.sesi.index', $ruangan->id) }}"
+                                            class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800">
+                                            Atur sesi
+                                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                        </a>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="{{ $ruangan->status_badge_class }} px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full">
+                                    <td class="px-4 py-3 align-top">
+                                        <span class="{{ $ruangan->status_badge_class }} inline-flex rounded-full px-2 py-1 text-xs font-semibold">
                                             {{ $ruangan->status_label['text'] }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <div class="text-sm text-gray-900">
-                                            {{ $ruangan->sesi_ruangan_count ?? 0 }} sesi
-                                        </div>
-                                        <div class="text-xs text-gray-500">
-                                            {{ $ruangan->sesi_aktif_count ?? 0 }} sesi aktif
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        @if ($ruangan->today_sessions_count > 0)
-                                            <div class="text-sm font-medium text-gray-900">
-                                                {{ $ruangan->today_sessions_count }} sesi hari ini
-                                            </div>
-                                            <div class="text-xs text-gray-600 mt-1">
-                                                @foreach ($ruangan->today_sessions as $session)
-                                                    <div class="mb-1 flex items-center gap-1">
-                                                        <span
-                                                            class="{{ $session->status == 'belum_mulai' ? 'bg-blue-100 text-blue-800' : ($session->status == 'berlangsung' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800') }} px-1.5 py-0.5 rounded text-xs font-medium">
-                                                            {{ \Carbon\Carbon::parse($session->waktu_mulai)->format('H:i') }}
-                                                            -
-                                                            {{ \Carbon\Carbon::parse($session->waktu_selesai)->format('H:i') }}
-                                                        </span>
-                                                        <a href="{{ route('ruangan.sesi.show', [$ruangan->id, $session->id]) }}"
-                                                            class="text-xs text-blue-600 hover:underline ml-1"
-                                                            title="Lihat sesi">
-                                                            <i class="fa-solid fa-eye"></i>
-                                                        </a>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <span class="text-sm text-gray-500">Tidak ada sesi hari ini</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        <div class="flex justify-center space-x-2">
+                                    <td class="px-4 py-3 align-top text-right">
+                                        <div class="inline-flex items-center gap-2">
                                             <a href="{{ route('ruangan.show', $ruangan->id) }}"
-                                                class="text-blue-600 hover:text-blue-900" title="Detail Ruangan">
+                                                class="text-gray-500 hover:text-blue-700" title="Detail">
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
                                             <a href="{{ route('ruangan.edit', $ruangan->id) }}"
-                                                class="text-yellow-600 hover:text-yellow-900" title="Edit Ruangan">
-                                                <i class="fa-solid fa-edit"></i>
+                                                class="text-gray-500 hover:text-yellow-700" title="Edit">
+                                                <i class="fa-solid fa-pen"></i>
                                             </a>
                                             <a href="{{ route('ruangan.sesi.index', $ruangan->id) }}"
-                                                class="text-green-600 hover:text-green-900" title="Kelola Sesi">
-                                                <i class="fa-solid fa-calendar-alt"></i>
+                                                class="text-gray-500 hover:text-green-700" title="Sesi">
+                                                <i class="fa-solid fa-calendar-days"></i>
                                             </a>
-                                            <form action="{{ route('ruangan.destroy', $ruangan->id) }}" method="POST"
-                                                class="inline delete-form">
+                                            <form action="{{ route('ruangan.destroy', $ruangan->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900"
-                                                    title="Hapus Ruangan"
+                                                <button type="submit" class="text-gray-500 hover:text-red-700" title="Hapus"
                                                     onclick="return confirm('Yakin ingin menghapus ruangan ini? Semua sesi terkait juga akan terhapus.')">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
@@ -380,16 +268,20 @@
                     </table>
                 </div>
 
-                <div class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
                     {{ $ruangans->appends(request()->query())->links() }}
                 </div>
             @else
-                <div class="p-8 text-center">
-                    <div class="text-gray-400 mb-4"><i class="fa-solid fa-door-open text-5xl"></i></div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-1">Belum ada ruangan yang ditambahkan</h3>
-                    <p class="text-gray-500 mb-6">Mulailah dengan menambahkan ruangan pertama</p>
-                    <a href="{{ route('ruangan.create') }}" class="btn-blue">
-                        <i class="fa-solid fa-plus mr-2"></i> Tambah Ruangan Sekarang
+                <div class="p-10 text-center">
+                    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                        <i class="fa-solid fa-door-open text-xl"></i>
+                    </div>
+                    <h3 class="text-base font-semibold text-gray-900">Tidak ada ruangan</h3>
+                    <p class="mt-1 text-sm text-gray-500">Ubah filter atau tambahkan ruangan baru untuk paket ujian ini.</p>
+                    <a href="{{ route('ruangan.create') }}"
+                        class="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                        <i class="fa-solid fa-plus"></i>
+                        Tambah Ruangan
                     </a>
                 </div>
             @endif
@@ -405,42 +297,32 @@
             const selectedCount = document.getElementById('selected-count');
             const bulkButtons = document.getElementById('bulk-buttons');
 
+            if (!selectAllCheckbox || !roomCheckboxes.length) return;
+
             function updateSelected() {
                 const selected = Array.from(roomCheckboxes).filter(cb => cb.checked);
                 selectedCount.textContent = `${selected.length} ruangan dipilih`;
-
-                if (selected.length > 0) {
-                    selectedCount.style.display = 'inline';
-                    bulkButtons.style.display = 'flex';
-                } else {
-                    selectedCount.style.display = 'none';
-                    bulkButtons.style.display = 'none';
-                }
-
-                // Sync select-all checkbox
+                selectedCount.classList.toggle('hidden', selected.length === 0);
+                bulkButtons.classList.toggle('hidden', selected.length === 0);
+                bulkButtons.classList.toggle('flex', selected.length > 0);
                 selectAllCheckbox.checked = selected.length === roomCheckboxes.length;
+                selectAllCheckbox.indeterminate = selected.length > 0 && selected.length < roomCheckboxes.length;
             }
 
-            // Select All checkbox
-            selectAllCheckbox.addEventListener('change', (e) => {
-                roomCheckboxes.forEach(cb => cb.checked = e.target.checked);
+            selectAllCheckbox.addEventListener('change', (event) => {
+                roomCheckboxes.forEach(cb => cb.checked = event.target.checked);
                 updateSelected();
             });
 
-            // Individual checkboxes
-            roomCheckboxes.forEach(cb => {
-                cb.addEventListener('change', updateSelected);
-            });
+            roomCheckboxes.forEach(cb => cb.addEventListener('change', updateSelected));
 
-            // Bulk action
             window.confirmBulkAction = function(action) {
                 const selected = Array.from(roomCheckboxes).filter(cb => cb.checked);
                 if (!selected.length) return;
 
-                let message = `Apakah Anda yakin ingin ${action} ${selected.length} ruangan?`;
+                let message = `Yakin ingin ${action} ${selected.length} ruangan?`;
                 if (action === 'hapus') {
-                    message +=
-                        ' Semua sesi ruangan dan data terkait akan ikut terhapus. Tindakan ini tidak dapat dibatalkan!';
+                    message += ' Semua sesi ruangan dan data terkait akan ikut terhapus.';
                 }
 
                 if (confirm(message)) {
@@ -451,5 +333,4 @@
             };
         });
     </script>
-
 @endsection

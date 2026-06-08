@@ -105,17 +105,19 @@
                         </div>
 
                         <div>
-                            <label for="jumlah_soal" class="block text-sm font-medium text-gray-700">Jumlah Soal <span
-                                    class="text-red-500">*</span></label>
-                            <input type="number" name="jumlah_soal" id="jumlah_soal" required min="1"
-                                value="{{ old('jumlah_soal', $jadwal->jumlah_soal) }}"
-                                class="mt-1 form-input block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('jumlah_soal') border-red-500 @enderror"
-                                placeholder="Jumlah soal yang ditampilkan">
-                            @error('jumlah_soal')
-                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                            @enderror
-                            <p class="mt-1 text-xs text-gray-500">Jumlah soal yang akan ditampilkan dalam ujian (harus <=
-                                    jumlah soal dalam bank soal)</p>
+                            <label class="block text-sm font-medium text-gray-700">Jumlah Soal</label>
+                            <div class="mt-1 flex items-center gap-2">
+                                <div class="form-input block w-full rounded-md shadow-sm bg-gray-100 border-gray-200 px-3 py-2 text-gray-700 font-semibold"
+                                    id="jumlah_soal_display">
+                                    {{ $jadwal->jumlah_soal }} soal
+                                </div>
+                                <input type="hidden" name="jumlah_soal" id="jumlah_soal"
+                                    value="{{ old('jumlah_soal', $jadwal->jumlah_soal) }}">
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <i class="fas fa-sync-alt text-blue-500 mr-1"></i>
+                                Otomatis tersinkronisasi dari bank soal yang dipilih
+                            </p>
                         </div>
 
                         <div>
@@ -239,52 +241,21 @@
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const bankSoalSelect = document.getElementById('bank_soal_id');
-                const jumlahSoalInput = document.getElementById('jumlah_soal');
+                const jumlahSoalDisplay = document.getElementById('jumlah_soal_display');
+                const jumlahSoalHidden = document.getElementById('jumlah_soal');
                 const editJadwalForm = document.getElementById('editJadwalForm');
 
-                // Set initial max value for jumlah soal based on selected bank soal
-                if (bankSoalSelect.selectedIndex > 0) {
+                // Update jumlah_soal display when bank soal changes
+                function updateJumlahSoal() {
                     const selectedOption = bankSoalSelect.options[bankSoalSelect.selectedIndex];
-                    const maxSoal = parseInt(selectedOption.dataset.soalCount);
-                    jumlahSoalInput.max = maxSoal;
-                    jumlahSoalInput.placeholder = `Maksimal ${maxSoal} soal`;
+                    if (selectedOption && selectedOption.dataset.soalCount) {
+                        const soalCount = parseInt(selectedOption.dataset.soalCount);
+                        jumlahSoalDisplay.textContent = soalCount + ' soal';
+                        jumlahSoalHidden.value = soalCount;
+                    }
                 }
 
-                // Update max value when bank soal changes
-                bankSoalSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption && selectedOption.dataset.soalCount) {
-                        const maxSoal = parseInt(selectedOption.dataset.soalCount);
-                        jumlahSoalInput.max = maxSoal;
-                        jumlahSoalInput.placeholder = `Maksimal ${maxSoal} soal`;
-
-                        // If current value exceeds max, reset to max
-                        if (parseInt(jumlahSoalInput.value) > maxSoal) {
-                            jumlahSoalInput.value = maxSoal;
-                        }
-                    }
-                });
-
-                // Form validation
-                editJadwalForm.addEventListener('submit', function(e) {
-                    let isValid = true;
-
-                    // Validate jumlah soal against bank soal
-                    if (bankSoalSelect.value) {
-                        const selectedOption = bankSoalSelect.options[bankSoalSelect.selectedIndex];
-                        const maxSoal = parseInt(selectedOption.dataset.soalCount);
-                        const requestedSoal = parseInt(jumlahSoalInput.value);
-
-                        if (requestedSoal > maxSoal) {
-                            alert(`Jumlah soal tidak boleh melebihi ${maxSoal} (jumlah soal dalam bank soal)`);
-                            isValid = false;
-                        }
-                    }
-
-                    if (!isValid) {
-                        e.preventDefault();
-                    }
-                });
+                bankSoalSelect.addEventListener('change', updateJumlahSoal);
 
                 // Confirm form submission if there are existing sesi
                 @if ($jadwal->sesiRuangan && $jadwal->sesiRuangan->count() > 0)

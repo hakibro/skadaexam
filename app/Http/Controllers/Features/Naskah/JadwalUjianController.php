@@ -29,7 +29,24 @@ class JadwalUjianController extends Controller
         $activeYear = $tahunAjaranService->active();
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear?->id);
-        $paketUjianId = $request->get('paket_ujian_id');
+        $paketUjianId = null;
+        $showAllPaket = $request->get('paket_ujian_id') === '__all';
+
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $showAllPaket ? null : $request->get('paket_ujian_id');
+        } elseif ($tahunAjaranId) {
+            $activePaket = \App\Models\PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+                ->where('status', 'aktif')
+                ->orderByDesc('tanggal_mulai')
+                ->orderBy('nama')
+                ->first();
+
+            if (!$activePaket && $activeYear && (string) $tahunAjaranId === (string) $activeYear->id) {
+                $activePaket = $tahunAjaranService->defaultPaketFor($activeYear);
+            }
+
+            $paketUjianId = $activePaket?->id;
+        }
 
         $query = JadwalUjian::with(['mapel', 'bankSoal', 'creator', 'tahunAjaran', 'paketUjian'])
             ->withCount('sesiRuangans');
@@ -79,7 +96,7 @@ class JadwalUjianController extends Controller
             ->orderBy('nama')
             ->get();
 
-        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'activeYear'));
+        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'activeYear', 'showAllPaket'));
     }
 
     /**
@@ -253,7 +270,7 @@ class JadwalUjianController extends Controller
 
         try {
             // Try loading each relationship separately for better error isolation
-        try {
+            try {
                 $jadwal->load('mapel');
                 file_put_contents($logFile, "✓ Loaded mapel\n", FILE_APPEND);
             } catch (\Exception $e) {
@@ -415,6 +432,10 @@ class JadwalUjianController extends Controller
             }
         }
 
+        // Auto-sync jumlah_soal from bank soal
+        $bankSoal = BankSoal::find($request->bank_soal_id);
+        $jumlahSoal = $bankSoal ? $bankSoal->soals()->count() : 0;
+
         $jadwal->update([
             'judul' => $request->judul,
             'deskripsi' => $request->deskripsi,
@@ -422,7 +443,7 @@ class JadwalUjianController extends Controller
             'bank_soal_id' => $request->bank_soal_id,
             'tanggal' => $request->tanggal,
             'durasi_menit' => $request->durasi_menit,
-            'jumlah_soal' => $request->jumlah_soal,
+            'jumlah_soal' => $jumlahSoal,
             'acak_soal' => $request->has('acak_soal'),
             'acak_jawaban' => $request->has('acak_jawaban'),
             'tampilkan_hasil' => $request->has('tampilkan_hasil'),

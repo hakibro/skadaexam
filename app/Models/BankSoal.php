@@ -118,8 +118,29 @@ class BankSoal extends Model
 
     public function updateTotalSoal()
     {
-        $this->total_soal = $this->soals()->count();
+        $totalSoal = $this->soals()->count();
+        $this->total_soal = $totalSoal;
         $this->save();
+
+        // Sync jumlah_soal di semua jadwal ujian yang menggunakan bank soal ini
+        $this->syncJadwalUjianJumlahSoal($totalSoal);
+    }
+
+    /**
+     * Sync jumlah_soal di semua jadwal ujian yang menggunakan bank soal ini
+     */
+    public function syncJadwalUjianJumlahSoal(int $totalSoal)
+    {
+        $jadwalUpdated = $this->jadwalUjians()->update(['jumlah_soal' => $totalSoal]);
+
+        if ($jadwalUpdated > 0) {
+            \Illuminate\Support\Facades\Log::info('Jadwal ujian jumlah_soal synced', [
+                'bank_soal_id' => $this->id,
+                'bank_soal_judul' => $this->judul,
+                'total_soal' => $totalSoal,
+                'jadwal_updated' => $jadwalUpdated,
+            ]);
+        }
     }
 
     public function totalSoal()

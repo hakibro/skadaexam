@@ -117,7 +117,15 @@
                             <div>
                                 <p class="text-sm text-gray-500">Bank Soal</p>
                                 <p class="font-semibold">
-                                    {{ isset($jadwal->bankSoal) ? $jadwal->bankSoal->judul ?? 'Tidak tersedia' : 'Tidak tersedia' }}
+                                    @if (isset($jadwal->bankSoal) && $jadwal->bankSoal)
+                                        <a href="{{ route('naskah.banksoal.show', $jadwal->bankSoal) }}"
+                                            class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            {{ $jadwal->bankSoal->judul ?? 'Tidak tersedia' }}
+                                            <i class="fas fa-external-link-alt text-xs ml-1"></i>
+                                        </a>
+                                    @else
+                                        Tidak tersedia
+                                    @endif
                                 </p>
                             </div>
 
@@ -127,17 +135,7 @@
                                     {{ $jadwal->tanggal ? $jadwal->tanggal->format('d F Y') : 'Tidak tersedia' }}</p>
                             </div>
 
-                            <div>
-                                <p class="text-sm text-gray-500">Waktu</p>
-                                <p class="font-semibold">
-                                    @if (isset($jadwal->waktu_mulai) && isset($jadwal->waktu_selesai))
-                                        {{ $jadwal->waktu_mulai->format('H:i') }} -
-                                        {{ $jadwal->waktu_selesai->format('H:i') }}
-                                    @else
-                                        Tidak tersedia
-                                    @endif
-                                </p>
-                            </div>
+
 
                             <div>
                                 <p class="text-sm text-gray-500">Durasi</p>
@@ -146,7 +144,7 @@
 
                             <div>
                                 <p class="text-sm text-gray-500">Jumlah Soal</p>
-                                <p class="font-semibold">{{ $jadwal->jumlah_soal ?? '0' }} Soal</p>
+                                <p class="font-semibold">{{ $jadwal->jumlah_soal ?? 'belum ada' }} Soal</p>
                             </div>
                         </div>
 

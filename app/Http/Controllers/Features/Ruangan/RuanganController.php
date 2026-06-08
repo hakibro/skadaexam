@@ -28,9 +28,28 @@ class RuanganController extends Controller
      */
     public function index(Request $request)
     {
-        $activeYearId = app(TahunAjaranService::class)->activeId();
-        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
-        $paketUjianId = $request->get('paket_ujian_id');
+        $tahunAjaranService = app(TahunAjaranService::class);
+        $activeYear = $tahunAjaranService->active();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear?->id);
+        $paketUjianId = null;
+        $showAllPaket = $request->get('paket_ujian_id') === '__all';
+
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $showAllPaket ? null : $request->get('paket_ujian_id');
+        } elseif ($tahunAjaranId) {
+            $activePaket = PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+                ->where('status', 'aktif')
+                ->orderByDesc('tanggal_mulai')
+                ->orderBy('nama')
+                ->first();
+
+            if (!$activePaket && $activeYear && (string) $tahunAjaranId === (string) $activeYear->id) {
+                $activePaket = $tahunAjaranService->defaultPaketFor($activeYear);
+            }
+
+            $paketUjianId = $activePaket?->id;
+        }
+
         $query = Ruangan::forTahunAjaran($tahunAjaranId)
             ->forPaketUjian($paketUjianId)
             ->with(['paketUjian'])
@@ -60,12 +79,16 @@ class RuanganController extends Controller
             });
         }
 
-        // Sort
-        $sortField = $request->input('sort_field', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-        $query->orderBy($sortField, $sortOrder);
+        match ($request->input('sort', 'nama_asc')) {
+            'nama_desc' => $query->orderByDesc('nama_ruangan'),
+            'kapasitas_asc' => $query->orderBy('kapasitas')->orderBy('nama_ruangan'),
+            'kapasitas_desc' => $query->orderByDesc('kapasitas')->orderBy('nama_ruangan'),
+            'created_at_asc' => $query->orderBy('created_at'),
+            'created_at_desc' => $query->orderByDesc('created_at'),
+            default => $query->orderBy('nama_ruangan'),
+        };
 
-        $ruangans = $query->paginate(10);
+        $ruangans = $query->paginate(15);
 
         // Calculate statistics for the view
         $statistics = [
@@ -80,7 +103,7 @@ class RuanganController extends Controller
             ->orderByDesc('tanggal_mulai')
             ->get();
 
-        return view('features.ruangan.index', compact('ruangans', 'statistics', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
+        return view('features.ruangan.index', compact('ruangans', 'statistics', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'showAllPaket'));
     }
 
     /**
