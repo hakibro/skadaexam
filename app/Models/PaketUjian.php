@@ -40,11 +40,6 @@ class PaketUjian extends Model
         return $this->hasMany(BankSoal::class, 'paket_ujian_id');
     }
 
-    public function mapels()
-    {
-        return $this->hasMany(Mapel::class, 'paket_ujian_id');
-    }
-
     public function scopeActive($query)
     {
         return $query->where('status', 'aktif');

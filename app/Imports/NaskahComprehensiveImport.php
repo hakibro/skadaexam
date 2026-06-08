@@ -63,13 +63,11 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
                     $mapel->update([
                         'jurusan' => $jurusan,
                         'status' => 'aktif',
-                        'paket_ujian_id' => $paket?->id,
                     ]);
                     $this->results['mapel_updated']++;
                 } else {
                     $mapel = Mapel::create([
                         'tahun_ajaran_id' => $this->tahunAjaranId,
-                        'paket_ujian_id' => $paket?->id,
                         'kode_mapel' => Mapel::generateKode($namaMapel, $tingkat, $this->tahunAjaranId),
                         'nama_mapel' => $namaMapel,
                         'tingkat' => $tingkat,

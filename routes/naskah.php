@@ -10,6 +10,7 @@ use App\Http\Controllers\Features\Naskah\PaketUjianController;
 use App\Http\Controllers\Features\Naskah\UpdateJadwalTargetKelasController;
 use App\Http\Controllers\Features\Naskah\HasilUjianController;
 use App\Http\Controllers\Features\Naskah\PanduanController;
+use App\Http\Controllers\Features\Naskah\UjianSusulanController;
 use Illuminate\Support\Facades\Route;
 
 // Naskah Management Routes
@@ -58,6 +59,17 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::post('jadwal/bulk-action', [JadwalUjianController::class, 'bulkAction'])->name('jadwal.bulk-action');
     Route::delete('jadwal/{jadwal}/force', [JadwalUjianController::class, 'forceDestroy'])
         ->name('jadwal.force-destroy');
+
+    // Jadwal Ujian Susulan - Multi-step Wizard (must be before resource route)
+    Route::prefix('jadwal/susulan-wizard')->name('jadwal.susulan-wizard.')->group(function () {
+        Route::post('ruangan', [UjianSusulanController::class, 'createRuangan'])->name('ruangan');
+        Route::post('sesi', [UjianSusulanController::class, 'createSesi'])->name('sesi');
+        Route::post('duplikasi', [UjianSusulanController::class, 'duplicateJadwal'])->name('duplikasi');
+        Route::post('assign', [UjianSusulanController::class, 'assignToSesi'])->name('assign');
+        Route::post('detach', [UjianSusulanController::class, 'detachFromSesi'])->name('detach');
+        Route::post('finalize', [UjianSusulanController::class, 'finalize'])->name('finalize');
+    });
+
     // Resource routes
     Route::resource('jadwal', JadwalUjianController::class);
     // Additional jadwal actions

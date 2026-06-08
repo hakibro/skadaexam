@@ -38,6 +38,11 @@
                                     <i class="fa-solid fa-flag-checkered mr-2 w-4"></i> Set Selesai
                                 </button>
                                 <hr class="my-1">
+                                <button type="button" onclick="openSusulanWizard()"
+                                    class="block w-full text-left px-3 py-1.5 text-purple-600 hover:bg-purple-50">
+                                    <i class="fa-solid fa-clock-rotate-left mr-2 w-4"></i> Buat Ujian Susulan
+                                </button>
+                                <hr class="my-1">
                                 <button type="button" onclick="bulkDelete()"
                                     class="block w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50">
                                     <i class="fa-solid fa-trash mr-2 w-4"></i> Hapus
@@ -60,14 +65,16 @@
 
             <!-- Filter Form - Compact -->
             <div class="p-3 bg-white border-b">
-                <form action="{{ route('naskah.jadwal.index') }}" method="get" class="jadwal-filter-form" data-auto-submit>
+                <form action="{{ route('naskah.jadwal.index') }}" method="get" class="jadwal-filter-form"
+                    data-auto-submit>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-2">
                         <div class="col-span-1">
                             <select name="tahun_ajaran_id"
                                 class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Semua Tahun</option>
                                 @foreach ($tahunAjarans as $tahunAjaran)
-                                    <option value="{{ $tahunAjaran->id }}" {{ (string) $tahunAjaranId === (string) $tahunAjaran->id ? 'selected' : '' }}>
+                                    <option value="{{ $tahunAjaran->id }}"
+                                        {{ (string) $tahunAjaranId === (string) $tahunAjaran->id ? 'selected' : '' }}>
                                         {{ $tahunAjaran->nama }}{{ $tahunAjaran->is_active ? ' *' : '' }}
                                     </option>
                                 @endforeach
@@ -78,7 +85,8 @@
                                 class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Semua Paket</option>
                                 @foreach ($paketUjians as $paket)
-                                    <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                    <option value="{{ $paket->id }}"
+                                        {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
                                         {{ $paket->nama }}
                                     </option>
                                 @endforeach
@@ -178,7 +186,8 @@
                                     <td class="px-3 py-2 whitespace-nowrap font-mono">{{ $jadwal->kode_ujian }}</td>
                                     <td class="px-3 py-2">
                                         <div class="font-medium text-gray-900">{{ $jadwal->judul }}</div>
-                                        <div class="text-gray-500">{{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}</div>
+                                        <div class="text-gray-500">{{ $jadwal->paketUjian->nama ?? 'Belum ada paket' }}
+                                        </div>
                                     </td>
                                     <td class="px-3 py-2 whitespace-nowrap hidden md:table-cell">
                                         {{ $jadwal->mapel->nama_mapel ?? '-' }}
@@ -270,6 +279,9 @@
             <input type="hidden" name="new_status" id="bulk-new-status">
         </form>
     </div>
+
+    {{-- Susulan Wizard Modal --}}
+    @include('features.naskah.jadwal.partials.susulan-wizard-modal')
 
 @endsection
 
