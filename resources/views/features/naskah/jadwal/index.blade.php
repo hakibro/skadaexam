@@ -42,6 +42,10 @@
                                     class="block w-full text-left px-3 py-1.5 text-purple-600 hover:bg-purple-50">
                                     <i class="fa-solid fa-clock-rotate-left mr-2 w-4"></i> Buat Ujian Susulan
                                 </button>
+                                <button type="button" onclick="openBulkAssignSesiModal()"
+                                    class="block w-full text-left px-3 py-1.5 text-emerald-600 hover:bg-emerald-50">
+                                    <i class="fa-solid fa-layer-group mr-2 w-4"></i> Assign Sesi + Enroll
+                                </button>
                                 <hr class="my-1">
                                 <button type="button" onclick="bulkDelete()"
                                     class="block w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50">
@@ -133,8 +137,8 @@
                         <div class="col-span-1">
                             <select name="per_page"
                                 class="w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="30" {{ request('per_page', 30) == 30 ? 'selected' : '' }}>30</option>
-                                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                                <option value="30" {{ request('per_page') == 30 ? 'selected' : '' }}>30</option>
+                                <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50</option>
                                 <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
                                 <option value="150" {{ request('per_page') == 150 ? 'selected' : '' }}>150</option>
                             </select>
@@ -278,6 +282,133 @@
             <input type="hidden" name="action" id="bulk-action-type">
             <input type="hidden" name="new_status" id="bulk-new-status">
         </form>
+
+        <div id="bulkAssignSesiModal"
+            class="hidden fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4">
+                <div class="flex items-center justify-between px-5 py-4 border-b">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Assign Sesi dan Enroll Siswa Massal</h3>
+                        <p class="text-sm text-gray-500">Sesi sumber yang dipilih akan diterapkan ke semua jadwal
+                            tercentang.</p>
+                    </div>
+                    <button type="button" onclick="closeBulkAssignSesiModal()"
+                        class="text-gray-500 hover:text-gray-700">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                        Sistem akan membuat sesi duplikat sesuai tanggal masing-masing jadwal, lalu enroll siswa dari
+                        peserta sesi sumber.
+                    </div>
+
+                    @if (($sourceSesiOptions ?? collect())->count() > 0)
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="text-sm text-gray-600">
+                                <span id="bulkAssignSelectedCount">0</span> jadwal dipilih
+                            </div>
+                            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <input type="checkbox" id="bulkAssignSelectAllSesi"
+                                    class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                Pilih semua sesi
+                            </label>
+                        </div>
+
+                        <div class="space-y-4">
+                            @foreach ($sourceSesiOptions->groupBy(fn($sesi) => $sesi->ruangan->nama_ruangan ?? 'Ruangan tidak tersedia') as $ruanganNama => $sesiGroup)
+                                @php $groupKey = 'bulk-sesi-group-' . \Illuminate\Support\Str::slug($ruanganNama); @endphp
+                                <div class="border border-emerald-200 rounded-md overflow-hidden">
+                                    <div
+                                        class="flex items-center justify-between gap-3 px-4 py-3 bg-emerald-100/70 border-b border-emerald-200">
+                                        <div>
+                                            <div class="text-sm font-semibold text-emerald-900">{{ $ruanganNama }}</div>
+                                            <div class="text-xs text-emerald-700">{{ $sesiGroup->count() }} sesi sumber
+                                            </div>
+                                        </div>
+                                        <label
+                                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-800">
+                                            <input type="checkbox"
+                                                class="bulk-assign-sesi-group rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                data-group="{{ $groupKey }}">
+                                            Pilih grup
+                                        </label>
+                                    </div>
+                                    <div class="divide-y divide-emerald-100">
+                                        @foreach ($sesiGroup as $sesiOption)
+                                            <label
+                                                class="flex items-start gap-3 p-3 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer">
+                                                <input type="checkbox" value="{{ $sesiOption->id }}"
+                                                    class="bulk-assign-sesi-checkbox mt-1 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                    data-group="{{ $groupKey }}">
+                                                <span class="flex-1">
+                                                    <span
+                                                        class="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
+                                                        <span>{{ $sesiOption->nama_sesi }}</span>
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                            <i class="fa-solid fa-layer-group mr-1"></i>Sesi Sumber
+                                                        </span>
+                                                    </span>
+                                                    <span class="block text-xs text-gray-500">
+                                                        {{ $sesiOption->kode_sesi }} |
+                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_mulai)->format('H:i') }}
+                                                        -
+                                                        {{ \Carbon\Carbon::parse($sesiOption->waktu_selesai)->format('H:i') }}
+                                                        |
+                                                        {{ $sesiOption->sesi_ruangan_siswa_count }} siswa
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-8 text-gray-500">
+                            Belum ada sesi ruangan sumber pada filter tahun ajaran/paket ini.
+                        </div>
+                    @endif
+
+                    <div id="bulkAssignProgress" class="hidden rounded-md border border-blue-200 bg-blue-50 p-3">
+                        <div class="flex items-center justify-between gap-3 text-sm font-medium text-blue-900">
+                            <span id="bulkAssignProgressText">Menunggu proses...</span>
+                            <span id="bulkAssignProgressPercent">0%</span>
+                        </div>
+                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-blue-100">
+                            <div id="bulkAssignProgressBar" class="h-2 rounded-full bg-blue-600 transition-all"
+                                style="width: 0%"></div>
+                        </div>
+                        <div id="bulkAssignLog" class="mt-3 max-h-40 overflow-y-auto space-y-1 text-xs text-gray-700">
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button id="bulkAssignRetryButton" type="button" onclick="retryBulkAssignFromFailedBatch()"
+                                class="hidden px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs">
+                                Coba Lagi dari batch gagal
+                            </button>
+                            <button id="bulkAssignRefreshButton" type="button" onclick="window.location.reload()"
+                                class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs">
+                                Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 px-5 py-4 border-t bg-gray-50">
+                    <button type="button" onclick="closeBulkAssignSesiModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Batal
+                    </button>
+                    <button id="bulkAssignSubmitButton" type="button" onclick="bulkAssignSesiAndEnroll()"
+                        @disabled(($sourceSesiOptions ?? collect())->isEmpty())
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md">
+                        Assign Sesi dan Enroll
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Susulan Wizard Modal --}}
@@ -312,6 +443,25 @@
             menu.classList.toggle('hidden');
         }
 
+        function clearBulkGeneratedInputs() {
+            document.querySelectorAll('#bulk-action-form .bulk-generated-input').forEach(input => input.remove());
+            document.getElementById('bulk-new-status').value = '';
+        }
+
+        function appendBulkInput(form, name, value) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = name;
+            hiddenInput.value = value;
+            hiddenInput.classList.add('bulk-generated-input');
+            form.appendChild(hiddenInput);
+        }
+
+        const bulkAssignChunkUrl = @json(route('naskah.jadwal.bulk-assign-sesi-enroll.chunk'));
+        const bulkAssignCsrfToken = @json(csrf_token());
+        const bulkAssignBatchSize = 2;
+        let bulkAssignState = null;
+
         function bulkStatusChange(newStatus) {
             const checkedBoxes = document.querySelectorAll('.jadwal-checkbox:checked');
             if (checkedBoxes.length === 0) {
@@ -330,16 +480,13 @@
                     `Apakah Anda yakin ingin mengubah status ${checkedBoxes.length} jadwal ujian menjadi ${statusText[newStatus]}?`
                 )) {
                 const form = document.getElementById('bulk-action-form');
+                clearBulkGeneratedInputs();
                 document.getElementById('bulk-action-type').value = 'status_change';
                 document.getElementById('bulk-new-status').value = newStatus;
 
                 // Add selected jadwal IDs to form
                 checkedBoxes.forEach(checkbox => {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'jadwal_ids[]';
-                    hiddenInput.value = checkbox.value;
-                    form.appendChild(hiddenInput);
+                    appendBulkInput(form, 'jadwal_ids[]', checkbox.value);
                 });
 
                 form.submit();
@@ -357,15 +504,12 @@
                     `Apakah Anda yakin ingin menghapus ${checkedBoxes.length} jadwal ujian? Aksi ini tidak dapat dibatalkan.`
                 )) {
                 const form = document.getElementById('bulk-action-form');
+                clearBulkGeneratedInputs();
                 document.getElementById('bulk-action-type').value = 'delete';
 
                 // Add selected jadwal IDs to form
                 checkedBoxes.forEach(checkbox => {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'jadwal_ids[]';
-                    hiddenInput.value = checkbox.value;
-                    form.appendChild(hiddenInput);
+                    appendBulkInput(form, 'jadwal_ids[]', checkbox.value);
                 });
 
                 form.submit();
@@ -383,20 +527,275 @@
                     `Apakah Anda yakin ingin menghapus paksa ${checkedBoxes.length} jadwal ujian beserta hasil ujiannya? Aksi ini tidak dapat dibatalkan.`
                 )) {
                 const form = document.getElementById('bulk-action-form');
+                clearBulkGeneratedInputs();
                 document.getElementById('bulk-action-type').value = 'force_delete';
 
                 // Add selected jadwal IDs to form
                 checkedBoxes.forEach(checkbox => {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'jadwal_ids[]';
-                    hiddenInput.value = checkbox.value;
-                    form.appendChild(hiddenInput);
+                    appendBulkInput(form, 'jadwal_ids[]', checkbox.value);
                 });
 
                 form.submit();
             }
         }
+
+        function openBulkAssignSesiModal() {
+            const checkedBoxes = document.querySelectorAll('.jadwal-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('Pilih minimal satu jadwal ujian');
+                return;
+            }
+
+            const selectedCount = document.getElementById('bulkAssignSelectedCount');
+            if (selectedCount) {
+                selectedCount.textContent = checkedBoxes.length;
+            }
+            resetBulkAssignProgress();
+            document.getElementById('bulkAssignSesiModal').classList.remove('hidden');
+            document.getElementById('bulkAssignSesiModal').classList.add('flex');
+            document.getElementById('bulk-dropdown-menu').classList.add('hidden');
+        }
+
+        function closeBulkAssignSesiModal() {
+            if (bulkAssignState?.isProcessing) {
+                alert('Proses bulk assign masih berjalan. Tunggu sampai batch selesai atau gagal.');
+                return;
+            }
+
+            document.getElementById('bulkAssignSesiModal').classList.add('hidden');
+            document.getElementById('bulkAssignSesiModal').classList.remove('flex');
+        }
+
+        function chunkArray(items, size) {
+            const chunks = [];
+            for (let index = 0; index < items.length; index += size) {
+                chunks.push(items.slice(index, index + size));
+            }
+            return chunks;
+        }
+
+        function resetBulkAssignProgress() {
+            if (bulkAssignState?.isProcessing) {
+                return;
+            }
+
+            bulkAssignState = null;
+            document.getElementById('bulkAssignProgress')?.classList.add('hidden');
+            document.getElementById('bulkAssignRetryButton')?.classList.add('hidden');
+            document.getElementById('bulkAssignRefreshButton')?.classList.add('hidden');
+            document.getElementById('bulkAssignLog').innerHTML = '';
+            setBulkAssignProgress(0, 1, 'Menunggu proses...');
+        }
+
+        function setBulkAssignProcessing(isProcessing) {
+            bulkAssignState = bulkAssignState || {};
+            bulkAssignState.isProcessing = isProcessing;
+
+            document.getElementById('bulkAssignSubmitButton').disabled = isProcessing;
+            document.querySelectorAll(
+                '.bulk-assign-sesi-checkbox, .bulk-assign-sesi-group, #bulkAssignSelectAllSesi, .jadwal-checkbox'
+            ).forEach((checkbox) => {
+                checkbox.disabled = isProcessing;
+            });
+        }
+
+        function setBulkAssignProgress(processed, total, text = null) {
+            const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+            document.getElementById('bulkAssignProgressBar').style.width = `${percent}%`;
+            document.getElementById('bulkAssignProgressPercent').textContent = `${percent}%`;
+            if (text) {
+                document.getElementById('bulkAssignProgressText').textContent = text;
+            }
+        }
+
+        function appendBulkAssignLog(message, type = 'info') {
+            const log = document.getElementById('bulkAssignLog');
+            const item = document.createElement('div');
+            const colorClass = {
+                success: 'text-green-700',
+                warning: 'text-amber-700',
+                error: 'text-red-700',
+                info: 'text-gray-700',
+            } [type] || 'text-gray-700';
+
+            item.className = colorClass;
+            item.textContent = message;
+            log.appendChild(item);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function collectBulkAssignTotals(data) {
+            const totals = bulkAssignState.totals;
+            totals.processed += data.processed || 0;
+            totals.attached += data.attached || 0;
+            totals.enrolled += data.enrolled || 0;
+            totals.updated += data.updated || 0;
+            totals.skipped += data.skipped || 0;
+            totals.warnings += (data.warnings || []).length;
+
+            (data.warnings || []).forEach((warning) => appendBulkAssignLog(warning, 'warning'));
+        }
+
+        async function runBulkAssignChunks(startIndex = 0) {
+            document.getElementById('bulkAssignRetryButton')?.classList.add('hidden');
+            document.getElementById('bulkAssignRefreshButton')?.classList.add('hidden');
+            setBulkAssignProcessing(true);
+
+            const chunks = bulkAssignState.chunks;
+            const totalJadwal = bulkAssignState.jadwalIds.length;
+            let processedJadwal = startIndex * bulkAssignBatchSize;
+
+            for (let index = startIndex; index < chunks.length; index++) {
+                const chunk = chunks[index];
+                bulkAssignState.currentIndex = index;
+                processedJadwal = Math.min(index * bulkAssignBatchSize, totalJadwal);
+                setBulkAssignProgress(
+                    processedJadwal,
+                    totalJadwal,
+                    `Memproses ${processedJadwal}/${totalJadwal} jadwal (batch ${index + 1}/${chunks.length})`
+                );
+
+                try {
+                    const response = await fetch(bulkAssignChunkUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': bulkAssignCsrfToken,
+                        },
+                        body: JSON.stringify({
+                            jadwal_ids: chunk,
+                            sesi_ids: bulkAssignState.sesiIds,
+                            chunk_index: index,
+                            total_chunks: chunks.length,
+                        }),
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        const errors = data.errors?.length ? data.errors : ['Batch gagal diproses.'];
+                        errors.forEach((error) => appendBulkAssignLog(error, 'error'));
+                        document.getElementById('bulkAssignRetryButton')?.classList.remove('hidden');
+                        setBulkAssignProgress(
+                            processedJadwal,
+                            totalJadwal,
+                            `Berhenti di batch ${index + 1}/${chunks.length}`
+                        );
+                        setBulkAssignProcessing(false);
+                        return;
+                    }
+
+                    collectBulkAssignTotals(data);
+                    processedJadwal = Math.min(processedJadwal + chunk.length, totalJadwal);
+                    appendBulkAssignLog(
+                        `Batch ${index + 1}/${chunks.length}: ${data.processed || 0} jadwal diproses, ${data.attached || 0} sesi, ${data.enrolled || 0} enroll.`,
+                        'success'
+                    );
+                    setBulkAssignProgress(
+                        processedJadwal,
+                        totalJadwal,
+                        `Memproses ${processedJadwal}/${totalJadwal} jadwal`
+                    );
+                } catch (error) {
+                    appendBulkAssignLog(`Batch ${index + 1} gagal: ${error.message}`, 'error');
+                    document.getElementById('bulkAssignRetryButton')?.classList.remove('hidden');
+                    setBulkAssignProgress(
+                        processedJadwal,
+                        totalJadwal,
+                        `Berhenti di batch ${index + 1}/${chunks.length}`
+                    );
+                    setBulkAssignProcessing(false);
+                    return;
+                }
+            }
+
+            const totals = bulkAssignState.totals;
+            setBulkAssignProgress(totalJadwal, totalJadwal, `Selesai memproses ${totalJadwal} jadwal`);
+            appendBulkAssignLog(
+                `Selesai: ${totals.attached} sesi ditambahkan, ${totals.enrolled} siswa di-enroll, ${totals.updated} enrollment diperbarui, ${totals.skipped} siswa dilewati.`,
+                'success'
+            );
+            if (totals.warnings > 0) {
+                appendBulkAssignLog(`${totals.warnings} warning tercatat selama proses.`, 'warning');
+            }
+            document.getElementById('bulkAssignRefreshButton')?.classList.remove('hidden');
+            setBulkAssignProcessing(false);
+        }
+
+        function retryBulkAssignFromFailedBatch() {
+            if (!bulkAssignState || bulkAssignState.currentIndex === undefined) {
+                return;
+            }
+
+            runBulkAssignChunks(bulkAssignState.currentIndex);
+        }
+
+        async function bulkAssignSesiAndEnroll() {
+            const checkedJadwal = Array.from(document.querySelectorAll('.jadwal-checkbox:checked'));
+            const checkedSesi = Array.from(document.querySelectorAll('.bulk-assign-sesi-checkbox:checked'));
+
+            if (checkedJadwal.length === 0) {
+                alert('Pilih minimal satu jadwal ujian');
+                return;
+            }
+
+            if (checkedSesi.length === 0) {
+                alert('Pilih minimal satu sesi sumber');
+                return;
+            }
+
+            if (!confirm(
+                    `Assign ${checkedSesi.length} sesi sumber ke ${checkedJadwal.length} jadwal dan enroll siswa secara massal?`
+                )) {
+                return;
+            }
+
+            const jadwalIds = checkedJadwal.map((checkbox) => checkbox.value);
+            const sesiIds = checkedSesi.map((checkbox) => checkbox.value);
+
+            bulkAssignState = {
+                jadwalIds,
+                sesiIds,
+                chunks: chunkArray(jadwalIds, bulkAssignBatchSize),
+                currentIndex: 0,
+                isProcessing: false,
+                totals: {
+                    processed: 0,
+                    attached: 0,
+                    enrolled: 0,
+                    updated: 0,
+                    skipped: 0,
+                    warnings: 0,
+                },
+            };
+
+            document.getElementById('bulkAssignProgress')?.classList.remove('hidden');
+            document.getElementById('bulkAssignLog').innerHTML = '';
+            appendBulkAssignLog(
+                `Mulai memproses ${jadwalIds.length} jadwal dalam ${bulkAssignState.chunks.length} batch.`,
+                'info'
+            );
+            await runBulkAssignChunks(0);
+        }
+
+        document.getElementById('bulkAssignSelectAllSesi')?.addEventListener('change', function() {
+            document.querySelectorAll('.bulk-assign-sesi-checkbox, .bulk-assign-sesi-group').forEach((checkbox) => {
+                checkbox.checked = this.checked;
+            });
+        });
+
+        document.querySelectorAll('.bulk-assign-sesi-group').forEach((groupCheckbox) => {
+            groupCheckbox.addEventListener('change', function() {
+                document.querySelectorAll(`.bulk-assign-sesi-checkbox[data-group="${this.dataset.group}"]`)
+                    .forEach((checkbox) => checkbox.checked = this.checked);
+            });
+        });
+
+        document.getElementById('bulkAssignSesiModal')?.addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeBulkAssignSesiModal();
+            }
+        });
 
 
         // Close dropdown when clicking outside

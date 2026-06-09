@@ -63,7 +63,12 @@ class KehadiranController extends Controller
             });
         }
 
-
+        // Nama sesi dibuat unik agar filter ringkas walau sesi tersebar di beberapa ruangan.
+        if ($request->filled('nama_sesi')) {
+            $query->whereHas('sesiRuangan', function ($q) use ($request) {
+                $q->where('nama_sesi', $request->nama_sesi);
+            });
+        }
 
         // Tingkat
         if ($request->filled('tingkat')) {
@@ -89,10 +94,19 @@ class KehadiranController extends Controller
             ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
             ->orderBy('nama_ruangan')
             ->get();
+        $namaSesiList = SesiRuangan::query()
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->when($paketUjianId, fn($q) => $q->whereHas('jadwalUjians', fn($jadwal) => $jadwal->where('paket_ujian_id', $paketUjianId)))
+            ->when($request->filled('ruangan_id'), fn($q) => $q->where('ruangan_id', $request->ruangan_id))
+            ->whereNotNull('nama_sesi')
+            ->where('nama_sesi', '!=', '')
+            ->distinct()
+            ->orderBy('nama_sesi')
+            ->pluck('nama_sesi');
         $jurusan = Kelas::forTahunAjaran($tahunAjaranId)->select('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan');
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'jurusan', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
+        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'namaSesiList', 'jurusan', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
     }
 
     /**

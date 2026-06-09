@@ -58,6 +58,8 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::get('jadwal/batch-update-kelas-target', [UpdateJadwalTargetKelasController::class, 'index'])->name('jadwal.batch-update-kelas-target');
     Route::post('jadwal/batch-update-kelas-target', [UpdateJadwalTargetKelasController::class, 'update'])->name('jadwal.batch-update-kelas-target.update');
     // Bulk action for jadwal
+    Route::post('jadwal/bulk-assign-sesi-enroll/chunk', [JadwalUjianController::class, 'bulkAssignSourceSesiAndEnrollChunk'])
+        ->name('jadwal.bulk-assign-sesi-enroll.chunk');
     Route::post('jadwal/bulk-action', [JadwalUjianController::class, 'bulkAction'])->name('jadwal.bulk-action');
     Route::delete('jadwal/{jadwal}/force', [JadwalUjianController::class, 'forceDestroy'])
         ->name('jadwal.force-destroy');

@@ -91,3 +91,7 @@ Each user type has specific access restrictions and redirects after login.
 ## License
 
 The application is proprietary software. All rights reserved.
+
+## Test and Documentation Files
+locate to /test_and_documentation
+

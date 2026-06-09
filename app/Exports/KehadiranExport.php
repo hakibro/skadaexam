@@ -68,6 +68,12 @@ class KehadiranExport implements FromCollection, WithHeadings, WithMapping
             });
         }
 
+        if ($request->filled('nama_sesi')) {
+            $query->whereHas('sesiRuangan', function ($q) use ($request) {
+                $q->where('nama_sesi', $request->nama_sesi);
+            });
+        }
+
         if ($request->filled('tingkat')) {
             $query->whereHas('siswa.kelas', function ($q) use ($request) {
                 $q->where('tingkat', $request->tingkat);

@@ -87,7 +87,7 @@ class JadwalUjianController extends Controller
             });
         }
 
-        $perPage = $request->get('per_page', 30); // default 30
+        $perPage = $request->get('per_page', 50); // default 50
         $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate($perPage);
 
         $mapels = Mapel::forTahunAjaran($tahunAjaranId)->orderBy('nama_mapel', 'asc')->get();
@@ -95,8 +95,16 @@ class JadwalUjianController extends Controller
             ->orderByDesc('tanggal_mulai')
             ->orderBy('nama')
             ->get();
+        $sourceSesiOptions = SesiRuangan::with(['ruangan'])
+            ->withCount('sesiRuanganSiswa')
+            ->where('sumber', 'sumber')
+            ->when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->when($paketUjianId, fn($query) => $query->where('paket_ujian_id', $paketUjianId))
+            ->orderBy('ruangan_id')
+            ->orderBy('waktu_mulai')
+            ->get();
 
-        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'activeYear', 'showAllPaket'));
+        return view('features.naskah.jadwal.index', compact('jadwalUjians', 'mapels', 'perPage', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId', 'activeYear', 'showAllPaket', 'sourceSesiOptions'));
     }
 
     /**
@@ -510,99 +518,13 @@ class JadwalUjianController extends Controller
         DB::beginTransaction();
 
         try {
-            $attachedCount = 0;
-            $enrolledCount = 0;
-            $skippedCount = 0;
-
-            $sourceSesis = SesiRuangan::with(['sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'])
-                ->whereIn('id', $request->sesi_ids)
-                ->where('sumber', 'sumber')
-                ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
-                ->when($jadwal->paket_ujian_id, fn($query) => $query->where('paket_ujian_id', $jadwal->paket_ujian_id), fn($query) => $query->whereNull('paket_ujian_id'))
-                ->get();
-
-            foreach ($sourceSesis as $sourceSesi) {
-                $duplicateSesi = SesiRuangan::where('sumber', $sourceSesi->kode_sesi)
-                    ->whereHas('jadwalUjians', function ($query) use ($jadwal) {
-                        $query->whereDate('jadwal_ujian.tanggal', $jadwal->tanggal->toDateString());
-                    })
-                    ->with('sesiRuanganSiswa')
-                    ->first();
-
-                if (!$duplicateSesi) {
-                    $duplicateSesi = SesiRuangan::create([
-                        'tahun_ajaran_id' => $jadwal->tahun_ajaran_id,
-                        'paket_ujian_id' => $jadwal->paket_ujian_id,
-                        'ruangan_id' => $sourceSesi->ruangan_id,
-                        'nama_sesi' => $sourceSesi->nama_sesi,
-                        'waktu_mulai' => $sourceSesi->waktu_mulai,
-                        'waktu_selesai' => $sourceSesi->waktu_selesai,
-                        'status' => 'belum_mulai',
-                        'sumber' => $sourceSesi->kode_sesi,
-                        'pengaturan' => $sourceSesi->pengaturan,
-                    ]);
-                }
-
-                foreach ($sourceSesi->sesiRuanganSiswa as $assignment) {
-                    $duplicateSesi->sesiRuanganSiswa()->firstOrCreate(
-                        ['siswa_id' => $assignment->siswa_id],
-                        [
-                            'status_kehadiran' => 'tidak_hadir',
-                            'keterangan' => $assignment->keterangan,
-                        ]
-                    );
-                }
-
-                $duplicateSesi->load('sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas');
-
-                if (!$jadwal->sesiRuangans()->where('sesi_ruangan.id', $duplicateSesi->id)->exists()) {
-                    $jadwal->sesiRuangans()->attach($duplicateSesi->id, [
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    $attachedCount++;
-                }
-
-                foreach ($duplicateSesi->sesiRuanganSiswa as $assignment) {
-                    if (!$this->isSiswaEligibleForJadwal($assignment->siswa, $jadwal)) {
-                        $skippedCount++;
-                        continue;
-                    }
-
-                    $enrollment = EnrollmentUjian::withTrashed()
-                        ->where('jadwal_ujian_id', $jadwal->id)
-                        ->where('siswa_id', $assignment->siswa_id)
-                        ->first();
-
-                    if (!$enrollment) {
-                        EnrollmentUjian::create([
-                            'siswa_id' => $assignment->siswa_id,
-                            'jadwal_ujian_id' => $jadwal->id,
-                            'sesi_ruangan_id' => $duplicateSesi->id,
-                            'status_enrollment' => 'enrolled',
-                            'catatan' => 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
-                        ]);
-                        $enrolledCount++;
-                        continue;
-                    }
-
-                    if ($enrollment->trashed()) {
-                        $enrollment->restore();
-                    }
-
-                    $enrollment->update([
-                        'sesi_ruangan_id' => $duplicateSesi->id,
-                        'status_enrollment' => $enrollment->status_enrollment ?: 'enrolled',
-                        'catatan' => $enrollment->catatan ?: 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
-                    ]);
-                }
-            }
+            $result = $this->assignSourceSesiAndEnrollForJadwal($jadwal, $request->sesi_ids);
 
             DB::commit();
 
-            $message = "Berhasil menambahkan {$attachedCount} sesi dan {$enrolledCount} siswa ke ujian.";
-            if ($skippedCount > 0) {
-                $message .= " {$skippedCount} siswa dilewati karena tingkat/jurusan tidak sesuai.";
+            $message = "Berhasil menambahkan {$result['attached']} sesi dan {$result['enrolled']} siswa ke ujian.";
+            if ($result['skipped'] > 0) {
+                $message .= " {$result['skipped']} siswa dilewati karena tingkat/jurusan tidak sesuai.";
             }
 
             return redirect()->route('naskah.jadwal.show', $jadwal->id)
@@ -696,6 +618,118 @@ class JadwalUjianController extends Controller
         };
     }
 
+    private function assignSourceSesiAndEnrollForJadwal(JadwalUjian $jadwal, array $sesiIds): array
+    {
+        $attachedCount = 0;
+        $enrolledCount = 0;
+        $updatedCount = 0;
+        $skippedCount = 0;
+
+        $sourceSesis = SesiRuangan::with(['sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas'])
+            ->whereIn('id', $sesiIds)
+            ->where('sumber', 'sumber')
+            ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+            ->when(
+                $jadwal->paket_ujian_id,
+                fn($query) => $query->where('paket_ujian_id', $jadwal->paket_ujian_id),
+                fn($query) => $query->whereNull('paket_ujian_id')
+            )
+            ->get();
+
+        foreach ($sourceSesis as $sourceSesi) {
+            $duplicateSesi = SesiRuangan::where('sumber', $sourceSesi->kode_sesi)
+                ->where('tahun_ajaran_id', $jadwal->tahun_ajaran_id)
+                ->when(
+                    $jadwal->paket_ujian_id,
+                    fn($query) => $query->where('paket_ujian_id', $jadwal->paket_ujian_id),
+                    fn($query) => $query->whereNull('paket_ujian_id')
+                )
+                ->whereHas('jadwalUjians', function ($query) use ($jadwal) {
+                    $query->whereDate('jadwal_ujian.tanggal', $jadwal->tanggal->toDateString());
+                })
+                ->with('sesiRuanganSiswa')
+                ->first();
+
+            if (!$duplicateSesi) {
+                $duplicateSesi = SesiRuangan::create([
+                    'tahun_ajaran_id' => $jadwal->tahun_ajaran_id,
+                    'paket_ujian_id' => $jadwal->paket_ujian_id,
+                    'ruangan_id' => $sourceSesi->ruangan_id,
+                    'nama_sesi' => $sourceSesi->nama_sesi,
+                    'waktu_mulai' => $sourceSesi->waktu_mulai,
+                    'waktu_selesai' => $sourceSesi->waktu_selesai,
+                    'status' => 'belum_mulai',
+                    'sumber' => $sourceSesi->kode_sesi,
+                    'pengaturan' => $sourceSesi->pengaturan,
+                ]);
+            }
+
+            foreach ($sourceSesi->sesiRuanganSiswa as $assignment) {
+                $duplicateSesi->sesiRuanganSiswa()->firstOrCreate(
+                    ['siswa_id' => $assignment->siswa_id],
+                    [
+                        'status_kehadiran' => 'tidak_hadir',
+                        'keterangan' => $assignment->keterangan,
+                    ]
+                );
+            }
+
+            $duplicateSesi->load('sesiRuanganSiswa.siswa.kelas', 'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas');
+
+            if (!$jadwal->sesiRuangans()->where('sesi_ruangan.id', $duplicateSesi->id)->exists()) {
+                $jadwal->sesiRuangans()->attach($duplicateSesi->id, [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $attachedCount++;
+            }
+
+            foreach ($duplicateSesi->sesiRuanganSiswa as $assignment) {
+                if (!$this->isSiswaEligibleForJadwal($assignment->siswa, $jadwal)) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $enrollment = EnrollmentUjian::withTrashed()
+                    ->where('jadwal_ujian_id', $jadwal->id)
+                    ->where('siswa_id', $assignment->siswa_id)
+                    ->first();
+
+                if (!$enrollment) {
+                    EnrollmentUjian::create([
+                        'siswa_id' => $assignment->siswa_id,
+                        'jadwal_ujian_id' => $jadwal->id,
+                        'sesi_ruangan_id' => $duplicateSesi->id,
+                        'status_enrollment' => 'enrolled',
+                        'catatan' => 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
+                    ]);
+                    $enrolledCount++;
+                    continue;
+                }
+
+                if ($enrollment->trashed()) {
+                    $enrollment->restore();
+                    $enrolledCount++;
+                }
+
+                $enrollment->update([
+                    'sesi_ruangan_id' => $duplicateSesi->id,
+                    'status_enrollment' => $enrollment->status_enrollment ?: 'enrolled',
+                    'catatan' => $enrollment->catatan ?: 'Enrolled dari sesi sumber ' . $sourceSesi->kode_sesi,
+                ]);
+                $updatedCount++;
+            }
+        }
+
+        return [
+            'attached' => $attachedCount,
+            'enrolled' => $enrolledCount,
+            'updated' => $updatedCount,
+            'skipped' => $skippedCount,
+            'source_count' => $sourceSesis->count(),
+        ];
+    }
+
     /**
      * Detach a sesi from this jadwal
      */
@@ -770,13 +804,83 @@ class JadwalUjianController extends Controller
     /**
      * Bulk actions for jadwal ujian
      */
+    public function bulkAssignSourceSesiAndEnrollChunk(Request $request)
+    {
+        $validated = $request->validate([
+            'jadwal_ids' => 'required|array|min:1|max:3',
+            'jadwal_ids.*' => 'exists:jadwal_ujian,id',
+            'sesi_ids' => 'required|array|min:1',
+            'sesi_ids.*' => 'exists:sesi_ruangan,id',
+            'chunk_index' => 'nullable|integer|min:0',
+            'total_chunks' => 'nullable|integer|min:1',
+        ]);
+
+        $summary = [
+            'success' => true,
+            'chunk_index' => $validated['chunk_index'] ?? null,
+            'total_chunks' => $validated['total_chunks'] ?? null,
+            'processed' => 0,
+            'attached' => 0,
+            'enrolled' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'warnings' => [],
+            'errors' => [],
+        ];
+
+        try {
+            DB::transaction(function () use ($validated, &$summary) {
+                $jadwals = JadwalUjian::with(['tahunAjaran', 'mapel'])
+                    ->whereIn('id', $validated['jadwal_ids'])
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($validated['jadwal_ids'] as $jadwalId) {
+                    $jadwal = $jadwals->get((int) $jadwalId);
+
+                    if (!$jadwal) {
+                        $summary['errors'][] = "Jadwal ID {$jadwalId} tidak ditemukan.";
+                        continue;
+                    }
+
+                    if ($jadwal->tahunAjaran?->isReadOnly()) {
+                        $summary['warnings'][] = "Jadwal '{$jadwal->judul}' dilewati karena berada di tahun ajaran arsip.";
+                        continue;
+                    }
+
+                    $result = $this->assignSourceSesiAndEnrollForJadwal($jadwal, $validated['sesi_ids']);
+
+                    if ($result['source_count'] === 0) {
+                        $summary['warnings'][] = "Tidak ada sesi sumber yang cocok untuk jadwal '{$jadwal->judul}'.";
+                        continue;
+                    }
+
+                    $summary['processed']++;
+                    $summary['attached'] += $result['attached'];
+                    $summary['enrolled'] += $result['enrolled'];
+                    $summary['updated'] += $result['updated'];
+                    $summary['skipped'] += $result['skipped'];
+                }
+            });
+
+            return response()->json($summary);
+        } catch (\Throwable $e) {
+            $summary['success'] = false;
+            $summary['errors'][] = 'Terjadi kesalahan saat memproses batch: ' . $e->getMessage();
+
+            return response()->json($summary, 500);
+        }
+    }
+
     public function bulkAction(Request $request)
     {
         $request->validate([
-            'action' => 'required|in:delete,force_delete,status_change',
+            'action' => 'required|in:delete,force_delete,status_change,assign_source_sesi_enroll',
             'jadwal_ids' => 'required|array|min:1',
             'jadwal_ids.*' => 'exists:jadwal_ujian,id',
-            'new_status' => 'nullable|in:draft,aktif,nonaktif,selesai'
+            'new_status' => 'nullable|in:draft,aktif,nonaktif,selesai',
+            'sesi_ids' => 'required_if:action,assign_source_sesi_enroll|array|min:1',
+            'sesi_ids.*' => 'exists:sesi_ruangan,id',
         ]);
 
         $jadwalIds = $request->jadwal_ids;
@@ -798,6 +902,21 @@ class JadwalUjianController extends Controller
                     $count = $this->bulkForceDelete($jadwalIds);
                     return redirect()->route('naskah.jadwal.index')
                         ->with('success', "Berhasil menghapus paksa {$count} jadwal ujian");
+                case 'assign_source_sesi_enroll':
+                    $result = $this->bulkAssignSourceSesiAndEnroll($jadwalIds, $request->sesi_ids ?? []);
+                    $message = "Berhasil memproses {$result['jadwal_processed']} jadwal: {$result['attached']} sesi ditambahkan, {$result['enrolled']} siswa di-enroll";
+                    if ($result['updated'] > 0) {
+                        $message .= ", {$result['updated']} enrollment diperbarui";
+                    }
+                    if ($result['skipped'] > 0) {
+                        $message .= ", {$result['skipped']} siswa dilewati";
+                    }
+                    if (!empty($result['warnings'])) {
+                        session()->flash('warning', implode(' ', $result['warnings']));
+                    }
+
+                    return redirect()->route('naskah.jadwal.index')
+                        ->with('success', $message);
 
                 default:
                     return redirect()->route('naskah.jadwal.index')
@@ -841,6 +960,46 @@ class JadwalUjianController extends Controller
         }
 
         return $count;
+    }
+
+    private function bulkAssignSourceSesiAndEnroll(array $jadwalIds, array $sesiIds): array
+    {
+        $summary = [
+            'jadwal_processed' => 0,
+            'attached' => 0,
+            'enrolled' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'warnings' => [],
+        ];
+
+        DB::transaction(function () use ($jadwalIds, $sesiIds, &$summary) {
+            $jadwals = JadwalUjian::with(['tahunAjaran', 'mapel'])
+                ->whereIn('id', $jadwalIds)
+                ->get();
+
+            foreach ($jadwals as $jadwal) {
+                if ($jadwal->tahunAjaran?->isReadOnly()) {
+                    $summary['warnings'][] = "Jadwal '{$jadwal->judul}' dilewati karena berada di tahun ajaran arsip.";
+                    continue;
+                }
+
+                $result = $this->assignSourceSesiAndEnrollForJadwal($jadwal, $sesiIds);
+
+                if ($result['source_count'] === 0) {
+                    $summary['warnings'][] = "Tidak ada sesi sumber yang cocok untuk jadwal '{$jadwal->judul}'.";
+                    continue;
+                }
+
+                $summary['jadwal_processed']++;
+                $summary['attached'] += $result['attached'];
+                $summary['enrolled'] += $result['enrolled'];
+                $summary['updated'] += $result['updated'];
+                $summary['skipped'] += $result['skipped'];
+            }
+        });
+
+        return $summary;
     }
 
     public function forceDestroy(JadwalUjian $jadwal)

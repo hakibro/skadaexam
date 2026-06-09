@@ -117,6 +117,23 @@
                     </select>
                 </div>
 
+                <!-- Nama Sesi -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Nama Sesi
+                    </label>
+                    <select name="nama_sesi"
+                        class="w-full rounded-lg border-gray-300 text-sm
+                       focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        <option value="">Semua</option>
+                        @foreach ($namaSesiList as $namaSesi)
+                            <option value="{{ $namaSesi }}" {{ request('nama_sesi') === $namaSesi ? 'selected' : '' }}>
+                                {{ $namaSesi }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Tingkat -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
