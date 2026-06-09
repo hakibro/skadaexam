@@ -45,9 +45,11 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Paket Ujian</label>
                     <select name="paket_ujian_id" class="mt-1 w-full rounded-md border-gray-300">
-                        <option value="">Paket aktif / kosongkan</option>
+                        <option value="" @selected(old('paket_ujian_id', $defaultPaketId) === '')>Belum Terikat Paket</option>
                         @foreach ($paketUjians as $paket)
-                            <option value="{{ $paket->id }}">{{ $paket->nama }} - {{ ucfirst($paket->status) }}</option>
+                            <option value="{{ $paket->id }}" @selected((string) old('paket_ujian_id', $defaultPaketId) === (string) $paket->id)>
+                                {{ $paket->nama }} - {{ ucfirst($paket->status) }}
+                            </option>
                         @endforeach
                     </select>
                 </div>

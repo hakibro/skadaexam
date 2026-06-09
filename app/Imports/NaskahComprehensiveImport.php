@@ -79,6 +79,11 @@ class NaskahComprehensiveImport implements ToCollection, WithHeadingRow
 
                 $judulBank = $this->value($row, ['judul_bank_soal', 'bank_soal', 'judul_bank']) ?: $namaMapel . ' ' . $tingkat;
                 $bank = BankSoal::where('tahun_ajaran_id', $this->tahunAjaranId)
+                    ->when(
+                        $paket?->id,
+                        fn($query) => $query->where('paket_ujian_id', $paket->id),
+                        fn($query) => $query->whereNull('paket_ujian_id')
+                    )
                     ->where('mapel_id', $mapel->id)
                     ->where('judul', $judulBank)
                     ->first();

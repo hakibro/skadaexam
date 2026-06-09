@@ -334,13 +334,6 @@
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
                     <div class="space-y-2">
-                        @if ($beritaAcara->sesiRuangan)
-                            <a href="{{ route('koordinator.monitoring.show', $beritaAcara->sesiRuangan->id) }}"
-                                class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                <i class="fa-solid fa-eye mr-2"></i>
-                                Lihat Monitoring
-                            </a>
-                        @endif
                         <a href="{{ route('koordinator.laporan.pdf', $beritaAcara->id) }}"
                             class="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             <i class="fa-solid fa-download mr-2"></i>

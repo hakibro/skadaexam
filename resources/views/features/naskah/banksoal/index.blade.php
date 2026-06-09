@@ -110,11 +110,11 @@
                     </label>
                     <select id="paket-filter"
                         class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Semua Paket</option>
+                        <option value="__all" @selected($showAllPaket)>Semua Paket</option>
                         @foreach ($paketUjians as $paket)
                             <option value="{{ $paket->id }}"
-                                {{ request('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
-                                {{ $paket->nama }}
+                                @selected(!$showAllPaket && (string) $paketUjianId === (string) $paket->id)>
+                                {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                             </option>
                         @endforeach
                     </select>
@@ -483,7 +483,7 @@
             });
 
             // Function to apply filters
-            function applyFilters() {
+            function applyFilters(options = {}) {
                 const searchValue = searchInput.value.trim();
                 const tahunAjaranValue = tahunAjaranFilter ? tahunAjaranFilter.value : '';
                 const paketValue = paketFilter ? paketFilter.value : '';
@@ -501,8 +501,13 @@
                 if (tahunAjaranValue) url.searchParams.set('tahun_ajaran_id', tahunAjaranValue);
                 else url.searchParams.delete('tahun_ajaran_id');
 
-                if (paketValue) url.searchParams.set('paket_ujian_id', paketValue);
-                else url.searchParams.delete('paket_ujian_id');
+                if (options.resetPaket) {
+                    url.searchParams.delete('paket_ujian_id');
+                } else if (paketValue) {
+                    url.searchParams.set('paket_ujian_id', paketValue);
+                } else {
+                    url.searchParams.delete('paket_ujian_id');
+                }
 
                 if (mapelValue) url.searchParams.set('mapel_id', mapelValue); // Filter mata pelajaran
                 else url.searchParams.delete('mapel_id');
@@ -536,7 +541,9 @@
             }
 
             if (tahunAjaranFilter) {
-                tahunAjaranFilter.addEventListener('change', applyFilters);
+                tahunAjaranFilter.addEventListener('change', () => applyFilters({
+                    resetPaket: true
+                }));
             }
 
             if (tingkatFilter) {

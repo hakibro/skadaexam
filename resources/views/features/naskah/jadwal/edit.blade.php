@@ -16,6 +16,17 @@
                 </div>
 
                 <div class="p-4 sm:p-6 space-y-6">
+                    @if ($errors->any())
+                        <div class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                            <div class="font-medium">Jadwal belum tersimpan.</div>
+                            <ul class="mt-2 list-disc space-y-1 pl-5">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <!-- Status Section - Added for better visibility -->
                     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                         <div class="flex items-center">
@@ -111,7 +122,7 @@
                                     id="jumlah_soal_display">
                                     {{ $jadwal->jumlah_soal }} soal
                                 </div>
-                                <input type="hidden" name="jumlah_soal" id="jumlah_soal"
+                                <input type="hidden" id="jumlah_soal"
                                     value="{{ old('jumlah_soal', $jadwal->jumlah_soal) }}">
                             </div>
                             <p class="mt-1 text-xs text-gray-500">
@@ -155,28 +166,12 @@
                         </div>
                     </div>
 
-                    <!-- Kelas Target Section -->
-                    <div class="bg-white p-4 rounded-md border border-gray-200 mb-6">
-                        <h4 class="text-base font-medium text-gray-800 mb-3">Kelas Target</h4>
-                        <p class="text-sm text-gray-600 mb-4">Pilih kelas yang akan mengikuti ujian ini. Jika tidak ada
-                            kelas yang dipilih, sistem akan secara otomatis memilih kelas berdasarkan tingkat dan jurusan
-                            dari mata pelajaran.</p>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            @foreach ($kelasList as $kelas)
-                                <div class="flex items-start">
-                                    <input type="checkbox" name="kelas_target[]" id="kelas_{{ $kelas->id }}"
-                                        value="{{ $kelas->id }}"
-                                        {{ in_array($kelas->id, old('kelas_target', $jadwal->kelas_target ?? [])) ? 'checked' : '' }}
-                                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                    <label for="kelas_{{ $kelas->id }}" class="ml-2 block text-sm text-gray-700">
-                                        {{ $kelas->nama_kelas }}
-                                        <span class="text-xs text-gray-500">({{ $kelas->tingkat }}
-                                            {{ $kelas->jurusan }})</span>
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
+                    <div class="bg-blue-50 p-4 rounded-md border border-blue-100">
+                        <h4 class="text-base font-medium text-blue-900 mb-1">Kelas Target Otomatis</h4>
+                        <p class="text-sm text-blue-800">
+                            Kelas peserta ditentukan otomatis oleh sistem berdasarkan tingkat dan jurusan mata pelajaran
+                            yang dipilih.
+                        </p>
                     </div>
 
                     <div class="bg-gray-50 p-4 rounded-md">

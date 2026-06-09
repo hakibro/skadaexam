@@ -20,15 +20,38 @@ class PengawasAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $tahunAjaranId = app(TahunAjaranService::class)->activeId();
+        // Filter by tahun ajaran, default to active
+        $tahunAjaranId = $request->filled('tahun_ajaran_id')
+            ? $request->tahun_ajaran_id
+            : app(TahunAjaranService::class)->activeId();
+
+        // Get list of tahun ajaran for dropdown
+        $tahunAjaranList = \App\Models\TahunAjaran::orderByDesc('is_active')
+            ->orderByRaw("CASE status WHEN 'aktif' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
+            ->orderByDesc('tanggal_mulai')
+            ->orderByDesc('id')
+            ->get();
+
+        // Get paket ujian list filtered by selected tahun ajaran
+        $paketUjianList = \App\Models\PaketUjian::forTahunAjaran($tahunAjaranId)
+            ->where('status', '!=', 'arsip')
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 1 ELSE 2 END")
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+
+        // Pre-select first active paket ujian if not specified
+        $selectedPaketUjianId = $request->filled('paket_ujian_id')
+            ? $request->paket_ujian_id
+            : $paketUjianList->firstWhere('status', 'aktif')?->id;
 
         // Filter by date, default to today
         $tanggal = $request->filled('tanggal') ? $request->tanggal : now()->format('Y-m-d');
 
         // Get all session pivot data for the selected date
         // We use the pivot model directly to get all jadwals for that date
-        $pivotQuery = JadwalUjianSesiRuangan::whereHas('jadwalUjian', function ($q) use ($tanggal, $tahunAjaranId) {
+        $pivotQuery = JadwalUjianSesiRuangan::whereHas('jadwalUjian', function ($q) use ($tanggal, $tahunAjaranId, $selectedPaketUjianId) {
             $q->forTahunAjaran($tahunAjaranId)
+                ->when($selectedPaketUjianId, fn($query) => $query->where('paket_ujian_id', $selectedPaketUjianId))
                 ->whereDate('tanggal', $tanggal);
         })
             ->with(['sesiRuangan.ruangan', 'jadwalUjian.mapel', 'pengawas']);
@@ -81,6 +104,7 @@ class PengawasAssignmentController extends Controller
 
         // Pass jadwalUjians for filter dropdown if needed, or just date
         $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
+            ->when($selectedPaketUjianId, fn($query) => $query->where('paket_ujian_id', $selectedPaketUjianId))
             ->whereDate('tanggal', $tanggal)
             ->get();
 
@@ -89,7 +113,11 @@ class PengawasAssignmentController extends Controller
             'sesiRuangans',
             'availablePengawas',
             'tanggal',
-            'stats'
+            'stats',
+            'tahunAjaranList',
+            'paketUjianList',
+            'tahunAjaranId',
+            'selectedPaketUjianId'
         ));
     }
 
@@ -213,17 +241,17 @@ class PengawasAssignmentController extends Controller
                 ->whereHas('sesiRuangan', function ($q) use ($sesiRuangan) {
                     $q->where('tahun_ajaran_id', $sesiRuangan->tahun_ajaran_id)
                         ->where(function ($query) use ($sesiRuangan) {
-                        $query->where(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '<=', $sesiRuangan->waktu_mulai)
-                                ->where('waktu_selesai', '>', $sesiRuangan->waktu_mulai);
-                        })->orWhere(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '<', $sesiRuangan->waktu_selesai)
-                                ->where('waktu_selesai', '>=', $sesiRuangan->waktu_selesai);
-                        })->orWhere(function ($q) use ($sesiRuangan) {
-                            $q->where('waktu_mulai', '>=', $sesiRuangan->waktu_mulai)
-                                ->where('waktu_selesai', '<=', $sesiRuangan->waktu_selesai);
+                            $query->where(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '<=', $sesiRuangan->waktu_mulai)
+                                    ->where('waktu_selesai', '>', $sesiRuangan->waktu_mulai);
+                            })->orWhere(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '<', $sesiRuangan->waktu_selesai)
+                                    ->where('waktu_selesai', '>=', $sesiRuangan->waktu_selesai);
+                            })->orWhere(function ($q) use ($sesiRuangan) {
+                                $q->where('waktu_mulai', '>=', $sesiRuangan->waktu_mulai)
+                                    ->where('waktu_selesai', '<=', $sesiRuangan->waktu_selesai);
+                            });
                         });
-                    });
                 })
                 ->with(['jadwalUjian', 'sesiRuangan.ruangan'])
                 ->get();
@@ -556,20 +584,6 @@ class PengawasAssignmentController extends Controller
     }
 
     /**
-     * Get pengawas calendar view
-     */
-    public function calendar()
-    {
-        $pengawas = Guru::whereHas('user', function ($query) {
-            $query->whereHas('roles', function ($q) {
-                $q->where('name', 'pengawas');
-            });
-        })->orderBy('nama')->get();
-
-        return view('features.koordinator.pengawas_assignment.calendar', compact('pengawas'));
-    }
-
-    /**
      * Get all schedules for specific pengawas regardless of date
      */
     public function getAllSchedules($pengawasId)
@@ -627,74 +641,5 @@ class PengawasAssignmentController extends Controller
         }
 
         return view('features.koordinator.pengawas_assignment.all_schedules', compact('pengawas', 'groupedSessions'));
-    }
-
-    /**
-     * Get calendar events for a specific pengawas
-     */
-    public function getCalendarEvents(Request $request)
-    {
-        $request->validate([
-            'pengawas_id' => 'required|exists:guru,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date'
-        ]);
-
-        $assignments = JadwalUjianSesiRuangan::where('pengawas_id', $request->pengawas_id)
-            ->whereHas('jadwalUjian', function ($q) use ($request) {
-                $q->forTahunAjaran(app(TahunAjaranService::class)->activeId())
-                    ->whereBetween('tanggal', [$request->start_date, $request->end_date]);
-            })
-            ->with(['jadwalUjian.mapel', 'sesiRuangan.ruangan'])
-            ->get();
-
-        $events = $assignments->map(function ($assignment) {
-            $sesi = $assignment->sesiRuangan;
-            $jadwal = $assignment->jadwalUjian;
-            $examDate = $jadwal->tanggal->format('Y-m-d');
-
-            $ruangan = $sesi->ruangan ? $sesi->ruangan->nama_ruangan : 'Ruangan Tidak Diketahui';
-
-            $mapel = null;
-            if ($jadwal->mapel && isset($jadwal->mapel->nama)) {
-                $mapel = $jadwal->mapel->nama;
-            } elseif (isset($jadwal->judul)) {
-                $mapel = $jadwal->judul;
-            } else {
-                $mapel = 'Mata Pelajaran Tidak Diketahui';
-            }
-
-            $event = [
-                'id' => $assignment->id,
-                'title' => $sesi->nama_sesi . ' - ' . $ruangan,
-                'start' => $examDate . 'T' . $sesi->waktu_mulai,
-                'end' => $examDate . 'T' . $sesi->waktu_selesai,
-                'extendedProps' => [
-                    'mapel' => $mapel,
-                    'ruangan' => $ruangan,
-                ],
-                'backgroundColor' => $this->getStatusColor($sesi->status),
-                'borderColor' => $this->getStatusColor($sesi->status),
-            ];
-
-            $event['description'] = $mapel;
-            $event['mapel'] = $mapel;
-            $event['ruangan'] = $ruangan;
-
-            return $event;
-        });
-
-        return response()->json($events);
-    }
-
-    private function getStatusColor($status)
-    {
-        return match ($status) {
-            'belum_mulai' => '#3B82F6', // blue
-            'berlangsung' => '#10B981', // green
-            'selesai' => '#6B7280', // gray
-            'dibatalkan' => '#EF4444', // red
-            default => '#9CA3AF' // default gray
-        };
     }
 }

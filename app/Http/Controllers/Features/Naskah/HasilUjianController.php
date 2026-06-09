@@ -26,14 +26,16 @@ class HasilUjianController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = $this->paketUjianOptions($tahunAjaranId);
+        $paketUjianId = $this->selectedPaketUjianId($request, $paketUjians);
         $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas']);
 
         if ($tahunAjaranId) {
             $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
         }
 
-        if ($request->filled('paket_ujian_id')) {
-            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        if ($paketUjianId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $paketUjianId));
         }
 
         // Filter by jadwal ujian
@@ -103,16 +105,12 @@ class HasilUjianController extends Controller
 
         // Get unique values for filters
         $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
-            ->when($request->filled('paket_ujian_id'), fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id))
+            ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
             ->orderBy('tanggal', 'desc')
             ->get();
         $sesiRuangans = SesiRuangan::forTahunAjaran($tahunAjaranId)->orderBy('nama_sesi')->get();
         $kelasList = \App\Models\Kelas::forTahunAjaran($tahunAjaranId)->orderBy('nama_kelas', 'asc')->get();
         $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
-        $paketUjians = PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
-            ->orderByDesc('tanggal_mulai')
-            ->orderBy('nama')
-            ->get();
 
         return view('features.naskah.hasil.index', compact(
             'hasilUjians',
@@ -127,7 +125,8 @@ class HasilUjianController extends Controller
             'latestHasil',
             'tahunAjarans',
             'tahunAjaranId',
-            'paketUjians'
+            'paketUjians',
+            'paketUjianId'
         ));
     }
 
@@ -283,14 +282,16 @@ class HasilUjianController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = $this->paketUjianOptions($tahunAjaranId);
+        $paketUjianId = $this->selectedPaketUjianId($request, $paketUjians);
         $query = HasilUjian::query();
 
         if ($tahunAjaranId) {
             $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
         }
 
-        if ($request->filled('paket_ujian_id')) {
-            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        if ($paketUjianId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $paketUjianId));
         }
 
         // Apply filters just like in the index method
@@ -501,14 +502,16 @@ class HasilUjianController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = $this->paketUjianOptions($tahunAjaranId);
+        $paketUjianId = $this->selectedPaketUjianId($request, $paketUjians);
         $query = HasilUjian::with(['jadwalUjian.mapel', 'sesiRuangan', 'siswa.kelas', 'jawabanSiswas.soalUjian']);
 
         if ($tahunAjaranId) {
             $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
         }
 
-        if ($request->filled('paket_ujian_id')) {
-            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        if ($paketUjianId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $paketUjianId));
         }
 
         // Apply filters similar to index method
@@ -615,7 +618,7 @@ class HasilUjianController extends Controller
 
         // Get filters for the view
         $jadwalUjians = JadwalUjian::forTahunAjaran($tahunAjaranId)
-            ->when($request->filled('paket_ujian_id'), fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id))
+            ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
             ->orderBy('tanggal', 'desc')
             ->get();
         $kelasQuery = \App\Models\Kelas::forTahunAjaran($tahunAjaranId);
@@ -623,10 +626,6 @@ class HasilUjianController extends Controller
         $tingkatList = (clone $kelasQuery)->select('tingkat')->distinct()->whereNotNull('tingkat')->orderBy('tingkat')->pluck('tingkat');
         $jurusanList = (clone $kelasQuery)->select('jurusan')->distinct()->whereNotNull('jurusan')->orderBy('jurusan')->pluck('jurusan');
         $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
-        $paketUjians = PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
-            ->orderByDesc('tanggal_mulai')
-            ->orderBy('nama')
-            ->get();
 
         return view('features.naskah.hasil.analisis', compact(
             'hasilUjians',
@@ -653,7 +652,8 @@ class HasilUjianController extends Controller
             'jurusanList',
             'tahunAjarans',
             'tahunAjaranId',
-            'paketUjians'
+            'paketUjians',
+            'paketUjianId'
         ));
     }
 
@@ -1034,6 +1034,33 @@ class HasilUjianController extends Controller
                 $q->whereHas('kelas', fn($kelas) => $kelas->where('jurusan', $request->jurusan));
             }
         });
+    }
+
+    private function paketUjianOptions($tahunAjaranId)
+    {
+        return PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
+    }
+
+    private function selectedPaketUjianId(Request $request, $paketUjians): ?int
+    {
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $request->input('paket_ujian_id');
+
+            if ($paketUjianId === '') {
+                return null;
+            }
+
+            return $paketUjians->contains('id', (int) $paketUjianId)
+                ? (int) $paketUjianId
+                : ($paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id);
+        }
+
+        return $paketUjians->firstWhere('status', 'aktif')?->id
+            ?? $paketUjians->first()?->id;
     }
 
     private function completedStatuses(): array

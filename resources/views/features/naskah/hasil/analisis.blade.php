@@ -6,7 +6,13 @@
 
 @section('content')
     @php
-        $filterParams = request()->only(['tahun_ajaran_id', 'paket_ujian_id', 'jadwal_id', 'kelas_id', 'tingkat', 'jurusan']);
+        $filterParams = array_filter(
+            array_merge(request()->only(['tahun_ajaran_id', 'paket_ujian_id', 'jadwal_id', 'kelas_id', 'tingkat', 'jurusan']), [
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'paket_ujian_id' => $paketUjianId,
+            ]),
+            fn($value) => $value !== null && $value !== ''
+        );
         $rangeTotal = max((int) $totalHasil, 1);
     @endphp
 
@@ -45,8 +51,8 @@
                     <select id="paket_ujian_id" name="paket_ujian_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="">Semua paket</option>
                         @foreach ($paketUjians as $paket)
-                            <option value="{{ $paket->id }}" @selected(request('paket_ujian_id') == $paket->id)>
-                                {{ $paket->nama }}
+                            <option value="{{ $paket->id }}" @selected((string) $paketUjianId === (string) $paket->id)>
+                                {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                             </option>
                         @endforeach
                     </select>

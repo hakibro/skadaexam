@@ -44,6 +44,8 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::get('/download-data-siswa', [RuanganController::class, 'downloadDataSiswa'])->name('download.data.siswa');
         Route::get('/kartu-ujian', [RuanganController::class, 'examCards'])->name('kartu-ujian.index');
         Route::get('/kartu-ujian/print', [RuanganController::class, 'printExamCards'])->name('kartu-ujian.print');
+        Route::get('/cetak-sesi', [RuanganController::class, 'cetakSesiIndex'])->name('cetak-sesi.index');
+        Route::get('/cetak-sesi/print', [RuanganController::class, 'cetakSesiPrint'])->name('cetak-sesi.print');
         Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 
@@ -71,6 +73,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
                 Route::post('/', [SesiRuanganController::class, 'store'])->name('store');
                 Route::get('/{sesi}', [SesiRuanganController::class, 'show'])->name('show');
                 Route::get('/{sesi}/edit', [SesiRuanganController::class, 'edit'])->name('edit');
+                Route::put('/{sesi}/pengawas', [SesiRuanganController::class, 'updatePengawas'])->name('pengawas.update');
                 Route::put('/{sesi}', [SesiRuanganController::class, 'update'])->name('update');
                 Route::delete('/{sesi}', [SesiRuanganController::class, 'destroy'])->name('destroy');
                 Route::delete('/{sesi}/force', [SesiRuanganController::class, 'forceDelete'])->name('force-delete');

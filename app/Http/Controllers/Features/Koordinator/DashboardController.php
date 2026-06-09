@@ -67,12 +67,6 @@ class DashboardController extends Controller
             });
         })->get();
 
-        // Get ongoing sessions that need monitoring
-        $ongoingSessions = SesiRuangan::where('status', 'berlangsung')
-            ->forTahunAjaran($activeYearId)
-            ->with(['ruangan', 'sesiRuanganSiswa', 'jadwalUjians', 'jadwalUjians.mapel'])
-            ->get();
-
         // Get recent activities
         $recentActivities = $this->getRecentActivities($activeYearId);
 
@@ -82,7 +76,6 @@ class DashboardController extends Controller
             'unassignedSessions',
             'pendingBeritaAcara',
             'availablePengawas',
-            'ongoingSessions',
             'recentActivities'
         ))->with([
             'pendingAssignments' => $unassignedSessions->map(function ($session) {
@@ -90,16 +83,6 @@ class DashboardController extends Controller
                     'session_name' => $session->nama_sesi ?? 'Sesi Ujian',
                     'room_name' => $session->nama_ruangan ?? 'Ruangan',
                     'date' => $session->tanggal ? Carbon::parse($session->tanggal)->format('d M Y') : 'Hari ini',
-                ];
-            })->toArray(),
-            'activeSessions' => $ongoingSessions->map(function ($session) {
-                return [
-                    'id' => $session->id,
-                    'name' => $session->nama_sesi ?? 'Sesi Ujian',
-                    'room' => $session->ruangan->nama_ruangan ?? 'N/A',
-                    'students_present' => $session->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count(),
-                    'progress' => $session->progress ?? 0,
-                    'supervisor' => $session->pengawas_names ?? 'Belum ditentukan',
                 ];
             })->toArray()
         ]);
@@ -128,8 +111,6 @@ class DashboardController extends Controller
             'draft_berita_acara' => BeritaAcaraUjian::where('is_final', false)
                 ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($tahunAjaranId))
                 ->count(),
-
-            'ongoing_sessions' => SesiRuangan::forTahunAjaran($tahunAjaranId)->where('status', 'berlangsung')->count(),
 
             'finalized_berita_acara_today' => BeritaAcaraUjian::where('is_final', true)
                 ->whereHas('sesiRuangan', fn($query) => $query->forTahunAjaran($tahunAjaranId))

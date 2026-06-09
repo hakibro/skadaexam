@@ -5,11 +5,51 @@
 @section('page-description', 'Rekap kehadiran siswa berdasarkan sesi ujian')
 
 @section('content')
+    @php
+        $exportQuery = array_filter(
+            array_merge(request()->query(), [
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'paket_ujian_id' => $paketUjianId,
+            ]),
+            fn($value) => $value !== null && $value !== ''
+        );
+    @endphp
     <div class="space-y-6">
 
         <!-- FILTER -->
         <form method="GET" action="" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Tahun Ajaran
+                    </label>
+                    <select name="tahun_ajaran_id"
+                        class="w-full rounded-lg border-gray-300 text-sm
+                       focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        @foreach ($tahunAjarans as $tahun)
+                            <option value="{{ $tahun->id }}" @selected((string) $tahunAjaranId === (string) $tahun->id)>
+                                {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Paket Ujian
+                    </label>
+                    <select name="paket_ujian_id"
+                        class="w-full rounded-lg border-gray-300 text-sm
+                       focus:border-blue-500 focus:ring focus:ring-blue-200">
+                        <option value="">Semua Paket</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}" @selected((string) $paketUjianId === (string) $paket->id)>
+                                {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
                 <!-- Status Kehadiran -->
                 <div>
@@ -128,7 +168,7 @@
                         Reset
                     </a>
                 </div>
-                <a href="{{ route('koordinator.kehadiran.export', request()->query()) }}"
+                <a href="{{ route('koordinator.kehadiran.export', $exportQuery) }}"
                     class="inline-flex items-center px-4 py-2 rounded-lg
                        bg-green-600 text-white text-sm font-medium
                        hover:bg-green-700 focus:outline-none focus:ring focus:ring-green-300">

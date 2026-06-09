@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Features\Koordinator\DashboardController;
 // Legacy AssignmentController has been removed
-use App\Http\Controllers\Features\Koordinator\MonitoringController;
 use App\Http\Controllers\Features\Koordinator\LaporanController;
 use App\Http\Controllers\Features\Koordinator\PengawasAssignmentController;
 use App\Http\Controllers\Features\Koordinator\KehadiranController;
@@ -38,18 +37,6 @@ Route::middleware(['auth:web', 'role:admin|koordinator'])->prefix('koordinator')
         Route::get('/availability', [PengawasAssignmentController::class, 'getPengawasAvailability'])->name('availability');
         Route::get('/schedule/{pengawasId}/{tanggal}', [PengawasAssignmentController::class, 'getSchedule'])->name('schedule');
         Route::get('/schedule/{pengawasId}', [PengawasAssignmentController::class, 'getAllSchedules'])->name('all-schedules');
-        Route::get('/calendar', [PengawasAssignmentController::class, 'calendar'])->name('calendar');
-        Route::get('/calendar-events', [PengawasAssignmentController::class, 'getCalendarEvents'])->name('calendar-events');
-    });
-
-    // Live Monitoring
-    Route::prefix('monitoring')->name('monitoring.')->group(function () {
-        Route::get('/', [MonitoringController::class, 'index'])->name('index');
-        Route::get('/{sesi}', [MonitoringController::class, 'show'])->name('show');
-        Route::post('/message', [MonitoringController::class, 'sendMessage'])->name('message');
-        Route::post('/allow-reentry', [MonitoringController::class, 'allowReentry'])->name('allow-reentry');
-        Route::get('/student-detail/{studentSession}', [MonitoringController::class, 'studentDetail'])->name('student-detail');
-        Route::get('/export', [MonitoringController::class, 'export'])->name('export');
     });
 
     // Report Management

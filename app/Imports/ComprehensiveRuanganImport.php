@@ -49,7 +49,14 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
             if (empty($this->rowValue($row, ['kode_ruangan']))) {
                 // If we have kode_sesi, try to find existing session and assign student
                 if (!empty($this->rowValue($row, ['kode_sesi'])) && !empty($this->rowValue($row, ['idyayasan']))) {
-                    $sesi = SesiRuangan::where('kode_sesi', $this->rowValue($row, ['kode_sesi']))->first();
+                    $sesi = SesiRuangan::where('tahun_ajaran_id', $this->tahunAjaranId)
+                        ->where('kode_sesi', $this->rowValue($row, ['kode_sesi']))
+                        ->when(
+                            $this->paketUjianId,
+                            fn($query) => $query->where('paket_ujian_id', $this->paketUjianId),
+                            fn($query) => $query->whereNull('paket_ujian_id')
+                        )
+                        ->first();
                     if ($sesi) {
                         $this->processSiswaAssignment($row, $sesi);
                     }
@@ -161,22 +168,35 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 )
                 ->first();
 
-            // Validate time format
-            $waktuMulai = $this->formatTime($this->rowValue($row, ['waktu_mulai_sesi', 'waktu_mulai'], '00:00'));
-            $waktuSelesai = $this->formatTime($this->rowValue($row, ['waktu_selesai_sesi', 'waktu_selesai'], '00:00'));
+            $rawWaktuMulai = $this->rowValue($row, ['waktu_mulai_sesi', 'waktu_mulai']);
+            $rawWaktuSelesai = $this->rowValue($row, ['waktu_selesai_sesi', 'waktu_selesai']);
+            $waktuMulai = $rawWaktuMulai !== null && $rawWaktuMulai !== ''
+                ? $this->formatTime($rawWaktuMulai)
+                : null;
+            $waktuSelesai = $rawWaktuSelesai !== null && $rawWaktuSelesai !== ''
+                ? $this->formatTime($rawWaktuSelesai)
+                : null;
 
             if ($sesi) {
-                // Update existing sesi
-                $sesi->update([
+                $updateData = [
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], $sesi->nama_sesi),
                     'tahun_ajaran_id' => $this->tahunAjaranId,
                     'paket_ujian_id' => $this->paketUjianId,
-                    'waktu_mulai' => $waktuMulai,
-                    'waktu_selesai' => $waktuSelesai,
                     'status' => $this->rowValue($row, ['status_sesi'], $sesi->status),
                     'sumber' => 'sumber',
                     'ruangan_id' => $ruangan->id, // Link to the correct ruangan
-                ]);
+                ];
+
+                if ($waktuMulai !== null) {
+                    $updateData['waktu_mulai'] = $waktuMulai;
+                }
+
+                if ($waktuSelesai !== null) {
+                    $updateData['waktu_selesai'] = $waktuSelesai;
+                }
+
+                // Update existing sesi without overwriting time with 00:00 when Excel cells are blank.
+                $sesi->update($updateData);
                 $this->results['sesi_updated']++;
             } else {
                 // Create new sesi
@@ -185,8 +205,8 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                     'paket_ujian_id' => $this->paketUjianId,
                     'kode_sesi' => $kodeSesi,
                     'nama_sesi' => $this->rowValue($row, ['nama_sesi'], 'Sesi ' . $kodeSesi),
-                    'waktu_mulai' => $waktuMulai,
-                    'waktu_selesai' => $waktuSelesai,
+                    'waktu_mulai' => $waktuMulai ?? '00:00:00',
+                    'waktu_selesai' => $waktuSelesai ?? '00:00:00',
                     'status' => $this->rowValue($row, ['status_sesi'], 'belum_mulai'),
                     'sumber' => 'sumber',
                     'ruangan_id' => $ruangan->id,
@@ -260,15 +280,42 @@ class ComprehensiveRuanganImport implements ToCollection, WithHeadingRow, WithVa
                 return Carbon::instance($time)->format('H:i:s');
             }
 
+            if (is_string($time)) {
+                $normalized = trim($time);
+
+                if (is_numeric($normalized) && (float) $normalized > 0 && (float) $normalized < 1) {
+                    $dt = Date::excelToDateTimeObject((float) $normalized);
+                    Log::info("Converted time", ['float' => $normalized, 'result' => $dt->format('H:i:s')]);
+                    return $dt->format('H:i:s');
+                }
+
+                if (preg_match('/(\d{1,2})[.:](\d{2})(?::(\d{2}))?/', $normalized, $matches)) {
+                    $hour = (int) $matches[1];
+                    $minute = (int) $matches[2];
+                    $second = isset($matches[3]) ? (int) $matches[3] : 0;
+
+                    if ($hour >= 0 && $hour <= 23 && $minute >= 0 && $minute <= 59 && $second >= 0 && $second <= 59) {
+                        return sprintf('%02d:%02d:%02d', $hour, $minute, $second);
+                    }
+                }
+
+                if (preg_match('/^\d{3,4}$/', $normalized)) {
+                    $normalized = str_pad($normalized, 4, '0', STR_PAD_LEFT);
+                    $hour = (int) substr($normalized, 0, 2);
+                    $minute = (int) substr($normalized, 2, 2);
+
+                    if ($hour >= 0 && $hour <= 23 && $minute >= 0 && $minute <= 59) {
+                        return sprintf('%02d:%02d:00', $hour, $minute);
+                    }
+                }
+
+                return Carbon::parse($normalized)->format('H:i:s');
+            }
+
             if (is_numeric($time)) {
                 $dt = Date::excelToDateTimeObject($time);
                 Log::info("Converted time", ['float' => $time, 'result' => $dt->format('H:i:s')]);
                 return $dt->format('H:i:s');
-            }
-
-            // Case 3: String format
-            if (is_string($time)) {
-                return Carbon::parse($time)->format('H:i:s');
             }
         } catch (\Exception $e) {
             return '00:00:00';

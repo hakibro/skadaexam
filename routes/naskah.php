@@ -47,6 +47,8 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     // ===== JADWAL UJIAN MANAGEMENT =====
     Route::put('paket-ujian/{paketUjian}/status', [PaketUjianController::class, 'updateStatus'])
         ->name('paket-ujian.status');
+    Route::delete('paket-ujian/{paketUjian}/force', [PaketUjianController::class, 'forceDestroy'])
+        ->name('paket-ujian.force-destroy');
     Route::delete('paket-ujian/{paketUjian}', [PaketUjianController::class, 'destroy'])
         ->name('paket-ujian.destroy');
     Route::resource('paket-ujian', PaketUjianController::class)

@@ -2,7 +2,7 @@
 
 @section('title', 'Koordinator Dashboard')
 @section('page-title', 'Dashboard Koordinator')
-@section('page-description', 'Kelola penugasan pengawas dan monitoring ujian')
+@section('page-description', 'Kelola penugasan pengawas dan laporan ujian')
 
 @section('content')
     <div class="space-y-6">
@@ -48,10 +48,7 @@
                 </div>
                 <div class="bg-gray-50 px-5 py-3">
                     <div class="text-sm">
-                        <a href="{{ route('koordinator.monitoring.index') }}"
-                            class="font-medium text-blue-700 hover:text-blue-900">
-                            Lihat Monitoring
-                        </a>
+                        <span class="font-medium text-blue-700">Sesi terjadwal hari ini</span>
                     </div>
                 </div>
             </div>
@@ -106,7 +103,7 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center mb-4">
                     <div class="bg-purple-100 rounded-lg p-3">
@@ -122,21 +119,6 @@
                         Penugasan Pengawas
                     </a>
                 </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center mb-4">
-                    <div class="bg-blue-100 rounded-lg p-3">
-                        <i class="fa-solid fa-eye text-blue-600 text-xl"></i>
-                    </div>
-                    <h3 class="ml-3 text-lg font-medium text-gray-900">Live Monitoring</h3>
-                </div>
-                <p class="text-sm text-gray-600 mb-4">Monitor jalannya ujian secara real-time</p>
-                <a href="{{ route('koordinator.monitoring.index') }}"
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
-                    <i class="fa-solid fa-desktop mr-2"></i>
-                    Akses Monitoring
-                </a>
             </div>
 
             <div class="bg-white rounded-lg shadow p-6">
@@ -203,10 +185,6 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Aktivitas Terbaru</h3>
-                    <a href="{{ route('koordinator.monitoring.index') }}"
-                        class="text-sm text-purple-600 hover:text-purple-800">
-                        Lihat Semua
-                    </a>
                 </div>
                 @if ($recentActivities && count($recentActivities) > 0)
                     <div class="space-y-3">
@@ -271,62 +249,5 @@
                 @endif
             </div>
         </div>
-
-        <!-- Monitoring Overview -->
-        @if ($activeSessions && count($activeSessions) > 0)
-            <div class="bg-white rounded-lg shadow">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-medium text-gray-900">Sesi Berlangsung</h3>
-                        <a href="{{ route('koordinator.monitoring.index') }}"
-                            class="text-sm text-purple-600 hover:text-purple-800">
-                            Lihat Detail
-                        </a>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        @foreach (array_slice($activeSessions, 0, 6) as $session)
-                            <div class="border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h4 class="text-sm font-medium text-gray-900">{{ $session['name'] ?? 'Sesi Ujian' }}
-                                    </h4>
-                                    <span
-                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-1"></span>
-                                        Live
-                                    </span>
-                                </div>
-                                <div class="space-y-2 text-sm text-gray-600">
-                                    <div class="flex justify-between">
-                                        <span>Ruangan:</span>
-                                        <span>{{ $session['room'] ?? 'N/A' }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>Siswa Hadir:</span>
-                                        <span
-                                            class="text-green-600 font-medium">{{ $session['students_present'] ?? 0 }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>Progress:</span>
-                                        <span>{{ $session['progress'] ?? '0' }}%</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span>Pengawas:</span>
-                                        <span>{{ $session['supervisor'] ?? 'N/A' }}</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 pt-3 border-t border-gray-200">
-                                    <a href="{{ route('koordinator.monitoring.show', $session['id'] ?? '#') }}"
-                                        class="text-xs text-purple-600 hover:text-purple-800">
-                                        Monitor Detail →
-                                    </a>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
     </div>
 @endsection

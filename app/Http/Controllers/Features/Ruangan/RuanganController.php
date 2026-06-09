@@ -9,6 +9,7 @@ use App\Models\PaketUjian;
 use App\Models\Ruangan;
 use App\Models\SchoolSetting;
 use App\Models\Siswa;
+use App\Models\SesiRuangan;
 use App\Models\SiswaTahunAjaran;
 use App\Models\TahunAjaran;
 use App\Services\TahunAjaranService;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -52,8 +54,19 @@ class RuanganController extends Controller
 
         $query = Ruangan::forTahunAjaran($tahunAjaranId)
             ->forPaketUjian($paketUjianId)
-            ->with(['paketUjian'])
-            ->withCount('sesiRuangan');
+            ->with([
+                'paketUjian',
+                'sesiRuangan' => fn($query) => $query
+                    ->where('sumber', 'sumber')
+                    ->with(['jadwalUjians.mapel'])
+                    ->withCount(['sesiRuanganSiswa', 'jadwalUjians'])
+                    ->orderBy('waktu_mulai')
+                    ->orderBy('nama_sesi'),
+            ])
+            ->withCount([
+                'sesiRuangan',
+                'sesiRuangan as source_sesi_count' => fn($query) => $query->where('sumber', 'sumber'),
+            ]);
 
         // Filter by status
         if ($request->filled('status')) {
@@ -88,7 +101,7 @@ class RuanganController extends Controller
             default => $query->orderBy('nama_ruangan'),
         };
 
-        $ruangans = $query->paginate(15);
+        $ruangans = $query->paginate(25);
 
         // Calculate statistics for the view
         $statistics = [
@@ -134,9 +147,19 @@ class RuanganController extends Controller
      */
     public function store(Request $request)
     {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+        $paketUjianId = $request->paket_ujian_id ?: null;
+
         $request->validate([
             'nama_ruangan' => 'required|string|max:191',
-            'kode_ruangan' => 'required|string|max:20|unique:ruangan,kode_ruangan',
+            'kode_ruangan' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('ruangan', 'kode_ruangan')
+                    ->where('tahun_ajaran_id', $activeYear->id)
+                    ->where('paket_ujian_id', $paketUjianId),
+            ],
             'kapasitas' => 'required|integer|min:1|max:1000',
             'lokasi' => 'nullable|string|max:191',
             'fasilitas' => 'nullable|array',
@@ -146,10 +169,9 @@ class RuanganController extends Controller
         ]);
 
         try {
-            $activeYear = app(TahunAjaranService::class)->ensureActive();
             $ruangan = Ruangan::create([
                 'tahun_ajaran_id' => $activeYear->id,
-                'paket_ujian_id' => $request->paket_ujian_id ?: null,
+                'paket_ujian_id' => $paketUjianId,
                 'nama_ruangan' => $request->nama_ruangan,
                 'kode_ruangan' => $request->kode_ruangan,
                 'kapasitas' => $request->kapasitas,
@@ -320,9 +342,19 @@ class RuanganController extends Controller
      */
     public function update(Request $request, Ruangan $ruangan)
     {
+        $paketUjianId = $request->paket_ujian_id ?: null;
+
         $request->validate([
             'nama_ruangan' => 'required|string|max:191',
-            'kode_ruangan' => 'required|string|max:20|unique:ruangan,kode_ruangan,' . $ruangan->id,
+            'kode_ruangan' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('ruangan', 'kode_ruangan')
+                    ->ignore($ruangan->id)
+                    ->where('tahun_ajaran_id', $ruangan->tahun_ajaran_id)
+                    ->where('paket_ujian_id', $paketUjianId),
+            ],
             'kapasitas' => 'required|integer|min:1|max:1000',
             'lokasi' => 'nullable|string|max:191',
             'fasilitas' => 'nullable|array',
@@ -335,7 +367,7 @@ class RuanganController extends Controller
             $ruangan->update([
                 'nama_ruangan' => $request->nama_ruangan,
                 'kode_ruangan' => $request->kode_ruangan,
-                'paket_ujian_id' => $request->paket_ujian_id ?: null,
+                'paket_ujian_id' => $paketUjianId,
                 'kapasitas' => $request->kapasitas,
                 'lokasi' => $request->lokasi,
                 'fasilitas' => $request->fasilitas ?? [],
@@ -457,10 +489,20 @@ class RuanganController extends Controller
      */
     public function processImport(Request $request)
     {
+        $activeYear = app(TahunAjaranService::class)->ensureActive();
+
         $request->validate([
             'ruangan_data' => 'required|array',
             'ruangan_data.*.nama_ruangan' => 'required|string|max:191',
-            'ruangan_data.*.kode_ruangan' => 'required|string|max:20|distinct|unique:ruangan,kode_ruangan',
+            'ruangan_data.*.kode_ruangan' => [
+                'required',
+                'string',
+                'max:20',
+                'distinct',
+                Rule::unique('ruangan', 'kode_ruangan')
+                    ->where('tahun_ajaran_id', $activeYear->id)
+                    ->whereNull('paket_ujian_id'),
+            ],
             'ruangan_data.*.kapasitas' => 'required|integer|min:1|max:1000',
             'ruangan_data.*.lokasi' => 'nullable|string|max:191',
             'ruangan_data.*.status' => 'nullable|in:aktif,perbaikan,tidak_aktif',
@@ -468,7 +510,6 @@ class RuanganController extends Controller
 
         try {
             DB::beginTransaction();
-            $activeYear = app(TahunAjaranService::class)->ensureActive();
 
             $ruanganData = $request->ruangan_data;
             $imported = 0;
@@ -660,11 +701,12 @@ class RuanganController extends Controller
 
         $paketUjians = PaketUjian::where('tahun_ajaran_id', $activeYear->id)
             ->where('status', '!=', 'arsip')
-            ->orderByDesc('status')
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
             ->orderByDesc('tanggal_mulai')
             ->get();
+        $defaultPaketId = $paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id;
 
-        return view('features.ruangan.import-comprehensive', compact('paketUjians'));
+        return view('features.ruangan.import-comprehensive', compact('paketUjians', 'defaultPaketId'));
     }
 
     /**
@@ -957,6 +999,71 @@ class RuanganController extends Controller
         $kelasJurusan = strtoupper((string) ($kelas->jurusan ?? ''));
 
         return $mapelJurusan === '' || $mapelJurusan === 'UMUM' || $mapelJurusan === $kelasJurusan;
+    }
+
+    public function cetakSesiIndex(Request $request)
+    {
+        $activeYear = app(TahunAjaranService::class)->active();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYear?->id);
+
+        $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $paketUjians = PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->orderByDesc('tanggal_mulai')->orderBy('nama')->get();
+
+        $selectedPaketId = $request->get(
+            'paket_ujian_id',
+            $paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id
+        );
+
+        $ruangans = Ruangan::where('tahun_ajaran_id', $tahunAjaranId)
+            ->when($selectedPaketId, fn($q) => $q->where('paket_ujian_id', $selectedPaketId))
+            ->orderBy('kode_ruangan')
+            ->withCount(['sesiRuangan as sesi_count' => fn($q) => $q->where('sumber', 'sumber')])
+            ->get();
+
+        $selectedRuanganIds = array_filter((array) $request->get('ruangan_ids', []));
+
+        return view('features.ruangan.cetak-sesi.index', compact(
+            'tahunAjarans',
+            'tahunAjaranId',
+            'paketUjians',
+            'selectedPaketId',
+            'ruangans',
+            'selectedRuanganIds'
+        ));
+    }
+
+    public function cetakSesiPrint(Request $request)
+    {
+        $tahunAjaranId = $request->get('tahun_ajaran_id');
+        $paketUjianId = $request->get('paket_ujian_id');
+        $ruanganIds = array_filter((array) $request->get('ruangan_ids', []));
+
+        $sesiList = SesiRuangan::with([
+            'ruangan',
+            'tahunAjaran',
+            'paketUjian',
+            'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas',
+        ])
+            ->where('sumber', 'sumber')
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
+            ->when(!empty($ruanganIds), fn($q) => $q->whereIn('ruangan_id', $ruanganIds))
+            ->get()
+            ->sortBy([
+                fn($a, $b) => strnatcasecmp($a->ruangan?->kode_ruangan ?? '', $b->ruangan?->kode_ruangan ?? ''),
+                fn($a, $b) => strcmp($a->waktu_mulai ?? '', $b->waktu_mulai ?? ''),
+            ]);
+
+        $grouped = $sesiList->groupBy('ruangan_id');
+
+        return view('features.ruangan.cetak-sesi.print', [
+            'grouped' => $grouped,
+            'tahunAjaranId' => $tahunAjaranId,
+            'settings' => SchoolSetting::allAsArray(),
+            'tahunAjaran' => TahunAjaran::find($tahunAjaranId),
+            'paketUjian' => $paketUjianId ? PaketUjian::find($paketUjianId) : null,
+        ]);
     }
 
     /**

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Soal;
 use App\Services\TahunAjaranService;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Validation\Rule;
 
 class BankSoalController extends Controller
 {
@@ -29,6 +30,25 @@ class BankSoalController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('status', '!=', 'arsip')
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
+            ->orderByDesc('tanggal_mulai')
+            ->get();
+        $defaultPaketId = $paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id;
+        $showAllPaket = $request->get('paket_ujian_id') === '__all';
+        $paketUjianId = null;
+
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $showAllPaket ? null : $request->get('paket_ujian_id');
+        } else {
+            $paketUjianId = $defaultPaketId;
+        }
+
+        if ($paketUjianId && !$paketUjians->contains('id', (int) $paketUjianId)) {
+            $paketUjianId = $defaultPaketId;
+        }
+
         $query = BankSoal::with('mapel', 'paketUjian')->forTahunAjaran($tahunAjaranId);
 
         // Apply search filter
@@ -44,8 +64,8 @@ class BankSoalController extends Controller
         }
 
         // Apply paket ujian filter
-        if ($request->filled('paket_ujian_id')) {
-            $query->where('paket_ujian_id', $request->paket_ujian_id);
+        if ($paketUjianId) {
+            $query->where('paket_ujian_id', $paketUjianId);
         }
 
         // Apply tingkat filter
@@ -61,14 +81,9 @@ class BankSoalController extends Controller
         $perPage = $request->get('per_page', 10);
         $bankSoals = $query->orderBy('created_at', 'desc')->paginate($perPage);
         $mapels = Mapel::active()->forTahunAjaran($tahunAjaranId)->get();
-        $paketUjians = \App\Models\PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)
-            ->where('status', '!=', 'arsip')
-            ->orderByDesc('status')
-            ->orderByDesc('tanggal_mulai')
-            ->get();
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels', 'paketUjians', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.naskah.banksoal.index', compact('bankSoals', 'mapels', 'paketUjians', 'tahunAjarans', 'tahunAjaranId', 'paketUjianId', 'showAllPaket'));
     }
 
     /**
@@ -95,11 +110,12 @@ class BankSoalController extends Controller
         $activeYear = app(TahunAjaranService::class)->ensureActive();
         $paketUjians = PaketUjian::where('tahun_ajaran_id', $activeYear->id)
             ->where('status', '!=', 'arsip')
-            ->orderByDesc('status')
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
             ->orderByDesc('tanggal_mulai')
             ->get();
+        $defaultPaketId = $paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id;
 
-        return view('features.naskah.import-komprehensif', compact('paketUjians', 'activeYear'));
+        return view('features.naskah.import-komprehensif', compact('paketUjians', 'activeYear', 'defaultPaketId'));
     }
 
     public function processComprehensiveImport(Request $request)
@@ -107,7 +123,12 @@ class BankSoalController extends Controller
         $activeYear = app(TahunAjaranService::class)->ensureActive();
         $validated = $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-            'paket_ujian_id' => 'nullable|exists:paket_ujian,id',
+            'paket_ujian_id' => [
+                'nullable',
+                Rule::exists('paket_ujian', 'id')
+                    ->where('tahun_ajaran_id', $activeYear->id)
+                    ->where(fn($query) => $query->where('status', '!=', 'arsip')),
+            ],
         ]);
 
         $import = new NaskahComprehensiveImport($activeYear->id, $validated['paket_ujian_id'] ?? null);

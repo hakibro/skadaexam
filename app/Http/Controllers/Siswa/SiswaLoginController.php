@@ -152,8 +152,8 @@ class SiswaLoginController extends Controller
                 'rekomendasi' => $siswa->rekomendasi,
             ]);
 
-            // Login student using siswa guard
-            Auth::guard('siswa')->login($siswa, true);
+            // Login hanya untuk session aktif, tanpa remember-cookie.
+            Auth::guard('siswa')->login($siswa);
             $request->session()->regenerate();
 
 
@@ -178,7 +178,11 @@ class SiswaLoginController extends Controller
                 ]);
             }
 
-
+            // Bersihkan zombie force_logout dari sesi lama agar tidak mengganggu login berikutnya
+            \App\Models\SesiRuanganSiswa::where('siswa_id', $siswa->id)
+                ->where('keterangan', 'force_logout')
+                ->where('sesi_ruangan_id', '!=', $sesiRuangan->id)
+                ->update(['keterangan' => null]);
 
             // Store enrollment info in session for exam context (if exists)
             if ($enrollment) {
@@ -243,6 +247,10 @@ class SiswaLoginController extends Controller
         }
 
         Auth::guard('siswa')->logout();
+        if ($siswa) {
+            $siswa->setRememberToken(null);
+            $siswa->save();
+        }
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

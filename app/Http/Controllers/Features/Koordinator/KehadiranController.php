@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Kelas;
 use Carbon\Carbon;
 use App\Models\Siswa;
+use App\Models\PaketUjian;
 use App\Services\TahunAjaranService;
 
 
@@ -21,6 +22,8 @@ class KehadiranController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = $this->paketUjianOptions($tahunAjaranId);
+        $paketUjianId = $this->selectedPaketUjianId($request, $paketUjians);
 
         $query = SesiRuanganSiswa::query()
             ->with([
@@ -30,7 +33,8 @@ class KehadiranController extends Controller
                 'sesiRuangan.jadwalUjian',
                 'sesiRuangan.ruangan',
             ])
-            ->when($tahunAjaranId, fn($q) => $q->whereHas('sesiRuangan', fn($sesi) => $sesi->where('tahun_ajaran_id', $tahunAjaranId)));
+            ->when($tahunAjaranId, fn($q) => $q->whereHas('sesiRuangan', fn($sesi) => $sesi->where('tahun_ajaran_id', $tahunAjaranId)))
+            ->when($paketUjianId, fn($q) => $q->whereHas('sesiRuangan.jadwalUjians', fn($jadwal) => $jadwal->where('paket_ujian_id', $paketUjianId)));
 
         // ================= FILTER =================
 
@@ -81,11 +85,14 @@ class KehadiranController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $ruangan = Ruangan::forTahunAjaran($tahunAjaranId)->orderBy('nama_ruangan')->get();
+        $ruangan = Ruangan::forTahunAjaran($tahunAjaranId)
+            ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
+            ->orderBy('nama_ruangan')
+            ->get();
         $jurusan = Kelas::forTahunAjaran($tahunAjaranId)->select('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan');
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'jurusan', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.koordinator.kehadiran.index', compact('data', 'ruangan', 'jurusan', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
     }
 
     /**
@@ -97,5 +104,32 @@ class KehadiranController extends Controller
             new KehadiranExport($request),
             'laporan-kehadiran-' . now()->format('Y-m-d_H-i-s') . '.xlsx'
         );
+    }
+
+    private function paketUjianOptions($tahunAjaranId)
+    {
+        return PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
+    }
+
+    private function selectedPaketUjianId(Request $request, $paketUjians): ?int
+    {
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $request->input('paket_ujian_id');
+
+            if ($paketUjianId === '') {
+                return null;
+            }
+
+            return $paketUjians->contains('id', (int) $paketUjianId)
+                ? (int) $paketUjianId
+                : ($paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id);
+        }
+
+        return $paketUjians->firstWhere('status', 'aktif')?->id
+            ?? $paketUjians->first()?->id;
     }
 }

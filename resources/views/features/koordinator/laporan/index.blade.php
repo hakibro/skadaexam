@@ -60,12 +60,22 @@
         <!-- Filters -->
         <div class="bg-white shadow rounded-lg p-6">
             <!-- Show current filters if any are applied -->
-            @if (request()->hasAny(['tanggal', 'status', 'pengawas', 'per_page']))
+            @if (request()->hasAny(['tahun_ajaran_id', 'paket_ujian_id', 'tanggal', 'status', 'pengawas', 'per_page']))
                 <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <div class="flex items-center">
                         <i class="fa-solid fa-filter text-blue-600 mr-2"></i>
                         <span class="text-sm font-medium text-blue-800">Filter aktif:</span>
                         <div class="ml-2 text-sm text-blue-700">
+                            @if (request('tahun_ajaran_id'))
+                                @php $selectedTahun = $tahunAjarans->firstWhere('id', (int) request('tahun_ajaran_id')); @endphp
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Tahun:
+                                    {{ $selectedTahun?->nama ?? request('tahun_ajaran_id') }}</span>
+                            @endif
+                            @if (request()->has('paket_ujian_id') && request('paket_ujian_id') !== '')
+                                @php $selectedPaket = $paketUjians->firstWhere('id', (int) request('paket_ujian_id')); @endphp
+                                <span class="bg-blue-100 px-2 py-1 rounded mr-2">Paket:
+                                    {{ $selectedPaket?->nama ?? request('paket_ujian_id') }}</span>
+                            @endif
                             @if (request('tanggal'))
                                 <span class="bg-blue-100 px-2 py-1 rounded mr-2">Tanggal: {{ request('tanggal') }}</span>
                             @endif
@@ -89,8 +99,39 @@
                 </div>
             @endif
 
-            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4 items-end"
                 action="{{ route('koordinator.laporan.index') }}" id="filter-form">
+                <div>
+                    <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-calendar-days mr-1 text-gray-400"></i>
+                        Tahun Ajaran
+                    </label>
+                    <select id="tahun_ajaran_id" name="tahun_ajaran_id"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-purple-500 focus:border-purple-500">
+                        @foreach ($tahunAjarans as $tahun)
+                            <option value="{{ $tahun->id }}" @selected((string) $tahunAjaranId === (string) $tahun->id)>
+                                {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="paket_ujian_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa-solid fa-box-archive mr-1 text-gray-400"></i>
+                        Paket Ujian
+                    </label>
+                    <select id="paket_ujian_id" name="paket_ujian_id"
+                        class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="">Semua Paket</option>
+                        @foreach ($paketUjians as $paket)
+                            <option value="{{ $paket->id }}" @selected((string) $paketUjianId === (string) $paket->id)>
+                                {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div>
                     <label for="tanggal" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fa-solid fa-calendar mr-1 text-gray-400"></i>

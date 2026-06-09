@@ -66,10 +66,10 @@
 @section('content')
     <div class="flex flex-wrap items-center justify-between mb-6">
         <div>
-            <a href="{{ route('koordinator.pengawas-assignment.calendar') }}"
+            <a href="{{ route('koordinator.pengawas-assignment.index') }}"
                 class="inline-flex items-center text-blue-600 hover:text-blue-800 no-print">
                 <i class="fa-solid fa-arrow-left mr-2"></i>
-                Kembali ke Kalender
+                Kembali ke Penugasan
             </a>
         </div>
         <div class="no-print">

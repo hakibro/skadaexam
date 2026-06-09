@@ -146,6 +146,8 @@
                                 <p class="text-sm text-gray-500">Jumlah Soal</p>
                                 <p class="font-semibold">{{ $jadwal->jumlah_soal ?? 'belum ada' }} Soal</p>
                             </div>
+
+
                         </div>
 
                         @if ($jadwal->deskripsi)

@@ -11,6 +11,7 @@ use App\Models\Siswa;
 use App\Models\Kelas;
 use App\Models\EnrollmentUjian;
 use App\Models\JadwalUjian;
+use App\Models\JadwalUjianSesiRuangan;
 use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,14 @@ class SesiRuanganController extends Controller
             ->withCount(['sesiRuanganSiswa'])
             ->orderBy('waktu_mulai', 'asc')
             ->get();
-        return view('features.ruangan.sesi.index', compact('ruangan', 'sesiList'));
+
+        $pengawasList = Guru::whereHas('user', function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['pengawas', 'koordinator']);
+            });
+        })->orderBy('nama')->get();
+
+        return view('features.ruangan.sesi.index', compact('ruangan', 'sesiList', 'pengawasList'));
     }
 
     /**
@@ -217,6 +225,11 @@ class SesiRuanganController extends Controller
 
             DB::commit();
 
+            if ($request->boolean('inline_update')) {
+                return redirect()->back()
+                    ->with('success', 'Waktu sesi sumber berhasil diperbarui');
+            }
+
             return redirect()->route('ruangan.sesi.show', ['ruangan' => $ruangan->id, 'sesi' => $sesi->id])
                 ->with('success', 'Sesi berhasil diperbarui');
         } catch (\Exception $e) {
@@ -226,6 +239,49 @@ class SesiRuanganController extends Controller
                 ->withInput()
                 ->with('error', 'Gagal memperbarui sesi: ' . $e->getMessage());
         }
+    }
+
+    public function updatePengawas(Request $request, Ruangan $ruangan, SesiRuangan $sesi)
+    {
+        if ($sesi->ruangan_id !== $ruangan->id) {
+            return redirect()->back()
+                ->with('error', 'Sesi tidak valid untuk ruangan ini.');
+        }
+
+        if ($ruangan->tahunAjaran?->isReadOnly() || $sesi->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $validated = $request->validate([
+            'pengawas_id' => 'nullable|exists:guru,id',
+        ]);
+
+        $pengawasId = $validated['pengawas_id'] ?: null;
+
+        if ($pengawasId) {
+            $pengawas = Guru::with('user.roles')->findOrFail($pengawasId);
+            if (!$pengawas->user || !$pengawas->user->canSupervise()) {
+                return redirect()->back()
+                    ->with('error', 'Guru yang dipilih tidak memiliki role pengawas atau koordinator.');
+            }
+        }
+
+        $pivotQuery = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesi->id);
+        $affected = $pivotQuery->count();
+
+        if ($affected === 0) {
+            return redirect()->back()
+                ->with('error', 'Sesi belum memiliki jadwal ujian, sehingga pengawas belum dapat ditugaskan.');
+        }
+
+        $pivotQuery->update(['pengawas_id' => $pengawasId]);
+
+        $message = $pengawasId
+            ? 'Pengawas berhasil diterapkan ke semua jadwal pada sesi ini.'
+            : 'Pengawas berhasil dikosongkan dari semua jadwal pada sesi ini.';
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

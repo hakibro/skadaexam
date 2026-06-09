@@ -139,8 +139,8 @@
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
                             <option value="">Semua Paket</option>
                             @foreach ($paketUjians as $paket)
-                                <option value="{{ $paket->id }}" {{ request('paket_ujian_id') == $paket->id ? 'selected' : '' }}>
-                                    {{ $paket->nama }}
+                                <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                    {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
                         </select>

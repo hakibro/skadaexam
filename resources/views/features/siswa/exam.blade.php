@@ -622,16 +622,19 @@
                             @else
                                 @foreach ($options as $key => $option)
                                     @php
+                                        $answerValue = is_array($option)
+                                            ? (string) ($option['original_key'] ?? $key)
+                                            : (string) $key;
                                         $isSelected = $tipeSoal === 'pilihan_kompleks'
-                                            ? in_array((string) $key, $selectedAnswers, true)
-                                            : $savedAnswer == $key;
+                                            ? in_array($answerValue, $selectedAnswers, true)
+                                            : $savedAnswer == $answerValue;
                                     @endphp
                                     <button
                                         class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left 
                                                hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100
                                                {{ $isSelected ? 'option-selected border-indigo-500' : '' }}"
-                                        data-option="{{ $key }}"
-                                        onclick="selectAnswer('{{ $currentQuestion['id'] }}', '{{ $key }}', '{{ $tipeSoal }}')">
+                                        data-option="{{ $answerValue }}"
+                                        onclick="selectAnswer('{{ $currentQuestion['id'] }}', '{{ $answerValue }}', '{{ $tipeSoal }}')">
                                         <div class="flex items-start space-x-3 sm:space-x-4">
                                             <div
                                                 class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 
@@ -1332,6 +1335,9 @@
             // Start timer if time limit is set
             if (timeLimit > 0 && remainingTime > 0) {
                 startTimer();
+            } else if (timeLimit > 0 && remainingTime <= 0) {
+                showSystemNotification('Waktu ujian habis! Ujian akan dikumpulkan otomatis.');
+                autoSubmitExam();
             }
 
             if (alwaysShowSubmit) {

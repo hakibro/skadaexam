@@ -80,7 +80,7 @@
                                 <option value="">Semua Paket</option>
                                 @foreach ($paketUjians as $paket)
                                     <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
-                                        {{ $paket->nama }}
+                                        {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                                     </option>
                                 @endforeach
                             </select>

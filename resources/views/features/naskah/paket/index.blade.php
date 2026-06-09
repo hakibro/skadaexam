@@ -69,7 +69,22 @@
                                     </select>
                                 </form>
                             </td>
-                            <td class="px-4 py-3 text-center">{{ $paket->jadwal_ujian_count }}</td>
+                            <td class="px-4 py-3 text-center">
+                                <div class="font-medium text-gray-900">{{ $paket->jadwal_ujian_count }}</div>
+                                @php
+                                    $relatedCount = $paket->jadwal_ujian_count
+                                        + $paket->bank_soals_count
+                                        + $paket->ruangans_count
+                                        + $paket->sesi_ruangans_count;
+                                @endphp
+                                @if ($relatedCount > 0)
+                                    <div class="text-[11px] text-gray-500">
+                                        {{ $paket->bank_soals_count }} bank,
+                                        {{ $paket->ruangans_count }} ruang,
+                                        {{ $paket->sesi_ruangans_count }} sesi
+                                    </div>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center justify-end gap-2">
                                     <a href="{{ route('naskah.paket-ujian.show', $paket) }}"
@@ -93,6 +108,22 @@
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
+                                    @if (!$paket->tahunAjaran?->isReadOnly() && $relatedCount > 0)
+                                        <form method="POST" action="{{ route('naskah.paket-ujian.force-destroy', $paket) }}"
+                                            data-force-delete-paket
+                                            data-paket-name="{{ $paket->nama }}"
+                                            data-impact="Menghapus {{ $paket->jadwal_ujian_count }} jadwal, {{ $paket->bank_soals_count }} bank soal, {{ $paket->ruangans_count }} ruangan, {{ $paket->sesi_ruangans_count }} sesi, serta hasil/enrollment/pengawas/berita acara yang terkait.">
+                                            @csrf
+                                            @method('DELETE')
+                                            <input type="hidden" name="force_delete" value="1">
+                                            <input type="hidden" name="confirmation_name" value="">
+                                            <button type="submit"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded border border-red-700 bg-red-50 text-red-700 hover:bg-red-100"
+                                                title="Hapus paksa beserta data terkait">
+                                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -106,4 +137,22 @@
         </div>
         <div class="p-4 border-t">{{ $paketUjians->links() }}</div>
     </div>
+
+    <script>
+        document.querySelectorAll('[data-force-delete-paket]').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                const paketName = form.dataset.paketName;
+                const impact = form.dataset.impact;
+                const typedName = prompt(`${impact}\n\nAksi ini permanen. Ketik nama paket untuk konfirmasi:\n${paketName}`);
+
+                if (typedName !== paketName) {
+                    event.preventDefault();
+                    alert('Hapus paksa dibatalkan. Nama paket tidak sesuai.');
+                    return;
+                }
+
+                form.querySelector('input[name="confirmation_name"]').value = typedName;
+            });
+        });
+    </script>
 @endsection

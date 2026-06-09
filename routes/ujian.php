@@ -12,7 +12,7 @@ use App\Http\Controllers\Auth\UjianLoginController;
 */
 
 // Main exam routes for students - moved from auth_extended.php
-Route::middleware(['auth:siswa'])->prefix('ujian')->name('ujian.')->group(function () {
+Route::middleware(['auth:siswa', 'siswa.force_logout'])->prefix('ujian')->name('ujian.')->group(function () {
     // Main exam interface - EXPLICIT PARAMETER
     Route::get('exam/{jadwal_id}', [UjianController::class, 'exam'])
         ->name('exam')

@@ -164,9 +164,15 @@
             <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                 <div>
                     <h3 class="text-lg font-medium text-gray-900">All Siswa</h3>
-                    <p class="text-sm text-gray-500">
-                        Total: <span id="siswa-count">{{ $siswas->total() ?? 0 }}</span> students
-                    </p>
+                    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                        <span>Total: <span id="siswa-count">{{ $siswas->total() ?? 0 }}</span> siswa</span>
+                        @foreach (($totalSiswaPerTingkat ?? collect()) as $tingkat => $totalTingkat)
+                            <span
+                                class="inline-flex items-center rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700">
+                                {{ $tingkat }}: {{ $totalTingkat }}
+                            </span>
+                        @endforeach
+                    </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
 
@@ -238,28 +244,28 @@
             </div>
 
             {{-- Search & Filters --}}
-            <div class="bg-white shadow rounded-lg p-6">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div class="bg-white shadow rounded-lg p-4">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                     {{-- Search Input --}}
-                    <div class="md:col-span-4">
-                        <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                    <div class="md:col-span-3">
+                        <label for="search-input" class="block text-xs font-medium text-gray-700 mb-1">Search</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i class="fa-solid fa-search text-gray-400" id="search-icon"></i>
                                 <i class="fa-solid fa-spinner fa-spin text-gray-400 hidden" id="loading-icon"></i>
                             </div>
                             <input type="text" id="search-input" name="search"
-                                class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Search by name, ID yayasan, email..." value="{{ request('search') }}">
+                                class="block w-full pl-9 pr-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Nama, ID, email..." value="{{ request('search') }}">
                         </div>
                     </div>
 
                     {{-- Payment Status Filter --}}
                     <div class="md:col-span-2">
-                        <label for="tahun-ajaran-filter" class="block text-sm font-medium text-gray-700 mb-2">Tahun
+                        <label for="tahun-ajaran-filter" class="block text-xs font-medium text-gray-700 mb-1">Tahun
                             Ajaran</label>
                         <select id="tahun-ajaran-filter" name="tahun_ajaran_id"
-                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            class="block w-full border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
                             @foreach ($tahunAjarans as $tahun)
                                 <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                     {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
@@ -269,12 +275,12 @@
                     </div>
 
                     {{-- Payment Status Filter --}}
-                    <div class="md:col-span-2">
-                        <label for="payment-filter" class="block text-sm font-medium text-gray-700 mb-2">Payment
+                    <div class="md:col-span-1">
+                        <label for="payment-filter" class="block text-xs font-medium text-gray-700 mb-1">Payment
                             Status</label>
                         <select id="payment-filter" name="status_pembayaran"
-                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">All Status</option>
+                            class="block w-full border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua</option>
                             <option value="Lunas" {{ request('status_pembayaran') == 'Lunas' ? 'selected' : '' }}>
                                 Lunas
                             </option>
@@ -285,12 +291,12 @@
                     </div>
 
                     {{-- Rekomendasi Filter --}}
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-1">
                         <label for="rekomendasi-filter"
-                            class="block text-sm font-medium text-gray-700 mb-2">Rekomendasi</label>
+                            class="block text-xs font-medium text-gray-700 mb-1">Rekomendasi</label>
                         <select id="rekomendasi-filter" name="rekomendasi"
-                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">All Rekomendasi</option>
+                            class="block w-full border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua</option>
                             <option value="ya" {{ request('rekomendasi') == 'ya' ? 'selected' : '' }}>Ya</option>
                             <option value="tidak" {{ request('rekomendasi') == 'tidak' ? 'selected' : '' }}>Tidak
                             </option>
@@ -299,10 +305,10 @@
 
                     {{-- Kelas Filter --}}
                     <div class="md:col-span-2">
-                        <label for="kelas-filter" class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                        <label for="kelas-filter" class="block text-xs font-medium text-gray-700 mb-1">Kelas</label>
                         <select id="kelas-filter" name="kelas_id"
-                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">All Kelas</option>
+                            class="block w-full border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Semua Kelas</option>
                             @if (isset($availableKelas))
                                 @foreach ($availableKelas as $id => $nama)
                                     <option value="{{ $id }}" {{ request('kelas_id') == $id ? 'selected' : '' }}>
@@ -314,9 +320,9 @@
                     </div>
                     {{-- Per Halaman --}}
                     <div class="md:col-span-1">
-                        <label for="per-page" class="block text-sm font-medium text-gray-700 mb-2">Per Halaman</label>
+                        <label for="per-page" class="block text-xs font-medium text-gray-700 mb-1">Per Halaman</label>
                         <select id="per-page" name="per_page"
-                            class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            class="block w-full border border-gray-300 rounded-md px-2 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
                             <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
                             <option value="200" {{ request('per_page') == '200' ? 'selected' : '' }}>200</option>
@@ -327,7 +333,7 @@
                     {{-- Clear Button --}}
                     <div class="md:col-span-1">
                         <button type="button" id="clear-filters"
-                            class="w-full bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-md transition-colors inline-flex items-center justify-center">
+                            class="w-full bg-gray-500 hover:bg-gray-600 text-white px-2 py-2 rounded-md text-sm transition-colors inline-flex items-center justify-center">
                             <i class="fa-solid fa-times mr-1"></i>Clear
                         </button>
                     </div>

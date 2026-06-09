@@ -120,6 +120,18 @@ class SiswaDashboardController extends Controller
         $enrollmentId = $request->session()->get('current_enrollment_id');
         $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
 
+        if (!$sesiRuanganId) {
+            Auth::guard('siswa')->logout();
+            if ($siswa) {
+                $siswa->setRememberToken(null);
+                $siswa->save();
+            }
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('/login/siswa')->with('error', 'Silakan login dengan token ujian terlebih dahulu.');
+        }
+
         $currentEnrollment = null;
         if ($enrollmentId) {
             $currentEnrollment = EnrollmentUjian::with(['sesiRuangan.jadwalUjians.mapel'])

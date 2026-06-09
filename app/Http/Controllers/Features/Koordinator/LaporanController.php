@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Features\Koordinator;
 
 use App\Http\Controllers\Controller;
 use App\Models\BeritaAcaraUjian;
+use App\Models\PaketUjian;
 use Spatie\LaravelPdf\Facades\Pdf;
 use App\Models\SesiRuangan;
 use App\Models\Guru;
+use App\Models\TahunAjaran;
+use App\Services\TahunAjaranService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +23,20 @@ class LaporanController extends Controller
      */
     public function index(Request $request)
     {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+        $paketUjians = $this->paketUjianOptions($tahunAjaranId);
+        $paketUjianId = $this->selectedPaketUjianId($request, $paketUjians);
+
         $query = BeritaAcaraUjian::with(['sesiRuangan.ruangan', 'sesiRuangan.jadwalUjians.mapel', 'pengawas']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('sesiRuangan.jadwalUjians', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($paketUjianId) {
+            $query->whereHas('sesiRuangan.jadwalUjians', fn($q) => $q->where('paket_ujian_id', $paketUjianId));
+        }
 
         // Filter by verification status (matching the view form)
         if ($request->filled('status')) {
@@ -44,6 +60,8 @@ class LaporanController extends Controller
             $query->where('pengawas_id', $request->pengawas);
         }
 
+        $statsQuery = clone $query;
+
         // Set items per page based on the form parameter
         $perPage = $request->filled('per_page') ? (int) $request->per_page : 15;
         $perPage = in_array($perPage, [15, 25, 50]) ? $perPage : 15;
@@ -57,24 +75,30 @@ class LaporanController extends Controller
             });
         })->orderBy('nama')->get();
 
-        // Get statistics
+        $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+
+        // Get statistics for the selected year/package scope
         $stats = [
             // Map to expected view keys
-            'pending' => BeritaAcaraUjian::where('is_final', false)->count(),
-            'verified' => BeritaAcaraUjian::where('is_final', true)->count(),
+            'pending' => (clone $statsQuery)->where('is_final', false)->count(),
+            'verified' => (clone $statsQuery)->where('is_final', true)->count(),
             'rejected' => 0, // No rejected status in current model
-            'total' => BeritaAcaraUjian::count(),
+            'total' => (clone $statsQuery)->count(),
 
             // Keep existing stats for backward compatibility
-            'draft' => BeritaAcaraUjian::where('is_final', false)->count(),
-            'finalized' => BeritaAcaraUjian::where('is_final', true)->count(),
-            'today' => BeritaAcaraUjian::whereDate('created_at', Carbon::today())->count(),
+            'draft' => (clone $statsQuery)->where('is_final', false)->count(),
+            'finalized' => (clone $statsQuery)->where('is_final', true)->count(),
+            'today' => (clone $statsQuery)->whereDate('created_at', Carbon::today())->count(),
         ];
 
         return view('features.koordinator.laporan.index', compact(
             'beritaAcaras',
             'pengawasList',
             'stats',
+            'tahunAjarans',
+            'tahunAjaranId',
+            'paketUjians',
+            'paketUjianId',
         ));
     }
 
@@ -428,5 +452,32 @@ class LaporanController extends Controller
 
         return response()->file($path); // ini akan menampilkan PDF di browser
 
+    }
+
+    private function paketUjianOptions($tahunAjaranId)
+    {
+        return PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
+    }
+
+    private function selectedPaketUjianId(Request $request, $paketUjians): ?int
+    {
+        if ($request->has('paket_ujian_id')) {
+            $paketUjianId = $request->input('paket_ujian_id');
+
+            if ($paketUjianId === '') {
+                return null;
+            }
+
+            return $paketUjians->contains('id', (int) $paketUjianId)
+                ? (int) $paketUjianId
+                : ($paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id);
+        }
+
+        return $paketUjians->firstWhere('status', 'aktif')?->id
+            ?? $paketUjians->first()?->id;
     }
 }

@@ -95,6 +95,16 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($sesiList as $sesi)
+                                @php
+                                    $jadwalCount = $sesi->jadwalUjians->count();
+                                    $pengawasIds = $sesi->jadwalUjians
+                                        ->map(fn($jadwal) => $jadwal->pivot?->pengawas_id)
+                                        ->filter()
+                                        ->unique()
+                                        ->values();
+                                    $hasMixedPengawas = $pengawasIds->count() > 1;
+                                    $selectedPengawasId = $pengawasIds->count() === 1 ? $pengawasIds->first() : null;
+                                @endphp
                                 <tr @class([
                                     'hover:bg-gray-50',
                                     'bg-emerald-50/60' => $sesi->sumber === 'sumber',
@@ -162,25 +172,39 @@
                                         <div class="text-xs text-gray-500">{{ $sesi->durasi }}</div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="text-sm text-gray-900">
-                                            @php
-                                                $hasPengawas = false;
-                                                $pengawasNames = [];
-                                                foreach ($sesi->jadwalUjians as $jadwal) {
-                                                    $pengawas = $sesi->getPengawasForJadwal($jadwal->id);
-                                                    if ($pengawas && !in_array($pengawas->nama, $pengawasNames)) {
-                                                        $pengawasNames[] = $pengawas->nama;
-                                                        $hasPengawas = true;
-                                                    }
-                                                }
-                                            @endphp
-
-                                            @if ($hasPengawas)
-                                                {{ implode(', ', $pengawasNames) }}
-                                            @else
-                                                Belum ditentukan
-                                            @endif
-                                        </div>
+                                        @if ($jadwalCount > 0)
+                                            <form
+                                                action="{{ route('ruangan.sesi.pengawas.update', [$ruangan->id, $sesi->id]) }}"
+                                                method="POST" class="min-w-[190px]">
+                                                @csrf
+                                                @method('PUT')
+                                                <select name="pengawas_id" onchange="this.form.submit()"
+                                                    class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                    @if ($hasMixedPengawas)
+                                                        <option selected disabled>Beragam pengawas</option>
+                                                    @endif
+                                                    <option value=""
+                                                        @selected(!$hasMixedPengawas && empty($selectedPengawasId))>
+                                                        Belum ditentukan
+                                                    </option>
+                                                    @foreach ($pengawasList as $pengawas)
+                                                        <option value="{{ $pengawas->id }}"
+                                                            @selected(!$hasMixedPengawas && (int) $selectedPengawasId === (int) $pengawas->id)>
+                                                            {{ $pengawas->nama }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <p class="mt-1 text-xs text-gray-500">
+                                                    {{ $jadwalCount }} jadwal terdampak
+                                                </p>
+                                            </form>
+                                        @else
+                                            <select disabled
+                                                class="block w-full min-w-[190px] rounded-md border-gray-200 bg-gray-100 text-sm text-gray-500 shadow-sm">
+                                                <option>Tidak ada jadwal</option>
+                                            </select>
+                                            <p class="mt-1 text-xs text-gray-500">Tambahkan jadwal dulu</p>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">

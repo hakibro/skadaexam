@@ -55,6 +55,51 @@
                 <div class="flex flex-wrap items-center gap-6">
                     <form id="filterForm" action="{{ route('koordinator.pengawas-assignment.index') }}" method="GET"
                         class="flex items-center gap-3">
+                        <!-- Tahun Ajaran Filter -->
+                        <div class="relative">
+                            <label for="tahun_ajaran_id" class="sr-only">Tahun Ajaran</label>
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-graduation-cap text-sm"></i>
+                            </div>
+                            <select name="tahun_ajaran_id" id="tahun_ajaran_id"
+                                class="pl-10 pr-8 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full transition duration-150 appearance-none">
+                                @foreach ($tahunAjaranList as $ta)
+                                    <option value="{{ $ta->id }}" {{ $ta->id == $tahunAjaranId ? 'selected' : '' }}>
+                                        {{ $ta->nama }} {{ $ta->status == 'aktif' ? '(Aktif)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div
+                                class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Paket Ujian Filter -->
+                        <div class="relative">
+                            <label for="paket_ujian_id" class="sr-only">Paket Ujian</label>
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-box text-sm"></i>
+                            </div>
+                            <select name="paket_ujian_id" id="paket_ujian_id"
+                                class="pl-10 pr-8 py-2 bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full transition duration-150 appearance-none">
+                                <option value="">Semua Paket</option>
+                                @foreach ($paketUjianList as $pu)
+                                    <option value="{{ $pu->id }}"
+                                        {{ $pu->id == $selectedPaketUjianId ? 'selected' : '' }}>
+                                        {{ $pu->nama }} {{ $pu->status == 'aktif' ? '(Aktif)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div
+                                class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- Tanggal Filter -->
                         <div class="relative">
                             <label for="tanggal" class="sr-only">Tanggal</label>
                             <div
@@ -324,8 +369,8 @@
 
             // --- Auto Submit Filter ---
             if (filterForm) {
-                filterForm.querySelectorAll('input').forEach(input => {
-                    input.addEventListener('change', () => filterForm.submit());
+                filterForm.querySelectorAll('input, select').forEach(el => {
+                    el.addEventListener('change', () => filterForm.submit());
                 });
             }
 

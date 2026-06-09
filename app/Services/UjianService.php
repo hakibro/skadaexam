@@ -283,30 +283,6 @@ class UjianService
      */
     private function getCorrectAnswerForStudent($soal, $siswa, $jadwalUjian)
     {
-        if (!$jadwalUjian->acak_jawaban) {
-            return $soal->kunci_jawaban;
-        }
-
-        $options = [];
-        foreach (['A', 'B', 'C', 'D', 'E'] as $key) {
-            $teks = $soal->{"pilihan_{$key}_teks"};
-            $gambar = $soal->{"pilihan_{$key}_gambar"};
-            if ($teks || $gambar) $options[$key] = $teks;
-        }
-
-        $seed = $siswa->id * 1000 + $soal->id;
-        mt_srand($seed);
-        $keys = array_keys($options);
-        shuffle($keys);
-
-        foreach ($keys as $i => $originalKey) {
-            if ($originalKey === $soal->kunci_jawaban) {
-                mt_srand(); // reset
-                return chr(65 + $i);
-            }
-        }
-
-        mt_srand();
         return $soal->kunci_jawaban;
     }
 }

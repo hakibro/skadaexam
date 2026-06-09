@@ -372,9 +372,7 @@ class JadwalUjianController extends Controller
 
         $mapels = Mapel::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('nama_mapel', 'asc')->get();
         $bankSoals = BankSoal::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('judul', 'asc')->get();
-        $kelasList = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id)->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
-
-        return view('features.naskah.jadwal.edit', compact('jadwal', 'mapels', 'bankSoals', 'kelasList'));
+        return view('features.naskah.jadwal.edit', compact('jadwal', 'mapels', 'bankSoals'));
     }
 
     /**
@@ -393,48 +391,39 @@ class JadwalUjianController extends Controller
             'bank_soal_id' => 'required|exists:bank_soal,id',
             'tanggal' => 'required|date',
             'durasi_menit' => 'required|integer|min:1',
-            'jumlah_soal' => 'required|integer|min:1',
             'deskripsi' => 'nullable|string',
-            'kelas_target' => 'nullable|array',
-            'kelas_target.*' => 'exists:kelas,id',
         ]);
 
-        // Get target classes based on mapel if not provided
+        // Kelas target dikelola otomatis berdasarkan tingkat dan jurusan mata pelajaran.
         $kelasTarget = [];
 
-        // If kelas_target is provided in the request, use it
-        if ($request->has('kelas_target')) {
-            $kelasTarget = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id)
-                ->whereIn('id', $request->kelas_target)
-                ->pluck('id')
-                ->toArray();
-        } else {
-            // Otherwise, try to find matching classes based on mapel's tingkat and jurusan
-            $mapel = Mapel::forTahunAjaran($jadwal->tahun_ajaran_id)->find($request->mapel_id);
-            if ($mapel) {
-                $query = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id);
+        $mapel = Mapel::forTahunAjaran($jadwal->tahun_ajaran_id)->find($request->mapel_id);
+        if ($mapel) {
+            $query = Kelas::forTahunAjaran($jadwal->tahun_ajaran_id);
 
-                // Filter by tingkat if mapel has it
-                if ($mapel->tingkat) {
-                    $query->where('tingkat', $mapel->tingkat);
-                }
-
-                // Filter by jurusan if mapel has it, or include UMUM jurusan
-                if ($mapel->jurusan) {
-                    $query->where(function ($q) use ($mapel) {
-                        $q->where('jurusan', $mapel->jurusan)
-                            ->orWhere('jurusan', 'UMUM');
-                    });
-                }
-
-                $matchingKelas = $query->get();
-                $kelasTarget = $matchingKelas->pluck('id')->toArray();
+            if ($mapel->tingkat) {
+                $query->where('tingkat', $mapel->tingkat);
             }
+
+            if ($mapel->jurusan) {
+                $query->where(function ($q) use ($mapel) {
+                    $q->where('jurusan', $mapel->jurusan)
+                        ->orWhere('jurusan', 'UMUM');
+                });
+            }
+
+            $kelasTarget = $query->pluck('id')->toArray();
         }
 
         // Auto-sync jumlah_soal from bank soal
-        $bankSoal = BankSoal::find($request->bank_soal_id);
+        $bankSoal = BankSoal::forTahunAjaran($jadwal->tahun_ajaran_id)->find($request->bank_soal_id);
         $jumlahSoal = $bankSoal ? $bankSoal->soals()->count() : 0;
+
+        if (!$bankSoal) {
+            return redirect()->back()
+                ->withErrors(['bank_soal_id' => 'Bank soal tidak valid untuk tahun ajaran jadwal ini.'])
+                ->withInput();
+        }
 
         $jadwal->update([
             'judul' => $request->judul,

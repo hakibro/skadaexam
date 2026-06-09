@@ -92,6 +92,17 @@ class SiswaController extends Controller
         Cache::forget($this->progressKey($type));
     }
 
+    private function getTotalSiswaPerTingkat(?int $tahunAjaranId)
+    {
+        return SiswaTahunAjaran::query()
+            ->join('kelas', 'siswa_tahun_ajaran.kelas_id', '=', 'kelas.id')
+            ->when($tahunAjaranId, fn($query) => $query->where('siswa_tahun_ajaran.tahun_ajaran_id', $tahunAjaranId))
+            ->selectRaw("COALESCE(kelas.tingkat, 'Tanpa Tingkat') as tingkat, COUNT(DISTINCT siswa_tahun_ajaran.siswa_id) as total")
+            ->groupBy('kelas.tingkat')
+            ->orderByRaw("FIELD(kelas.tingkat, 'X', 'XI', 'XII'), kelas.tingkat")
+            ->pluck('total', 'tingkat');
+    }
+
     private function setImportProgress(array $values): void
     {
         $this->setProgress('import', $values);
@@ -154,9 +165,10 @@ class SiswaController extends Controller
         $totalSiswa = $tahunAjaranId
             ? Siswa::whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))->count()
             : Siswa::count();
+        $totalSiswaPerTingkat = $this->getTotalSiswaPerTingkat($tahunAjaranId);
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
 
-        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa', 'totalSiswaPerTingkat', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     public function settings()
@@ -255,8 +267,12 @@ class SiswaController extends Controller
             ->pluck('nama_kelas', 'id');
 
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
+        $totalSiswa = $tahunAjaranId
+            ? Siswa::whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))->count()
+            : Siswa::count();
+        $totalSiswaPerTingkat = $this->getTotalSiswaPerTingkat($tahunAjaranId);
 
-        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'tahunAjarans', 'tahunAjaranId'));
+        return view('features.data.siswa.index', compact('siswas', 'availableKelas', 'totalSiswa', 'totalSiswaPerTingkat', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     /**

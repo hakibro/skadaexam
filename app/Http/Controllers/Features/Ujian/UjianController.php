@@ -11,6 +11,7 @@ use App\Models\JadwalUjian;
 use App\Models\PelanggaranUjian;
 use App\Models\Siswa;
 use App\Models\Soal;
+use App\Models\SesiRuanganSiswa;
 use App\Services\UjianService;
 use App\Support\SoalAnswerEvaluator;
 use Illuminate\Http\Request;
@@ -27,7 +28,16 @@ class UjianController extends Controller
     {
         $this->ujianService = $ujianService;
         $this->middleware('auth:siswa');
-        $this->middleware('ujian.active')->except(['exam', 'finish', 'result', 'examResult']);
+        $this->middleware('ujian.active')->except([
+            'exam',
+            'saveAnswer',
+            'toggleFlag',
+            'submitExam',
+            'logoutFromExam',
+            'finish',
+            'result',
+            'examResult'
+        ]);
     }
 
     /**
@@ -37,30 +47,38 @@ class UjianController extends Controller
     {
         $siswa = Auth::guard('siswa')->user();
         $jadwalId = $jadwal_id;
+        $sessionSesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
+
+        if (!$sessionSesiRuanganId) {
+            return $this->logoutAndRedirectToSiswaLogin($request, 'Silakan login ulang dengan token ujian.');
+        }
 
         if (!$jadwalId) {
             // Jika tidak ada jadwal_id, ambil dari session atau redirect
             $enrollmentId = $request->session()->get('current_enrollment_id');
             if (!$enrollmentId) {
-                return redirect()->route('siswa.dashboard')->with('error', 'Sesi ujian tidak ditemukan.');
+                return $this->logoutAndRedirectToSiswaLogin($request, 'Silakan login ulang dengan token ujian.');
             }
-            $enrollment = EnrollmentUjian::with(['sesiRuangan.jadwalUjians.mapel'])->find($enrollmentId);
+            $enrollment = EnrollmentUjian::with(['sesiRuangan.jadwalUjians.mapel'])
+                ->where('siswa_id', $siswa->id)
+                ->where('sesi_ruangan_id', $sessionSesiRuanganId)
+                ->find($enrollmentId);
         } else {
             // Cari enrollment berdasarkan jadwal_ujian_id yang tepat
             $enrollment = EnrollmentUjian::with(['sesiRuangan.jadwalUjians.mapel'])
                 ->where('siswa_id', $siswa->id)
                 ->where('jadwal_ujian_id', $jadwalId)
+                ->where('sesi_ruangan_id', $sessionSesiRuanganId)
                 ->first();
 
             if ($enrollment) {
                 // Update session dengan enrollment yang benar
                 $request->session()->put('current_enrollment_id', $enrollment->id);
-                $request->session()->put('current_sesi_ruangan_id', $enrollment->sesi_ruangan_id);
             }
         }
 
         if (!$enrollment) {
-            return redirect()->route('siswa.dashboard')->with('error', 'Enrollment tidak ditemukan.');
+            return $this->logoutAndRedirectToSiswaLogin($request, 'Sesi ujian tidak valid. Silakan login ulang.');
         }
 
         $enrollmentId = $enrollment->id;
@@ -68,6 +86,21 @@ class UjianController extends Controller
             'sesiRuangan.jadwalUjians.mapel'
         ])->find($enrollmentId);
         $sesiRuanganId = $enrollment->sesi_ruangan_id;
+
+        $sesiMembership = SesiRuanganSiswa::where('siswa_id', $siswa->id)
+            ->where('sesi_ruangan_id', $sesiRuanganId)
+            ->first();
+
+        if (!$sesiMembership) {
+            return $this->logoutAndRedirectToSiswaLogin($request, 'Anda tidak terdaftar pada sesi ujian ini.');
+        }
+
+        $sesiMembership->update([
+            'status_kehadiran' => 'hadir',
+            'keterangan' => $sesiMembership->keterangan === 'force_logout'
+                ? 'force_logout'
+                : 'Akses ujian ' . now()->format('d-m-Y H:i:s'),
+        ]);
 
         // if (!$enrollment) {
         //     return redirect()->route('siswa.dashboard')->with('error', 'Enrollment tidak ditemukan.');
@@ -118,7 +151,13 @@ class UjianController extends Controller
         }
 
         if ($now->gt($examEnd)) {
-            return redirect()->route('siswa.dashboard')->with('error', 'Sesi Ujian telah berakhir.');
+            $hasilUjian = $this->findOrCreateHasilUjian($siswa, $jadwalUjian, $enrollment, $now);
+            $this->finalizeHasilUjian($hasilUjian, true, $request);
+            SesiRuanganSiswa::where('sesi_ruangan_id', $sesiRuanganId)
+                ->where('siswa_id', $siswa->id)
+                ->update(['keterangan' => 'force_logout']);
+
+            return $this->logoutAndRedirectToSiswaLogin($request, 'Sesi ujian telah berakhir. Silakan login kembali jika ada sesi berikutnya.');
         }
 
         // Debug info for randomization settings
@@ -143,31 +182,25 @@ class UjianController extends Controller
         // get exam end duration from enrollment
 
         // Get or create hasil ujian record
-        $hasilUjian = HasilUjian::firstOrCreate([
-            'siswa_id' => $siswa->id,
-            'jadwal_ujian_id' => $jadwalUjian->id,
-        ], [
-            'enrollment_ujian_id' => $enrollmentId,
-            'sesi_ruangan_id' => $sesiRuanganId,
-            'waktu_mulai' => $now,
-            'durasi_menit' => $jadwalUjian->durasi_menit,
-            'jumlah_soal' => $jadwalUjian->jumlah_soal ?: 0,
-            'jumlah_dijawab' => 0,
-            'jumlah_benar' => 0,
-            'jumlah_salah' => 0,
-            'jumlah_tidak_dijawab' => $jadwalUjian->jumlah_soal ?: 0,
-            'skor' => 0,
-            'is_final' => false,
-            'status' => 'berlangsung',
-        ]);
+        $hasilUjian = $this->findOrCreateHasilUjian($siswa, $jadwalUjian, $enrollment, $now);
 
 
         // Kalau hasil ujian sudah ada, update waktunya biar sinkron
-        if ($hasilUjian->wasRecentlyCreated === false) {
+        if ($hasilUjian->wasRecentlyCreated === false && !$hasilUjian->is_final) {
             $hasilUjian->update([
                 'waktu_mulai' => $enrollment->waktu_mulai_ujian,
                 'durasi_menit' => $jadwalUjian->durasi_menit
             ]);
+        }
+
+        if ($hasilUjian->is_final || !in_array($enrollment->status_enrollment, ['enrolled', 'active'])) {
+            return redirect()->route('siswa.dashboard')
+                ->with('error', 'Status ujian tidak valid atau sudah selesai.');
+        }
+
+        if ($this->hasExamTimeExpired($hasilUjian)) {
+            $this->finalizeHasilUjian($hasilUjian, true, $request);
+            return redirect()->route('siswa.dashboard')->with('warning', 'Waktu ujian telah habis. Ujian dikumpulkan otomatis.');
         }
 
         // Get questions from bank_soal instead of jadwal_ujian relationship
@@ -192,37 +225,39 @@ class UjianController extends Controller
             $options['A'] = [
                 'teks' => $soal->pilihan_a_teks,
                 'gambar' => $soal->pilihan_a_gambar,
-                'tipe' => $soal->pilihan_a_tipe ?? 'teks'
+                'tipe' => $soal->pilihan_a_tipe ?? 'teks',
+                'original_key' => 'A',
             ];
 
             $options['B'] = [
                 'teks' => $soal->pilihan_b_teks,
                 'gambar' => $soal->pilihan_b_gambar,
-                'tipe' => $soal->pilihan_b_tipe ?? 'teks'
+                'tipe' => $soal->pilihan_b_tipe ?? 'teks',
+                'original_key' => 'B',
             ];
 
             $options['C'] = [
                 'teks' => $soal->pilihan_c_teks,
                 'gambar' => $soal->pilihan_c_gambar,
-                'tipe' => $soal->pilihan_c_tipe ?? 'teks'
+                'tipe' => $soal->pilihan_c_tipe ?? 'teks',
+                'original_key' => 'C',
             ];
 
             $options['D'] = [
                 'teks' => $soal->pilihan_d_teks,
                 'gambar' => $soal->pilihan_d_gambar,
-                'tipe' => $soal->pilihan_d_tipe ?? 'teks'
+                'tipe' => $soal->pilihan_d_tipe ?? 'teks',
+                'original_key' => 'D',
             ];
 
             if ($soal->pilihan_e_teks || $soal->pilihan_e_gambar) {
                 $options['E'] = [
                     'teks' => $soal->pilihan_e_teks,
                     'gambar' => $soal->pilihan_e_gambar,
-                    'tipe' => $soal->pilihan_e_tipe ?? 'teks'
+                    'tipe' => $soal->pilihan_e_tipe ?? 'teks',
+                    'original_key' => 'E',
                 ];
             }
-
-            // Handle option randomization with consistent seed per student-question
-            $correctAnswerAfterShuffle = $soal->kunci_jawaban; // Default to original
 
             if ($jadwalUjian->acak_jawaban) {
                 // Use consistent seed based on siswa_id and soal_id for reproducible randomization
@@ -232,31 +267,12 @@ class UjianController extends Controller
                 $keys = array_keys($options);
                 shuffle($keys);
                 $shuffledOptions = [];
-                $mappedCorrectAnswers = [];
-                $originalCorrectAnswers = collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))
-                    ->map(fn($value) => trim($value))
-                    ->filter()
-                    ->all();
 
                 foreach ($keys as $i => $key) {
                     $newKey = chr(65 + $i); // A, B, C, D, E
                     $shuffledOptions[$newKey] = $options[$key];
-
-                    // Track the new position of the correct answer
-                    if ($key === $soal->kunci_jawaban) {
-                        $correctAnswerAfterShuffle = $newKey;
-                    }
-
-                    if (in_array(strtoupper((string) $key), $originalCorrectAnswers, true)) {
-                        $mappedCorrectAnswers[] = $newKey;
-                    }
                 }
                 $options = $shuffledOptions;
-
-                if (($soal->tipe_soal ?? 'pilihan_ganda') === 'pilihan_kompleks' && !empty($mappedCorrectAnswers)) {
-                    sort($mappedCorrectAnswers);
-                    $correctAnswerAfterShuffle = implode(',', $mappedCorrectAnswers);
-                }
 
                 // Reset random seed
                 mt_srand();
@@ -271,8 +287,8 @@ class UjianController extends Controller
                 'options' => $options,
                 'display_settings' => $soal->display_settings ?? [],
                 'gambar_soal' => $soal->gambar_pertanyaan,
-                'kunci_jawaban' => $soal->kunci_jawaban, // Original key for reference
-                'kunci_jawaban_acak' => $correctAnswerAfterShuffle // Shuffled key for validation
+                'kunci_jawaban' => $soal->kunci_jawaban,
+                'kunci_jawaban_acak' => $soal->kunci_jawaban,
             ];
         })->toArray();
 
@@ -368,6 +384,14 @@ class UjianController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
+            if ($hasilUjian->is_final || $hasilUjian->status !== 'berlangsung') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Exam already submitted',
+                    'redirect_url' => route('siswa.dashboard')
+                ]);
+            }
+
             // Save or update answer
             $jawaban = JawabanSiswa::updateOrCreate([
                 'hasil_ujian_id' => $request->hasil_ujian_id,
@@ -408,6 +432,16 @@ class UjianController extends Controller
                     'jumlah_tidak_dijawab' => $hasilUjian->jumlah_soal - $totalAnswered
                 ]);
             }
+
+            if ($this->hasExamTimeExpired($hasilUjian->fresh())) {
+                $this->finalizeHasilUjian($hasilUjian->fresh(), true, $request);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Waktu ujian habis. Ujian dikumpulkan otomatis.',
+                    'redirect_url' => route('siswa.dashboard')
+                ]);
+            }
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('Error saving answer', [
@@ -440,6 +474,24 @@ class UjianController extends Controller
 
             if (!$hasilUjian) {
                 return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            if ($hasilUjian->is_final || $hasilUjian->status !== 'berlangsung') {
+                return response()->json([
+                    'success' => true,
+                    'is_final' => true,
+                    'redirect_url' => route('siswa.dashboard')
+                ]);
+            }
+
+            if ($this->hasExamTimeExpired($hasilUjian)) {
+                $this->finalizeHasilUjian($hasilUjian, true, $request);
+
+                return response()->json([
+                    'success' => true,
+                    'is_final' => true,
+                    'redirect_url' => route('siswa.dashboard')
+                ]);
             }
 
             // Ambil jawaban siswa (atau buat baru)
@@ -562,55 +614,8 @@ class UjianController extends Controller
                 ], 200); // Return 200 instead of 404 to avoid error message
             }
 
-            // Calculate score
-            $score = $this->calculateScore($hasilUjian);
-
-            // Update hasil ujian dengan nilai lengkap
-            $currentSesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
-            $waktuMulai = $hasilUjian->waktu_mulai;
-            $waktuSelesai = now();
-            $durasiMenit = $waktuMulai ? $waktuSelesai->diffInMinutes($waktuMulai) : $hasilUjian->jadwalUjian->durasi_menit;
-
-            // Hitung nilai berdasarkan skor parsial berbobot
-            $nilai = $score['persentase'] ?? 0;
-
-            // Tentukan status lulus berdasarkan nilai > 75
-            $kkm = 75; // Standar KKM
-            if ($hasilUjian->jadwalUjian && isset($hasilUjian->jadwalUjian->pengaturan['kkm'])) {
-                $kkm = $hasilUjian->jadwalUjian->pengaturan['kkm'];
-            }
-            $lulus = $nilai >= $kkm;
-
-            $hasilUjian->update([
-                'waktu_selesai' => $waktuSelesai,
-                'skor' => $score['total_skor'],
-                'jumlah_benar' => $score['jumlah_benar'],
-                'jumlah_salah' => $score['jumlah_salah'],
-                'jumlah_soal' => $score['total_soal'],
-                'jumlah_dijawab' => $score['jumlah_dijawab'],
-                'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
-                'durasi_menit' => $durasiMenit,
-                'nilai' => $nilai,
-                'lulus' => $lulus,
-                'sesi_ruangan_id' => $currentSesiRuanganId,
-                'status' => $isAutoSubmit ? 'auto-selesai' : 'selesai',
-                'is_final' => true
-            ]);
-
-            // Clear exam session variables
-            session()->forget(['ujian_aktif', 'hasil_ujian_id', 'waktu_mulai', 'durasi']);
-
-            // Update enrollment status
-            $enrollment = EnrollmentUjian::where('id', $request->session()->get('current_enrollment_id'))
-                ->first();
-            Log::info('Enrollment found for update', [
-                'enrollment_id' => $enrollment->id ?? null,
-                'siswa_id' => $siswa->id
-            ]);
-
-            if ($enrollment) {
-                $enrollment->update(['status_enrollment' => 'completed']);
-            }
+            $isAutoSubmit = $isAutoSubmit || $this->hasExamTimeExpired($hasilUjian);
+            $score = $this->finalizeHasilUjian($hasilUjian, $isAutoSubmit, $request);
 
             Log::info('Exam submitted', [
                 'siswa_id' => $siswa->id,
@@ -1002,66 +1007,106 @@ class UjianController extends Controller
      */
     private function getCorrectAnswerForStudent($soal, $siswa, $jadwalUjian)
     {
-        // If answer randomization is not enabled, return original key
-        if (!$jadwalUjian->acak_jawaban) {
-            return $soal->kunci_jawaban;
-        }
-
-        // Build original options
-        $options = [];
-
-        if ($soal->pilihan_a_teks || $soal->pilihan_a_gambar) {
-            $options['A'] = $soal->pilihan_a_teks;
-        }
-        if ($soal->pilihan_b_teks || $soal->pilihan_b_gambar) {
-            $options['B'] = $soal->pilihan_b_teks;
-        }
-        if ($soal->pilihan_c_teks || $soal->pilihan_c_gambar) {
-            $options['C'] = $soal->pilihan_c_teks;
-        }
-        if ($soal->pilihan_d_teks || $soal->pilihan_d_gambar) {
-            $options['D'] = $soal->pilihan_d_teks;
-        }
-        if ($soal->pilihan_e_teks || $soal->pilihan_e_gambar) {
-            $options['E'] = $soal->pilihan_e_teks;
-        }
-
-        // Apply the same randomization logic as used in exam display
-        $seed = $siswa->id * 1000 + $soal->id;
-        mt_srand($seed);
-
-        $keys = array_keys($options);
-        shuffle($keys);
-
-        $mappedCorrectAnswers = [];
-        $originalCorrectAnswers = collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))
-            ->map(fn($value) => trim($value))
-            ->filter()
-            ->all();
-
-        // Find where the original correct answer ended up
-        foreach ($keys as $i => $originalKey) {
-            $newKey = chr(65 + $i); // A, B, C, D, E
-
-            if (in_array(strtoupper((string) $originalKey), $originalCorrectAnswers, true)) {
-                $mappedCorrectAnswers[] = $newKey;
-            }
-
-            if ($originalKey === $soal->kunci_jawaban) {
-                mt_srand(); // Reset seed
-                return $newKey;
-            }
-        }
-
-        if (($soal->tipe_soal ?? 'pilihan_ganda') === 'pilihan_kompleks' && !empty($mappedCorrectAnswers)) {
-            mt_srand(); // Reset seed
-            sort($mappedCorrectAnswers);
-            return implode(',', $mappedCorrectAnswers);
-        }
-
-        mt_srand(); // Reset seed
-        return $soal->kunci_jawaban; // Fallback to original
+        return $soal->kunci_jawaban;
     }
+
+    private function findOrCreateHasilUjian($siswa, JadwalUjian $jadwalUjian, EnrollmentUjian $enrollment, Carbon $now): HasilUjian
+    {
+        return HasilUjian::firstOrCreate([
+            'siswa_id' => $siswa->id,
+            'jadwal_ujian_id' => $jadwalUjian->id,
+        ], [
+            'enrollment_ujian_id' => $enrollment->id,
+            'sesi_ruangan_id' => $enrollment->sesi_ruangan_id,
+            'waktu_mulai' => $enrollment->waktu_mulai_ujian ?? $now,
+            'durasi_menit' => $jadwalUjian->durasi_menit,
+            'jumlah_soal' => $jadwalUjian->jumlah_soal ?: 0,
+            'jumlah_dijawab' => 0,
+            'jumlah_benar' => 0,
+            'jumlah_salah' => 0,
+            'jumlah_tidak_dijawab' => $jadwalUjian->jumlah_soal ?: 0,
+            'skor' => 0,
+            'is_final' => false,
+            'status' => 'berlangsung',
+        ]);
+    }
+
+    private function hasExamTimeExpired(HasilUjian $hasilUjian): bool
+    {
+        $enrollment = $hasilUjian->enrollment;
+        if ($enrollment?->waktu_selesai_ujian) {
+            return now()->greaterThanOrEqualTo(Carbon::parse($enrollment->waktu_selesai_ujian));
+        }
+
+        if ($hasilUjian->waktu_mulai && $hasilUjian->durasi_menit) {
+            return now()->greaterThanOrEqualTo(Carbon::parse($hasilUjian->waktu_mulai)->addMinutes((int) $hasilUjian->durasi_menit));
+        }
+
+        return false;
+    }
+
+    private function finalizeHasilUjian(HasilUjian $hasilUjian, bool $isAutoSubmit, Request $request): array
+    {
+        if ($hasilUjian->is_final || $hasilUjian->status !== 'berlangsung') {
+            return $this->calculateScore($hasilUjian);
+        }
+
+        $score = $this->calculateScore($hasilUjian);
+        $waktuSelesai = now();
+        $waktuMulai = $hasilUjian->waktu_mulai;
+        $durasiMenit = $waktuMulai
+            ? $waktuSelesai->diffInMinutes(Carbon::parse($waktuMulai))
+            : $hasilUjian->jadwalUjian->durasi_menit;
+        $nilai = $score['persentase'] ?? 0;
+        $kkm = $hasilUjian->jadwalUjian->pengaturan['kkm'] ?? 75;
+
+        $hasilUjian->update([
+            'waktu_selesai' => $waktuSelesai,
+            'skor' => $score['total_skor'],
+            'jumlah_benar' => $score['jumlah_benar'],
+            'jumlah_salah' => $score['jumlah_salah'],
+            'jumlah_soal' => $score['total_soal'],
+            'jumlah_dijawab' => $score['jumlah_dijawab'],
+            'jumlah_tidak_dijawab' => $score['jumlah_tidak_dijawab'],
+            'durasi_menit' => $durasiMenit,
+            'nilai' => $nilai,
+            'lulus' => $nilai >= $kkm,
+            'sesi_ruangan_id' => $hasilUjian->sesi_ruangan_id ?: $request->session()->get('current_sesi_ruangan_id'),
+            'status' => $isAutoSubmit ? 'auto-selesai' : 'selesai',
+            'is_final' => true,
+        ]);
+
+        $enrollment = $hasilUjian->enrollment
+            ?: EnrollmentUjian::find($request->session()->get('current_enrollment_id'));
+
+        if ($enrollment && $enrollment->siswa_id === $hasilUjian->siswa_id) {
+            $enrollment->update([
+                'status_enrollment' => 'completed',
+                'waktu_selesai_ujian' => $enrollment->waktu_selesai_ujian ?? $waktuSelesai,
+            ]);
+        }
+
+        $request->session()->forget(['ujian_aktif', 'hasil_ujian_id', 'waktu_mulai', 'durasi']);
+
+        return $score;
+    }
+
+    private function logoutAndRedirectToSiswaLogin(Request $request, string $message)
+    {
+        $siswa = Auth::guard('siswa')->user();
+        Auth::guard('siswa')->logout();
+
+        if ($siswa) {
+            $siswa->setRememberToken(null);
+            $siswa->save();
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/login/siswa')->with('error', $message);
+    }
+
     /**
      * Auto-submit exam when time runs out
      */

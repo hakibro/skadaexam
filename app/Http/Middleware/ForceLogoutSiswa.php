@@ -21,13 +21,24 @@ class ForceLogoutSiswa
         $user = Auth::guard('siswa')->user();
 
         if ($user) {
+            $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id');
+
+            // Hanya cek force_logout jika siswa sedang dalam sesi ujian aktif.
+            // Tanpa sesi_ruangan_id, query akan mencari semua record lama dan menyebabkan false-trigger.
+            if (!$sesiRuanganId) {
+                return $next($request);
+            }
+
             $isForceLogout = \App\Models\SesiRuanganSiswa::where('siswa_id', $user->id)
+                ->where('sesi_ruangan_id', $sesiRuanganId)
                 ->where('keterangan', 'force_logout')
                 ->exists();
 
             if ($isForceLogout) {
                 Log::info('Siswa Force Logout Karena Sesi sudah habis', ['User ID' => $user->id]);
                 Auth::guard('siswa')->logout();
+                $user->setRememberToken(null);
+                $user->save();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 

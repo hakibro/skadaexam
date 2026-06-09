@@ -34,7 +34,21 @@ class EnrollmentUjianController extends Controller
     {
         $activeYearId = app(TahunAjaranService::class)->activeId();
         $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
-        $paketUjianId = $request->get('paket_ujian_id');
+        $paketUjians = \App\Models\PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->orderByRaw("CASE WHEN status = 'aktif' THEN 0 ELSE 1 END")
+            ->orderByDesc('tanggal_mulai')
+            ->orderBy('nama')
+            ->get();
+        if ($request->has('paket_ujian_id')) {
+            $requestedPaketId = $request->get('paket_ujian_id');
+            $paketUjianId = $requestedPaketId === ''
+                ? null
+                : ($paketUjians->contains('id', (int) $requestedPaketId)
+                    ? (int) $requestedPaketId
+                    : ($paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id));
+        } else {
+            $paketUjianId = $paketUjians->firstWhere('status', 'aktif')?->id ?? $paketUjians->first()?->id;
+        }
 
         $query = EnrollmentUjian::with(['siswa.tahunAjaranRecords.kelas', 'sesiRuangan.jadwalUjian', 'sesiRuanganSiswa', 'jadwalUjian']);
 
@@ -95,11 +109,11 @@ class EnrollmentUjianController extends Controller
 
         $sesiRuangans = SesiRuangan::whereIn('status', ['belum_mulai', 'berlangsung'])
             ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->when($paketUjianId, fn($q) => $q->whereHas('jadwalUjians', fn($jadwal) => $jadwal->where('paket_ujian_id', $paketUjianId)))
             ->orderBy('waktu_mulai', 'desc')
             ->get();
         $kelasList = Kelas::forTahunAjaran($tahunAjaranId)->orderBy('nama_kelas')->get();
         $tahunAjarans = \App\Models\TahunAjaran::orderByDesc('is_active')->orderByDesc('tanggal_mulai')->get();
-        $paketUjians = \App\Models\PaketUjian::when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))->orderBy('nama')->get();
 
         return view('features.naskah.enrollment_ujian.index', compact('enrollments', 'jadwalUjians', 'sesiRuangans', 'kelasList', 'tahunAjarans', 'tahunAjaranId', 'paketUjians', 'paketUjianId'));
     }
