@@ -23,6 +23,7 @@ Route::middleware(['auth:siswa', 'siswa.force_logout'])->prefix('ujian')->name('
     Route::post('/toggle-flag', [UjianController::class, 'toggleFlag'])->name('toggle-flag');
 
     Route::post('/submit', [UjianController::class, 'submitExam'])->name('submit');
+    Route::get('/status/{hasil_ujian_id}', [UjianController::class, 'status'])->name('status');
     Route::get('/confirm-finish', [UjianController::class, 'confirmFinish'])->name('confirm-finish');
     Route::get('/result', [UjianController::class, 'examResult'])->name('result');
 

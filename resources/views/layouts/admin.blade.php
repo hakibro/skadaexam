@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="base-url" content="{{ url('/') }}">
+    @include('partials.pwa-meta')
 
     <title>@yield('title', 'Dashboard') - {{ config('app.name', 'SKADA Exam') }}</title>
 

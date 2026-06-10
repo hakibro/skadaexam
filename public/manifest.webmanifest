@@ -1,0 +1,25 @@
+{
+    "name": "SkadaExam",
+    "short_name": "SkadaExam",
+    "description": "Aplikasi ujian SkadaExam",
+    "start_url": "/login/siswa",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f8fafc",
+    "theme_color": "#4f46e5",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/assets/logo-compressed.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

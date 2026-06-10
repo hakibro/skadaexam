@@ -7,6 +7,7 @@
     <title>Ujian - {{ config('app.name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @include('partials.pwa-meta')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @include('partials.rich-soal-styles')
     <style>
@@ -130,7 +131,7 @@
     </style>
 </head>
 
-<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen">
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen" data-require-pwa="1">
     <!-- Header -->
     <header class="bg-white shadow-lg border-b-4 border-indigo-500 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -179,7 +180,7 @@
                                 stroke-linecap="round" />
                         </svg>
                         <div class="absolute inset-0 flex items-center justify-center">
-                            <span
+                            <span id="answeredProgressText"
                                 class="text-xs font-bold text-gray-700">{{ $examData['answeredCount'] ?? 0 }}/{{ $examData['totalQuestions'] ?? 0 }}</span>
                         </div>
                     </div>
@@ -731,7 +732,7 @@
             </button>
 
             <div class="text-xs font-bold text-center">
-                <span class="text-green-600">{{ count($examData['answers'] ?? []) }}</span>
+                <span id="mobileAnsweredCount" class="text-green-600">{{ count($examData['answers'] ?? []) }}</span>
                 <span class="text-gray-500">/{{ count($examData['questions'] ?? []) }}</span>
             </div>
 
@@ -765,7 +766,7 @@
         // let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
         // let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
 
-        const alwaysShowSubmit = {{ $examData['tampilkan_tombol_submit'] ? 'true' : 'false' }};
+        let submitUnlockedByControl = {{ $examData['tampilkan_tombol_submit'] ? 'true' : 'false' }};
 
 
 
@@ -792,6 +793,19 @@
             submitExamBtn.querySelector("i").classList.add("fa-check");
         }
 
+        function disableSubmitExamBtn() {
+            submitExamBtn.disabled = true;
+            submitExamBtn.className =
+                "bg-gradient-to-r from-gray-400 to-gray-500 text-gray-400 px-3 sm:px-6 py-2 rounded-lg " +
+                "font-semibold transition-all duration-300 transform shadow-lg text-sm sm:text-base cursor-not-allowed";
+
+            const icon = submitExamBtn.querySelector("i");
+            if (icon) {
+                icon.classList.remove("fa-check");
+                icon.classList.add("fa-ban", "text-gray-400");
+            }
+        }
+
         // Tutup modal saat klik batal atau X
         cancelSubmitBtn.addEventListener('click', () => modalSubmit.classList.add('hidden'));
 
@@ -805,6 +819,11 @@
 
         // CSRF token setup
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const examUrl = @json(route('ujian.exam', ['jadwal_id' => $examData['jadwalUjianId'] ?? 0]));
+        const statusUrl = @json(route('ujian.status', ['hasil_ujian_id' => $examData['hasilUjianId'] ?? 0]));
+        const questionImageBaseUrl = @json(asset('storage/soal/pertanyaan'));
+        const optionImageBaseUrl = @json(asset('storage/soal/pilihan'));
+        const audioBaseUrl = @json(asset('storage/soal/audio'));
 
 
         // Safe system notification function (doesn't trigger violation detection)
@@ -836,6 +855,278 @@
                     notification.remove();
                 }
             }, duration);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function optionIsSelected(question, optionValue) {
+            const savedAnswer = answers[question.id] ?? '';
+            if ((question.tipe_soal || 'pilihan_ganda') === 'pilihan_kompleks') {
+                return String(savedAnswer)
+                    .split(',')
+                    .map(value => value.trim())
+                    .filter(Boolean)
+                    .includes(String(optionValue));
+            }
+
+            return String(savedAnswer) === String(optionValue);
+        }
+
+        function renderDifficulty(question) {
+            if (!question.tingkat_kesulitan) return '';
+
+            const difficulty = String(question.tingkat_kesulitan);
+            const className = difficulty === 'mudah'
+                ? 'bg-green-100 text-green-800'
+                : (difficulty === 'sedang' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
+
+            return `<div class="px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${className}">${escapeHtml(difficulty.charAt(0).toUpperCase() + difficulty.slice(1))}</div>`;
+        }
+
+        function renderQuestionMedia(question) {
+            const audio = question.display_settings?.audio;
+            const image = question.gambar_soal;
+            let html = '';
+
+            if (audio) {
+                html += `<div class="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+                    <audio controls class="w-full"><source src="${audioBaseUrl}/${encodeURIComponent(audio)}"></audio>
+                </div>`;
+            }
+
+            if (image) {
+                html += `<div class="mt-4 text-center">
+                    <img src="${questionImageBaseUrl}/${encodeURIComponent(image)}" alt="Gambar soal" class="max-w-full sm:max-w-md mx-auto rounded-lg shadow-md">
+                </div>`;
+            }
+
+            return html;
+        }
+
+        function renderClozeQuestion(question, savedAnswer) {
+            const clozeSource = question.soal || '';
+            const parts = clozeSource.split(/\[\[(.+?)\]\]|___/g);
+            const clozeAnswer = safeJsonParse(savedAnswer, []);
+            let inputIndex = 0;
+            let html = '<div class="rich-soal-content rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">';
+
+            parts.forEach((part, index) => {
+                if (index % 2 === 0) {
+                    html += part || '';
+                    return;
+                }
+
+                html += `<input type="text"
+                    value="${escapeHtml(clozeAnswer[inputIndex] ?? '')}"
+                    class="cloze-answer mx-1 inline-block min-w-32 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    data-cloze-index="${inputIndex}"
+                    oninput="setClozeAnswer('${question.id}')">`;
+                inputIndex++;
+            });
+
+            return `${html}</div>`;
+        }
+
+        function renderTextAnswer(question, savedAnswer) {
+            return `<textarea
+                class="answer-text w-full min-h-32 p-4 sm:p-5 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500"
+                placeholder="Tulis jawaban Anda di sini"
+                oninput="setTextAnswer('${question.id}', this.value)">${escapeHtml(savedAnswer)}</textarea>`;
+        }
+
+        function renderMatchingQuestion(question, savedAnswer) {
+            const pairs = (question.display_settings?.interactive?.pairs || []).filter(Boolean);
+            const rightOptions = pairs.map(pair => pair.right).filter(Boolean).sort(() => Math.random() - 0.5);
+            const matchingAnswer = safeJsonParse(savedAnswer, {});
+
+            return `<div class="space-y-3">${pairs.map(pair => {
+                const left = String(pair.left ?? '');
+                return `<div class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
+                    <div class="rich-soal-content font-medium text-gray-800">${left}</div>
+                    <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
+                        data-left="${escapeHtml(left)}"
+                        onchange="setMatchingAnswer('${question.id}', this.dataset.left, this.value)">
+                        <option value="">Pilih pasangan</option>
+                        ${rightOptions.map(right => `<option value="${escapeHtml(right)}" ${String(matchingAnswer[left] ?? '') === String(right) ? 'selected' : ''}>${right}</option>`).join('')}
+                    </select>
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function renderOrderingQuestion(question, savedAnswer) {
+            const items = (question.display_settings?.interactive?.items || []).filter(Boolean);
+            const orderingAnswer = safeJsonParse(savedAnswer, []);
+            const displayItems = orderingAnswer.length ? orderingAnswer : [...items].sort(() => Math.random() - 0.5);
+
+            return `<div class="space-y-3" data-ordering-question="${question.id}">
+                ${displayItems.map(item => `<div draggable="true" data-ordering-item="${escapeHtml(item)}"
+                    ondragstart="handleOrderingDragStart(event)"
+                    ondragover="handleOrderingDragOver(event)"
+                    ondrop="handleOrderingDrop(event, '${question.id}')"
+                    class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                    <span class="rich-soal-content font-medium text-gray-800">${item}</span>
+                    <div class="flex gap-1">
+                        <button type="button" onclick="moveOrderingItem(this, '${question.id}', -1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
+                        <button type="button" onclick="moveOrderingItem(this, '${question.id}', 1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Turun</button>
+                    </div>
+                </div>`).join('')}
+            </div>`;
+        }
+
+        function renderDragDropQuestion(question, savedAnswer) {
+            const items = (question.display_settings?.interactive?.items || []).filter(Boolean);
+            const zones = (question.display_settings?.interactive?.zones || []).filter(Boolean);
+            const dragAnswer = safeJsonParse(savedAnswer, {});
+
+            return `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4" data-dragdrop-question="${question.id}">
+                <div class="space-y-3">
+                    <div class="text-sm font-semibold text-gray-700">Item</div>
+                    <div class="min-h-32 rounded-xl border-2 border-dashed border-gray-300 p-3 space-y-2" data-drag-source="1">
+                        ${items.filter(item => !dragAnswer[item]).map(item => `<div draggable="true" data-drag-item="${escapeHtml(item)}" ondragstart="handleDragStart(event)" class="dragdrop-item cursor-move rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800 shadow-sm">${item}</div>`).join('')}
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="text-sm font-semibold text-gray-700">Area Tujuan</div>
+                    ${zones.map(zone => `<div class="dragdrop-zone min-h-24 rounded-xl border-2 border-dashed border-gray-300 p-3"
+                        data-zone="${escapeHtml(zone)}"
+                        ondragover="handleDragOver(event)"
+                        ondragleave="handleDragLeave(event)"
+                        ondrop="handleDrop(event, '${question.id}', this.dataset.zone)">
+                        <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">${zone}</div>
+                        <div class="space-y-2" data-zone-items="1">
+                            ${Object.keys(dragAnswer).filter(item => dragAnswer[item] === zone).map(item => `<div draggable="true" data-drag-item="${escapeHtml(item)}" ondragstart="handleDragStart(event)" class="dragdrop-item cursor-move rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-sm">${item}</div>`).join('')}
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>`;
+        }
+
+        function renderChoiceOptions(question) {
+            const tipeSoal = question.tipe_soal || 'pilihan_ganda';
+            const options = question.options || {};
+
+            return Object.entries(options).map(([key, option]) => {
+                const isObject = option && typeof option === 'object' && !Array.isArray(option);
+                const answerValue = String(isObject ? (option.original_key ?? key) : key);
+                const selected = optionIsSelected(question, answerValue);
+                const optionText = isObject ? String(option.teks ?? '') : String(option ?? '');
+                const optionImage = isObject ? option.gambar : null;
+                const optionType = isObject ? option.tipe : 'teks';
+
+                return `<button
+                    class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100 ${selected ? 'option-selected border-indigo-500' : ''}"
+                    data-option="${escapeHtml(answerValue)}"
+                    onclick="selectAnswer('${question.id}', '${escapeHtml(answerValue)}', '${tipeSoal}')">
+                    <div class="flex items-start space-x-3 sm:space-x-4">
+                        <div class="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm">${escapeHtml(String(key).toUpperCase())}</div>
+                        <div class="rich-soal-content flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
+                            ${optionType === 'gambar' && optionImage ? `<img src="${optionImageBaseUrl}/${encodeURIComponent(optionImage)}" alt="Pilihan ${escapeHtml(key)}" class="max-w-full sm:max-w-sm mx-auto rounded-lg shadow-md">${optionText.trim() !== '' ? `<div class="mt-2">${optionText}</div>` : ''}` : optionText}
+                        </div>
+                        ${tipeSoal === 'pilihan_kompleks' ? `<div data-checkmark="1" class="flex-shrink-0 w-6 h-6 rounded border-2 ${selected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'} flex items-center justify-center text-white">${selected ? '<i class="fas fa-check text-xs"></i>' : ''}</div>` : ''}
+                    </div>
+                </button>`;
+            }).join('');
+        }
+
+        function renderAnswerArea(question) {
+            const savedAnswer = answers[question.id] ?? '';
+            const tipeSoal = question.tipe_soal || 'pilihan_ganda';
+
+            if (tipeSoal === 'teks_rumpang') return renderClozeQuestion(question, savedAnswer);
+            if (tipeSoal === 'isian_singkat') return renderTextAnswer(question, savedAnswer);
+            if (tipeSoal === 'menjodohkan') return renderMatchingQuestion(question, savedAnswer);
+            if (tipeSoal === 'mengurutkan') return renderOrderingQuestion(question, savedAnswer);
+            if (tipeSoal === 'drag_drop') return renderDragDropQuestion(question, savedAnswer);
+            return renderChoiceOptions(question);
+        }
+
+        function bindDragSources() {
+            document.querySelectorAll('[data-drag-source]').forEach(source => {
+                source.addEventListener('dragover', handleDragOver);
+                source.addEventListener('dragleave', handleDragLeave);
+                source.addEventListener('drop', function(event) {
+                    event.preventDefault();
+                    this.classList.remove('border-indigo-400', 'bg-indigo-50');
+                    const item = event.dataTransfer.getData('text/plain') || draggedItemValue;
+                    const questionId = this.closest('[data-dragdrop-question]')?.dataset.dragdropQuestion;
+                    if (!item || !questionId) return;
+
+                    const draggedElement = document.querySelector(`[data-drag-item="${cssEscape(item)}"]`);
+                    if (draggedElement) {
+                        draggedElement.classList.remove('border-green-200', 'bg-green-50', 'text-green-800');
+                        draggedElement.classList.add('border-indigo-200', 'bg-indigo-50', 'text-indigo-800');
+                        this.appendChild(draggedElement);
+                    }
+
+                    setDragDropAnswer(questionId, item, '');
+                    draggedItemValue = null;
+                });
+            });
+        }
+
+        function updateMobileNavButtons() {
+            document.querySelectorAll(`button[onclick="navigateQuestion('prev')"]`).forEach(button => {
+                button.disabled = currentQuestionIndex === 0;
+                button.classList.toggle('opacity-50', currentQuestionIndex === 0);
+                button.classList.toggle('cursor-not-allowed', currentQuestionIndex === 0);
+            });
+
+            document.querySelectorAll(`button[onclick="navigateQuestion('next')"]`).forEach(button => {
+                button.disabled = currentQuestionIndex >= questions.length - 1;
+                button.classList.toggle('opacity-50', currentQuestionIndex >= questions.length - 1);
+                button.classList.toggle('cursor-not-allowed', currentQuestionIndex >= questions.length - 1);
+            });
+        }
+
+        function renderQuestion(index) {
+            if (index < 0 || index >= questions.length) return;
+
+            currentQuestionIndex = index;
+            const question = questions[currentQuestionIndex];
+            const tipeSoal = question.tipe_soal || 'pilihan_ganda';
+            const container = document.getElementById('questionContainer');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex flex-wrap justify-between items-start mb-6 gap-2">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg px-3 sm:px-4 py-1 sm:py-2">
+                            <span class="font-bold text-base sm:text-lg">Soal ${currentQuestionIndex + 1}</span>
+                        </div>
+                        ${renderDifficulty(question)}
+                    </div>
+                    <div class="text-xs sm:text-sm text-gray-500">${currentQuestionIndex + 1} dari ${questions.length} soal</div>
+                </div>
+                <div class="mb-6 sm:mb-8">
+                    ${tipeSoal !== 'teks_rumpang' ? `<div class="rich-soal-content text-base sm:text-lg font-medium text-gray-800 leading-relaxed">${question.soal || ''}</div>` : ''}
+                    ${renderQuestionMedia(question)}
+                </div>
+                <div class="space-y-3 sm:space-y-4 mb-6 sm:mb-8">${renderAnswerArea(question)}</div>
+                <div class="flex flex-wrap justify-between items-center gap-2 pt-4 sm:pt-6 border-t">
+                    <button id="prevBtn" class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm sm:text-base ${currentQuestionIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentQuestionIndex === 0 ? 'disabled' : ''} onclick="navigateQuestion('prev')">
+                        <i class="fas fa-chevron-left"></i><span>Sebelumnya</span>
+                    </button>
+                    <button id="nextBtn" class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors text-sm sm:text-base ${currentQuestionIndex >= questions.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentQuestionIndex >= questions.length - 1 ? 'disabled' : ''} onclick="navigateQuestion('next')">
+                        <span>Selanjutnya</span><i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>`;
+
+            const flagText = document.getElementById('flagText');
+            if (flagText) {
+                flagText.textContent = flaggedQuestions.includes(question.id) ? 'Lepas Tanda' : 'Tandai Soal';
+            }
+
+            bindDragSources();
+            updateProgress();
+            updateMobileNavButtons();
+            history.replaceState(null, '', `${examUrl}?question=${currentQuestionIndex}`);
         }
 
         // Mobile sidebar functionality
@@ -870,11 +1161,9 @@
         function navigateToQuestion(index) {
             if (index >= 0 && index < questions.length) {
                 saveCurrentAnswer().then(() => {
-                    window.location.href =
-                        `{{ route('ujian.exam', ['jadwal_id' => $examData['jadwalUjianId'] ?? 0]) }}?question=${index}`;
+                    renderQuestion(index);
                 }).catch(() => {
-                    window.location.href =
-                        `{{ route('ujian.exam', ['jadwal_id' => $examData['jadwalUjianId'] ?? 0]) }}?question=${index}`;
+                    renderQuestion(index);
                 });
             }
         }
@@ -1184,6 +1473,11 @@
                 if (!response.ok) throw new Error('Failed to save answer');
 
                 const result = await response.json();
+                if (result.redirect_url) {
+                    releaseWakeLock();
+                    window.location.href = result.redirect_url;
+                    return result;
+                }
                 return result;
             } catch (error) {
                 // Error saving answer - show system notification
@@ -1265,14 +1559,13 @@
                 desktopSVGProgressRing.style.strokeDasharray = `${desktopProgress} 126`;
             }
 
-            // Update question count
-            const countElements = document.querySelectorAll('.text-xs.font-bold.text-gray-700 span');
-            countElements.forEach(el => {
-                el.textContent = `${answeredCount}/${totalQuestions}`;
-            });
+            const answeredProgressText = document.getElementById('answeredProgressText');
+            if (answeredProgressText) {
+                answeredProgressText.textContent = `${answeredCount}/${totalQuestions}`;
+            }
 
             // Update mobile bottom bar count
-            const mobileCount = document.querySelector('.fixed.bottom-0 .text-xs.font-bold span.text-green-600');
+            const mobileCount = document.getElementById('mobileAnsweredCount');
             if (mobileCount) {
                 mobileCount.textContent = answeredCount;
             }
@@ -1311,10 +1604,87 @@
             });
         }
 
+        let wakeLock = null;
+
+        async function requestWakeLock(showWarning = false) {
+            if (!('wakeLock' in navigator) || !window.isSecureContext) {
+                if (showWarning) {
+                    showSystemNotification('Browser tidak mendukung stay awake. Pastikan layar tidak sleep selama ujian.', 'warning', 6000);
+                }
+                return;
+            }
+
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
+                });
+            } catch (error) {
+                if (showWarning) {
+                    showSystemNotification('Stay awake tidak aktif. Atur layar agar tidak mati selama ujian.', 'warning', 6000);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release().catch(() => {});
+                wakeLock = null;
+            }
+        }
+
+        async function checkExamStatus(silent = true) {
+            try {
+                const response = await fetch(statusUrl, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+
+                if (data.force_logout) {
+                    releaseWakeLock();
+                    window.location.href = data.redirect_url || '{{ url('/login/siswa') }}';
+                    return data;
+                }
+
+                if (typeof data.remaining_time === 'number') {
+                    remainingTime = Math.max(0, data.remaining_time);
+                    updateTimerDisplay();
+                }
+
+                if (typeof data.tampilkan_tombol_submit === 'boolean') {
+                    submitUnlockedByControl = data.tampilkan_tombol_submit;
+                    updateTimerDisplay();
+                }
+
+                if (data.expired || data.is_final) {
+                    releaseWakeLock();
+                    if (!silent) {
+                        showSystemNotification('Waktu ujian habis. Ujian telah dikumpulkan otomatis.', 'info');
+                    }
+                    window.location.href = data.redirect_url || '{{ route('siswa.dashboard') }}';
+                }
+
+                return data;
+            } catch (error) {
+                if (!silent) {
+                    showSystemNotification('Gagal mengecek status ujian', 'warning');
+                }
+                return null;
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
+            if (document.body.dataset.requirePwa === '1' && window.SkadaExamPwa && !window.SkadaExamPwa.isStandalone()) {
+                window.SkadaExamPwa.showGate(window.location.href);
+            }
+
             updateProgress();
+            renderQuestion(currentQuestionIndex);
             restoreSelectedAnswer(); // Restore the selected answer for current question
+            requestWakeLock(true);
 
             // CEK PELANGGARAN SAAT LOAD
             const lastViolation = await getLastViolation();
@@ -1341,7 +1711,7 @@
                 autoSubmitExam();
             }
 
-            if (alwaysShowSubmit) {
+            if (submitUnlockedByControl) {
                 // langsung aktif
                 showSubmitExamBtn();
 
@@ -1355,6 +1725,17 @@
                     saveCurrentAnswer();
                 }
             }, 30000);
+
+            setInterval(() => {
+                checkExamStatus(true);
+            }, 15000);
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    requestWakeLock(false);
+                    checkExamStatus(false);
+                }
+            });
 
             // Set up visibility change detection
             setupVisibilityChangeDetection();
@@ -1374,6 +1755,8 @@
                 showSystemNotification(
                     "Anda tidak bisa menggunakan tombol kembali selama ujian berlangsung!");
             });
+
+            window.addEventListener('beforeunload', releaseWakeLock);
         });
 
         // Countdown timer function
@@ -1425,7 +1808,7 @@
 
                 // Change color when time is running low
                 const timerParent = timerElement.parentElement.parentElement;
-                if (remainingTime <= 300) { // 5 minutes
+                if (submitUnlockedByControl || remainingTime <= 300) { // opened by proctor/admin or last 5 minutes
                     timerParent.className =
                         'bg-gradient-to-r from-red-500 to-red-600 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md pulse';
                     showSubmitExamBtn(); // tampilkan tombol
@@ -1437,6 +1820,7 @@
                 } else {
                     timerParent.className =
                         'bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 sm:px-4 py-2 rounded-lg shadow-md';
+                    disableSubmitExamBtn();
                 }
             }
         }
@@ -1460,14 +1844,17 @@
                     .then(() => {
                         // Redirect to dashboard after submission
                         console.log('Ujian berhasil disubmit, mengarahkan ke Dashboard...');
+                        releaseWakeLock();
                         window.location.href = '{{ route('siswa.dashboard') }}';
                     })
                     .catch(() => {
                         // Even if submission fails, redirect to dashboard
+                        releaseWakeLock();
                         window.location.href = '{{ route('siswa.dashboard') }}';
                     });
             }).catch(() => {
                 // Even if save fails, still redirect
+                releaseWakeLock();
                 window.location.href = '{{ route('siswa.dashboard') }}';
             });
         }
@@ -1492,6 +1879,7 @@
                     .then(data => {
                         if (data.success) {
                             showSystemNotification('Ujian berhasil dikumpulkan!');
+                            releaseWakeLock();
                             window.location.href = '{{ route('siswa.dashboard') }}';
                         } else {
                             showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
@@ -1531,16 +1919,19 @@
                     if (data.success) {
                         // Update UI
                         const flagText = document.getElementById('flagText');
-                        const questionNavBtn = document.querySelector(
-                            `button[onclick="navigateToQuestion(${currentQuestionIndex})"]`);
+                        const questionNavBtn = document.querySelector(`[data-question-index="${currentQuestionIndex}"]`);
 
                         if (data.is_flagged) {
+                            if (!flaggedQuestions.includes(currentQuestion.id)) {
+                                flaggedQuestions.push(currentQuestion.id);
+                            }
                             flagText.textContent = 'Lepas Tanda';
                             if (questionNavBtn) {
                                 questionNavBtn.classList.remove('bg-gray-100', 'bg-green-500');
                                 questionNavBtn.classList.add('bg-yellow-500', 'text-white');
                             }
                         } else {
+                            flaggedQuestions = flaggedQuestions.filter(id => id !== currentQuestion.id);
                             flagText.textContent = 'Tandai Soal';
                             if (questionNavBtn) {
                                 questionNavBtn.classList.remove('bg-yellow-500');
@@ -1552,6 +1943,7 @@
                                 }
                             }
                         }
+                        updateNavigationButtons();
                     }
                 })
                 .catch(error => {

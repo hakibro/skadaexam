@@ -33,6 +33,7 @@ class UjianController extends Controller
             'saveAnswer',
             'toggleFlag',
             'submitExam',
+            'status',
             'logoutFromExam',
             'finish',
             'result',
@@ -518,6 +519,70 @@ class UjianController extends Controller
 
             return response()->json(['error' => 'Failed to toggle flag'], 500);
         }
+    }
+
+    public function status(Request $request, $hasil_ujian_id)
+    {
+        $siswa = Auth::guard('siswa')->user();
+        $hasilUjian = HasilUjian::with('enrollment.sesiRuangan')
+            ->where('id', $hasil_ujian_id)
+            ->where('siswa_id', $siswa->id)
+            ->first();
+
+        if (!$hasilUjian) {
+            return response()->json([
+                'success' => false,
+                'force_logout' => true,
+                'message' => 'Sesi ujian tidak valid.',
+                'redirect_url' => url('/login/siswa'),
+            ], 404);
+        }
+
+        $sesiRuanganId = $request->session()->get('current_sesi_ruangan_id') ?: $hasilUjian->sesi_ruangan_id;
+        $forceLogout = false;
+
+        if ($sesiRuanganId) {
+            $forceLogout = SesiRuanganSiswa::where('siswa_id', $siswa->id)
+                ->where('sesi_ruangan_id', $sesiRuanganId)
+                ->where('keterangan', 'force_logout')
+                ->exists();
+        }
+
+        if ($forceLogout) {
+            return response()->json([
+                'success' => true,
+                'force_logout' => true,
+                'expired' => false,
+                'is_final' => (bool) $hasilUjian->is_final,
+                'remaining_time' => 0,
+                'message' => 'Sesi Anda telah berakhir.',
+                'redirect_url' => url('/login/siswa'),
+            ]);
+        }
+
+        $expired = $this->hasExamTimeExpired($hasilUjian);
+        if ($expired && !$hasilUjian->is_final && $hasilUjian->status === 'berlangsung') {
+            $this->finalizeHasilUjian($hasilUjian, true, $request);
+            $hasilUjian->refresh();
+        }
+
+        $remainingTime = 0;
+        $endTime = $hasilUjian->enrollment?->waktu_selesai_ujian;
+        if ($endTime) {
+            $remainingTime = max(0, now()->diffInSeconds(Carbon::parse($endTime), false));
+        } elseif ($hasilUjian->waktu_mulai && $hasilUjian->durasi_menit) {
+            $remainingTime = max(0, now()->diffInSeconds(Carbon::parse($hasilUjian->waktu_mulai)->addMinutes((int) $hasilUjian->durasi_menit), false));
+        }
+
+        return response()->json([
+            'success' => true,
+            'force_logout' => false,
+            'expired' => $expired,
+            'is_final' => (bool) $hasilUjian->is_final,
+            'remaining_time' => $remainingTime,
+            'tampilkan_tombol_submit' => (bool) ($hasilUjian->enrollment?->sesiRuangan?->tampilkan_tombol_submit),
+            'redirect_url' => ($expired || $hasilUjian->is_final) ? route('siswa.dashboard') : null,
+        ]);
     }
 
 

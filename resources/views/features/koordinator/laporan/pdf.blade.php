@@ -441,9 +441,9 @@
                         </div>
                     </div>
                     <div class="text-center">
-                        <p class="text-sm text-gray-600 mb-24">Ketua Pelaksana</p>
+                        <p class="text-sm text-gray-600 mb-24">Ketua Asesmen</p>
                         <div class="border-t border-gray-300 pt-2">
-                            <p class="">Akhmad Barizi, M.Kom</p>
+                            <p class="">Nanang Subagio, S.Pd</p>
                         </div>
                     </div>
                 </div>
