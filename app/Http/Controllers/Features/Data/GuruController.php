@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Features\Data;
 
 use App\Http\Controllers\Controller;
 use App\Models\Guru;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -154,22 +155,40 @@ class GuruController extends Controller
      */
     public function destroy(Guru $guru)
     {
-        // Backup user ID before deleting guru
-        $userId = $guru->user_id;
-
-        // Delete the guru record
-        $guru->delete();
-
-        // Delete the associated user if it exists
-        if ($userId) {
-            $user = \App\Models\User::find($userId);
-            if ($user) {
-                $user->delete();
-            }
-        }
+        DB::transaction(function () use ($guru) {
+            $this->deleteGuruAndLinkedUser($guru);
+        });
 
         return redirect()->route('data.guru.index')
             ->with('success', 'Guru berhasil dihapus!');
+    }
+
+    private function deleteGuruAndLinkedUser(Guru $guru, array &$deletedUserIds = []): void
+    {
+        $user = $this->findLinkedUser($guru);
+
+        $guru->delete();
+
+        if (!$user || in_array($user->id, $deletedUserIds, true)) {
+            return;
+        }
+
+        $user->syncRoles([]);
+        $user->delete();
+        $deletedUserIds[] = $user->id;
+    }
+
+    private function findLinkedUser(Guru $guru): ?User
+    {
+        if ($guru->user_id) {
+            return User::find($guru->user_id);
+        }
+
+        if ($guru->email) {
+            return User::where('email', $guru->email)->first();
+        }
+
+        return null;
     }
 
     /**
@@ -346,20 +365,17 @@ class GuruController extends Controller
         ]);
 
         try {
-            // Get all selected gurus with their user IDs
-            $gurus = Guru::whereIn('id', $request->ids)->get();
-            $count = $gurus->count();
+            $count = 0;
+            $deletedUserIds = [];
 
-            // Collect user IDs that need to be deleted
-            $userIds = $gurus->pluck('user_id')->filter()->values()->all();
+            DB::transaction(function () use ($request, &$count, &$deletedUserIds) {
+                $gurus = Guru::whereIn('id', $request->ids)->get();
+                $count = $gurus->count();
 
-            // Delete the guru records
-            Guru::whereIn('id', $request->ids)->delete();
-
-            // Delete associated users
-            if (!empty($userIds)) {
-                \App\Models\User::whereIn('id', $userIds)->delete();
-            }
+                foreach ($gurus as $guru) {
+                    $this->deleteGuruAndLinkedUser($guru, $deletedUserIds);
+                }
+            });
 
             return response()->json([
                 'success' => true,

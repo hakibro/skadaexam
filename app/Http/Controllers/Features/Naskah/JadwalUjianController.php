@@ -88,7 +88,7 @@ class JadwalUjianController extends Controller
         }
 
         $perPage = $request->get('per_page', 50); // default 50
-        $jadwalUjians = $query->orderBy('tanggal', 'desc')->paginate($perPage);
+        $jadwalUjians = $query->orderBy('tanggal', 'asc')->paginate($perPage);
 
         $mapels = Mapel::forTahunAjaran($tahunAjaranId)->orderBy('nama_mapel', 'asc')->get();
         $paketUjians = \App\Models\PaketUjian::when($tahunAjaranId, fn($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))

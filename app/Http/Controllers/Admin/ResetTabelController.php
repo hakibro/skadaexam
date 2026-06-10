@@ -51,6 +51,7 @@ class ResetTabelController extends Controller
             'label' => 'Paket Ujian',
             'tables' => [
                 'paket_ujian',
+                'tahun_ajaran',
             ],
         ],
     ];
@@ -62,7 +63,6 @@ class ResetTabelController extends Controller
         'model_has_roles',
         'model_has_permissions',
         'role_has_permissions',
-        'tahun_ajaran',
         'school_settings',
         'migrations',
         'sessions',
@@ -98,6 +98,7 @@ class ResetTabelController extends Controller
         'siswa',
         'kelas',
         'paket_ujian',
+        'tahun_ajaran',
         'guru',
     ];
 
@@ -106,7 +107,7 @@ class ResetTabelController extends Controller
         $availableTables = $this->availableTables();
         $presets = $this->existingPresets($availableTables);
         $tableCounts = collect($availableTables)
-            ->mapWithKeys(fn (string $table) => [$table => DB::table($table)->count()])
+            ->mapWithKeys(fn(string $table) => [$table => DB::table($table)->count()])
             ->all();
 
         return view('admin.reset-tabel.index', [
@@ -131,18 +132,18 @@ class ResetTabelController extends Controller
 
         $availableTables = $this->availableTables();
         $selectedTables = collect($validated['selected_tables'])
-            ->map(fn ($table) => trim((string) $table))
+            ->map(fn($table) => trim((string) $table))
             ->unique()
             ->values();
 
         $skipped = $selectedTables
-            ->filter(fn ($table) => !in_array($table, $availableTables, true))
+            ->filter(fn($table) => !in_array($table, $availableTables, true))
             ->values()
             ->all();
 
         $tablesToReset = $this->sortForReset(
             $selectedTables
-                ->filter(fn ($table) => in_array($table, $availableTables, true))
+                ->filter(fn($table) => in_array($table, $availableTables, true))
                 ->values()
                 ->all()
         );
@@ -229,8 +230,8 @@ class ResetTabelController extends Controller
     private function availableTables(): array
     {
         return collect($this->projectTables())
-            ->reject(fn ($table) => in_array($table, self::PROTECTED_TABLES, true))
-            ->sortBy(fn ($table) => $this->tableOrder($table))
+            ->reject(fn($table) => in_array($table, self::PROTECTED_TABLES, true))
+            ->sortBy(fn($table) => $this->tableOrder($table))
             ->values()
             ->all();
     }
@@ -249,7 +250,7 @@ class ResetTabelController extends Controller
                 ['BASE TABLE']
             ))
                 ->pluck('table_name')
-                ->map(fn ($table) => (string) $table)
+                ->map(fn($table) => (string) $table)
                 ->values()
                 ->all();
         }
@@ -273,20 +274,20 @@ class ResetTabelController extends Controller
         return collect(self::PRESETS)
             ->map(function (array $preset) use ($availableTables) {
                 $preset['tables'] = collect($preset['tables'])
-                    ->filter(fn ($table) => in_array($table, $availableTables, true))
+                    ->filter(fn($table) => in_array($table, $availableTables, true))
                     ->values()
                     ->all();
 
                 return $preset;
             })
-            ->filter(fn ($preset) => !empty($preset['tables']))
+            ->filter(fn($preset) => !empty($preset['tables']))
             ->all();
     }
 
     private function sortForReset(array $tables): array
     {
         return collect($tables)
-            ->sortBy(fn ($table) => $this->tableOrder($table))
+            ->sortBy(fn($table) => $this->tableOrder($table))
             ->values()
             ->all();
     }
