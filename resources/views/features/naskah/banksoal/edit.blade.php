@@ -274,7 +274,7 @@
                                         <div class="max-w-xs">
                                             @if ($soal->tipe_pertanyaan === 'teks')
                                                 <div class="text-sm text-gray-900">
-                                                    {{ Str::limit(html_entity_decode($soal->pertanyaan), 100) }}
+                                                    {{ Str::limit(strip_tags($soal->pertanyaan_html), 100) }}
                                                 </div>
                                             @elseif($soal->tipe_pertanyaan === 'gambar')
                                                 <div class="flex items-center">
@@ -287,7 +287,7 @@
                                                 @endif
                                             @else
                                                 <div class="text-sm text-gray-900 mb-1">
-                                                    {{ Str::limit($soal->pertanyaan, 80) }}
+                                                    {{ Str::limit(strip_tags($soal->pertanyaan_html), 80) }}
                                                 </div>
                                                 <div class="flex items-center">
                                                     <i class="fa-solid fa-image text-green-500 mr-1"></i>

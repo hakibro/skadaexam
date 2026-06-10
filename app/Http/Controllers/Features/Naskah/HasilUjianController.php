@@ -698,7 +698,7 @@ class HasilUjianController extends Controller
                 $rows[] = [
                     'soal_id' => $soal->id,
                     'nomor' => $soal->nomor_soal ?? $soal->urutan ?? $index + 1,
-                    'pertanyaan' => $soal->pertanyaan ?? $soal->soal ?? '-',
+                    'pertanyaan' => html_entity_decode($soal->pertanyaan ?? $soal->soal ?? '-'),
                     'text' => strip_tags($soal->pertanyaan ?? $soal->soal ?? '-'),
                     'pilihan' => $this->getQuestionOptions($soal),
                     'jawaban' => $this->formatAnswerValue($soal, $jawabanRaw),
@@ -714,7 +714,7 @@ class HasilUjianController extends Controller
                     'is_correct' => $isCorrect,
                     'kategori' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
                     'category' => $soal->kategori ?? $soal->tingkat_kesulitan ?? 'Umum',
-                    'pembahasan' => $soal->pembahasan_teks ?? null,
+                    'pembahasan' => html_entity_decode($soal->pembahasan_teks ?? ''),
                     'waktu_jawab' => optional($jawaban->waktu_jawab)->format('H:i:s'),
                 ];
             }
@@ -738,7 +738,7 @@ class HasilUjianController extends Controller
             $rows[] = [
                 'soal_id' => $soalId,
                 'nomor' => $soal?->nomor_soal ?? $soal?->urutan ?? $index + 1,
-                'pertanyaan' => $soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1),
+                'pertanyaan' => html_entity_decode($soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1)),
                 'text' => strip_tags($soal?->pertanyaan ?? $soal?->soal ?? 'Soal #' . ($index + 1)),
                 'pilihan' => $soal ? $this->getQuestionOptions($soal) : [],
                 'jawaban' => $soal ? $this->formatAnswerValue($soal, $jawabanRaw) : strtoupper($jawabanRaw),
@@ -754,7 +754,7 @@ class HasilUjianController extends Controller
                 'is_correct' => (bool) $isCorrect,
                 'kategori' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
                 'category' => $item['kategori'] ?? $soal?->kategori ?? 'Umum',
-                'pembahasan' => $soal?->pembahasan_teks,
+                'pembahasan' => html_entity_decode($soal?->pembahasan_teks ?? ''),
                 'waktu_jawab' => $item['waktu_jawab'] ?? null,
             ];
         }
@@ -768,7 +768,7 @@ class HasilUjianController extends Controller
             ->mapWithKeys(function ($key) use ($soal) {
                 $lower = strtolower($key);
                 $value = $soal->{"pilihan_{$lower}_teks"} ?? $soal->{"opsi_{$lower}"} ?? null;
-                return $value ? [$key => $value] : [];
+                return trim((string) $value) !== '' ? [$key => html_entity_decode($value)] : [];
             })
             ->all();
     }

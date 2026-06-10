@@ -130,10 +130,10 @@
                     </label>
                     <select id="per-page-select"
                         class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10 soal</option>
-                        <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 soal</option>
                         <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50 soal</option>
                         <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 soal</option>
+                        <option value="150" {{ request('per_page') == 150 ? 'selected' : '' }}>150 soal</option>
+                        <option value="200" {{ request('per_page') == 200 ? 'selected' : '' }}>200 soal</option>
                     </select>
                 </div>
 
@@ -240,7 +240,7 @@
                                         <div class="max-w-xs">
                                             @if ($soal->tipe_pertanyaan === 'teks')
                                                 <div class="text-sm text-gray-900 search-highlight">
-                                                    {{ Str::limit($soal->pertanyaan, 100) }}
+                                                    {{ Str::limit(strip_tags($soal->pertanyaan_html), 100) }}
                                                 </div>
                                             @elseif($soal->tipe_pertanyaan === 'gambar')
                                                 <div class="flex items-center">
@@ -253,7 +253,7 @@
                                                 @endif
                                             @else
                                                 <div class="text-sm text-gray-900 mb-1">
-                                                    {{ Str::limit($soal->pertanyaan, 80) }}
+                                                    {{ Str::limit(strip_tags($soal->pertanyaan_html), 80) }}
                                                 </div>
                                                 <div class="flex items-center">
                                                     <i class="fa-solid fa-image text-green-500 mr-1"></i>
@@ -280,7 +280,8 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <span class="font-medium">{{ \Illuminate\Support\Str::limit($soal->kunci_jawaban_label, 80) }}</span>
+                                        <span
+                                            class="font-medium">{{ \Illuminate\Support\Str::limit($soal->kunci_jawaban_label, 80) }}</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-right space-x-2">
                                         <a href="{{ route('naskah.soal.show', $soal) }}"

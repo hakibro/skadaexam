@@ -6,7 +6,7 @@
                 {{ $soal->nomor_soal }}
             </span>
             <div class="flex-1">
-                <div class="prose max-w-none">
+                <div class="rich-soal-content prose max-w-none">
                     {!! nl2br($soal->pertanyaan_html) !!}
                 </div>
                 @if ($soal->gambar_pertanyaan)
@@ -48,23 +48,23 @@
                             $isCorrect = in_array($opsi, collect(explode(',', strtoupper((string) $soal->kunci_jawaban)))->map(fn($item) => trim($item))->all(), true);
                         @endphp
 
-                        @if ($pilihanText || $pilihanGambar)
+                        @if (trim((string) $pilihanText) !== '' || $pilihanGambar)
                             <div class="flex items-start">
                                 <div
                                     class="inline-flex items-center justify-center h-6 w-6 rounded-full {{ $isCorrect ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }} font-semibold text-sm mr-3">
                                     {{ $opsi }}
                                 </div>
                                 <div class="flex-1">
-                                    @if ($pilihanText)
+                                    @if (trim((string) $pilihanText) !== '')
                                         <div
-                                            class="prose max-w-none {{ $isCorrect ? 'text-green-800 font-medium' : '' }}">
+                                            class="rich-soal-content prose max-w-none {{ $isCorrect ? 'text-green-800 font-medium' : '' }}">
                                             {!! nl2br($soal->{"pilihan_{$opsiLower}_teks_html"}) !!}
                                         </div>
                                     @endif
 
                                     @if ($pilihanGambar)
                                         <div
-                                            class="mt-1 {{ $pilihanText ? 'mt-2' : '' }} border {{ $isCorrect ? 'border-green-300' : 'border-gray-200' }} rounded-lg overflow-hidden">
+                                            class="mt-1 {{ trim((string) $pilihanText) !== '' ? 'mt-2' : '' }} border {{ $isCorrect ? 'border-green-300' : 'border-gray-200' }} rounded-lg overflow-hidden">
                                             <img src="{{ $soal->{"pilihan_{$opsiLower}_gambar_url"} }}"
                                                 alt="Pilihan {{ $opsi }}" class="max-w-full h-auto max-h-40">
                                         </div>
@@ -114,7 +114,7 @@
                 <div class="mt-5 bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <h4 class="text-sm font-semibold text-gray-700 mb-2">Pembahasan:</h4>
                     @if ($soal->pembahasan_teks)
-                        <div class="prose prose-sm max-w-none text-gray-700">
+                        <div class="rich-soal-content prose prose-sm max-w-none text-gray-700">
                             {!! nl2br($soal->pembahasan_teks_html) !!}
                         </div>
                     @endif

@@ -223,36 +223,37 @@ class UjianController extends Controller
 
             // Build options array from database columns, handling both text and image options
             $options['A'] = [
-                'teks' => $soal->pilihan_a_teks,
+                'teks' => html_entity_decode((string) ($soal->pilihan_a_teks ?? $soal->opsi_a ?? '')),
                 'gambar' => $soal->pilihan_a_gambar,
                 'tipe' => $soal->pilihan_a_tipe ?? 'teks',
                 'original_key' => 'A',
             ];
 
             $options['B'] = [
-                'teks' => $soal->pilihan_b_teks,
+                'teks' => html_entity_decode((string) ($soal->pilihan_b_teks ?? $soal->opsi_b ?? '')),
                 'gambar' => $soal->pilihan_b_gambar,
                 'tipe' => $soal->pilihan_b_tipe ?? 'teks',
                 'original_key' => 'B',
             ];
 
             $options['C'] = [
-                'teks' => $soal->pilihan_c_teks,
+                'teks' => html_entity_decode((string) ($soal->pilihan_c_teks ?? $soal->opsi_c ?? '')),
                 'gambar' => $soal->pilihan_c_gambar,
                 'tipe' => $soal->pilihan_c_tipe ?? 'teks',
                 'original_key' => 'C',
             ];
 
             $options['D'] = [
-                'teks' => $soal->pilihan_d_teks,
+                'teks' => html_entity_decode((string) ($soal->pilihan_d_teks ?? $soal->opsi_d ?? '')),
                 'gambar' => $soal->pilihan_d_gambar,
                 'tipe' => $soal->pilihan_d_tipe ?? 'teks',
                 'original_key' => 'D',
             ];
 
-            if ($soal->pilihan_e_teks || $soal->pilihan_e_gambar) {
+            $optionEText = (string) ($soal->pilihan_e_teks ?? $soal->opsi_e ?? '');
+            if (trim($optionEText) !== '' || $soal->pilihan_e_gambar) {
                 $options['E'] = [
-                    'teks' => $soal->pilihan_e_teks,
+                    'teks' => html_entity_decode($optionEText),
                     'gambar' => $soal->pilihan_e_gambar,
                     'tipe' => $soal->pilihan_e_tipe ?? 'teks',
                     'original_key' => 'E',
@@ -281,12 +282,12 @@ class UjianController extends Controller
             return [
                 'id' => $soal->id,
                 'number' => $index + 1,
-                'soal' => $soal->pertanyaan,
+                'soal' => html_entity_decode((string) ($soal->pertanyaan ?? $soal->soal ?? '')),
                 'tipe_soal' => $soal->tipe_soal ?? 'pilihan_ganda',
                 'tipe_pertanyaan' => $soal->tipe_pertanyaan ?? 'teks',
                 'options' => $options,
                 'display_settings' => $soal->display_settings ?? [],
-                'gambar_soal' => $soal->gambar_pertanyaan,
+                'gambar_soal' => $soal->gambar_pertanyaan ?? $soal->gambar_soal,
                 'kunci_jawaban' => $soal->kunci_jawaban,
                 'kunci_jawaban_acak' => $soal->kunci_jawaban,
             ];

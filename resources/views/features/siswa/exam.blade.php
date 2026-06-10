@@ -8,6 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    @include('partials.rich-soal-styles')
     <style>
         .option-card {
             transition: all 0.3s ease;
@@ -461,7 +462,7 @@
                             @endphp
 
                             @if ($currentTipeSoal !== 'teks_rumpang')
-                                <div class="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
+                                <div class="rich-soal-content text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
                                     {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
                                 </div>
                             @endif
@@ -504,7 +505,7 @@
                                     $clozeParts = preg_split('/\[\[(.+?)\]\]|___/', $clozeSource);
                                     $clozeAnswer = json_decode((string) $savedAnswer, true) ?: [];
                                 @endphp
-                                <div class="rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">
+                                <div class="rich-soal-content rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">
                                     @foreach ($clozeParts as $partIndex => $part)
                                         {!! $part !!}
                                         @if ($partIndex < count($clozeParts) - 1)
@@ -533,14 +534,14 @@
                                             $left = (string) data_get($pair, 'left');
                                         @endphp
                                         <div class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
-                                            <div class="font-medium text-gray-800">{{ $left }}</div>
+                                            <div class="rich-soal-content font-medium text-gray-800">{!! $left !!}</div>
                                             <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
                                                 data-left="{{ $left }}"
                                                 onchange="setMatchingAnswer('{{ $currentQuestion['id'] }}', this.dataset.left, this.value)">
                                                 <option value="">Pilih pasangan</option>
                                                 @foreach ($rightOptions as $right)
                                                     <option value="{{ $right }}" {{ ($matchingAnswer[$left] ?? '') === $right ? 'selected' : '' }}>
-                                                        {{ $right }}
+                                                        {!! $right !!}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -560,7 +561,7 @@
                                             ondragover="handleOrderingDragOver(event)"
                                             ondrop="handleOrderingDrop(event, '{{ $currentQuestion['id'] }}')"
                                             class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                                            <span class="font-medium text-gray-800">{{ $item }}</span>
+                                            <span class="rich-soal-content font-medium text-gray-800">{!! $item !!}</span>
                                             <div class="flex gap-1">
                                                 <button type="button" onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', -1)"
                                                     class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
@@ -586,7 +587,7 @@
                                                     <div draggable="true" data-drag-item="{{ $item }}"
                                                         ondragstart="handleDragStart(event)"
                                                         class="dragdrop-item cursor-move rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800 shadow-sm">
-                                                        {{ $item }}
+                                                        {!! $item !!}
                                                     </div>
                                                 @endif
                                             @endforeach
@@ -605,13 +606,13 @@
                                                 ondragover="handleDragOver(event)"
                                                 ondragleave="handleDragLeave(event)"
                                                 ondrop="handleDrop(event, '{{ $currentQuestion['id'] }}', this.dataset.zone)">
-                                                <div class="mb-2 text-sm font-medium text-gray-800">{{ $zone }}</div>
+                                                <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">{!! $zone !!}</div>
                                                 <div class="space-y-2" data-zone-items="1">
                                                     @foreach ($zoneItems as $item)
                                                         <div draggable="true" data-drag-item="{{ $item }}"
                                                             ondragstart="handleDragStart(event)"
                                                             class="dragdrop-item cursor-move rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-sm">
-                                                            {{ $item }}
+                                                            {!! $item !!}
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -641,13 +642,13 @@
                                                    flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                                                 {{ strtoupper($key) }}
                                             </div>
-                                            <div class="flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
+                                            <div class="rich-soal-content flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
                                                 @if (is_array($option))
                                                     @if ($option['tipe'] == 'gambar' && $option['gambar'])
                                                         <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
                                                             alt="Pilihan {{ $key }}"
                                                             class="max-w-full sm:max-w-sm mx-auto rounded-lg shadow-md">
-                                                        @if ($option['teks'])
+                                                        @if (trim((string) $option['teks']) !== '')
                                                             <div class="mt-2">{!! $option['teks'] !!}</div>
                                                         @endif
                                                     @else

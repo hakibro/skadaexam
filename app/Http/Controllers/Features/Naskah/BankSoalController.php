@@ -730,7 +730,7 @@ class BankSoalController extends Controller
                 $currentQuestion['tipe_soal'] = $banksoal->tipe_soal_default ?: 'pilihan_ganda';
                 $lastImageTarget = 'pertanyaan';
 
-                if (!empty($paragraph['image_ids']) && trim($matches[2] ?? '') !== '') {
+                if (($paragraph['has_rich_content'] ?? false) && trim($matches[2] ?? '') !== '') {
                     $currentQuestion['pertanyaan'] = $this->stripDocxQuestionNumber(
                         $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, 'pertanyaan')
                     );
@@ -745,7 +745,7 @@ class BankSoalController extends Controller
 
                 $lastImageTarget = 'pilihan_' . $answerKey;
 
-                if (!empty($paragraph['image_ids']) && $answerText !== '') {
+                if (($paragraph['has_rich_content'] ?? false) && $answerText !== '') {
                     $currentQuestion['pilihan_' . $answerKey . '_teks'] = $this->stripDocxAnswerPrefix(
                         $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, $lastImageTarget)
                     );
@@ -762,7 +762,7 @@ class BankSoalController extends Controller
                 $currentQuestion['pembahasan_teks'] = trim($matches[1] ?? '');
                 $lastImageTarget = 'pembahasan';
 
-                if (!empty($paragraph['image_ids']) && trim($matches[1] ?? '') !== '') {
+                if (($paragraph['has_rich_content'] ?? false) && trim($matches[1] ?? '') !== '') {
                     $currentQuestion['pembahasan_teks'] = $this->stripDocxPembahasanPrefix(
                         $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, 'pembahasan')
                     );
@@ -774,7 +774,7 @@ class BankSoalController extends Controller
             } elseif ($currentQuestion && $this->applyDocxKeyMarker($text, $currentQuestion)) {
                 // Kunci marker handled.
             } elseif ($currentQuestion && $text !== '') {
-                $inlineHtml = !empty($paragraph['image_ids'])
+                $inlineHtml = ($paragraph['has_rich_content'] ?? false)
                     ? $this->docxParagraphHtml($paragraph, $zip, $mediaMap, $banksoal, $questionNumber, $lastImageTarget ?: 'pertanyaan')
                     : null;
 
@@ -846,25 +846,260 @@ class BankSoalController extends Controller
 
     private function docxParagraphs(string $documentXml): array
     {
-        preg_match_all('/<w:p\b[^>]*>.*?<\/w:p>/is', $documentXml, $matches);
+        $bodyXml = $documentXml;
+        if (preg_match('/<w:body\b[^>]*>(.*?)<\/w:body>/is', $documentXml, $bodyMatch)) {
+            $bodyXml = $bodyMatch[1];
+        }
 
-        return collect($matches[0] ?? [])->map(function ($paragraphXml) {
-            preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>/is', $paragraphXml, $textMatches);
-            preg_match_all('/r:embed="([^"]+)"/i', $paragraphXml, $imageMatches);
-            preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>|r:embed="([^"]+)"/is', $paragraphXml, $segmentMatches, PREG_SET_ORDER);
+        preg_match_all('/<w:tbl\b[^>]*>.*?<\/w:tbl>|<w:p\b[^>]*>.*?<\/w:p>/is', $bodyXml, $blocks);
+
+        $paragraphs = [];
+        foreach ($blocks[0] ?? [] as $blockXml) {
+            if (str_starts_with($blockXml, '<w:tbl')) {
+                array_push($paragraphs, ...$this->docxTableParagraphs($blockXml));
+                continue;
+            }
+
+            $paragraphs[] = $this->docxParagraphData($blockXml);
+        }
+
+        return array_values(array_filter($paragraphs, fn($paragraph) => trim($paragraph['text'] ?? '') !== '' || !empty($paragraph['image_ids'] ?? [])));
+    }
+
+    private function docxTableParagraphs(string $tableXml): array
+    {
+        preg_match_all('/<w:tr\b[^>]*>.*?<\/w:tr>/is', $tableXml, $rowMatches);
+
+        $paragraphs = [];
+        foreach ($rowMatches[0] ?? [] as $rowXml) {
+            $cells = $this->docxTableCells($rowXml);
+            if (empty($cells) || $this->docxLooksLikeHeaderRow($cells)) {
+                continue;
+            }
+
+            $synthetic = $this->docxSyntheticParagraphsFromTableRow($cells);
+            if (!empty($synthetic)) {
+                array_push($paragraphs, ...$synthetic);
+                continue;
+            }
+
+            foreach ($cells as $cell) {
+                foreach ($cell['paragraphs'] as $paragraph) {
+                    $paragraphs[] = $paragraph;
+                }
+            }
+        }
+
+        return $paragraphs;
+    }
+
+    private function docxTableCells(string $rowXml): array
+    {
+        preg_match_all('/<w:tc\b[^>]*>.*?<\/w:tc>/is', $rowXml, $cellMatches);
+
+        return collect($cellMatches[0] ?? [])->map(function ($cellXml) {
+            preg_match_all('/<w:p\b[^>]*>.*?<\/w:p>/is', $cellXml, $paragraphMatches);
+            $paragraphs = collect($paragraphMatches[0] ?? [])
+                ->map(fn($paragraphXml) => $this->docxParagraphData($paragraphXml))
+                ->filter(fn($paragraph) => trim($paragraph['text'] ?? '') !== '' || !empty($paragraph['image_ids'] ?? []))
+                ->values()
+                ->all();
 
             return [
-                'text' => html_entity_decode(implode('', $textMatches[1] ?? [])),
-                'image_ids' => $imageMatches[1] ?? [],
-                'segments' => collect($segmentMatches)->map(function ($match) {
-                    if (!empty($match[1])) {
-                        return ['type' => 'text', 'value' => html_entity_decode($match[1])];
-                    }
-
-                    return ['type' => 'image', 'value' => $match[2] ?? null];
-                })->filter(fn($segment) => $segment['value'] !== null && $segment['value'] !== '')->values()->all(),
+                'text' => trim(collect($paragraphs)->pluck('text')->filter()->implode("\n")),
+                'paragraphs' => $paragraphs,
+                'segments' => $this->docxJoinParagraphSegments($paragraphs),
+                'image_ids' => collect($paragraphs)->flatMap(fn($paragraph) => $paragraph['image_ids'] ?? [])->values()->all(),
+                'has_rich_content' => collect($paragraphs)->contains(fn($paragraph) => $paragraph['has_rich_content'] ?? false),
             ];
         })->all();
+    }
+
+    private function docxSyntheticParagraphsFromTableRow(array $cells): array
+    {
+        $texts = collect($cells)->pluck('text')->map(fn($text) => trim(preg_replace('/\s+/u', ' ', (string) $text)))->all();
+        $nonEmptyCells = collect($cells)->filter(fn($cell) => trim((string) ($cell['text'] ?? '')) !== '')->values()->all();
+
+        if (count($nonEmptyCells) < 2) {
+            return [];
+        }
+
+        $firstText = trim(preg_replace('/\s+/u', ' ', (string) ($nonEmptyCells[0]['text'] ?? '')));
+        $secondText = trim(preg_replace('/\s+/u', ' ', (string) ($nonEmptyCells[1]['text'] ?? '')));
+
+        if (preg_match('/^(\d+)\.?$/u', $firstText, $matches) && $secondText !== '') {
+            $paragraphs = [
+                $this->docxMergeCellsAsParagraph([
+                    $this->docxTextCell($matches[1] . '. '),
+                    $nonEmptyCells[1],
+                ]),
+            ];
+
+            foreach (array_slice($nonEmptyCells, 2) as $cell) {
+                array_push($paragraphs, ...$this->docxOptionParagraphsFromCell($cell));
+            }
+
+            return $paragraphs;
+        }
+
+        if (preg_match('/^[A-E]$/iu', $firstText) && $secondText !== '') {
+            return [
+                $this->docxMergeCellsAsParagraph([
+                    $this->docxTextCell(strtoupper($firstText) . '. '),
+                    $nonEmptyCells[1],
+                ]),
+            ];
+        }
+
+        if (preg_match('/^\d+\.\s+/u', $firstText)) {
+            $paragraphs = [$nonEmptyCells[0]];
+
+            foreach (array_slice($nonEmptyCells, 1) as $cell) {
+                array_push($paragraphs, ...$this->docxOptionParagraphsFromCell($cell));
+            }
+
+            return $paragraphs;
+        }
+
+        $optionParagraphs = [];
+        foreach ($nonEmptyCells as $cell) {
+            array_push($optionParagraphs, ...$this->docxOptionParagraphsFromCell($cell));
+        }
+
+        return count($optionParagraphs) === count($nonEmptyCells) ? $optionParagraphs : [];
+    }
+
+    private function docxOptionParagraphsFromCell(array $cell): array
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', (string) ($cell['text'] ?? '')));
+
+        if (preg_match('/^([A-E])[\.\)]?\s*(.*)$/iu', $text, $matches)) {
+            $prefix = strtoupper($matches[1]) . '. ';
+            $cellWithoutPrefix = $cell;
+            $cellWithoutPrefix['text'] = trim($matches[2] ?? '');
+            $cellWithoutPrefix['segments'] = $this->docxStripLeadingOptionPrefixFromSegments($cell['segments'] ?? []);
+
+            return [$this->docxMergeCellsAsParagraph([$this->docxTextCell($prefix), $cellWithoutPrefix])];
+        }
+
+        return [];
+    }
+
+    private function docxLooksLikeHeaderRow(array $cells): bool
+    {
+        $text = strtolower(trim(collect($cells)->pluck('text')->filter()->implode(' ')));
+
+        if ($text === '') {
+            return true;
+        }
+
+        return preg_match('/\b(no|nomor|soal|pertanyaan|jawaban|opsi|pilihan|kunci)\b/u', $text) === 1
+            && preg_match('/^\d+\.?/u', $text) !== 1
+            && preg_match('/^[a-e][\.\)]/iu', $text) !== 1;
+    }
+
+    private function docxParagraphData(string $paragraphXml): array
+    {
+        preg_match_all('/r:embed="([^"]+)"/i', $paragraphXml, $imageMatches);
+        preg_match_all('/<w:t\b[^>]*>(.*?)<\/w:t>|<m:oMath\b[^>]*>.*?<\/m:oMath>|r:embed="([^"]+)"/is', $paragraphXml, $segmentMatches, PREG_SET_ORDER);
+
+        $segments = collect($segmentMatches)->map(function ($match) {
+            if (!empty($match[1])) {
+                return ['type' => 'text', 'value' => html_entity_decode($match[1])];
+            }
+
+            if (str_starts_with($match[0] ?? '', '<m:oMath')) {
+                return [
+                    'type' => 'math',
+                    'value' => $this->docxOmmlToHtml($match[0]),
+                    'text' => $this->docxOmmlToText($match[0]),
+                ];
+            }
+
+            return ['type' => 'image', 'value' => $match[2] ?? null];
+        })->filter(function ($segment) {
+            return ($segment['type'] === 'image' && !empty($segment['value']))
+                || (($segment['value'] ?? '') !== '');
+        })->values()->all();
+
+        return [
+            'text' => $this->docxSegmentsText($segments),
+            'image_ids' => $imageMatches[1] ?? [],
+            'has_rich_content' => !empty($imageMatches[1] ?? [])
+                || collect($segments)->contains(fn($segment) => $segment['type'] === 'math'),
+            'segments' => $segments,
+        ];
+    }
+
+    private function docxSegmentsText(array $segments): string
+    {
+        return collect($segments)->map(function ($segment) {
+            return $segment['type'] === 'math'
+                ? ($segment['text'] ?? '')
+                : ($segment['type'] === 'text' ? $segment['value'] : '');
+        })->implode('');
+    }
+
+    private function docxJoinParagraphSegments(array $paragraphs): array
+    {
+        $segments = [];
+
+        foreach ($paragraphs as $index => $paragraph) {
+            if ($index > 0) {
+                $segments[] = ['type' => 'text', 'value' => "\n"];
+            }
+
+            array_push($segments, ...($paragraph['segments'] ?? []));
+        }
+
+        return $segments;
+    }
+
+    private function docxTextCell(string $text): array
+    {
+        return [
+            'text' => $text,
+            'segments' => [['type' => 'text', 'value' => $text]],
+            'image_ids' => [],
+            'has_rich_content' => false,
+            'paragraphs' => [],
+        ];
+    }
+
+    private function docxMergeCellsAsParagraph(array $cells): array
+    {
+        $segments = [];
+        $imageIds = [];
+        $hasRichContent = false;
+
+        foreach ($cells as $cell) {
+            array_push($segments, ...($cell['segments'] ?? []));
+            array_push($imageIds, ...($cell['image_ids'] ?? []));
+            $hasRichContent = $hasRichContent || (bool) ($cell['has_rich_content'] ?? false);
+        }
+
+        return [
+            'text' => $this->docxSegmentsText($segments),
+            'image_ids' => $imageIds,
+            'has_rich_content' => $hasRichContent || !empty($imageIds),
+            'segments' => $segments,
+        ];
+    }
+
+    private function docxStripLeadingOptionPrefixFromSegments(array $segments): array
+    {
+        $stripped = false;
+
+        return collect($segments)->map(function ($segment) use (&$stripped) {
+            if ($stripped || ($segment['type'] ?? '') !== 'text') {
+                return $segment;
+            }
+
+            $segment['value'] = preg_replace('/^\s*[A-E][\.\)]?\s*/iu', '', (string) ($segment['value'] ?? ''), 1, $count);
+            $stripped = $count > 0;
+
+            return $segment;
+        })->filter(fn($segment) => ($segment['type'] ?? '') === 'image' || (($segment['value'] ?? '') !== ''))->values()->all();
     }
 
     private function docxParagraphHtml(array $paragraph, \ZipArchive $zip, array $mediaMap, BankSoal $banksoal, int $questionNumber, string $target): string
@@ -874,6 +1109,11 @@ class BankSoalController extends Controller
         foreach ($paragraph['segments'] ?? [] as $segment) {
             if ($segment['type'] === 'text') {
                 $html .= e(str_replace("\xc2\xa0", ' ', $segment['value']));
+                continue;
+            }
+
+            if ($segment['type'] === 'math') {
+                $html .= $segment['value'];
                 continue;
             }
 
@@ -895,6 +1135,160 @@ class BankSoalController extends Controller
         }
 
         return trim($html);
+    }
+
+    private function docxOmmlToText(string $omml): string
+    {
+        $root = $this->docxOmmlDomRoot($omml);
+
+        if (!$root) {
+            return trim(html_entity_decode(strip_tags($omml)));
+        }
+
+        return trim($this->docxOmmlNodeToText($root));
+    }
+
+    private function docxOmmlToHtml(string $omml): string
+    {
+        $root = $this->docxOmmlDomRoot($omml);
+
+        if (!$root) {
+            return e(trim(html_entity_decode(strip_tags($omml))));
+        }
+
+        return '<span class="docx-math" style="display:inline-block;vertical-align:middle;margin:0 2px;">'
+            . $this->docxOmmlNodeToHtml($root)
+            . '</span>';
+    }
+
+    private function docxOmmlDomRoot(string $omml): ?\DOMNode
+    {
+        $dom = new \DOMDocument();
+        $xml = '<root xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" '
+            . 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . $omml
+            . '</root>';
+
+        if (!@$dom->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+            return null;
+        }
+
+        foreach ($dom->documentElement->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                return $child;
+            }
+        }
+
+        return null;
+    }
+
+    private function docxOmmlNodeToText(\DOMNode $node): string
+    {
+        $name = $node->localName;
+
+        return match ($name) {
+            't' => $node->nodeValue,
+            'f' => '(' . $this->docxOmmlFirstChildText($node, 'num') . ')/(' . $this->docxOmmlFirstChildText($node, 'den') . ')',
+            'sSub' => $this->docxOmmlFirstChildText($node, 'e') . '_' . $this->docxOmmlFirstChildText($node, 'sub'),
+            'rad' => $this->docxOmmlRadicalText($node),
+            'd' => '(' . $this->docxOmmlFirstChildText($node, 'e') . ')',
+            'ctrlPr', 'fPr', 'sSubPr', 'radPr', 'dPr', 'degHide' => '',
+            default => $this->docxOmmlChildrenToText($node),
+        };
+    }
+
+    private function docxOmmlNodeToHtml(\DOMNode $node): string
+    {
+        $name = $node->localName;
+
+        return match ($name) {
+            't' => e($node->nodeValue),
+            'f' => $this->docxOmmlFractionHtml($node),
+            'sSub' => $this->docxOmmlFirstChildHtml($node, 'e') . '<sub>' . $this->docxOmmlFirstChildHtml($node, 'sub') . '</sub>',
+            'rad' => $this->docxOmmlRadicalHtml($node),
+            'd' => '(' . $this->docxOmmlFirstChildHtml($node, 'e') . ')',
+            'ctrlPr', 'fPr', 'sSubPr', 'radPr', 'dPr', 'degHide' => '',
+            default => $this->docxOmmlChildrenToHtml($node),
+        };
+    }
+
+    private function docxOmmlChildrenToText(\DOMNode $node): string
+    {
+        $text = '';
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                $text .= $this->docxOmmlNodeToText($child);
+            }
+        }
+
+        return $text;
+    }
+
+    private function docxOmmlChildrenToHtml(\DOMNode $node): string
+    {
+        $html = '';
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                $html .= $this->docxOmmlNodeToHtml($child);
+            }
+        }
+
+        return $html;
+    }
+
+    private function docxOmmlFirstChildText(\DOMNode $node, string $localName): string
+    {
+        $child = $this->docxOmmlFirstChild($node, $localName);
+        return $child ? $this->docxOmmlChildrenToText($child) : '';
+    }
+
+    private function docxOmmlFirstChildHtml(\DOMNode $node, string $localName): string
+    {
+        $child = $this->docxOmmlFirstChild($node, $localName);
+        return $child ? $this->docxOmmlChildrenToHtml($child) : '';
+    }
+
+    private function docxOmmlFirstChild(\DOMNode $node, string $localName): ?\DOMNode
+    {
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE && $child->localName === $localName) {
+                return $child;
+            }
+        }
+
+        return null;
+    }
+
+    private function docxOmmlFractionHtml(\DOMNode $node): string
+    {
+        $num = $this->docxOmmlFirstChildHtml($node, 'num');
+        $den = $this->docxOmmlFirstChildHtml($node, 'den');
+
+        return '<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin:0 2px;">'
+            . '<span style="padding:0 3px;">' . $num . '</span>'
+            . '<span style="border-top:1px solid currentColor;padding:0 3px;">' . $den . '</span>'
+            . '</span>';
+    }
+
+    private function docxOmmlRadicalText(\DOMNode $node): string
+    {
+        $degree = $this->docxOmmlFirstChildText($node, 'deg');
+        $base = $this->docxOmmlFirstChildText($node, 'e');
+
+        return $degree !== '' ? $degree . '√(' . $base . ')' : '√(' . $base . ')';
+    }
+
+    private function docxOmmlRadicalHtml(\DOMNode $node): string
+    {
+        $degree = $this->docxOmmlFirstChildHtml($node, 'deg');
+        $base = $this->docxOmmlFirstChildHtml($node, 'e');
+
+        return '<span style="display:inline-block;vertical-align:middle;">'
+            . ($degree !== '' ? '<sup>' . $degree . '</sup>' : '')
+            . '&radic;<span style="border-top:1px solid currentColor;padding:0 2px;">' . $base . '</span>'
+            . '</span>';
     }
 
     private function stripDocxQuestionNumber(string $html): string
@@ -1166,7 +1560,7 @@ class BankSoalController extends Controller
                 preg_match_all('/\[\[(.+?)\]\]/', (string) ($data['pertanyaan'] ?? ''), $matches);
                 $answers = collect($matches[1] ?? [])
                     ->map(fn($answer) => trim(strip_tags((string) $answer)))
-                    ->filter()
+                    ->filter(fn($answer) => $answer !== '')
                     ->values()
                     ->all();
 
@@ -1182,7 +1576,7 @@ class BankSoalController extends Controller
             }
 
             // Pastikan kunci jawaban tidak null
-            if (in_array($data['tipe_soal'], Soal::OBJECTIVE_TYPES, true) && empty($data['kunci_jawaban'])) {
+            if (in_array($data['tipe_soal'], Soal::OBJECTIVE_TYPES, true) && trim((string) ($data['kunci_jawaban'] ?? '')) === '') {
                 if (in_array($data['tipe_soal'], ['isian_singkat', 'teks_rumpang'], true)) {
                     throw new \Exception("Kunci jawaban wajib diisi untuk tipe soal {$data['tipe_soal']} pada nomor {$data['nomor_soal']}");
                 }

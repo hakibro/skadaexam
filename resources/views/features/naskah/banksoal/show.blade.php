@@ -388,7 +388,7 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-900">
                                         <div class="max-w-md overflow-hidden text-ellipsis">
-                                            {!! Str::limit($soal->pertanyaan, 100) !!}
+                                            {{ Str::limit(strip_tags($soal->pertanyaan_html), 100) }}
                                             @if ($soal->tipe_pertanyaan == 'teks_gambar' || $soal->tipe_pertanyaan == 'gambar')
                                                 <span class="ml-1 text-xs text-blue-600">[Ada gambar]</span>
                                             @endif

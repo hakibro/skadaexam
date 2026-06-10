@@ -16,6 +16,7 @@
 
     <!-- Your existing CSS and JS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.rich-soal-styles')
     @yield('styles')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 

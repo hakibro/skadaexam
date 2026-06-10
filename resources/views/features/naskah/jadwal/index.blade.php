@@ -293,6 +293,15 @@
                             tercentang.</p>
                     </div>
                     <button type="button" onclick="closeBulkAssignSesiModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Batal
+                    </button>
+                    <button id="bulkAssignSubmitButton" type="button" onclick="bulkAssignSesiAndEnroll()"
+                        @disabled(($sourceSesiOptions ?? collect())->isEmpty())
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md">
+                        Assign Sesi dan Enroll
+                    </button>
+                    <button type="button" onclick="closeBulkAssignSesiModal()"
                         class="text-gray-500 hover:text-gray-700">
                         <i class="fa-solid fa-times"></i>
                     </button>
@@ -302,6 +311,28 @@
                     <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                         Sistem akan membuat sesi duplikat sesuai tanggal masing-masing jadwal, lalu enroll siswa dari
                         peserta sesi sumber.
+                    </div>
+                    <div id="bulkAssignProgress" class="hidden rounded-md border border-blue-200 bg-blue-50 p-3">
+                        <div class="flex items-center justify-between gap-3 text-sm font-medium text-blue-900">
+                            <span id="bulkAssignProgressText">Menunggu proses...</span>
+                            <span id="bulkAssignProgressPercent">0%</span>
+                        </div>
+                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-blue-100">
+                            <div id="bulkAssignProgressBar" class="h-2 rounded-full bg-blue-600 transition-all"
+                                style="width: 0%"></div>
+                        </div>
+                        <div id="bulkAssignLog" class="mt-3 max-h-40 overflow-y-auto space-y-1 text-xs text-gray-700">
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button id="bulkAssignRetryButton" type="button" onclick="retryBulkAssignFromFailedBatch()"
+                                class="hidden px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs">
+                                Coba Lagi dari batch gagal
+                            </button>
+                            <button id="bulkAssignRefreshButton" type="button" onclick="window.location.reload()"
+                                class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs">
+                                Refresh Data
+                            </button>
+                        </div>
                     </div>
 
                     @if (($sourceSesiOptions ?? collect())->count() > 0)
@@ -372,41 +403,9 @@
                         </div>
                     @endif
 
-                    <div id="bulkAssignProgress" class="hidden rounded-md border border-blue-200 bg-blue-50 p-3">
-                        <div class="flex items-center justify-between gap-3 text-sm font-medium text-blue-900">
-                            <span id="bulkAssignProgressText">Menunggu proses...</span>
-                            <span id="bulkAssignProgressPercent">0%</span>
-                        </div>
-                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-blue-100">
-                            <div id="bulkAssignProgressBar" class="h-2 rounded-full bg-blue-600 transition-all"
-                                style="width: 0%"></div>
-                        </div>
-                        <div id="bulkAssignLog" class="mt-3 max-h-40 overflow-y-auto space-y-1 text-xs text-gray-700">
-                        </div>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <button id="bulkAssignRetryButton" type="button" onclick="retryBulkAssignFromFailedBatch()"
-                                class="hidden px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs">
-                                Coba Lagi dari batch gagal
-                            </button>
-                            <button id="bulkAssignRefreshButton" type="button" onclick="window.location.reload()"
-                                class="hidden px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs">
-                                Refresh Data
-                            </button>
-                        </div>
-                    </div>
+
                 </div>
 
-                <div class="flex justify-end gap-2 px-5 py-4 border-t bg-gray-50">
-                    <button type="button" onclick="closeBulkAssignSesiModal()"
-                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Batal
-                    </button>
-                    <button id="bulkAssignSubmitButton" type="button" onclick="bulkAssignSesiAndEnroll()"
-                        @disabled(($sourceSesiOptions ?? collect())->isEmpty())
-                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md">
-                        Assign Sesi dan Enroll
-                    </button>
-                </div>
             </div>
         </div>
     </div>

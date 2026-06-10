@@ -34,7 +34,7 @@ class SoalController extends Controller
         $mapelId = $request->get('mapel_id');
         $tingkat = $request->get('tingkat');
         $tipeSoal = $request->get('tipe_soal');
-        $perPage = $request->get('per_page', 10);
+        $perPage = $request->get('per_page', 50);
         $search = $request->get('search');
         $tahunAjaranId = $request->get('tahun_ajaran_id', app(TahunAjaranService::class)->activeId());
 

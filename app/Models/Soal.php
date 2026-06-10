@@ -340,7 +340,7 @@ class Soal extends Model
         $pilihan = [];
         foreach (['A', 'B', 'C', 'D', 'E'] as $key) {
             $pil = strtolower($key);
-            if ($this->{"pilihan_{$pil}_teks"} || $this->{"pilihan_{$pil}_gambar"}) {
+            if (trim((string) $this->{"pilihan_{$pil}_teks"}) !== '' || $this->{"pilihan_{$pil}_gambar"}) {
                 $pilihan[$key] = [
                     'tipe' => $this->{"pilihan_{$pil}_tipe"},
                     'teks' => $this->{"pilihan_{$pil}_teks"},

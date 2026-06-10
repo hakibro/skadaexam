@@ -95,6 +95,7 @@
             }
         }
     </style>
+    @include('partials.rich-soal-styles')
 </head>
 
 <body>
@@ -191,7 +192,7 @@
                 @foreach ($answerRows as $row)
                     <tr>
                         <td>{{ $row['nomor'] }}</td>
-                        <td>{!! $row['pertanyaan'] !!}</td>
+                        <td class="rich-soal-content">{!! $row['pertanyaan'] !!}</td>
                         <td>{{ $row['jawaban'] ?: '-' }}</td>
                         <td>{{ $row['kunci'] ?: '-' }}</td>
                         <td>{{ ucfirst($row['status']) }}</td>

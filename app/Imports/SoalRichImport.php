@@ -205,7 +205,7 @@ class SoalRichImport implements ToCollection, WithHeadingRow
 
         return collect($answers)
             ->map(fn($answer) => trim((string) $answer))
-            ->filter()
+            ->filter(fn($answer) => $answer !== '')
             ->values()
             ->all();
     }
@@ -213,12 +213,16 @@ class SoalRichImport implements ToCollection, WithHeadingRow
     private function listValues($value): array
     {
         if (is_array($value)) {
-            return collect($value)->map(fn($item) => trim((string) $item))->filter()->values()->all();
+            return collect($value)
+                ->map(fn($item) => trim((string) $item))
+                ->filter(fn($item) => $item !== '')
+                ->values()
+                ->all();
         }
 
         return collect(preg_split('/\s*[|;]\s*/', (string) $value))
             ->map(fn($item) => trim($item))
-            ->filter()
+            ->filter(fn($item) => $item !== '')
             ->values()
             ->all();
     }

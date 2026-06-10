@@ -91,7 +91,7 @@
 
                     <div class="p-4">
                         <!-- Pertanyaan -->
-                        <div class="prose max-w-none mb-4">
+                        <div class="rich-soal-content prose max-w-none mb-4">
                             {!! $soal['pertanyaan'] !!}
                         </div>
 
@@ -137,7 +137,7 @@
                                                 </span>
                                             @endif
                                         </div>
-                                        <div class="flex-1 prose max-w-none text-sm">
+                                        <div class="rich-soal-content flex-1 prose max-w-none text-sm">
                                             {!! $pilihan !!}
                                         </div>
                                     </div>
