@@ -107,171 +107,168 @@
             </div>
         </div>
 
-        <!-- Bank Soal Info -->
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-            <div class="border-b border-gray-200 px-6 py-5">
-                <h3 class="text-lg font-medium text-gray-900">Informasi Bank Soal</h3>
-            </div>
-            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Judul</h4>
-                    <p class="text-base text-gray-900">{{ $banksoal->judul }}</p>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Kode Bank</h4>
-                    <p class="text-base text-gray-900">
-                        <span class="font-mono">{{ $banksoal->kode_bank ?? 'Tidak ada kode bank' }}</span>
-                    </p>
-                </div>
+            <!-- Informasi Bank Soal -->
+            <div class="bg-white border border-slate-150 shadow-sm rounded-2xl overflow-hidden">
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Status</h4>
-                    <p>
+                <!-- Header -->
+                <div
+                    class="px-6 py-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-slate-50/40">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 tracking-tight">Informasi Bank Soal</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Detail data dan konfigurasi paket soal aktif</p>
+                    </div>
+                    <div>
                         @if ($banksoal->status === 'aktif')
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Aktif
-                            </span>
+                                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10">Aktif</span>
                         @elseif ($banksoal->status === 'draft')
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Draft
-                            </span>
+                                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-150 text-slate-600 ring-1 ring-slate-600/10">Draft</span>
                         @else
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Arsip
-                            </span>
+                                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-600/10">Arsip</span>
                         @endif
-                    </p>
+                    </div>
                 </div>
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Tingkat</h4>
-                    <p class="text-base text-gray-900">Kelas {{ $banksoal->tingkat }}</p>
-                </div>
+                <!-- Body Grid -->
+                <div class="p-6 grid grid-cols-3 gap-y-5 gap-x-6">
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Total Soal</h4>
-                    <p class="text-base text-gray-900">{{ $banksoal->total_soal }} soal</p>
-                </div>
+                    <!-- Judul -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Judul</span>
+                        <span class="text-base font-semibold text-slate-800 block">{{ $banksoal->judul }}</span>
+                    </div>
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Tipe Soal Default</h4>
-                    <p class="text-base text-gray-900">
+                    <!-- Kode Bank -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kode Bank</span>
                         <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            class="text-sm font-mono text-slate-700 bg-slate-50 px-2 py-1 rounded-md border border-slate-200/60 inline-block">
+                            {{ $banksoal->kode_bank ?? 'Tidak ada kode bank' }}
+                        </span>
+                    </div>
+
+                    <!-- Tingkat -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tingkat</span>
+                        <span class="text-base font-medium text-slate-800 block">Kelas {{ $banksoal->tingkat }}</span>
+                    </div>
+
+                    <!-- Mata Pelajaran -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Mata Pelajaran</span>
+                        <p class="text-base font-medium text-slate-800">
+                            @if ($banksoal->mapel)
+                                {{ $banksoal->mapel->nama_mapel }}
+                            @else
+                                <span class="text-slate-400 italic font-normal text-sm">Tidak ada</span>
+                            @endif
+                        </p>
+                    </div>
+
+                    <!-- Total Soal -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Soal</span>
+                        <span class="text-base font-semibold text-slate-800 block">
+                            {{ $banksoal->total_soal }} <span class="text-slate-400 font-normal text-sm">soal</span>
+                        </span>
+                    </div>
+
+                    <!-- Tipe Soal Default -->
+                    <div class="space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tipe Soal
+                            Default</span>
+                        <span
+                            class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 ring-1 ring-indigo-700/10">
                             {{ \App\Models\Soal::QUESTION_TYPES[$banksoal->tipe_soal_default] ?? ucfirst(str_replace('_', ' ', $banksoal->tipe_soal_default ?? 'pilihan_ganda')) }}
                         </span>
-                    </p>
-                </div>
+                    </div>
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Mata Pelajaran</h4>
-                    <p class="text-base text-gray-900">
-                        @if ($banksoal->mapel)
-                            {{ $banksoal->mapel->nama }}
-                        @else
-                            <span class="text-gray-500 italic">Tidak ada</span>
-                        @endif
-                    </p>
-                </div>
-
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Paket Ujian</h4>
-                    <p class="text-base text-gray-900">
+                    <!-- Paket Ujian -->
+                    <div class=" space-y-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Paket Ujian</span>
                         @if ($banksoal->paketUjian)
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                {{ $banksoal->paketUjian->nama }}
-                            </span>
+                                class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-purple-700/10">{{ $banksoal->paketUjian->nama }}</span>
                         @else
-                            <span class="text-gray-500 italic">Tidak ada</span>
+                            <span class="text-slate-400 italic text-sm">Tidak ada paket</span>
                         @endif
-                    </p>
-                </div>
+                    </div>
 
-                <div class="md:col-span-2">
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Deskripsi</h4>
-                    <p class="text-base text-gray-900">{{ $banksoal->deskripsi ?? 'Tidak ada deskripsi' }}</p>
-                </div>
+                    <!-- Deskripsi -->
+                    <div class="col-span-2 space-y-1 pt-4 border-t border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Deskripsi</span>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            {{ $banksoal->deskripsi ?? 'Tidak ada deskripsi untuk bank soal ini.' }}</p>
+                    </div>
 
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Dibuat pada</h4>
-                    <p class="text-base text-gray-900">{{ $banksoal->created_at->format('d M Y, H:i') }}</p>
-                </div>
-
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Terakhir diupdate</h4>
-                    <p class="text-base text-gray-900">{{ $banksoal->updated_at->format('d M Y, H:i') }}</p>
-                </div>
-
-                @if (isset($banksoal->pengaturan['source_file']))
-                    <div class="md:col-span-2">
-                        <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">File Sumber</h4>
-                        <p class="text-base text-gray-900">
+                    <!-- File Sumber -->
+                    @if (isset($banksoal->pengaturan['source_file']))
+                        <div
+                            class="col-span-2 flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-150 hover:bg-slate-100/70 transition-all">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 shadow-sm">
+                                    <i class="fa-solid fa-file-lines text-sm"></i>
+                                </div>
+                                <div class="truncate">
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">File
+                                        Sumber</span>
+                                    <span
+                                        class="text-sm font-medium text-slate-700 truncate block">{{ $banksoal->pengaturan['source_file'] }}</span>
+                                </div>
+                            </div>
                             <a href="{{ asset('storage/bank-soal/sources/' . $banksoal->pengaturan['source_file']) }}"
-                                target="_blank" class="text-blue-600 hover:text-blue-800 inline-flex items-center">
-                                <i class="fa-solid fa-download mr-2"></i> {{ $banksoal->pengaturan['source_file'] }}
-                            </a>
-                        </p>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Import Controls -->
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-            <div class="border-b border-gray-200 px-6 py-4">
-                <h3 class="text-lg font-medium text-gray-900">Import Soal</h3>
-            </div>
-            <div class="px-6 py-4">
-                <div class="flex flex-col md:flex-row md:items-start">
-                    <div class="flex-1 mb-4 md:mb-0 md:mr-6">
-                        <p class="text-sm text-gray-600 mb-2">
-                            Import soal dari file DOCX atau gunakan template Excel untuk tipe soal kaya.
-                        </p>
-
-                        <div class="flex space-x-4 mb-3">
-                            <a href="{{ asset('templates/template_import_soal.docx') }}"
-                                class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
-                                <i class="fa-solid fa-file-download mr-1"></i> Download Template Impor
-                            </a>
-
-                            <a href="{{ route('naskah.soal.import.template') }}"
-                                class="text-green-600 hover:text-green-800 inline-flex items-center text-sm">
-                                <i class="fa-solid fa-file-excel mr-1"></i> Template Excel Tipe Kaya
-                            </a>
-
-                            <a href="{{ route('naskah.panduan.format-docx') }}" target="_blank"
-                                class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
-                                <i class="fa-solid fa-circle-info mr-1"></i> Tutorial Format Soal
+                                target="_blank"
+                                class="text-xs font-semibold text-slate-700 bg-white hover:text-blue-600 px-3 py-2 rounded-lg border border-slate-200 shadow-sm transition-colors inline-flex items-center shrink-0">
+                                <i class="fa-solid fa-download mr-1.5"></i> Unduh
                             </a>
                         </div>
+                    @endif
 
-                        <div class="rounded-md bg-blue-50 p-3 mt-3">
-                            <h4 class="text-xs font-semibold uppercase tracking-wider text-blue-800 mb-2">Format Template:
-                            </h4>
-                            <ul class="list-disc text-xs text-blue-700 pl-5 space-y-1">
-                                <li>Soal harus dimulai dengan nomor diikuti titik dan spasi (contoh: <strong>1. Soal
-                                        pertama</strong>)</li>
-                                <li>Opsi jawaban harus diformat dengan huruf kapital diikuti titik (contoh: <strong>A.
-                                        Pilihan A</strong>)</li>
-                                <li>Untuk kunci jawaban, tambahkan tanda [*] di akhir (contoh: <strong>C. Pilihan C
-                                        [*]</strong>)</li>
-                                <li>Untuk opsi jawaban berupa gambar, tulis opsi kosong (contoh: <strong>B.</strong>) dan
-                                    masukkan gambar setelahnya</li>
-                                <li>Pembahasan soal diawali dengan "Pembahasan:" (contoh: <strong>Pembahasan: Penjelasan
-                                        jawaban</strong>)</li>
-                                <li>Gambar dalam soal, opsi jawaban, atau pembahasan akan otomatis dideteksi</li>
-                            </ul>
-                        </div>
+                    <!-- Timestamps -->
+                    <div
+                        class="col-span-2 grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+                        <div>Dibuat: {{ $banksoal->created_at->format('d M Y, H:i') }}</div>
+                        <div class="text-right">Diperbarui: {{ $banksoal->updated_at->format('d M Y, H:i') }}</div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="md:w-64">
+            <!-- Import Soal -->
+            <div class="bg-white border border-slate-150 shadow-sm rounded-2xl overflow-hidden">
+
+                <!-- Header -->
+                <div class="flex px-6 py-5 border-b border-slate-100 bg-slate-50/40">
+                    <div class="flex flex-col gap-1">
+                        <h3 class="text-lg font-bold text-slate-800 tracking-tight">Import Soal</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Unggah file DOCX atau gunakan template Excel</p>
+                    </div>
+                    <!-- Links dipindah ke bawah dalam kolom kanan agar rapi -->
+                    <div class="flex flex-wrap gap-3 ml-2 pl-4 border-l border-blue-200">
+                        <a href="{{ asset('templates/template_import_soal.docx') }}"
+                            class="text-blue-600 hover:text-blue-800 inline-flex items-center text-xs font-medium gap-1">
+                            <i class="fa-solid fa-file-download"></i> Template DOCX
+                        </a>
+                        <a href="{{ route('naskah.soal.import.template') }}"
+                            class="text-emerald-600 hover:text-emerald-800 inline-flex items-center text-xs font-medium gap-1">
+                            <i class="fa-solid fa-file-excel"></i> Template Excel
+                        </a>
+                        <a href="{{ route('naskah.panduan.format-docx') }}" target="_blank"
+                            class="text-slate-500 hover:text-slate-700 inline-flex items-center text-xs font-medium gap-1">
+                            <i class="fa-solid fa-circle-info"></i> Tutorial Format
+                        </a>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-5">
+                    <!-- Upload Form + Format Guide bersebelahan -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Kolom Kiri: Upload Form -->
                         <form action="{{ route('naskah.banksoal.update', $banksoal) }}" method="POST"
-                            enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-lg p-4">
+                            enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
 
@@ -282,50 +279,65 @@
                             <input type="hidden" name="mapel_id" value="{{ $banksoal->mapel_id }}">
                             <input type="hidden" name="paket_ujian_id" value="{{ $banksoal->paket_ujian_id }}">
 
-                            <div class="mb-4">
-                                <div
-                                    class="flex flex-col items-center text-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors relative">
-                                    <i class="fa-solid fa-file-import text-2xl text-gray-400 mb-2"></i>
-                                    <span class="block text-sm font-medium text-gray-700">
-                                        Unggah file DOCX
-                                    </span>
-                                    <span class="block text-xs text-gray-500 mt-1">
-                                        Maksimum 10MB
-                                    </span>
-                                    <input type="file" name="docx_file" id="docx_file" accept=".docx"
-                                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                        onchange="updateFileName()">
-                                </div>
-                                <p id="file-name" class="mt-2 text-sm text-center text-gray-600 truncate">
-                                    Tidak ada file dipilih
-                                </p>
+                            <!-- Dropzone -->
+                            <div
+                                class="flex flex-col items-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-50 transition-colors relative cursor-pointer">
+                                <i class="fa-solid fa-file-import text-2xl text-slate-400 mb-2"></i>
+                                <span class="text-sm font-semibold text-slate-700">Unggah file DOCX</span>
+                                <span class="text-xs text-slate-400 mt-1">Maksimum 10MB</span>
+                                <input type="file" name="docx_file" id="docx_file" accept=".docx"
+                                    class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    onchange="updateFileName()">
                             </div>
+                            <p id="file-name" class="mt-2 text-xs text-center text-slate-500 truncate">Tidak ada file
+                                dipilih</p>
 
                             <button type="submit"
-                                class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                class="mt-4 w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
                                 <i class="fa-solid fa-file-import mr-2"></i> Import Soal
                             </button>
                         </form>
+
+                        <!-- Kolom Kanan: Format Guide -->
+                        <div class="rounded-xl bg-blue-50 border border-blue-100 p-4 flex flex-col justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-blue-800 mb-2">Format Template
+                                </h4>
+                                <ul class="list-disc text-xs text-blue-700 pl-4 space-y-1.5">
+                                    <li>Soal dimulai dengan nomor dan titik — <strong>1. Soal pertama</strong></li>
+                                    <li>Opsi jawaban huruf kapital dan titik — <strong>A. Pilihan A</strong></li>
+                                    <li>Kunci jawaban tandai <strong>[*]</strong> di akhir — <strong>C. Pilihan C
+                                            [*]</strong></li>
+                                    <li>Opsi gambar tulis kosong — <strong>B.</strong> lalu sisipkan gambar</li>
+                                    <li>Pembahasan diawali — <strong>Pembahasan: ...</strong></li>
+                                    <li>Gambar dalam soal/opsi/pembahasan dideteksi otomatis</li>
+                                </ul>
+                            </div>
+
+                        </div>
                     </div>
+
+                    <!-- (Opsional) Jika masih ingin menampilkan link di bawah juga, silakan, tapi biasanya sudah cukup di kolom kanan -->
                 </div>
             </div>
 
-            <script>
-                function updateFileName() {
-                    const fileInput = document.getElementById('docx_file');
-                    const fileNameElem = document.getElementById('file-name');
-                    if (fileInput.files.length > 0) {
-                        const fileName = fileInput.files[0].name;
-                        const fileSize = (fileInput.files[0].size / 1024).toFixed(1);
-                        fileNameElem.textContent = `${fileName} (${fileSize} KB)`;
-                        fileNameElem.classList.add('text-blue-600');
-                    } else {
-                        fileNameElem.textContent = 'Tidak ada file dipilih';
-                        fileNameElem.classList.remove('text-blue-600');
-                    }
-                }
-            </script>
         </div>
+
+        <script>
+            function updateFileName() {
+                const fileInput = document.getElementById('docx_file');
+                const fileNameElem = document.getElementById('file-name');
+                if (fileInput.files.length > 0) {
+                    const fileName = fileInput.files[0].name;
+                    const fileSize = (fileInput.files[0].size / 1024).toFixed(1);
+                    fileNameElem.textContent = `${fileName} (${fileSize} KB)`;
+                    fileNameElem.classList.add('text-blue-600');
+                } else {
+                    fileNameElem.textContent = 'Tidak ada file dipilih';
+                    fileNameElem.classList.remove('text-blue-600');
+                }
+            }
+        </script>
 
         <!-- Soal List -->
         <div id="soal-list" class="bg-white shadow-md rounded-lg overflow-hidden">
