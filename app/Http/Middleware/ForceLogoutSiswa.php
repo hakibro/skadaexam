@@ -43,7 +43,9 @@ class ForceLogoutSiswa
                 $request->session()->regenerateToken();
 
                 Log::info('redirect to login siswa after force logout');
-                return redirect('/login/siswa')->with('error', 'Sesi Anda telah berakhir.');
+                return redirect('/login/siswa?notice=session_ended')
+                    ->with('notice', 'session_ended')
+                    ->with('error', 'Sesi Anda telah berakhir.');
             }
         }
 

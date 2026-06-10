@@ -54,6 +54,6 @@ Route::middleware(['auth:siswa'])->prefix('siswa')->name('siswa.')->group(functi
     })->name('exam');
 
     Route::get('/exam/result', function () {
-        return redirect()->route('ujian.result');
+        return redirect()->route('siswa.dashboard');
     })->name('exam.result');
 });

@@ -71,6 +71,12 @@ class TokenController extends Controller
             ->findOrFail($id);
 
         if ($sesiRuangan->tahunAjaran?->isReadOnly()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi pada tahun ajaran arsip hanya dapat dilihat.'
+                ], 422);
+            }
             return redirect()->back()->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
         }
 
@@ -86,41 +92,66 @@ class TokenController extends Controller
         $user = Auth::user();
         $guru = $user->guru;
 
-        if (!$guru) {
+        if (!$guru && !$user->isAdmin()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke sesi ruangan ini'
+                ], 403);
+            }
             return redirect()->route('pengawas.dashboard')
                 ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
         }
 
-        // Check if the guru is assigned as pengawas in any of the associated jadwal ujian
-        $isAuthorized = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
-            ->where('pengawas_id', $guru->id)
-            ->exists();
+        // Check if the guru is assigned as pengawas in any of the associated jadwal ujian (skip for admin)
+        if (!$user->isAdmin()) {
+            $isAuthorized = JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+                ->where('pengawas_id', $guru->id)
+                ->exists();
 
-        if (!$isAuthorized) {
-            return redirect()->route('pengawas.dashboard')
-                ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+            if (!$isAuthorized) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki akses ke sesi ruangan ini'
+                    ], 403);
+                }
+                return redirect()->route('pengawas.dashboard')
+                    ->with('error', 'Anda tidak memiliki akses ke sesi ruangan ini');
+            }
         }
 
-        // Set expiry time from the request or use default (5 minutes)
-        $expiryMinutes = (int) $request->input('expiry_minutes', 5);
+        // Set expiry time from the request or use default (10 minutes for AJAX, 5 for form)
+        $expiryMinutes = (int) $request->input('expiry_minutes', $request->expectsJson() ? 10 : 5);
 
         try {
             // Generate token
             $token = $sesiRuangan->generateToken();
 
-            // Override token expiration if specified in request
-            if ($request->has('expiry_minutes')) {
-                $sesiRuangan->token_expired_at = now()->addMinutes($expiryMinutes);
-                $sesiRuangan->save();
-            }
+            // Override token expiration
+            $sesiRuangan->token_expired_at = now()->addMinutes($expiryMinutes);
+            $sesiRuangan->save();
 
             // Log token generation
             Log::info('Token generated', [
                 'sesi_id' => $sesiRuangan->id,
-                'pengawas_id' => $guru->id,
+                'pengawas_id' => $guru?->id ?? 'admin',
                 'token' => $token,
                 'expires_at' => $sesiRuangan->token_expired_at
             ]);
+
+            // Return JSON response for AJAX requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Token berhasil dibuat',
+                    'data' => [
+                        'token' => $token,
+                        'expires_at' => $sesiRuangan->token_expired_at->format('Y-m-d H:i:s'),
+                        'expires_at_formatted' => $sesiRuangan->token_expired_at->format('H:i')
+                    ]
+                ]);
+            }
 
             return redirect()->back()->with('success', 'Token berhasil dibuat dan akan berlaku hingga ' .
                 $sesiRuangan->token_expired_at->format('H:i'));
@@ -129,6 +160,13 @@ class TokenController extends Controller
                 'sesi_id' => $sesiRuangan->id,
                 'error' => $e->getMessage()
             ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal membuat token: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Gagal membuat token: ' . $e->getMessage());
         }

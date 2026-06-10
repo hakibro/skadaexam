@@ -87,7 +87,9 @@ class DashboardController extends Controller
                     }
                 },
                 'ruangan',
-                'sesiRuanganSiswa'
+                'sesiRuanganSiswa',
+                'beritaAcaraUjian',
+                'pelanggaranUjian.siswa'
             ])
             ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
                 $q->whereDate('tanggal', $today)
@@ -100,74 +102,7 @@ class DashboardController extends Controller
             })
             ->get();
 
-        // Upcoming
-        $upcomingAssignments = (clone $baseQuery)
-            ->with([
-                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
-                    $q->whereDate('tanggal', '>', $today)
-                        ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId))
-                        ->with('mapel')
-                        ->orderBy('tanggal', 'asc');
 
-                    // Apply supervisor filter for non-admin users
-                    if (!$isAdmin && $guru) {
-                        $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                    }
-                },
-                'ruangan',
-                'sesiRuanganSiswa'
-            ])
-            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
-                $q->whereDate('tanggal', '>', $today)
-                    ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId));
-
-                // Apply supervisor filter for non-admin users
-                if (!$isAdmin && $guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                }
-            })
-            ->get()
-            ->sortBy(function ($sesiRuangan) {
-                $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                if (!$jadwalUjian)
-                    return '9999-12-31 23:59:59';
-                return $jadwalUjian->tanggal->format('Y-m-d') . ' ' . $sesiRuangan->waktu_mulai;
-            });
-
-        // Past
-        $pastAssignments = (clone $baseQuery)
-            ->with([
-                'jadwalUjians' => function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
-                    $q->whereDate('tanggal', '<', $today)
-                        ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId))
-                        ->with('mapel')
-                        ->orderBy('tanggal', 'desc');
-
-                    // Apply supervisor filter for non-admin users
-                    if (!$isAdmin && $guru) {
-                        $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                    }
-                },
-                'ruangan',
-                'sesiRuanganSiswa'
-            ])
-            ->whereHas('jadwalUjians', function ($q) use ($today, $guru, $isAdmin, $activeYearId) {
-                $q->whereDate('tanggal', '<', $today)
-                    ->when($activeYearId, fn($query) => $query->where('tahun_ajaran_id', $activeYearId));
-
-                // Apply supervisor filter for non-admin users
-                if (!$isAdmin && $guru) {
-                    $q->where('jadwal_ujian_sesi_ruangan.pengawas_id', $guru->id);
-                }
-            })
-            ->get()
-            ->sortByDesc(function ($sesiRuangan) {
-                $jadwalUjian = $sesiRuangan->jadwalUjians->first();
-                if (!$jadwalUjian)
-                    return '0000-00-00 00:00:00';
-                return $jadwalUjian->tanggal->format('Y-m-d') . ' ' . $sesiRuangan->waktu_mulai;
-            })
-            ->take(10);
 
         // Calculate total students for today's assignments
         $totalSiswa = 0;
@@ -177,12 +112,20 @@ class DashboardController extends Controller
 
 
 
+        // Calculate pelanggaran statistics per sesi ruangan
+        foreach ($assignments as $assignment) {
+            $pelanggaranTotal = $assignment->pelanggaranUjian->count();
+            $pelanggaranBelumDitindak = $assignment->pelanggaranUjian->where('is_finalized', false)->count();
+
+            $assignment->pelanggaran_total = $pelanggaranTotal;
+            $assignment->pelanggaran_belum_ditindak = $pelanggaranBelumDitindak;
+        }
+
         return view('features.pengawas.dashboard', compact(
             'guru',
             'assignments',
-            'upcomingAssignments',
-            'pastAssignments',
-            'totalSiswa'
+            'totalSiswa',
+            'isAdmin'
         ));
     }
 
@@ -275,6 +218,45 @@ class DashboardController extends Controller
         }
 
         return redirect()->back()->with('success', 'Kehadiran siswa berhasil diperbarui');
+    }
+
+    /**
+     * Return attendance summary for an assignment (for AJAX refresh)
+     */
+    public function attendanceSummary($id)
+    {
+        $sesiRuangan = SesiRuangan::with('sesiRuanganSiswa')->findOrFail($id);
+
+        $user = Auth::user();
+        if (!$user->isAdmin()) {
+            $guru = $user->guru;
+            if (!$guru) {
+                return response()->json(['success' => false, 'message' => 'User tidak memiliki profil guru'], 403);
+            }
+
+            $pivotAssignment = \App\Models\JadwalUjianSesiRuangan::where('sesi_ruangan_id', $sesiRuangan->id)
+                ->where('pengawas_id', $guru->id)
+                ->exists();
+
+            if (!$pivotAssignment) {
+                return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses ke sesi ruangan ini'], 403);
+            }
+        }
+
+        $totalSiswa = $sesiRuangan->sesiRuanganSiswa->count();
+        $hadir = $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'hadir')->count();
+        $tidakHadir = $sesiRuangan->sesiRuanganSiswa->where('status_kehadiran', 'tidak_hadir')->count();
+        $belumAbsen = $totalSiswa - $hadir - $tidakHadir;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $totalSiswa,
+                'hadir' => $hadir,
+                'tidak_hadir' => $tidakHadir,
+                'belum_absen' => $belumAbsen,
+            ],
+        ]);
     }
 
     public function tataTertib()

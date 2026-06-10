@@ -171,7 +171,7 @@ class SesiRuangan extends Model
     {
         $assignedPengawas = $this->getAllAssignedPengawas();
         if (!empty($assignedPengawas)) {
-            return (object)['nama' => array_values($assignedPengawas)[0]];
+            return (object) ['nama' => array_values($assignedPengawas)[0]];
         }
         return null;
     }
@@ -227,6 +227,12 @@ class SesiRuangan extends Model
     public function beritaAcara()
     {
         return $this->beritaAcaraUjian();
+    }
+
+    // Pelanggaran ujian relationship
+    public function pelanggaranUjian()
+    {
+        return $this->hasMany(PelanggaranUjian::class, 'sesi_ruangan_id');
     }
 
     public function siswaHadir()

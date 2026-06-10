@@ -197,7 +197,7 @@ class SiswaDashboardController extends Controller
 
         // === Mapel aktif hari ini ===
         $today = Carbon::today();
-        $studentEnrollments = EnrollmentUjian::with(['jadwalUjian.mapel', 'sesiRuangan'])
+        $studentEnrollments = EnrollmentUjian::with(['jadwalUjian.mapel', 'sesiRuangan.ruangan', 'hasilUjian'])
             ->where('siswa_id', $siswa->id)
             ->whereHas('jadwalUjian', function ($query) use ($today) {
                 $query->whereDate('tanggal', '=', $today); // hanya hari ini
@@ -214,12 +214,13 @@ class SiswaDashboardController extends Controller
                 $jadwal = $enrollment->jadwalUjian;
                 $sesi = $enrollment->sesiRuangan;
 
-                $canAccess = $canAccessNext;
-
                 // ambil status_enrollment dari DB
                 $status = strtolower(trim($enrollment->status_enrollment));
+                $isCompleted = in_array($status, ['completed', 'selesai'])
+                    || (bool) ($enrollment->hasilUjian?->is_final);
+                $canAccess = $canAccessNext && !$isCompleted;
 
-                if (in_array($status, ['completed', 'selesai'])) {
+                if ($isCompleted) {
                     $canAccessNext = true;
                 } else {
                     $canAccessNext = false;
@@ -234,13 +235,15 @@ class SiswaDashboardController extends Controller
                     'waktu_selesai' => $sesi->waktu_selesai ?? 'N/A',
                     'durasi_menit' => $jadwal->durasi_menit,
                     'sesi_name' => $sesi->nama_sesi ?? 'Unknown',
-                    'ruangan' => $sesi->ruangan ?? 'Unknown',
+                    'ruangan' => $sesi->ruangan->nama_ruangan ?? 'Unknown',
                     'enrollment_id' => $enrollment->id,
                     'sesi_ruangan_id' => $enrollment->sesi_ruangan_id,
                     'sesi_ruangan_name' => $sesi->nama_sesi ?? 'Unknown',
                     'is_today' => true,
                     'is_active' => in_array($sesi->status, ['berlangsung', 'belum_mulai']),
                     'can_access' => $canAccess,
+                    'is_completed' => $isCompleted,
+                    'hasil_ujian_id' => $enrollment->hasilUjian?->id,
                     'enrollment_status' => $enrollment->status_enrollment, // pakai ini
                 ];
             });
@@ -250,10 +253,11 @@ class SiswaDashboardController extends Controller
 
         $filePath = 'announcements/pengumuman.md';
         $exists = Storage::disk('local')->exists($filePath);
-        $content = $exists ? Storage::disk('local')->get($filePath) : '';
+        $content = $exists ? trim(Storage::disk('local')->get($filePath)) : '';
 
         $converter = new CommonMarkConverter();
         $announcementHtml = $content ? $converter->convert($content)->getContent() : null;
+        $announcementKey = $content ? md5($content) : null;
 
         return view('features.siswa.dashboard', compact(
             'siswa',
@@ -262,7 +266,8 @@ class SiswaDashboardController extends Controller
             'sesiRuanganId',
             'activeMapels',
             'stats',
-            'announcementHtml'
+            'announcementHtml',
+            'announcementKey'
         ));
     }
 }

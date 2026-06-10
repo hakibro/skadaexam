@@ -4,461 +4,440 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Ujian Siswa</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     @include('partials.pwa-meta')
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <style>
-        body {
-            box-sizing: border-box;
-        }
-    </style>
+    <title>Dashboard Siswa - {{ config('app.name', 'SkadaExam') }}</title>
+
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <h1 class="text-2xl font-bold text-indigo-600">📚 SkadaExam</h1>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
+<body class="min-h-screen bg-slate-950 font-sans text-slate-900 antialiased">
+    <main class="relative min-h-screen overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.32),_transparent_30%),radial-gradient(circle_at_80%_10%,_rgba(16,185,129,0.18),_transparent_28%),linear-gradient(135deg,_#0f172a_0%,_#111827_48%,_#1e1b4b_100%)]"></div>
+        <div class="absolute -left-24 top-24 h-80 w-80 rounded-full bg-blue-500/15 blur-3xl"></div>
+        <div class="absolute -right-28 bottom-16 h-96 w-96 rounded-full bg-emerald-400/15 blur-3xl"></div>
 
-                    <div class="flex items-center space-x-3">
-                        <span class="text-gray-700 font-medium">{{ $siswa->nama }}</span>
+        <div class="relative z-10 min-h-screen px-4 py-5 sm:px-6 lg:px-10">
+            <header class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
+                <a href="/" class="inline-flex min-w-0 items-center gap-3 text-white">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg shadow-blue-950/20">
+                        <img src="{{ asset('assets/logo-compressed.png') }}" alt="SkadaExam" class="h-8 w-8 object-contain">
+                    </span>
+                    <span class="min-w-0 leading-tight">
+                        <span class="block text-base font-extrabold tracking-tight">SkadaExam</span>
+                        <span class="block truncate text-xs font-medium text-blue-100">Dashboard Ujian Siswa</span>
+                    </span>
+                </a>
+
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button type="button" id="installPwaButton"
+                        class="hidden items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-white/15 sm:px-4 sm:text-sm">
+                        <i class="fa-solid fa-download"></i>
+                        <span class="hidden sm:inline">Install App</span>
+                    </button>
+
+                    <div class="hidden max-w-[220px] items-center gap-3 rounded-full border border-white/15 bg-white/10 py-1.5 pl-2 pr-4 text-white backdrop-blur sm:flex">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm font-extrabold">
+                            {{ strtoupper(substr($siswa->nama ?? 'S', 0, 1)) }}
+                        </span>
+                        <span class="truncate text-sm font-bold">{{ $siswa->nama }}</span>
                     </div>
 
-                    <form method="POST" action="{{ route('siswa.logout') }}" class="inline">
+                    <form method="POST" action="{{ route('siswa.logout') }}">
                         @csrf
                         <button type="submit"
-                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                            class="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-red-500 px-3 text-sm font-bold text-white shadow-lg shadow-red-950/20 transition hover:bg-red-600 sm:px-4"
                             onclick="return confirm('Yakin ingin logout dari sistem ujian?')">
-                            <i class="fas fa-sign-out-alt mr-1"></i>
-                            Logout
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            <span class="hidden sm:inline">Logout</span>
                         </button>
                     </form>
                 </div>
+            </header>
 
-            </div>
-        </div>
-    </header>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Welcome Section -->
-        <div class="mb-8">
-            <h2 class="text-3xl font-bold text-gray-900 mb-2">Selamat Datang, {{ $siswa->nama }}! 👋</h2>
-            <p class="text-gray-600">Kelola ujian dan pantau progress belajar Anda dengan mudah</p>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-2 rounded-lg bg-blue-100 text-blue-600 text-lg">
-                        📝
+            <section class="mx-auto mt-7 w-full max-w-7xl">
+                <div class="grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+                    <div class="text-white">
+                        <p class="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-blue-50 backdrop-blur">
+                            <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
+                            Sesi aktif siap digunakan
+                        </p>
+                        <h1 class="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+                            Selamat datang, {{ $siswa->nama }}.
+                        </h1>
+                        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
+                            Pilih ujian yang tersedia hari ini. Pastikan perangkat stabil dan gunakan aplikasi PWA saat mulai ujian.
+                        </p>
                     </div>
-                    <div class="ml-3">
-                        <p class="text-xs font-medium text-gray-600">Total Ujian</p>
-                        <p class="text-xl font-bold text-gray-900">{{ $stats['total'] }}</p>
+
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        @php
+                            $statCards = [
+                                ['label' => 'Total', 'value' => $stats['total'] ?? 0, 'icon' => 'fa-clipboard-list', 'tone' => 'blue'],
+                                ['label' => 'Selesai', 'value' => $stats['selesai'] ?? 0, 'icon' => 'fa-circle-check', 'tone' => 'emerald'],
+                                ['label' => 'Hari Ini', 'value' => $stats['berlangsung'] ?? 0, 'icon' => 'fa-clock', 'tone' => 'amber'],
+                                ['label' => 'Mendatang', 'value' => $stats['mendatang'] ?? 0, 'icon' => 'fa-calendar-days', 'tone' => 'violet'],
+                            ];
+                        @endphp
+
+                        @foreach ($statCards as $stat)
+                            <div class="rounded-2xl border border-white/15 bg-white/10 p-3 text-white shadow-lg shadow-slate-950/10 backdrop-blur">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span @class([
+                                        'flex h-9 w-9 items-center justify-center rounded-xl text-sm',
+                                        'bg-blue-400/20 text-blue-100' => $stat['tone'] === 'blue',
+                                        'bg-emerald-400/20 text-emerald-100' => $stat['tone'] === 'emerald',
+                                        'bg-amber-400/20 text-amber-100' => $stat['tone'] === 'amber',
+                                        'bg-violet-400/20 text-violet-100' => $stat['tone'] === 'violet',
+                                    ])>
+                                        <i class="fa-solid {{ $stat['icon'] }}"></i>
+                                    </span>
+                                    <span class="text-2xl font-extrabold">{{ $stat['value'] }}</span>
+                                </div>
+                                <p class="mt-2 text-xs font-semibold text-slate-200">{{ $stat['label'] }}</p>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
 
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-2 rounded-lg bg-green-100 text-green-600 text-lg">
-                        ✅
+                @if (session('success') || session('error'))
+                    <div @class([
+                        'mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-lg',
+                        'border-emerald-200 bg-emerald-50 text-emerald-800' => session('success'),
+                        'border-red-200 bg-red-50 text-red-700' => session('error'),
+                    ])>
+                        <i class="fa-solid {{ session('success') ? 'fa-circle-check' : 'fa-circle-xmark' }} mr-2"></i>
+                        {{ session('success') ?? session('error') }}
                     </div>
-                    <div class="ml-3">
-                        <p class="text-xs font-medium text-gray-600">Selesai</p>
-                        <p class="text-xl font-bold text-gray-900">{{ $stats['selesai'] }}</p>
-                    </div>
-                </div>
-            </div>
+                @endif
 
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-2 rounded-lg bg-yellow-100 text-yellow-600 text-lg">
-                        ⏳
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-xs font-medium text-gray-600">Berlangsung</p>
-                        <p class="text-xl font-bold text-gray-900">{{ $stats['berlangsung'] }}</p>
-                    </div>
-                </div>
-            </div>
+                @if ($announcementHtml)
+                    <button type="button" id="announcementCard"
+                        class="mt-5 flex w-full items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-amber-900 shadow-lg shadow-amber-950/10 transition hover:bg-amber-100">
+                        <span class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-extrabold">Pengumuman koordinator</span>
+                            <span class="mt-0.5 block text-xs font-medium text-amber-800">Klik untuk membaca informasi terbaru.</span>
+                        </span>
+                        <span class="hidden rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-700 sm:inline-flex">Info</span>
+                    </button>
+                @endif
 
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-2 rounded-lg bg-purple-100 text-purple-600 text-lg">
-                        📊
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-xs font-medium text-gray-600">Mendatang</p>
-                        <p class="text-xl font-bold text-gray-900">{{ $stats['mendatang'] }}</p>
-                    </div>
-                </div>
-            </div>
+                <div class="mt-6 grid gap-5 lg:grid-cols-[1fr_340px]">
+                    <section class="overflow-hidden rounded-[1.75rem] border border-white/20 bg-white shadow-2xl shadow-slate-950/20">
+                        <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                            <div>
+                                <h2 class="text-lg font-extrabold text-slate-900">Ujian Hari Ini</h2>
+                                <p class="text-sm text-slate-500">Daftar ujian sesuai sesi login siswa.</p>
+                            </div>
+                            <span class="inline-flex w-fit items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                {{ $activeMapels->count() }} ujian
+                            </span>
+                        </div>
 
-            <!-- Pengumuman Button Card -->
-            <div class="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg shadow-lg p-4 border border-orange-200 hover:shadow-xl transition-all transform hover:scale-105 cursor-pointer relative"
-                id="announcementCard">
-                <div class="flex items-center">
-                    <div class="p-2 rounded-lg bg-white bg-opacity-20 text-white text-lg">
-                        📢
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-xs font-medium text-white opacity-90">Pengumuman</p>
-                        <p class="text-lg font-bold text-white">Lihat Info</p>
-                    </div>
-                </div>
-                <div class="absolute top-1 right-1">
-                    <span
-                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-white bg-opacity-20 text-white">
-                        Baru!
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Ujian Mendatang -->
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div class="p-6 border-b border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-900">Ujian Hari Ini</h3>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            @foreach ($activeMapels as $mapel)
+                        <div class="divide-y divide-slate-100">
+                            @forelse ($activeMapels as $mapel)
                                 @php
-                                    // Warna gradient per mapel biar variasi
-                                    $colors = [
-                                        'red' => 'from-red-500 to-red-600',
-                                        'green' => 'from-green-500 to-green-600',
-                                        'blue' => 'from-blue-500 to-blue-600',
-                                        'purple' => 'from-purple-500 to-purple-600',
-                                        'orange' => 'from-orange-500 to-orange-600',
-                                    ];
-                                    $color = $colors[array_rand($colors)];
+                                    $startTime = $mapel['waktu_mulai'] && $mapel['waktu_mulai'] !== 'N/A'
+                                        ? \Carbon\Carbon::parse($mapel['waktu_mulai'])->format('H:i')
+                                        : '-';
+                                    $endTime = $mapel['waktu_selesai'] && $mapel['waktu_selesai'] !== 'N/A'
+                                        ? \Carbon\Carbon::parse($mapel['waktu_selesai'])->format('H:i')
+                                        : '-';
+                                    $isCompleted = (bool) ($mapel['is_completed'] ?? false);
+                                    $isLocked = !$isCompleted && !($mapel['can_access'] ?? false);
                                 @endphp
 
-                                <div
-                                    class="bg-gradient-to-br {{ $color }} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 relative overflow-hidden">
-                                    <div class="mb-4">
-                                        <h4 class="text-xl font-bold mb-2">{{ $mapel['mapel_name'] }}</h4>
-                                        <p class="text-white/80 text-sm mb-4">
-                                            ⏰ Waktu Sesi <br>
-                                            {{ \Carbon\Carbon::parse($mapel['waktu_mulai'])->format('H:i') }}
-                                            - {{ \Carbon\Carbon::parse($mapel['waktu_selesai'])->format('H:i') }} WIB
-                                        </p>
-                                    </div>
-
-                                    <div class="flex items-center justify-between">
-                                        <div class="text-sm">
-                                            <span class="text-white/80">Durasi: </span>
-                                            <span class="font-semibold">{{ $mapel['durasi_menit'] }} menit</span>
+                                <article class="p-4 transition hover:bg-slate-50 sm:p-5">
+                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <h3 class="truncate text-base font-extrabold text-slate-900 sm:text-lg">
+                                                    {{ $mapel['mapel_name'] }}
+                                                </h3>
+                                                @if ($isCompleted)
+                                                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">Selesai</span>
+                                                @elseif ($isLocked)
+                                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">Terkunci</span>
+                                                @else
+                                                    <span class="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">Tersedia</span>
+                                                @endif
+                                            </div>
+                                            <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                                {{ $mapel['mapel_kode'] }} | {{ $mapel['sesi_ruangan_name'] }}
+                                            </p>
                                         </div>
 
-                                        @if ($mapel['can_access'])
+                                        <div class="grid grid-cols-3 gap-2 text-center sm:min-w-[330px]">
+                                            <div class="rounded-2xl bg-slate-50 px-3 py-2">
+                                                <p class="text-[10px] font-bold uppercase text-slate-400">Waktu</p>
+                                                <p class="mt-1 text-sm font-extrabold text-slate-800">{{ $startTime }}-{{ $endTime }}</p>
+                                            </div>
+                                            <div class="rounded-2xl bg-slate-50 px-3 py-2">
+                                                <p class="text-[10px] font-bold uppercase text-slate-400">Durasi</p>
+                                                <p class="mt-1 text-sm font-extrabold text-slate-800">{{ $mapel['durasi_menit'] }} mnt</p>
+                                            </div>
+                                            <div class="rounded-2xl bg-slate-50 px-3 py-2">
+                                                <p class="text-[10px] font-bold uppercase text-slate-400">Ruangan</p>
+                                                <p class="mt-1 truncate text-sm font-extrabold text-slate-800">{{ $mapel['ruangan'] }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 flex justify-end">
+                                        @if ($isCompleted)
+                                            <button type="button" disabled
+                                                class="inline-flex h-11 min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-5 text-sm font-extrabold text-emerald-700">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                Selesai
+                                            </button>
+                                        @elseif ($mapel['can_access'])
                                             <a href="{{ route('ujian.exam', ['jadwal_id' => $mapel['jadwal_id']]) }}"
                                                 data-require-pwa="1"
-                                                class="bg-white text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors">
+                                                class="inline-flex h-11 min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700 active:scale-[0.99]">
                                                 Mulai Ujian
+                                                <i class="fa-solid fa-arrow-right"></i>
                                             </a>
                                         @else
-                                            <button disabled
-                                                class="bg-white/20 text-white px-4 py-2 rounded-lg font-semibold cursor-not-allowed">
+                                            <button type="button" disabled
+                                                class="inline-flex h-11 min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-slate-100 px-5 text-sm font-extrabold text-slate-500">
+                                                <i class="fa-solid fa-lock"></i>
                                                 Terkunci
                                             </button>
                                         @endif
                                     </div>
+                                </article>
+                            @empty
+                                <div class="px-5 py-14 text-center">
+                                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                                        <i class="fa-solid fa-calendar-xmark text-xl"></i>
+                                    </div>
+                                    <h3 class="mt-4 text-base font-extrabold text-slate-900">Belum ada ujian hari ini</h3>
+                                    <p class="mt-1 text-sm text-slate-500">Jika seharusnya ada ujian, hubungi pengawas ruangan.</p>
                                 </div>
-                            @endforeach
+                            @endforelse
                         </div>
-                    </div>
+                    </section>
+
+                    <aside class="rounded-[1.75rem] border border-white/20 bg-white p-5 shadow-2xl shadow-slate-950/20">
+                        <h2 class="text-lg font-extrabold text-slate-900">Petunjuk Singkat</h2>
+                        <div class="mt-4 space-y-3">
+                            <div class="flex gap-3 rounded-2xl bg-blue-50 p-3">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                                    <i class="fa-solid fa-stopwatch"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-blue-900">Submit ujian</p>
+                                    <p class="mt-0.5 text-xs leading-5 text-blue-700">Tombol submit muncul saat sisa waktu di bawah 5 menit, atau saat pengawas mengaktifkannya.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 rounded-2xl bg-emerald-50 p-3">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                                    <i class="fa-solid fa-wifi"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-emerald-900">Koneksi stabil</p>
+                                    <p class="mt-0.5 text-xs leading-5 text-emerald-700">Pastikan jaringan aktif selama mengerjakan ujian.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 rounded-2xl bg-violet-50 p-3">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+                                    <i class="fa-solid fa-mobile-screen"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-violet-900">Gunakan PWA</p>
+                                    <p class="mt-0.5 text-xs leading-5 text-violet-700">Saat mulai ujian, sistem akan meminta mode aplikasi jika belum dibuka dari PWA.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 rounded-2xl bg-red-50 p-3">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-red-900">Jangan berpindah tab</p>
+                                    <p class="mt-0.5 text-xs leading-5 text-red-700">Pelanggaran akan tercatat sesuai pengaturan ujian.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
-
-            </div>
-
-            <!-- Petunjuk Ujian -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="p-6 border-b border-gray-100">
-                    <h3 class="text-lg font-semibold text-gray-900">📋 Petunjuk Ujian</h3>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <div class="p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <span class="text-blue-400 text-lg">⏰</span>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-blue-800">Submit Ujian</h4>
-                                    <p class="text-sm text-blue-700 mt-1">Tombol submit ujian akan muncul ketika durasi
-                                        ujian <b> dibawah 5 menit</b>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-
-
-                        <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <span class="text-yellow-400 text-lg">🌐</span>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-yellow-800">Koneksi Internet</h4>
-                                    <p class="text-sm text-yellow-700 mt-1">Pastikan koneksi internet stabil. Ujian
-                                        dapat dilanjutkan jika terputus sementara</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <span class="text-purple-400 text-lg">📝</span>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-purple-800">Navigasi Soal</h4>
-                                    <p class="text-sm text-purple-700 mt-1">Gunakan tombol "Sebelumnya" dan
-                                        "Selanjutnya" untuk berpindah soal</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <span class="text-red-400 text-lg">⚠️</span>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-red-800">Peringatan</h4>
-                                    <p class="text-sm text-red-700 mt-1">Jangan menutup browser atau berpindah tab
-                                        selama ujian berlangsung</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
+    </main>
 
-        <!-- Status Message Modal -->
-        <div id="statusModal"
-            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
-                <div class="p-6 text-center">
-                    <div class="mb-4">
-                        <span id="statusIcon" class="text-4xl"></span>
+    @php
+        $examNotice = session('notice') ?: request('notice');
+    @endphp
+
+    @if ($examNotice === 'duration_expired')
+        <div id="examNoticeModal"
+            class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+            <div class="w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white shadow-2xl">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                            <i class="fa-solid fa-clock"></i>
+                        </span>
+                        <div>
+                            <h2 class="text-lg font-extrabold">Durasi Ujian Selesai</h2>
+                            <p class="text-xs font-semibold text-blue-50">Jawaban telah dikumpulkan otomatis.</p>
+                        </div>
                     </div>
-                    <p id="statusMessage" class="text-gray-700 mb-6 text-lg"></p>
-                    <button id="statusClose"
-                        class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium">
-                        Tutup
+                </div>
+                <div class="px-6 py-5">
+                    <p class="text-sm leading-6 text-slate-600">
+                        Durasi ujian sudah habis. Sistem telah menyimpan dan mengumpulkan jawaban Anda secara otomatis.
+                    </p>
+                    <button type="button" data-exam-notice-close
+                        class="mt-5 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-extrabold text-white transition hover:bg-slate-800">
+                        Saya Mengerti
                     </button>
                 </div>
             </div>
         </div>
+    @endif
 
-        @if (session('success') || session('error'))
-            <script>
-                document.addEventListener("DOMContentLoaded", function() {
-                    const modal = document.getElementById("statusModal");
-                    const icon = document.getElementById("statusIcon");
-                    const message = document.getElementById("statusMessage");
-                    const closeBtn = document.getElementById("statusClose");
-
-                    let statusType = @json(session('success') ? 'success' : 'error');
-                    let statusText = @json(session('success') ?? session('error'));
-
-                    // Set message
-                    message.textContent = statusText;
-
-                    // Set icon
-                    if (statusType === 'success') {
-                        icon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
-                    } else {
-                        icon.innerHTML = '<i class="fas fa-times-circle text-red-500"></i>';
-                    }
-
-                    // Show modal
-                    modal.classList.remove("hidden");
-
-                    // Close handler
-                    closeBtn.addEventListener("click", function() {
-                        modal.classList.add("hidden");
-                    });
-
-                    // Tutup modal jika klik luar area
-                    modal.addEventListener("click", function(e) {
-                        if (e.target === modal) {
-                            modal.classList.add("hidden");
-                        }
-                    });
-                });
-            </script>
-        @endif
-
-        <!-- Popup Modal for Announcements -->
-        <div id="announcementModal"
-            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-                <div class="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-2xl">📢</span>
-                            <h2 class="text-2xl font-bold">Pengumuman Penting</h2>
+    @if ($announcementHtml)
+        <div id="announcementModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+            <div class="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-[1.75rem] bg-white shadow-2xl">
+                <div class="flex items-center justify-between gap-4 bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-4 text-white sm:px-6">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </span>
+                        <div class="min-w-0">
+                            <h2 class="truncate text-lg font-extrabold">Pengumuman Koordinator</h2>
+                            <p class="text-xs font-semibold text-amber-50">Informasi terbaru untuk sesi ujian.</p>
                         </div>
-                        <button id="closeModal" class="text-white hover:text-gray-200 text-2xl font-bold">×</button>
+                    </div>
+                    <button type="button" data-announcement-close
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="max-h-[60vh] overflow-y-auto px-5 py-5 sm:px-6">
+                    <div class="prose prose-sm max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-a:text-blue-600">
+                        {!! $announcementHtml !!}
                     </div>
                 </div>
 
-                <div class="p-6 overflow-y-auto max-h-96">
-                    <div class="space-y-4">
-                        {{-- <div class="p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <span class="text-purple-400 text-lg">🎉</span>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-semibold text-purple-800">Fitur Baru</h4>
-                                    <p class="text-sm text-purple-700 mt-1">Fitur review jawaban sebelum submit telah
-                                        ditambahkan. Gunakan tombol "Review" sebelum mengirim ujian.</p>
-                                    <p class="text-xs text-purple-600 mt-2 font-medium">📅 Dipublikasi: 3 hari yang
-                                        lalu</p>
-                                </div>
-                            </div>
-                        </div> --}}
-
-                        @if ($announcementHtml)
-                            <div class="prose max-w-none">
-                                {!! $announcementHtml !!}
-                            </div>
-                        @else
-                            <p class="text-gray-500 italic">Belum ada pengumuman.</p>
-                        @endif
-
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 px-6 py-4 border-t">
-                    <div class="flex justify-end">
-                        <button id="closeModalBtn"
-                            class="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all font-medium">
-                            Tutup
-                        </button>
-                    </div>
+                <div class="flex justify-end border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-6">
+                    <button type="button" data-announcement-close
+                        class="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-extrabold text-white transition hover:bg-slate-800">
+                        Saya Mengerti
+                    </button>
                 </div>
             </div>
         </div>
-
-    </div>
+    @endif
 
     <script>
-        // Popup Modal Functionality
-        const announcementCard = document.getElementById('announcementCard');
-        const announcementModal = document.getElementById('announcementModal');
-        const closeModal = document.getElementById('closeModal');
-        const closeModalBtn = document.getElementById('closeModalBtn');
+        const installPwaButton = document.getElementById('installPwaButton');
 
-        // Open modal when announcement card is clicked
-        announcementCard.addEventListener('click', function() {
-            announcementModal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
-        });
+        function refreshInstallButton() {
+            if (!installPwaButton || !window.SkadaExamPwa || window.SkadaExamPwa.isStandalone()) {
+                return;
+            }
 
-        // Close modal functions
-        function closeAnnouncementModal() {
-            announcementModal.classList.add('hidden');
-            document.body.style.overflow = 'auto'; // Restore scrolling
+            installPwaButton.classList.toggle('hidden', !window.SkadaExamPwa.canPromptInstall());
+            installPwaButton.classList.toggle('inline-flex', window.SkadaExamPwa.canPromptInstall());
         }
 
-        closeModal.addEventListener('click', closeAnnouncementModal);
-        closeModalBtn.addEventListener('click', closeAnnouncementModal);
+        window.addEventListener('skadaexam:pwa-install-available', refreshInstallButton);
+        document.addEventListener('DOMContentLoaded', refreshInstallButton);
 
-        // Close modal when clicking outside
-        announcementModal.addEventListener('click', function(e) {
-            if (e.target === announcementModal) {
-                closeAnnouncementModal();
+        installPwaButton?.addEventListener('click', async () => {
+            if (!window.SkadaExamPwa?.canPromptInstall()) {
+                return;
             }
+
+            await window.SkadaExamPwa.promptInstall();
+            refreshInstallButton();
         });
 
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && !announcementModal.classList.contains('hidden')) {
-                closeAnnouncementModal();
-            }
-        });
+        @if ($examNotice === 'duration_expired')
+            document.addEventListener('DOMContentLoaded', () => {
+                const modal = document.getElementById('examNoticeModal');
 
-        // Add click functionality to buttons
-        document.querySelectorAll('button').forEach(button => {
-            if (button.textContent.includes('Mulai Ujian')) {
-                button.addEventListener('click', function() {
-                    alert('Memulai ujian Matematika - Kalkulus. Pastikan koneksi internet stabil!');
+                function closeExamNotice() {
+                    modal?.classList.add('hidden');
+                    modal?.classList.remove('flex');
+                    document.body.style.overflow = '';
+                }
+
+                modal?.classList.remove('hidden');
+                modal?.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                modal?.querySelectorAll('[data-exam-notice-close]').forEach((button) => {
+                    button.addEventListener('click', closeExamNotice);
                 });
-            } else if (button.textContent.includes('Lihat Detail')) {
-                button.addEventListener('click', function() {
-                    alert('Menampilkan detail ujian...');
+                modal?.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeExamNotice();
+                    }
                 });
-            }
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const modalPengumuman = document.getElementById("announcementModal");
-            const closeButtons = [document.getElementById("closeModal"), document.getElementById("closeModalBtn")];
 
-            @if ($announcementHtml)
-                modalPengumuman.classList.remove("hidden");
-            @endif
-
-            closeButtons.forEach(btn => {
-                if (btn) {
-                    btn.addEventListener("click", () => {
-                        modal.classList.add("hidden");
-                    });
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('notice')) {
+                    url.searchParams.delete('notice');
+                    window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
                 }
             });
-        });
-        (function() {
-            function c() {
-                var b = a.contentDocument || a.contentWindow.document;
-                if (b) {
-                    var d = b.createElement('script');
-                    d.innerHTML =
-                        "window.__CF$cv$params={r:'98677e1644ddb5eb',t:'MTc1OTEwNzA5MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
-                    b.getElementsByTagName('head')[0].appendChild(d)
+        @endif
+
+        @if ($announcementHtml)
+            document.addEventListener('DOMContentLoaded', () => {
+                const modal = document.getElementById('announcementModal');
+                const card = document.getElementById('announcementCard');
+                const storageKey = @json('skadaexam:announcement:' . $siswa->id . ':' . $announcementKey);
+
+                function openAnnouncement() {
+                    modal?.classList.remove('hidden');
+                    modal?.classList.add('flex');
+                    document.body.style.overflow = 'hidden';
                 }
-            }
-            if (document.body) {
-                var a = document.createElement('iframe');
-                a.height = 1;
-                a.width = 1;
-                a.style.position = 'absolute';
-                a.style.top = 0;
-                a.style.left = 0;
-                a.style.border = 'none';
-                a.style.visibility = 'hidden';
-                document.body.appendChild(a);
-                if ('loading' !== document.readyState) c();
-                else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c);
-                else {
-                    var e = document.onreadystatechange || function() {};
-                    document.onreadystatechange = function(b) {
-                        e(b);
-                        'loading' !== document.readyState && (document.onreadystatechange = e, c())
+
+                function closeAnnouncement() {
+                    modal?.classList.add('hidden');
+                    modal?.classList.remove('flex');
+                    document.body.style.overflow = '';
+                    try {
+                        localStorage.setItem(storageKey, 'seen');
+                    } catch (error) {}
+                }
+
+                card?.addEventListener('click', openAnnouncement);
+                modal?.querySelectorAll('[data-announcement-close]').forEach((button) => {
+                    button.addEventListener('click', closeAnnouncement);
+                });
+                modal?.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeAnnouncement();
                     }
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                        closeAnnouncement();
+                    }
+                });
+
+                let hasSeenAnnouncement = false;
+                try {
+                    hasSeenAnnouncement = localStorage.getItem(storageKey) === 'seen';
+                } catch (error) {}
+
+                if (!hasSeenAnnouncement) {
+                    openAnnouncement();
                 }
-            }
-        })();
+            });
+        @endif
     </script>
 </body>
 

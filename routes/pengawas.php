@@ -25,6 +25,7 @@ Route::middleware(['auth:web', 'role:admin,pengawas,koordinator'])->prefix('feat
     // Assignment details and attendance management
     Route::get('/assignment/{id}', [DashboardController::class, 'showAssignment'])->name('assignment');
     Route::post('/assignment/{id}/attendance', [DashboardController::class, 'updateAttendance'])->name('update-attendance');
+    Route::get('/assignment/{id}/attendance-summary', [DashboardController::class, 'attendanceSummary'])->name('attendance-summary');
 
     // Token Generation
     Route::get('/generate-token/{id}', [TokenController::class, 'showTokenForm'])->name('generate-token');

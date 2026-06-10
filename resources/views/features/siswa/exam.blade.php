@@ -759,12 +759,23 @@
         let hasilUjianId = {{ $examData['hasilUjianId'] ?? 0 }};
         let examSettings = @json($examData['examSettings'] ?? []);
 
-        // Update time limit to realtime
-        let timeLimit = {{ $examData['examEndTime'] ?? '' }};
-        let remainingTime = Math.floor((timeLimit - Date.now()) / 1000);;
-        console.log(timeLimit, remainingTime);
-        // let timeLimit = {{ $examData['timeLimit'] ?? 0 }};
-        // let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
+        const timeLimit = {{ $examData['timeLimit'] ?? 0 }};
+        let remainingTime = {{ $examData['remainingTime'] ?? 0 }};
+        let syncedRemainingTime = Math.max(0, remainingTime);
+        let remainingSyncedAt = performance.now();
+        let fiveMinuteWarningShown = remainingTime <= 300;
+        let oneMinuteWarningShown = remainingTime <= 60;
+
+        function syncRemainingTime(seconds) {
+            syncedRemainingTime = Math.max(0, Math.floor(Number(seconds) || 0));
+            remainingSyncedAt = performance.now();
+            remainingTime = syncedRemainingTime;
+        }
+
+        function getSyncedRemainingTime() {
+            const elapsedSeconds = Math.floor((performance.now() - remainingSyncedAt) / 1000);
+            return Math.max(0, syncedRemainingTime - elapsedSeconds);
+        }
 
         let submitUnlockedByControl = {{ $examData['tampilkan_tombol_submit'] ? 'true' : 'false' }};
 
@@ -1649,7 +1660,7 @@
                 }
 
                 if (typeof data.remaining_time === 'number') {
-                    remainingTime = Math.max(0, data.remaining_time);
+                    syncRemainingTime(data.remaining_time);
                     updateTimerDisplay();
                 }
 
@@ -1685,6 +1696,7 @@
             renderQuestion(currentQuestionIndex);
             restoreSelectedAnswer(); // Restore the selected answer for current question
             requestWakeLock(true);
+            await checkExamStatus(false);
 
             // CEK PELANGGARAN SAAT LOAD
             const lastViolation = await getLastViolation();
@@ -1767,17 +1779,20 @@
             updateTimerDisplay();
 
             const timerInterval = setInterval(() => {
+                remainingTime = getSyncedRemainingTime();
+
                 if (remainingTime > 0) {
-                    remainingTime--;
                     updateTimerDisplay();
 
                     // Warning when 5 minutes left
-                    if (remainingTime === 300) {
+                    if (remainingTime <= 300 && !fiveMinuteWarningShown) {
+                        fiveMinuteWarningShown = true;
                         showSystemNotification('⚠️ Perhatian: Waktu ujian tersisa 5 menit lagi!');
                     }
 
                     // Warning when 1 minute left
-                    if (remainingTime === 60) {
+                    if (remainingTime <= 60 && !oneMinuteWarningShown) {
+                        oneMinuteWarningShown = true;
                         showSystemNotification('⚠️ Perhatian: Waktu ujian tersisa 1 menit lagi!');
                     }
 
@@ -1841,28 +1856,35 @@
                             is_auto_submit: true
                         })
                     })
-                    .then(() => {
+                    .then(response => response.json().catch(() => ({})))
+                    .then((result) => {
                         // Redirect to dashboard after submission
                         console.log('Ujian berhasil disubmit, mengarahkan ke Dashboard...');
                         releaseWakeLock();
-                        window.location.href = '{{ route('siswa.dashboard') }}';
+                        window.location.href = result.redirect_url ||
+                            '{{ route('siswa.dashboard', ['notice' => 'duration_expired']) }}';
                     })
                     .catch(() => {
                         // Even if submission fails, redirect to dashboard
                         releaseWakeLock();
-                        window.location.href = '{{ route('siswa.dashboard') }}';
+                        window.location.href = '{{ route('siswa.dashboard', ['notice' => 'duration_expired']) }}';
                     });
             }).catch(() => {
                 // Even if save fails, still redirect
                 releaseWakeLock();
-                window.location.href = '{{ route('siswa.dashboard') }}';
+                window.location.href = '{{ route('siswa.dashboard', ['notice' => 'duration_expired']) }}';
             });
         }
 
 
 
         // Fungsi submit exam (tetap pakai fetch)
-        function submitExam() {
+        async function submitExam() {
+            const statusData = await checkExamStatus(false);
+            if (statusData && (statusData.force_logout || statusData.expired || statusData.is_final)) {
+                return;
+            }
+
             saveCurrentAnswer().then(() => {
                 fetch('{{ route('ujian.submit') }}', {
                         method: 'POST',
@@ -1880,7 +1902,7 @@
                         if (data.success) {
                             showSystemNotification('Ujian berhasil dikumpulkan!');
                             releaseWakeLock();
-                            window.location.href = '{{ route('siswa.dashboard') }}';
+                            window.location.href = data.redirect_url || '{{ route('siswa.dashboard') }}';
                         } else {
                             showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
                                 'Unknown error'));
@@ -1916,6 +1938,12 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    if (data.redirect_url) {
+                        releaseWakeLock();
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
+
                     if (data.success) {
                         // Update UI
                         const flagText = document.getElementById('flagText');

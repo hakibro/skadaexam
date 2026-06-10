@@ -158,7 +158,11 @@ class UjianController extends Controller
                 ->where('siswa_id', $siswa->id)
                 ->update(['keterangan' => 'force_logout']);
 
-            return $this->logoutAndRedirectToSiswaLogin($request, 'Sesi ujian telah berakhir. Silakan login kembali jika ada sesi berikutnya.');
+            return $this->logoutAndRedirectToSiswaLogin(
+                $request,
+                'Sesi ujian telah berakhir. Silakan login kembali jika ada sesi berikutnya.',
+                'session_ended'
+            );
         }
 
         // Debug info for randomization settings
@@ -201,7 +205,9 @@ class UjianController extends Controller
 
         if ($this->hasExamTimeExpired($hasilUjian)) {
             $this->finalizeHasilUjian($hasilUjian, true, $request);
-            return redirect()->route('siswa.dashboard')->with('warning', 'Waktu ujian telah habis. Ujian dikumpulkan otomatis.');
+            return redirect($this->dashboardNoticeUrl('duration_expired'))
+                ->with('notice', 'duration_expired')
+                ->with('warning', 'Waktu ujian telah habis. Ujian dikumpulkan otomatis.');
         }
 
         // Get questions from bank_soal instead of jadwal_ujian relationship
@@ -323,13 +329,7 @@ class UjianController extends Controller
             ->pluck('soal_ujian_id')
             ->toArray();
 
-        // Calculate remaining time
-        $remainingTime = 0;
-        if ($examSettings['batas_waktu'] > 0) {
-            $timeLimit = $examSettings['batas_waktu'] * 60; // Convert to seconds
-            $elapsedTime = $now->diffInSeconds($hasilUjian->waktu_mulai);
-            $remainingTime = max(0, $timeLimit - $elapsedTime);
-        }
+        $remainingTime = $this->remainingTimeForHasilUjian($hasilUjian);
 
         // Prepare exam data
         $examData = [
@@ -347,7 +347,8 @@ class UjianController extends Controller
             'hasilUjianId' => $hasilUjian->id,
             'jadwalUjianId' => $jadwalUjian->id,
             'totalViolations' => PelanggaranUjian::where('hasil_ujian_id', $hasilUjian->id)->count(),
-            'examEndTime' => Carbon::parse($enrollment->waktu_selesai_ujian)->timestamp * 1000, // in milliseconds
+            'examEndTime' => $this->examEndTimeMs($hasilUjian),
+            'serverNowMs' => now()->timestamp * 1000,
 
         ];
 
@@ -441,7 +442,8 @@ class UjianController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Waktu ujian habis. Ujian dikumpulkan otomatis.',
-                    'redirect_url' => route('siswa.dashboard')
+                    'notice' => 'duration_expired',
+                    'redirect_url' => $this->dashboardNoticeUrl('duration_expired')
                 ]);
             }
             return response()->json(['success' => true]);
@@ -479,10 +481,14 @@ class UjianController extends Controller
             }
 
             if ($hasilUjian->is_final || $hasilUjian->status !== 'berlangsung') {
+                $durationNotice = $hasilUjian->status === 'auto-selesai';
                 return response()->json([
                     'success' => true,
                     'is_final' => true,
-                    'redirect_url' => route('siswa.dashboard')
+                    'notice' => $durationNotice ? 'duration_expired' : null,
+                    'redirect_url' => $durationNotice
+                        ? $this->dashboardNoticeUrl('duration_expired')
+                        : route('siswa.dashboard')
                 ]);
             }
 
@@ -492,7 +498,8 @@ class UjianController extends Controller
                 return response()->json([
                     'success' => true,
                     'is_final' => true,
-                    'redirect_url' => route('siswa.dashboard')
+                    'notice' => 'duration_expired',
+                    'redirect_url' => $this->dashboardNoticeUrl('duration_expired')
                 ]);
             }
 
@@ -534,7 +541,8 @@ class UjianController extends Controller
                 'success' => false,
                 'force_logout' => true,
                 'message' => 'Sesi ujian tidak valid.',
-                'redirect_url' => url('/login/siswa'),
+                'notice' => 'session_ended',
+                'redirect_url' => $this->loginNoticeUrl('session_ended'),
             ], 404);
         }
 
@@ -556,7 +564,8 @@ class UjianController extends Controller
                 'is_final' => (bool) $hasilUjian->is_final,
                 'remaining_time' => 0,
                 'message' => 'Sesi Anda telah berakhir.',
-                'redirect_url' => url('/login/siswa'),
+                'notice' => 'session_ended',
+                'redirect_url' => $this->loginNoticeUrl('session_ended'),
             ]);
         }
 
@@ -566,13 +575,8 @@ class UjianController extends Controller
             $hasilUjian->refresh();
         }
 
-        $remainingTime = 0;
-        $endTime = $hasilUjian->enrollment?->waktu_selesai_ujian;
-        if ($endTime) {
-            $remainingTime = max(0, now()->diffInSeconds(Carbon::parse($endTime), false));
-        } elseif ($hasilUjian->waktu_mulai && $hasilUjian->durasi_menit) {
-            $remainingTime = max(0, now()->diffInSeconds(Carbon::parse($hasilUjian->waktu_mulai)->addMinutes((int) $hasilUjian->durasi_menit), false));
-        }
+        $remainingTime = $this->remainingTimeForHasilUjian($hasilUjian);
+        $durationNotice = $expired || $hasilUjian->status === 'auto-selesai';
 
         return response()->json([
             'success' => true,
@@ -580,8 +584,13 @@ class UjianController extends Controller
             'expired' => $expired,
             'is_final' => (bool) $hasilUjian->is_final,
             'remaining_time' => $remainingTime,
+            'server_now_ms' => now()->timestamp * 1000,
+            'exam_end_ms' => $this->examEndTimeMs($hasilUjian),
+            'notice' => $durationNotice ? 'duration_expired' : null,
             'tampilkan_tombol_submit' => (bool) ($hasilUjian->enrollment?->sesiRuangan?->tampilkan_tombol_submit),
-            'redirect_url' => ($expired || $hasilUjian->is_final) ? route('siswa.dashboard') : null,
+            'redirect_url' => ($expired || $hasilUjian->is_final)
+                ? ($durationNotice ? $this->dashboardNoticeUrl('duration_expired') : route('siswa.dashboard'))
+                : null,
         ]);
     }
 
@@ -676,7 +685,7 @@ class UjianController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Exam already submitted',
-                    'redirect_url' => route('siswa.dashboard')
+                    'redirect_url' => $this->dashboardNoticeUrl('duration_expired')
                 ], 200); // Return 200 instead of 404 to avoid error message
             }
 
@@ -693,7 +702,9 @@ class UjianController extends Controller
             return response()->json([
                 'success' => true,
                 'score' => $score,
-                'redirect_url' => route('ujian.result', ['hasil' => $hasilUjian->id])
+                'redirect_url' => $isAutoSubmit
+                    ? $this->dashboardNoticeUrl('duration_expired')
+                    : route('siswa.dashboard')
             ]);
         } catch (\Exception $e) {
             Log::error('Error submitting exam', [
@@ -741,6 +752,11 @@ class UjianController extends Controller
     /**
      * Show exam result page
      */
+    public function examResult(Request $request)
+    {
+        return redirect()->route('siswa.dashboard');
+    }
+
     // public function examResult(Request $request)
     // {
     //     $siswa = Auth::guard('siswa')->user();
@@ -1111,6 +1127,47 @@ class UjianController extends Controller
         return false;
     }
 
+    private function remainingTimeForHasilUjian(HasilUjian $hasilUjian): int
+    {
+        $endTime = $hasilUjian->enrollment?->waktu_selesai_ujian;
+        if ($endTime) {
+            return max(0, now()->diffInSeconds(Carbon::parse($endTime), false));
+        }
+
+        if ($hasilUjian->waktu_mulai && $hasilUjian->durasi_menit) {
+            $fallbackEndTime = Carbon::parse($hasilUjian->waktu_mulai)->addMinutes((int) $hasilUjian->durasi_menit);
+            return max(0, now()->diffInSeconds($fallbackEndTime, false));
+        }
+
+        return 0;
+    }
+
+    private function examEndTimeMs(HasilUjian $hasilUjian): ?int
+    {
+        $endTime = $hasilUjian->enrollment?->waktu_selesai_ujian;
+        if ($endTime) {
+            return Carbon::parse($endTime)->timestamp * 1000;
+        }
+
+        if ($hasilUjian->waktu_mulai && $hasilUjian->durasi_menit) {
+            return Carbon::parse($hasilUjian->waktu_mulai)
+                ->addMinutes((int) $hasilUjian->durasi_menit)
+                ->timestamp * 1000;
+        }
+
+        return null;
+    }
+
+    private function dashboardNoticeUrl(string $notice): string
+    {
+        return route('siswa.dashboard', ['notice' => $notice]);
+    }
+
+    private function loginNoticeUrl(string $notice): string
+    {
+        return url('/login/siswa') . '?' . http_build_query(['notice' => $notice]);
+    }
+
     private function finalizeHasilUjian(HasilUjian $hasilUjian, bool $isAutoSubmit, Request $request): array
     {
         if ($hasilUjian->is_final || $hasilUjian->status !== 'berlangsung') {
@@ -1157,7 +1214,7 @@ class UjianController extends Controller
         return $score;
     }
 
-    private function logoutAndRedirectToSiswaLogin(Request $request, string $message)
+    private function logoutAndRedirectToSiswaLogin(Request $request, string $message, ?string $notice = null)
     {
         $siswa = Auth::guard('siswa')->user();
         Auth::guard('siswa')->logout();
@@ -1170,7 +1227,11 @@ class UjianController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login/siswa')->with('error', $message);
+        $redirectUrl = $notice ? $this->loginNoticeUrl($notice) : url('/login/siswa');
+
+        return redirect($redirectUrl)
+            ->with('notice', $notice)
+            ->with('error', $message);
     }
 
     /**
@@ -1230,12 +1291,17 @@ class UjianController extends Controller
             'durasi'
         ]);
 
-        return redirect()->route('ujian.result', $hasilUjian->id);
+        return redirect()->route('siswa.dashboard');
     }
 
     /**
      * Show the exam result
      */
+    public function result($hasilId)
+    {
+        return redirect()->route('siswa.dashboard');
+    }
+
     // public function result($hasilId)
     // {
     //     $hasilUjian = HasilUjian::findOrFail($hasilId);
