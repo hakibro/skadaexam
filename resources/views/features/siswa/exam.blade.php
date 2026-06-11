@@ -1688,7 +1688,7 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
-            if (document.body.dataset.requirePwa === '1' && window.SkadaExamPwa && !window.SkadaExamPwa.isStandalone()) {
+            if (document.body.dataset.requirePwa === '1' && window.SkadaExamPwa?.shouldGateExam()) {
                 window.SkadaExamPwa.showGate(window.location.href);
             }
 

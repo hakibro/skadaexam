@@ -2,10 +2,29 @@ const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
+const isDesktopViewport = () =>
+    window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 1024px)').matches;
+
+const isFullscreenLike = () => {
+    if (document.fullscreenElement) {
+        return true;
+    }
+
+    const heightDiff = Math.abs(window.innerHeight - screen.height);
+    const availHeightDiff = Math.abs(window.innerHeight - screen.availHeight);
+
+    return heightDiff <= 2 || availHeightDiff <= 2;
+};
+
+const shouldGateExam = () =>
+    !isStandalone() && !(isDesktopViewport() && isFullscreenLike());
+
 let deferredInstallPrompt = null;
 
 window.SkadaExamPwa = {
     isStandalone,
+    isFullscreenLike,
+    shouldGateExam,
     canPromptInstall: () => Boolean(deferredInstallPrompt),
     promptInstall: async () => {
         if (!deferredInstallPrompt) {
@@ -33,11 +52,16 @@ window.addEventListener('beforeinstallprompt', event => {
 
 function showPwaGate(targetUrl = null) {
     const isRequiredPage = document.body?.dataset.requirePwa === '1';
+    if (!shouldGateExam()) {
+        return;
+    }
+
     let gate = document.getElementById('pwa-required-gate');
     if (!gate) {
         gate = document.createElement('div');
         gate.id = 'pwa-required-gate';
-        gate.className = 'fixed inset-0 z-[9999] bg-slate-950/90 text-white flex items-center justify-center p-4';
+        gate.className = 'fixed inset-0 bg-slate-950/90 text-white flex items-center justify-center p-4';
+        gate.style.zIndex = '2147483647';
         gate.innerHTML = `
             <div class="w-full max-w-lg rounded-xl bg-white text-slate-900 shadow-2xl p-6">
                 <div class="flex items-start gap-4">
@@ -68,9 +92,10 @@ function showPwaGate(targetUrl = null) {
                 </div>
             </div>
         `;
-        document.body.appendChild(gate);
     }
 
+    document.body.appendChild(gate);
+    gate.style.zIndex = '2147483647';
     gate.classList.remove('hidden');
     gate.dataset.targetUrl = targetUrl || '';
 
@@ -102,7 +127,7 @@ window.SkadaExamPwa.showGate = showPwaGate;
 
 document.addEventListener('click', event => {
     const link = event.target.closest('a[data-require-pwa="1"]');
-    if (!link || isStandalone()) {
+    if (!link || !shouldGateExam()) {
         return;
     }
 
@@ -111,7 +136,7 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.body?.dataset.requirePwa === '1' && !isStandalone()) {
+    if (document.body?.dataset.requirePwa === '1' && shouldGateExam()) {
         showPwaGate(window.location.href);
     }
 });

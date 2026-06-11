@@ -8,14 +8,9 @@ use App\Http\Controllers\Api\LiveUjianController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\KehadiranController;
 use App\Http\Controllers\Api\FilterOptionsController;
-use App\Http\Controllers\Api\GuideController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/api')->group(function () {
-    // API PANDUAN
-    Route::get('/guides', [GuideController::class, 'index']);
-    Route::get('/guides/{role}', [GuideController::class, 'show']);
-
     // API FILTER OPTIONS
     Route::get('/filter-options', [FilterOptionsController::class, 'index']);
 
