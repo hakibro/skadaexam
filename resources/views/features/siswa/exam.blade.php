@@ -2093,6 +2093,12 @@
             let lastFocusTime = Date.now();
             let isDetectionActive = false;
             let debounceTimer = null;
+            let viewportResizeTimer = null;
+            let lastSplitViewViolationAt = 0;
+            const initialViewport = {
+                width: window.visualViewport?.width || window.innerWidth,
+                height: window.visualViewport?.height || window.innerHeight,
+            };
 
             // Grace period: Don't start detection immediately (3 seconds after page load)
             const gracePeriod = 2000; // 2 seconds
@@ -2119,6 +2125,8 @@
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('blur', handleWindowBlur);
             window.addEventListener('focus', handleWindowFocus);
+            window.addEventListener('resize', handleViewportResize);
+            window.visualViewport?.addEventListener('resize', handleViewportResize);
 
             function handleVisibilityChange() {
                 if (!isDetectionActive) return; // Skip during grace period
@@ -2158,6 +2166,91 @@
                 handleUserReturnedToPage();
             }
 
+            function handleViewportResize() {
+                if (!isDetectionActive) return;
+
+                if (viewportResizeTimer) {
+                    clearTimeout(viewportResizeTimer);
+                }
+
+                viewportResizeTimer = setTimeout(() => {
+                    if (isLikelyAndroidSplitView()) {
+                        recordIntegrityViolation(
+                            'split_view_or_resized_window',
+                            'Mode layar terbagi terdeteksi',
+                            'Tampilan ujian mengecil seperti split view/multi-window. Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas.'
+                        );
+                    }
+                }, 800);
+            }
+
+            function isLikelyAndroidSplitView() {
+                const isAndroid = /Android/i.test(navigator.userAgent);
+                const isStandalone = window.SkadaExamPwa?.isStandalone?.() ||
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.navigator.standalone === true;
+
+                if (!isAndroid || !isStandalone || document.visibilityState !== 'visible') {
+                    return false;
+                }
+
+                const currentWidth = window.visualViewport?.width || window.innerWidth;
+                const currentHeight = window.visualViewport?.height || window.innerHeight;
+                const widthRatio = currentWidth / Math.max(initialViewport.width, 1);
+                const heightRatio = currentHeight / Math.max(initialViewport.height, 1);
+                const shortestSide = Math.min(currentWidth, currentHeight);
+
+                return widthRatio < 0.72 || heightRatio < 0.72 || shortestSide < 420;
+            }
+
+            function recordIntegrityViolation(reason, title, message) {
+                const now = Date.now();
+
+                if (reason === 'split_view_or_resized_window' && now - lastSplitViewViolationAt < 30000) {
+                    return;
+                }
+
+                if (reason === 'split_view_or_resized_window') {
+                    lastSplitViewViolationAt = now;
+                }
+
+                fetch('{{ route('ujian.record-violation') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            hasil_ujian_id: hasilUjianId,
+                            reason
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            return;
+                        }
+
+                        if (data.force_logout) {
+                            logoutDueToCheating();
+                            return;
+                        }
+
+                        showViolationModal(
+                            title,
+                            `${message} Peringatan ${data.violations_count} dari ${maxWarnings}.`,
+                            data.violations_count
+                        );
+                    })
+                    .catch(() => {
+                        showViolationModal(
+                            'KESALAHAN SISTEM',
+                            'Gagal merekam pelanggaran. Silakan lanjutkan ujian, laporkan ke pengawas.',
+                            0
+                        );
+                    });
+            }
+
             function handleUserLeftPage() {
                 if (!isDetectionActive) return; // Skip during grace period
 
@@ -2187,40 +2280,11 @@
                     const timeAway = Date.now() - parseInt(leftTime);
 
                     if (timeAway > 5000) {
-                        // Catat ke server
-                        fetch('{{ route('ujian.record-violation') }}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken
-                                },
-                                body: JSON.stringify({
-                                    hasil_ujian_id: hasilUjianId,
-                                    reason: 'tab_switching'
-                                })
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                console.log('Response JSON:', data); // 👈 lihat di DevTools
-                                if (data.success) {
-                                    if (data.force_logout) {
-                                        logoutDueToCheating();
-                                    } else {
-                                        showViolationModal(
-                                            `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway/1000)} detik!`,
-                                            `Peringatan ${data.violations_count} dari ${maxWarnings}. Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas.`,
-                                            data.violations_count
-                                        );
-                                    }
-                                }
-                            })
-                            .catch(() => {
-                                showViolationModal(
-                                    'KESALAHAN SISTEM',
-                                    'Gagal merekam pelanggaran. Silakan lanjutkan ujian, laporkan ke pengawas.',
-                                    0
-                                );
-                            });
+                        recordIntegrityViolation(
+                            'tab_switching',
+                            `Anda telah berpindah dari halaman ujian selama ${Math.floor(timeAway / 1000)} detik!`,
+                            'Pelanggaran ini telah dicatat dan akan dilaporkan ke pengawas.'
+                        );
                     }
 
                     localStorage.removeItem('examLeftPageTime');
