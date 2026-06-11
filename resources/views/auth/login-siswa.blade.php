@@ -151,6 +151,37 @@
                                 </div>
                             @endif
 
+                            <div id="loginPwaPrompt"
+                                class="mb-5 hidden rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4 text-sm text-indigo-950">
+                                <div class="flex gap-3">
+                                    <span
+                                        class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M12 18h.01M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" />
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-extrabold">Install aplikasi sebelum login</p>
+                                        <p class="mt-1 leading-5 text-indigo-800">
+                                            Agar tidak perlu login ulang saat masuk ujian, install SkadaExam dari
+                                            halaman ini, buka dari ikon aplikasi, lalu masukkan ID Yayasan dan token.
+                                        </p>
+                                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                                            <button type="button" data-install-pwa
+                                                class="inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+                                                Install Aplikasi
+                                            </button>
+                                            <span id="loginPwaHint" class="text-xs font-semibold text-indigo-700">
+                                                Jika tombol belum aktif, gunakan menu browser: Install App/Add to Home
+                                                Screen.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <form method="POST" action="{{ route('login.siswa.submit') }}" class="space-y-5">
                                 @csrf
 
@@ -270,26 +301,53 @@
         });
 
         const installPwaButton = document.getElementById('installPwaButton');
+        const loginPwaPrompt = document.getElementById('loginPwaPrompt');
+        const loginPwaHint = document.getElementById('loginPwaHint');
+        const installPwaButtons = document.querySelectorAll('[data-install-pwa]');
 
         function refreshInstallButton() {
-            if (!installPwaButton || !window.SkadaExamPwa || window.SkadaExamPwa.isStandalone()) {
+            if (!window.SkadaExamPwa) {
                 return;
             }
 
-            installPwaButton.classList.toggle('hidden', !window.SkadaExamPwa.canPromptInstall());
-            installPwaButton.classList.toggle('inline-flex', window.SkadaExamPwa.canPromptInstall());
+            const isStandalone = window.SkadaExamPwa.isStandalone();
+            const canPromptInstall = window.SkadaExamPwa.canPromptInstall();
+
+            installPwaButton?.classList.toggle('hidden', isStandalone || !canPromptInstall);
+            installPwaButton?.classList.toggle('inline-flex', !isStandalone && canPromptInstall);
+
+            loginPwaPrompt?.classList.toggle('hidden', isStandalone);
+            installPwaButtons.forEach((button) => {
+                button.disabled = !canPromptInstall;
+                button.textContent = canPromptInstall ? 'Install Aplikasi' : 'Install dari Menu Browser';
+            });
+
+            if (loginPwaHint) {
+                loginPwaHint.textContent = canPromptInstall ?
+                    'Setelah terpasang, buka SkadaExam dari ikon aplikasi lalu login.' :
+                    'Jika tombol belum aktif, gunakan menu browser: Install App/Add to Home Screen.';
+            }
         }
 
         window.addEventListener('skadaexam:pwa-install-available', refreshInstallButton);
         document.addEventListener('DOMContentLoaded', refreshInstallButton);
 
-        installPwaButton?.addEventListener('click', async () => {
+        async function installPwaFromLogin() {
             if (!window.SkadaExamPwa?.canPromptInstall()) {
                 return;
             }
 
-            await window.SkadaExamPwa.promptInstall();
+            const choice = await window.SkadaExamPwa.promptInstall();
+            if (choice.outcome === 'accepted' && loginPwaHint) {
+                loginPwaHint.textContent = 'Aplikasi terpasang. Buka SkadaExam dari ikon aplikasi, lalu login.';
+            }
+
             refreshInstallButton();
+        }
+
+        installPwaButton?.addEventListener('click', installPwaFromLogin);
+        installPwaButtons.forEach((button) => {
+            button.addEventListener('click', installPwaFromLogin);
         });
 
         @if ($loginNotice === 'session_ended')
