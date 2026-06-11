@@ -91,7 +91,7 @@ async function loginForRole(page, role) {
   }
 
   const loginUrl = absoluteUrl(roleCredentials.loginPath);
-  await page.goto(loginUrl, { waitUntil: 'networkidle2' });
+  await gotoPage(page, loginUrl);
   await maskSensitiveUi(page);
 
   if (role === 'siswa') {
@@ -114,7 +114,7 @@ async function loginForRole(page, role) {
 
   await Promise.all([
     page.click('button[type="submit"]'),
-    page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null),
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: Number(process.env.GUIDE_TIMEOUT_MS || 20000) }).catch(() => null),
   ]);
 
   const currentUrl = page.url();
@@ -133,10 +133,20 @@ async function captureStep(page, role, step, resolvedUrl) {
   const outputPath = path.join(outputRoot, step.screenshot_path);
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+  await gotoPage(page, targetUrl);
   await maskSensitiveUi(page);
+  await dismissGuideOverlays(page, step);
   await page.screenshot({ path: outputPath, fullPage: true });
   console.log(`[ok] ${role}/${step.id} -> ${path.relative(rootDir, outputPath)}`);
+}
+
+async function gotoPage(page, url) {
+  await page.goto(url, {
+    waitUntil: 'domcontentloaded',
+    timeout: Number(process.env.GUIDE_TIMEOUT_MS || 20000),
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, Number(process.env.GUIDE_SETTLE_MS || 1200)));
 }
 
 async function maskSensitiveUi(page) {
@@ -149,6 +159,37 @@ async function maskSensitiveUi(page) {
         filter: blur(4px) !important;
       }
     `,
+  }).catch(() => null);
+}
+
+async function dismissGuideOverlays(page, step) {
+  if (step.id === 'siswa-install-pwa') {
+    return;
+  }
+
+  await page.evaluate(() => {
+    const overlayTexts = [
+      'Buka Ujian dari Aplikasi',
+      'Install Aplikasi',
+      'Browser tidak mendukung stay awake',
+    ];
+
+    for (const element of Array.from(document.querySelectorAll('body *'))) {
+      const text = element.textContent || '';
+      if (!overlayTexts.some((needle) => text.includes(needle))) {
+        continue;
+      }
+
+      const fixedAncestor = element.closest('.fixed, [style*="position: fixed"]');
+      if (fixedAncestor instanceof HTMLElement) {
+        fixedAncestor.style.display = 'none';
+        continue;
+      }
+
+      if (element instanceof HTMLElement) {
+        element.style.display = 'none';
+      }
+    }
   }).catch(() => null);
 }
 

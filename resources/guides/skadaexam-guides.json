@@ -410,6 +410,14 @@
               "notes": "Capture halaman ini membutuhkan token demo yang valid."
             },
             {
+              "id": "siswa-install-pwa",
+              "title": "Install dan Buka PWA",
+              "instruction": "Sebelum mulai mengerjakan, ikuti arahan install aplikasi/PWA lalu buka ujian dari ikon aplikasi agar mode ujian aktif.",
+              "url": "/ujian/exam/{jadwal}",
+              "screenshot_path": "guides/screenshots/siswa/siswa-install-pwa.png",
+              "notes": "Pada perangkat siswa, sistem dapat meminta ujian dibuka dari PWA/installed app sebelum monitoring aktif."
+            },
+            {
               "id": "siswa-mulai-ujian-placeholder",
               "title": "Mulai Ujian",
               "instruction": "Pilih ujian yang tersedia dari dashboard, lalu tekan tombol mulai atau kerjakan ujian.",
@@ -444,8 +452,8 @@
             {
               "id": "siswa-submit",
               "title": "Submit Ujian",
-              "instruction": "Periksa kembali jawaban, lalu submit ujian jika sudah yakin atau saat waktu hampir habis.",
-              "url": "/ujian/confirm-finish",
+              "instruction": "Periksa kembali jawaban dari halaman ujian, lalu klik selesai/submit. Setelah submit berhasil, siswa diarahkan kembali ke dashboard untuk mengerjakan ujian berikutnya jika tersedia.",
+              "url": "/ujian/exam/{jadwal}",
               "screenshot_path": "guides/screenshots/siswa/siswa-submit.png",
               "notes": "Setelah submit, jawaban tidak dapat diubah."
             },
