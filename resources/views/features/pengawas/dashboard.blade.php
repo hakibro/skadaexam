@@ -586,7 +586,7 @@
                                                             <i
                                                                 class="fas {{ $assignment->tampilkan_tombol_submit ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
                                                             <span
-                                                                class="hidden md:inline">{{ $assignment->tampilkan_tombol_submit ? 'Submit' : 'Off' }}</span>
+                                                                class="hidden md:inline">{{ $assignment->tampilkan_tombol_submit ? 'Submit On' : 'Submit Off' }}</span>
                                                         </button>
                                                     </form>
                                                 </div>
