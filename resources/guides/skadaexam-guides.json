@@ -1,0 +1,465 @@
+{
+  "updated_at": "2026-06-11",
+  "app_version": "1.0",
+  "guides": [
+    {
+      "role": "admin",
+      "title": "Panduan Administrator",
+      "description": "Mengelola konfigurasi inti aplikasi, tahun ajaran, paket ujian, pengguna, dan utilitas sistem.",
+      "audience": "internal",
+      "sections": [
+        {
+          "title": "Konfigurasi Sistem",
+          "steps": [
+            {
+              "id": "admin-dashboard",
+              "title": "Buka Dashboard Admin",
+              "instruction": "Masuk melalui halaman login internal, lalu pastikan ringkasan sistem tampil pada dashboard admin.",
+              "url": "/admin",
+              "screenshot_path": "guides/screenshots/admin/admin-dashboard.png",
+              "notes": "Gunakan akun admin untuk akses penuh ke seluruh modul."
+            },
+            {
+              "id": "admin-tahun-ajaran",
+              "title": "Kelola Tahun Ajaran",
+              "instruction": "Buka menu Tahun Ajaran untuk menambah, mengubah, atau mengaktifkan tahun ajaran yang dipakai sistem.",
+              "url": "/admin/tahun-ajaran",
+              "screenshot_path": "guides/screenshots/admin/admin-tahun-ajaran.png",
+              "notes": "Tahun ajaran aktif memengaruhi data siswa, jadwal, ruangan, dan laporan."
+            },
+            {
+              "id": "admin-paket-ujian",
+              "title": "Kelola Paket Ujian",
+              "instruction": "Buka menu Paket Ujian untuk menyiapkan paket ujian yang akan dipakai pada mapel, bank soal, dan ruangan.",
+              "url": "/naskah/paket-ujian",
+              "screenshot_path": "guides/screenshots/admin/admin-paket-ujian.png",
+              "notes": "Pastikan paket yang digunakan berstatus aktif."
+            },
+            {
+              "id": "admin-school-settings",
+              "title": "Atur Identitas Sekolah",
+              "instruction": "Buka Setting Sekolah untuk menyesuaikan identitas, logo, dan pengaturan sinkronisasi yang tampil di dokumen ujian.",
+              "url": "/admin/school-settings",
+              "screenshot_path": "guides/screenshots/admin/admin-school-settings.png",
+              "notes": "Data ini dipakai di kartu ujian, cetak sesi, dan dokumen laporan."
+            },
+            {
+              "id": "admin-users",
+              "title": "Kelola Pengguna",
+              "instruction": "Buka menu Users untuk membuat akun internal dan memberi role sesuai tanggung jawab operator.",
+              "url": "/admin/users",
+              "screenshot_path": "guides/screenshots/admin/admin-users.png",
+              "notes": "Role menentukan menu yang terlihat dan endpoint yang boleh diakses."
+            },
+            {
+              "id": "admin-reset-tabel",
+              "title": "Gunakan Reset Tabel",
+              "instruction": "Buka Reset Tabel hanya saat perlu membersihkan data operasional sesuai prosedur sekolah.",
+              "url": "/admin/reset-tabel",
+              "screenshot_path": "guides/screenshots/admin/admin-reset-tabel.png",
+              "notes": "Fitur ini berisiko tinggi dan sebaiknya hanya dipakai oleh administrator."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "data",
+      "title": "Panduan Petugas Data",
+      "description": "Mengelola data guru, siswa, kelas, serta proses impor dan sinkronisasi siswa.",
+      "audience": "internal",
+      "sections": [
+        {
+          "title": "Data Master",
+          "steps": [
+            {
+              "id": "data-dashboard",
+              "title": "Buka Dashboard Data",
+              "instruction": "Masuk sebagai petugas data, lalu cek ringkasan data guru, siswa, dan kelas.",
+              "url": "/data",
+              "screenshot_path": "guides/screenshots/data/data-dashboard.png",
+              "notes": "Dashboard membantu melihat kondisi data sebelum ujian disiapkan."
+            },
+            {
+              "id": "data-guru",
+              "title": "Kelola Data Guru",
+              "instruction": "Buka menu Guru untuk menambah, mengubah, mengimpor, mengekspor, atau mengatur role guru.",
+              "url": "/data/guru",
+              "screenshot_path": "guides/screenshots/data/data-guru.png",
+              "notes": "Role guru memengaruhi akses sebagai naskah, ruangan, pengawas, atau koordinator."
+            },
+            {
+              "id": "data-siswa",
+              "title": "Kelola Data Siswa",
+              "instruction": "Buka menu Siswa untuk mencari, memfilter, mengubah status pembayaran, rekomendasi, atau menghapus data siswa.",
+              "url": "/data/siswa",
+              "screenshot_path": "guides/screenshots/data/data-siswa.png",
+              "notes": "Status pembayaran dan rekomendasi dapat memengaruhi izin login ujian siswa."
+            },
+            {
+              "id": "data-siswa-import",
+              "title": "Import atau Sinkronisasi Siswa",
+              "instruction": "Buka halaman import siswa untuk menarik data dari API atau menjalankan sinkronisasi sesuai pengaturan.",
+              "url": "/data/siswa/import",
+              "screenshot_path": "guides/screenshots/data/data-siswa-import.png",
+              "notes": "Pantau progress import sampai selesai sebelum memakai data untuk enrollment."
+            },
+            {
+              "id": "data-kelas",
+              "title": "Kelola Kelas",
+              "instruction": "Buka menu Kelas untuk melihat daftar kelas dan menyelaraskan kelas dari data siswa bila diperlukan.",
+              "url": "/data/kelas",
+              "screenshot_path": "guides/screenshots/data/data-kelas.png",
+              "notes": "Kelas dipakai untuk target jadwal ujian dan laporan."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "naskah",
+      "title": "Panduan Petugas Naskah",
+      "description": "Menyiapkan mata pelajaran, bank soal, soal, jadwal, enrollment, dan hasil ujian.",
+      "audience": "internal",
+      "sections": [
+        {
+          "title": "Penyusunan Ujian",
+          "steps": [
+            {
+              "id": "naskah-dashboard",
+              "title": "Buka Dashboard Naskah",
+              "instruction": "Masuk sebagai petugas naskah untuk memantau ringkasan mapel, bank soal, jadwal, dan hasil.",
+              "url": "/naskah",
+              "screenshot_path": "guides/screenshots/naskah/naskah-dashboard.png",
+              "notes": "Gunakan dashboard sebagai pintu awal penyusunan ujian."
+            },
+            {
+              "id": "naskah-mapel",
+              "title": "Kelola Mata Pelajaran",
+              "instruction": "Buka Mata Pelajaran untuk membuat mapel dan menghubungkannya dengan tahun ajaran atau paket ujian yang tepat.",
+              "url": "/naskah/mapel",
+              "screenshot_path": "guides/screenshots/naskah/naskah-mapel.png",
+              "notes": "Mapel menjadi dasar bank soal dan jadwal ujian."
+            },
+            {
+              "id": "naskah-import-komprehensif",
+              "title": "Import Komprehensif",
+              "instruction": "Gunakan Import Komprehensif untuk memasukkan paket data naskah sesuai template yang disediakan.",
+              "url": "/naskah/import-komprehensif",
+              "screenshot_path": "guides/screenshots/naskah/naskah-import-komprehensif.png",
+              "notes": "Unduh template terlebih dahulu agar format data sesuai."
+            },
+            {
+              "id": "naskah-banksoal",
+              "title": "Kelola Bank Soal",
+              "instruction": "Buka Bank Soal untuk membuat wadah soal berdasarkan mapel, paket, dan kebutuhan ujian.",
+              "url": "/naskah/banksoal",
+              "screenshot_path": "guides/screenshots/naskah/naskah-banksoal.png",
+              "notes": "Bank soal harus siap sebelum soal dan jadwal digunakan."
+            },
+            {
+              "id": "naskah-soal",
+              "title": "Kelola Soal",
+              "instruction": "Buka menu Soal untuk membuat, mengedit, mengimpor, menduplikasi, atau melihat preview soal.",
+              "url": "/naskah/soal",
+              "screenshot_path": "guides/screenshots/naskah/naskah-soal.png",
+              "notes": "Pastikan kunci jawaban dan tipe soal sudah benar sebelum jadwal berjalan."
+            },
+            {
+              "id": "naskah-panduan-docx",
+              "title": "Baca Panduan DOCX",
+              "instruction": "Buka Panduan DOCX untuk melihat format file Word yang dapat diimpor menjadi soal.",
+              "url": "/naskah/panduan/format-docx",
+              "screenshot_path": "guides/screenshots/naskah/naskah-panduan-docx.png",
+              "notes": "Panduan ini membantu guru membuat soal dengan format yang konsisten."
+            },
+            {
+              "id": "naskah-jadwal",
+              "title": "Kelola Jadwal Ujian",
+              "instruction": "Buka Jadwal Ujian untuk menentukan tanggal, mapel, target kelas, bank soal, durasi, dan status pelaksanaan.",
+              "url": "/naskah/jadwal",
+              "screenshot_path": "guides/screenshots/naskah/naskah-jadwal.png",
+              "notes": "Jadwal perlu dihubungkan ke sesi ruangan agar bisa dikerjakan siswa."
+            },
+            {
+              "id": "naskah-enrollment",
+              "title": "Kelola Enrollment",
+              "instruction": "Buka Enrollment untuk memastikan siswa terdaftar pada jadwal dan sesi ruangan yang sesuai.",
+              "url": "/naskah/enrollment-ujian",
+              "screenshot_path": "guides/screenshots/naskah/naskah-enrollment.png",
+              "notes": "Enrollment menentukan siswa mana yang dapat mengikuti ujian."
+            },
+            {
+              "id": "naskah-hasil",
+              "title": "Lihat Hasil Ujian",
+              "instruction": "Buka Hasil Ujian untuk melihat nilai, jawaban, analisis, cetak, atau ekspor hasil.",
+              "url": "/naskah/hasil",
+              "screenshot_path": "guides/screenshots/naskah/naskah-hasil.png",
+              "notes": "Gunakan filter jadwal atau sesi agar data mudah diperiksa."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "ruangan",
+      "title": "Panduan Petugas Ruangan",
+      "description": "Menyiapkan ruangan, sesi, penempatan siswa, token, kartu ujian, dan cetak sesi.",
+      "audience": "internal",
+      "sections": [
+        {
+          "title": "Pengaturan Ruangan dan Sesi",
+          "steps": [
+            {
+              "id": "ruangan-dashboard",
+              "title": "Buka Dashboard Ruangan",
+              "instruction": "Masuk sebagai petugas ruangan untuk memantau ringkasan ruangan dan sesi.",
+              "url": "/ruangan",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-dashboard.png",
+              "notes": "Dashboard membantu mengecek kesiapan ruang ujian."
+            },
+            {
+              "id": "ruangan-list",
+              "title": "Kelola Daftar Ruangan",
+              "instruction": "Buka Daftar Ruangan untuk membuat, mengubah, mengaktifkan, atau menghapus ruangan.",
+              "url": "/ruangan/list",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-list.png",
+              "notes": "Kode ruangan harus jelas agar mudah dipakai di kartu dan laporan."
+            },
+            {
+              "id": "ruangan-import",
+              "title": "Import Data Ruangan",
+              "instruction": "Gunakan Import Data untuk memasukkan ruangan, sesi, dan assignment siswa secara massal.",
+              "url": "/ruangan/import-comprehensive",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-import.png",
+              "notes": "Gunakan template resmi agar proses import tidak gagal."
+            },
+            {
+              "id": "ruangan-cari-siswa",
+              "title": "Cari dan Atur Siswa",
+              "instruction": "Buka Cari Siswa untuk menemukan siswa dan menempatkannya ke sesi ruangan yang sesuai.",
+              "url": "/ruangan/cari-siswa",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-cari-siswa.png",
+              "notes": "Penempatan siswa memengaruhi token dan akses ujian."
+            },
+            {
+              "id": "ruangan-kartu-ujian",
+              "title": "Cetak Kartu Ujian",
+              "instruction": "Buka Cetak Kartu Ujian untuk memilih data dan mencetak kartu siswa.",
+              "url": "/ruangan/kartu-ujian",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-kartu-ujian.png",
+              "notes": "Kartu ujian berisi identitas, ruangan, sesi, dan jadwal."
+            },
+            {
+              "id": "ruangan-cetak-sesi",
+              "title": "Cetak Sesi Ruangan",
+              "instruction": "Buka Cetak Sesi Ruangan untuk mencetak daftar peserta dan informasi sesi.",
+              "url": "/ruangan/cetak-sesi",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-cetak-sesi.png",
+              "notes": "Cetakan ini dapat dipakai pengawas saat pelaksanaan ujian."
+            },
+            {
+              "id": "ruangan-sesi-placeholder",
+              "title": "Kelola Sesi pada Ruangan",
+              "instruction": "Pilih salah satu ruangan, lalu buka Sesi Ruangan untuk membuat sesi, mengatur siswa, jadwal, dan token.",
+              "url": "/ruangan/{ruangan}/sesi",
+              "screenshot_path": "guides/screenshots/ruangan/ruangan-sesi-placeholder.png",
+              "notes": "Gunakan GUIDE_URL_OVERRIDES_JSON saat capture agar placeholder {ruangan} diarahkan ke ID ruangan demo."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "pengawas",
+      "title": "Panduan Pengawas",
+      "description": "Melaksanakan pengawasan ujian, token, presensi, pelanggaran, dan berita acara.",
+      "audience": "pengawas",
+      "sections": [
+        {
+          "title": "Pelaksanaan Ujian",
+          "steps": [
+            {
+              "id": "pengawas-dashboard",
+              "title": "Buka Dashboard Pengawas",
+              "instruction": "Masuk sebagai pengawas untuk melihat sesi yang ditugaskan dan status pelaksanaan ujian.",
+              "url": "/features/pengawas/dashboard",
+              "screenshot_path": "guides/screenshots/pengawas/pengawas-dashboard.png",
+              "notes": "Koordinator dan admin juga dapat membuka panel ini."
+            },
+            {
+              "id": "pengawas-tata-tertib",
+              "title": "Lihat Tata Tertib",
+              "instruction": "Buka Tata Tertib untuk membaca aturan yang harus disampaikan atau dipantau selama ujian.",
+              "url": "/features/pengawas/tata-tertib",
+              "screenshot_path": "guides/screenshots/pengawas/pengawas-tata-tertib.png",
+              "notes": "Konten tata tertib dapat diperbarui oleh koordinator."
+            },
+            {
+              "id": "pengawas-token-placeholder",
+              "title": "Generate Token Sesi",
+              "instruction": "Buka halaman generate token pada sesi yang ditugaskan, lalu bagikan token kepada siswa di ruangan.",
+              "url": "/features/pengawas/generate-token/{sesi}",
+              "screenshot_path": "guides/screenshots/pengawas/pengawas-token-placeholder.png",
+              "notes": "Gunakan GUIDE_URL_OVERRIDES_JSON saat capture agar {sesi} mengarah ke sesi demo."
+            },
+            {
+              "id": "pengawas-assignment-placeholder",
+              "title": "Kelola Presensi",
+              "instruction": "Buka detail assignment untuk mencatat atau memantau kehadiran peserta ujian.",
+              "url": "/features/pengawas/assignment/{assignment}",
+              "screenshot_path": "guides/screenshots/pengawas/pengawas-assignment-placeholder.png",
+              "notes": "Presensi juga dapat berubah otomatis saat siswa login."
+            },
+            {
+              "id": "pengawas-berita-acara-placeholder",
+              "title": "Isi Berita Acara",
+              "instruction": "Buka Berita Acara untuk mencatat kondisi ujian dan finalisasi laporan pengawas.",
+              "url": "/features/pengawas/berita-acara/{assignment}",
+              "screenshot_path": "guides/screenshots/pengawas/pengawas-berita-acara-placeholder.png",
+              "notes": "Berita acara yang selesai dapat diverifikasi oleh koordinator."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "koordinator",
+      "title": "Panduan Koordinator",
+      "description": "Mengatur pengawas, memantau kehadiran, mengelola pengumuman, tata tertib, dan verifikasi laporan.",
+      "audience": "internal",
+      "sections": [
+        {
+          "title": "Koordinasi Ujian",
+          "steps": [
+            {
+              "id": "koordinator-dashboard",
+              "title": "Buka Dashboard Koordinator",
+              "instruction": "Masuk sebagai koordinator untuk melihat ringkasan pelaksanaan dan akses fitur koordinasi.",
+              "url": "/koordinator",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-dashboard.png",
+              "notes": "Dashboard menjadi pusat pemantauan ujian."
+            },
+            {
+              "id": "koordinator-kehadiran",
+              "title": "Pantau Kehadiran",
+              "instruction": "Buka Laporan Kehadiran untuk memfilter dan mengunduh data kehadiran siswa.",
+              "url": "/koordinator/kehadiran",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-kehadiran.png",
+              "notes": "Data dapat diekspor untuk rekap pelaksanaan."
+            },
+            {
+              "id": "koordinator-pengawas-assignment",
+              "title": "Atur Penugasan Pengawas",
+              "instruction": "Buka Penugasan Pengawas untuk assign, unassign, atau bulk assign pengawas ke sesi.",
+              "url": "/koordinator/pengawas-assignment",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-pengawas-assignment.png",
+              "notes": "Periksa ketersediaan pengawas sebelum menetapkan jadwal."
+            },
+            {
+              "id": "koordinator-laporan",
+              "title": "Verifikasi Laporan",
+              "instruction": "Buka Laporan Koordinasi untuk melihat, mengunduh, mengedit, atau memverifikasi berita acara.",
+              "url": "/koordinator/laporan",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-laporan.png",
+              "notes": "Verifikasi laporan menjadi arsip resmi pelaksanaan ujian."
+            },
+            {
+              "id": "koordinator-tata-tertib",
+              "title": "Upload Tata Tertib",
+              "instruction": "Buka Upload Tata Tertib untuk memperbarui dokumen atau informasi aturan ujian.",
+              "url": "/koordinator/upload-tata-tertib",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-tata-tertib.png",
+              "notes": "Tata tertib dapat dibaca oleh pengawas."
+            },
+            {
+              "id": "koordinator-pengumuman",
+              "title": "Kelola Pengumuman",
+              "instruction": "Buka Pengumuman untuk memperbarui informasi yang perlu ditampilkan kepada peserta atau petugas.",
+              "url": "/koordinator/pengumuman",
+              "screenshot_path": "guides/screenshots/koordinator/koordinator-pengumuman.png",
+              "notes": "Gunakan bahasa singkat dan jelas untuk informasi operasional."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "siswa",
+      "title": "Panduan Siswa",
+      "description": "Masuk ke ujian, membaca dashboard, mengerjakan soal, menandai soal, menyimpan jawaban, dan submit.",
+      "audience": "siswa",
+      "sections": [
+        {
+          "title": "Mengikuti Ujian",
+          "steps": [
+            {
+              "id": "siswa-login",
+              "title": "Login Siswa",
+              "instruction": "Buka halaman login siswa, masukkan ID Yayasan dan token 6 karakter dari pengawas.",
+              "url": "/login/siswa",
+              "screenshot_path": "guides/screenshots/siswa/siswa-login.png",
+              "notes": "Token hanya berlaku untuk sesi ruangan yang aktif."
+            },
+            {
+              "id": "siswa-dashboard",
+              "title": "Buka Dashboard Siswa",
+              "instruction": "Setelah login berhasil, cek daftar ujian yang tersedia dan informasi sesi.",
+              "url": "/siswa/dashboard",
+              "screenshot_path": "guides/screenshots/siswa/siswa-dashboard.png",
+              "notes": "Capture halaman ini membutuhkan token demo yang valid."
+            },
+            {
+              "id": "siswa-mulai-ujian-placeholder",
+              "title": "Mulai Ujian",
+              "instruction": "Pilih ujian yang tersedia dari dashboard, lalu tekan tombol mulai atau kerjakan ujian.",
+              "url": "/ujian/exam/{jadwal}",
+              "screenshot_path": "guides/screenshots/siswa/siswa-mulai-ujian-placeholder.png",
+              "notes": "Gunakan GUIDE_URL_OVERRIDES_JSON saat capture agar {jadwal} mengarah ke jadwal demo."
+            },
+            {
+              "id": "siswa-navigasi-soal",
+              "title": "Navigasi Soal",
+              "instruction": "Gunakan nomor soal atau tombol navigasi untuk berpindah antar soal selama waktu masih tersedia.",
+              "url": "/ujian/exam/{jadwal}",
+              "screenshot_path": "guides/screenshots/siswa/siswa-navigasi-soal.png",
+              "notes": "Jawaban sebaiknya tersimpan sebelum berpindah soal."
+            },
+            {
+              "id": "siswa-simpan-jawaban",
+              "title": "Simpan Jawaban",
+              "instruction": "Pilih jawaban pada soal, lalu pastikan status jawaban tersimpan sebelum melanjutkan.",
+              "url": "/ujian/exam/{jadwal}",
+              "screenshot_path": "guides/screenshots/siswa/siswa-simpan-jawaban.png",
+              "notes": "Koneksi internet yang stabil membantu proses simpan otomatis."
+            },
+            {
+              "id": "siswa-tandai-soal",
+              "title": "Tandai Soal",
+              "instruction": "Gunakan fitur tandai atau ragu-ragu untuk menandai soal yang ingin dicek kembali.",
+              "url": "/ujian/exam/{jadwal}",
+              "screenshot_path": "guides/screenshots/siswa/siswa-tandai-soal.png",
+              "notes": "Tanda ini membantu siswa memprioritaskan soal sebelum submit."
+            },
+            {
+              "id": "siswa-submit",
+              "title": "Submit Ujian",
+              "instruction": "Periksa kembali jawaban, lalu submit ujian jika sudah yakin atau saat waktu hampir habis.",
+              "url": "/ujian/confirm-finish",
+              "screenshot_path": "guides/screenshots/siswa/siswa-submit.png",
+              "notes": "Setelah submit, jawaban tidak dapat diubah."
+            },
+            {
+              "id": "siswa-hasil-status",
+              "title": "Lihat Status atau Hasil",
+              "instruction": "Buka halaman hasil atau kembali ke dashboard untuk melihat status ujian setelah submit.",
+              "url": "/ujian/result",
+              "screenshot_path": "guides/screenshots/siswa/siswa-hasil-status.png",
+              "notes": "Tampilan hasil mengikuti pengaturan yang ditetapkan panitia."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

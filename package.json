@@ -5,6 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
+        "guides:validate": "node scripts/capture-guides-screenshots.mjs --validate",
+        "guides:capture": "node scripts/capture-guides-screenshots.mjs",
         "buildpdf": "npx tailwindcss -i ./resources/css/pdf.css -o ./public/css/pdf.css --minify"
     },
     "devDependencies": {
