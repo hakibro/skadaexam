@@ -868,6 +868,100 @@
             }, duration);
         }
 
+        function setupPwaInputProtection() {
+            const isStandalone = window.SkadaExamPwa?.isStandalone?.() ||
+                window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+
+            if (!isStandalone) {
+                return;
+            }
+
+            let lastNoticeAt = 0;
+            const notifyBlockedAction = () => {
+                const now = Date.now();
+                if (now - lastNoticeAt < 2500) {
+                    return;
+                }
+
+                lastNoticeAt = now;
+                showSystemNotification('Mode aman PWA aktif. Aksi tersebut tidak diizinkan selama ujian.', 'warning');
+            };
+
+            const blockEvent = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                notifyBlockedAction();
+            };
+
+            const isEditableTarget = (target) => {
+                return Boolean(target?.closest?.('input, textarea, [contenteditable="true"], [contenteditable=""]'));
+            };
+
+            const isExamDragTarget = (target) => {
+                return Boolean(target?.closest?.(
+                    '[data-dragdrop-question], [data-ordering-question], .dragdrop-item, .dragdrop-zone, .ordering-item'
+                ));
+            };
+
+            document.addEventListener('contextmenu', blockEvent, true);
+
+            ['copy', 'cut', 'paste'].forEach((eventName) => {
+                document.addEventListener(eventName, blockEvent, true);
+            });
+
+            document.addEventListener('selectstart', (event) => {
+                if (isEditableTarget(event.target)) {
+                    return;
+                }
+
+                blockEvent(event);
+            }, true);
+
+            document.addEventListener('dragstart', (event) => {
+                if (isExamDragTarget(event.target)) {
+                    return;
+                }
+
+                blockEvent(event);
+            }, true);
+
+            document.addEventListener('drop', (event) => {
+                if (isExamDragTarget(event.target)) {
+                    return;
+                }
+
+                blockEvent(event);
+            }, true);
+
+            document.addEventListener('keydown', (event) => {
+                const key = event.key.toLowerCase();
+                const hasCtrlOrMeta = event.ctrlKey || event.metaKey;
+
+                if (key === 'f5' || (hasCtrlOrMeta && key === 'r')) {
+                    return;
+                }
+
+                const blockedCtrlKeys = ['c', 'v', 'x', 'a', 's', 'p', 'u'];
+                const isBlockedCtrlKey = hasCtrlOrMeta && blockedCtrlKeys.includes(key);
+                const isBlockedDevToolsShortcut = hasCtrlOrMeta && event.shiftKey && ['i', 'j', 'c'].includes(key);
+                const isBlockedTabShortcut = hasCtrlOrMeta && key === 'tab';
+                const isBlockedHistoryShortcut = event.altKey && ['arrowleft', 'arrowright'].includes(key);
+
+                if (
+                    key === 'f12' ||
+                    isBlockedCtrlKey ||
+                    isBlockedDevToolsShortcut ||
+                    isBlockedTabShortcut ||
+                    isBlockedHistoryShortcut
+                ) {
+                    blockEvent(event);
+                }
+            }, true);
+
+            showSystemNotification('Mode aman PWA aktif', 'success', 2500);
+        }
+
         function escapeHtml(value) {
             return String(value ?? '')
                 .replace(/&/g, '&amp;')
@@ -1692,6 +1786,7 @@
                 window.SkadaExamPwa.showGate(window.location.href);
             }
 
+            setupPwaInputProtection();
             updateProgress();
             renderQuestion(currentQuestionIndex);
             restoreSelectedAnswer(); // Restore the selected answer for current question
@@ -2262,14 +2357,12 @@
             // Focus on continue button
             continueBtn.focus();
 
-            // Prevent ESC key from closing modal and other keyboard shortcuts
+            // Prevent ESC key from closing modal and selected shortcuts.
+            // F5 and Ctrl/Cmd+R are intentionally allowed for refresh.
             const handleKeyDown = (e) => {
-                // Prevent ESC, Alt+Tab, Ctrl+Tab, F5, Ctrl+R, etc.
                 if (e.key === 'Escape' ||
                     (e.altKey && e.key === 'Tab') ||
-                    (e.ctrlKey && e.key === 'Tab') ||
-                    e.key === 'F5' ||
-                    (e.ctrlKey && e.key === 'r')) {
+                    (e.ctrlKey && e.key === 'Tab')) {
                     e.preventDefault();
                     e.stopPropagation();
                 }
