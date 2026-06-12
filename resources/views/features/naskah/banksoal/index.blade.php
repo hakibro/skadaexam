@@ -112,8 +112,7 @@
                         class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="__all" @selected($showAllPaket)>Semua Paket</option>
                         @foreach ($paketUjians as $paket)
-                            <option value="{{ $paket->id }}"
-                                @selected(!$showAllPaket && (string) $paketUjianId === (string) $paket->id)>
+                            <option value="{{ $paket->id }}" @selected(!$showAllPaket && (string) $paketUjianId === (string) $paket->id)>
                                 {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                             </option>
                         @endforeach
@@ -234,7 +233,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $bank->total_soal }}
+                                        {{ $bank->totalSoal }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
