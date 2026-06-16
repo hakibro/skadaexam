@@ -46,6 +46,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
         Route::get('/kartu-ujian/print', [RuanganController::class, 'printExamCards'])->name('kartu-ujian.print');
         Route::get('/cetak-sesi', [RuanganController::class, 'cetakSesiIndex'])->name('cetak-sesi.index');
         Route::get('/cetak-sesi/print', [RuanganController::class, 'cetakSesiPrint'])->name('cetak-sesi.print');
+        Route::get('/cetak-sesi/siswa-di-ruangan', [RuanganController::class, 'cetakSiswaDiRuanganPrint'])->name('cetak-sesi.siswa-di-ruangan');
         Route::post('/bulk-action', [RuanganController::class, 'bulkAction'])->name('bulk-action');
         Route::post('/bulk-delete', [RuanganController::class, 'bulkDelete'])->name('bulk-delete');
 

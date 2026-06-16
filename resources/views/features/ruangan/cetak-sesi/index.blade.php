@@ -59,16 +59,23 @@
                         <h3 class="text-sm font-semibold text-gray-900">Pilih Ruangan yang Akan Dicetak</h3>
                         <p class="text-xs text-gray-500">Kosongkan pilihan untuk mencetak semua ruangan</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button type="button" id="btn-select-all"
                             class="text-xs text-blue-600 hover:underline font-medium">Pilih Semua</button>
                         <span class="text-gray-300">|</span>
                         <button type="button" id="btn-clear-all"
                             class="text-xs text-gray-500 hover:underline">Bersihkan</button>
                         <button type="submit"
+                            formaction="{{ route('ruangan.cetak-sesi.siswa-di-ruangan') }}"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                            <i class="fa-solid fa-table-cells-large"></i>
+                            Siswa di Ruangan
+                        </button>
+                        <button type="submit"
+                            formaction="{{ route('ruangan.cetak-sesi.print') }}"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white text-sm font-semibold hover:bg-green-700">
                             <i class="fa-solid fa-print"></i>
-                            Cetak
+                            Cetak Sesi
                         </button>
                     </div>
                 </div>

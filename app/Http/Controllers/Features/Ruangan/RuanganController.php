@@ -1066,6 +1066,77 @@ class RuanganController extends Controller
         ]);
     }
 
+    public function cetakSiswaDiRuanganPrint(Request $request)
+    {
+        $tahunAjaranId = $request->get('tahun_ajaran_id');
+        $paketUjianId = $request->get('paket_ujian_id');
+        $ruanganIds = array_filter((array) $request->get('ruangan_ids', []));
+
+        $sesiList = SesiRuangan::with([
+            'ruangan',
+            'tahunAjaran',
+            'paketUjian',
+            'sesiRuanganSiswa.siswa.tahunAjaranRecords.kelas',
+        ])
+            ->where('sumber', 'sumber')
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->when($paketUjianId, fn($q) => $q->where('paket_ujian_id', $paketUjianId))
+            ->when(!empty($ruanganIds), fn($q) => $q->whereIn('ruangan_id', $ruanganIds))
+            ->get()
+            ->sortBy([
+                fn($a, $b) => strnatcasecmp($a->ruangan?->kode_ruangan ?? '', $b->ruangan?->kode_ruangan ?? ''),
+                fn($a, $b) => strcmp($a->waktu_mulai ?? '', $b->waktu_mulai ?? ''),
+                fn($a, $b) => strnatcasecmp($a->nama_sesi ?? '', $b->nama_sesi ?? ''),
+            ]);
+
+        $rooms = $sesiList->groupBy('ruangan_id')->map(function ($sesiDiRuangan) use ($tahunAjaranId) {
+            $sessions = $sesiDiRuangan->values()->map(function ($sesi) use ($tahunAjaranId) {
+                $students = $sesi->sesiRuanganSiswa
+                    ->sortBy(fn($record) => $record->siswa?->nama ?? '')
+                    ->values()
+                    ->map(function ($record) use ($sesi, $tahunAjaranId) {
+                        $siswa = $record->siswa;
+                        $kelas = $siswa?->kelasForTahunAjaran($tahunAjaranId ?: $sesi->tahun_ajaran_id);
+
+                        return [
+                            'nama' => $siswa?->nama ?? '-',
+                            'idyayasan' => $siswa?->idyayasan ?? '-',
+                            'kelas' => $kelas?->nama_kelas ?? '-',
+                            'nama_sesi' => $sesi->nama_sesi ?? '-',
+                            'waktu' => trim(substr((string) $sesi->waktu_mulai, 0, 5) . ' - ' . substr((string) $sesi->waktu_selesai, 0, 5), ' -'),
+                        ];
+                    });
+
+                return [
+                    'sesi' => $sesi,
+                    'students' => $students,
+                ];
+            });
+
+            $maxStudents = $sessions->max(fn($session) => $session['students']->count()) ?? 0;
+            $studentGroups = collect(range(0, max(0, $maxStudents - 1)))
+                ->map(function ($index) use ($sessions) {
+                    return $sessions->map(fn($session) => $session['students']->get($index))->filter()->values();
+                })
+                ->filter(fn($group) => $group->isNotEmpty())
+                ->values();
+
+            return [
+                'ruangan' => $sesiDiRuangan->first()->ruangan,
+                'sessions' => $sessions,
+                'studentGroups' => $studentGroups,
+                'totalSiswa' => $sessions->sum(fn($session) => $session['students']->count()),
+            ];
+        })->values();
+
+        return view('features.ruangan.cetak-sesi.siswa-di-ruangan', [
+            'rooms' => $rooms,
+            'settings' => SchoolSetting::allAsArray(),
+            'tahunAjaran' => $tahunAjaranId ? TahunAjaran::find($tahunAjaranId) : null,
+            'paketUjian' => $paketUjianId ? PaketUjian::find($paketUjianId) : null,
+        ]);
+    }
+
     /**
      * Download basic ruangan import template
      */
