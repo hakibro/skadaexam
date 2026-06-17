@@ -75,6 +75,11 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
+        .card.placeholder {
+            visibility: hidden;
+            box-shadow: none;
+        }
+
         /* Aksen Modern: Garis warna di sisi kiri kartu */
         .card::before {
             content: "";
@@ -274,7 +279,26 @@
         <button onclick="window.print()">Cetak Kartu</button>
     </div>
     <main class="sheet">
-        @foreach ($cards as $card)
+        @php
+            $cardsForPrint = $cards->values();
+            if ($cardsForPrint->count() % 2 === 1) {
+                $cardsForPrint->push(null);
+            }
+
+            if ($mode === 'back') {
+                $cardsForPrint = $cardsForPrint
+                    ->chunk(2)
+                    ->flatMap(fn($row) => $row->reverse()->values())
+                    ->values();
+            }
+        @endphp
+
+        @foreach ($cardsForPrint as $card)
+            @if (!$card)
+                <section class="card placeholder"></section>
+                @continue
+            @endif
+
             @php
                 $siswa = $card['siswa'];
                 $kelas = $card['kelas'];

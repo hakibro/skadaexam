@@ -878,6 +878,13 @@ class RuanganController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        if ($request->ajax()) {
+            return response()->json([
+                'table' => view('features.ruangan.kartu-ujian.partials.student-table', compact('students'))->render(),
+                'total' => $students->total(),
+            ]);
+        }
+
         return view('features.ruangan.kartu-ujian.index', compact(
             'students',
             'tingkatList',
@@ -896,9 +903,15 @@ class RuanganController extends Controller
             ? PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)->findOrFail($request->paket_ujian_id)
             : PaketUjian::where('tahun_ajaran_id', $tahunAjaranId)->where('status', 'aktif')->first();
         $mode = $request->get('mode', 'front');
+        $selectedSiswaIds = collect(explode(',', (string) $request->get('siswa_ids')))
+            ->map(fn($id) => (int) trim($id))
+            ->filter()
+            ->unique()
+            ->values();
 
         $records = SiswaTahunAjaran::with(['siswa', 'kelas'])
             ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->when($selectedSiswaIds->isNotEmpty(), fn($q) => $q->whereIn('siswa_id', $selectedSiswaIds))
             ->when($paketUjian, function ($q) use ($tahunAjaranId, $paketUjian) {
                 $q->whereHas('siswa.sesiRuangan', function ($sesi) use ($tahunAjaranId, $paketUjian) {
                     $sesi->where('sesi_ruangan.tahun_ajaran_id', $tahunAjaranId)
@@ -906,14 +919,13 @@ class RuanganController extends Controller
                         ->where('sesi_ruangan.paket_ujian_id', $paketUjian->id);
                 });
             }, fn($q) => $q->whereRaw('1 = 0'))
-            ->when($request->filled('tingkat'), fn($q) => $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)))
-            ->when($request->filled('kelas_id'), fn($q) => $q->where('kelas_id', $request->kelas_id))
-            ->whereHas('siswa', function ($q) use ($request) {
-                if ($request->filled('search')) {
-                    $search = $request->search;
-                    $q->where('nama', 'like', "%{$search}%")
-                        ->orWhere('idyayasan', 'like', "%{$search}%");
-                }
+            ->when($selectedSiswaIds->isEmpty() && $request->filled('tingkat'), fn($q) => $q->whereHas('kelas', fn($kelas) => $kelas->where('tingkat', $request->tingkat)))
+            ->when($selectedSiswaIds->isEmpty() && $request->filled('kelas_id'), fn($q) => $q->where('kelas_id', $request->kelas_id))
+            ->when($selectedSiswaIds->isEmpty() && $request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->whereHas('siswa', fn($siswa) => $siswa
+                    ->where('nama', 'like', "%{$search}%")
+                    ->orWhere('idyayasan', 'like', "%{$search}%"));
             })
             ->get()
             ->sort(function ($a, $b) {
