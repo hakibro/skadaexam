@@ -2095,6 +2095,8 @@
             let debounceTimer = null;
             let viewportResizeTimer = null;
             let lastSplitViewViolationAt = 0;
+            let isOrientationChanging = false;
+            let orientationChangeTimer = null;
             const initialViewport = {
                 width: window.visualViewport?.width || window.innerWidth,
                 height: window.visualViewport?.height || window.innerHeight,
@@ -2127,6 +2129,20 @@
             window.addEventListener('focus', handleWindowFocus);
             window.addEventListener('resize', handleViewportResize);
             window.visualViewport?.addEventListener('resize', handleViewportResize);
+
+            function handleOrientationChange() {
+                isOrientationChanging = true;
+                clearTimeout(viewportResizeTimer);
+                clearTimeout(orientationChangeTimer);
+                orientationChangeTimer = setTimeout(() => {
+                    initialViewport.width = window.visualViewport?.width || window.innerWidth;
+                    initialViewport.height = window.visualViewport?.height || window.innerHeight;
+                    isOrientationChanging = false;
+                }, 1500);
+            }
+
+            window.addEventListener('orientationchange', handleOrientationChange);
+            screen.orientation?.addEventListener('change', handleOrientationChange);
 
             function handleVisibilityChange() {
                 if (!isDetectionActive) return; // Skip during grace period
@@ -2194,8 +2210,16 @@
                     return false;
                 }
 
+                if (isOrientationChanging) return false;
+
                 const currentWidth = window.visualViewport?.width || window.innerWidth;
                 const currentHeight = window.visualViewport?.height || window.innerHeight;
+
+                const isJustRotation =
+                    Math.abs(currentWidth - initialViewport.height) <= 20 &&
+                    Math.abs(currentHeight - initialViewport.width) <= 20;
+                if (isJustRotation) return false;
+
                 const widthRatio = currentWidth / Math.max(initialViewport.width, 1);
                 const heightRatio = currentHeight / Math.max(initialViewport.height, 1);
                 const shortestSide = Math.min(currentWidth, currentHeight);
