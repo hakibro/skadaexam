@@ -88,6 +88,7 @@ Route::middleware(['auth:web', 'role:admin,ruangan'])
                 Route::prefix('{sesi}/siswa')->name('siswa.')->group(function () {
                     Route::get('/', [SesiRuanganController::class, 'siswaIndex'])->name('index');
                     Route::post('/', [SesiRuanganController::class, 'siswaStore'])->name('store');
+                    Route::post('/{siswa}/pindah', [SesiRuanganController::class, 'pindahSiswa'])->name('pindah');
                     Route::delete('/{siswa}', [SesiRuanganController::class, 'siswaDestroy'])->name('destroy');
                     Route::delete('/', [SesiRuanganController::class, 'siswaDestroyAll'])->name('destroy-all');
                 });

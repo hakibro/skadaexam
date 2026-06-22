@@ -474,6 +474,108 @@ class SesiRuanganController extends Controller
     }
 
     /**
+     * Move a student from current session to another session
+     */
+    public function pindahSiswa(Request $request, Ruangan $ruangan, SesiRuangan $sesi, Siswa $siswa)
+    {
+        if ($ruangan->tahunAjaran?->isReadOnly()) {
+            return redirect()->back()
+                ->with('error', 'Sesi pada tahun ajaran arsip hanya dapat dilihat.');
+        }
+
+        $request->validate([
+            'target_sesi_id' => 'required|exists:sesi_ruangan,id',
+        ]);
+
+        $targetSesiId = $request->input('target_sesi_id');
+
+        // Check if target is same as current
+        if ($targetSesiId == $sesi->id) {
+            return redirect()->back()
+                ->with('error', 'Sesi tujuan tidak boleh sama dengan sesi asal.');
+        }
+
+        try {
+            // Load target session with relationships
+            $targetSesi = SesiRuangan::with(['ruangan', 'tahunAjaran', 'sesiRuanganSiswa'])
+                ->findOrFail($targetSesiId);
+
+            // Check if target session is archived
+            if ($targetSesi->tahunAjaran?->isReadOnly()) {
+                return redirect()->back()
+                    ->with('error', 'Tidak dapat memindahkan siswa ke sesi pada tahun ajaran arsip.');
+            }
+
+            // Check room capacity
+            $currentStudentCount = $targetSesi->sesiRuanganSiswa()->count();
+            $roomCapacity = $targetSesi->ruangan ? $targetSesi->ruangan->kapasitas : 0;
+
+            // Check if student is already in target session
+            $alreadyInTarget = $targetSesi->sesiRuanganSiswa()
+                ->where('siswa_id', $siswa->id)
+                ->exists();
+
+            if ($alreadyInTarget) {
+                return redirect()->back()
+                    ->with('error', 'Siswa sudah terdaftar di sesi tujuan.');
+            }
+
+            if ($roomCapacity > 0 && $currentStudentCount >= $roomCapacity) {
+                return redirect()->back()
+                    ->with('error', 'Ruangan tujuan sudah penuh (kapasitas: ' . $roomCapacity . ').');
+            }
+
+            DB::beginTransaction();
+
+            // Update sesi_ruangan_siswa record
+            $sesiSiswa = $sesi->sesiRuanganSiswa()->where('siswa_id', $siswa->id)->first();
+
+            if ($sesiSiswa) {
+                // Update to target session
+                $sesiSiswa->update([
+                    'sesi_ruangan_id' => $targetSesiId,
+                ]);
+            } else {
+                // Create new record if doesn't exist (shouldn't happen in normal flow)
+                SesiRuanganSiswa::create([
+                    'sesi_ruangan_id' => $targetSesiId,
+                    'siswa_id' => $siswa->id,
+                    'status_kehadiran' => 'tidak_hadir',
+                ]);
+            }
+
+            // Update all enrollment_ujian records
+            $enrollments = EnrollmentUjian::where('sesi_ruangan_id', $sesi->id)
+                ->where('siswa_id', $siswa->id)
+                ->get();
+
+            $updatedEnrollments = 0;
+            foreach ($enrollments as $enrollment) {
+                $enrollment->update([
+                    'sesi_ruangan_id' => $targetSesiId,
+                    'catatan' => ($enrollment->catatan ? $enrollment->catatan . ' | ' : '') .
+                        'Dipindahkan dari ' . $sesi->nama_sesi . ' ke ' . $targetSesi->nama_sesi . ' pada ' . now()->format('d/m/Y H:i'),
+                ]);
+                $updatedEnrollments++;
+            }
+
+            DB::commit();
+
+            $enrollMsg = $updatedEnrollments > 0 ?
+                ' dengan ' . $updatedEnrollments . ' enrollment ujian' : '';
+
+            return redirect()->back()
+                ->with('success', 'Siswa berhasil dipindahkan dari "' . $sesi->nama_sesi . '" ke "' . $targetSesi->nama_sesi . '"' . $enrollMsg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error moving student between sessions: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal memindahkan siswa: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Remove all students from a session
      */
     public function siswaDestroyAll(Ruangan $ruangan, SesiRuangan $sesi)
@@ -559,8 +661,8 @@ class SesiRuanganController extends Controller
         $availableJadwals = \App\Models\JadwalUjian::forTahunAjaran($sesi->tahun_ajaran_id)
             ->whereDoesntHave('tahunAjaran', fn($q) => $q->where('status', 'arsip'))
             ->whereDoesntHave('sesiRuangans', function ($query) use ($sesi) {
-            $query->where('sesi_ruangan_id', $sesi->id);
-        })->with('mapel')->get();
+                $query->where('sesi_ruangan_id', $sesi->id);
+            })->with('mapel')->get();
 
         return view('features.ruangan.sesi.jadwal.index', compact('ruangan', 'sesi', 'availableJadwals'));
     }
@@ -634,11 +736,11 @@ class SesiRuanganController extends Controller
         $siswas = collect();
         if ($search) {
             $siswas = Siswa::with([
-                    'tahunAjaranRecords' => fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas'),
-                    'sesiRuanganSiswa.sesiRuangan.ruangan',
-                    'sesiRuanganSiswa.sesiRuangan.jadwalUjians.mapel'
-                ])
-                ->whereHas('tahunAjaranRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+                'tahunAJarAnRecords' => fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas'),
+                'sesiRuanganSiswa.sesiRuangan.ruangan',
+                'sesiRuanganSiswa.sesiRuangan.jadwalUjians.mapel'
+            ])
+                ->whereHas('tahunAJarAnRecords', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
                 ->where(function ($q) use ($search) {
                     $q->where('nama', 'like', "%{$search}%")
                         ->orWhere('idyayasan', 'like', "%{$search}%");
@@ -682,7 +784,7 @@ class SesiRuanganController extends Controller
         try {
             $assigned = 0;
             $enrolled = 0;
-            $siswas = Siswa::with('tahunAjaranRecords.kelas')->whereIn('id', $validated['siswa_ids'])->get();
+            $siswas = Siswa::with('tahunAJarAnRecords.kelas')->whereIn('id', $validated['siswa_ids'])->get();
             $sesis = SesiRuangan::with(['ruangan', 'jadwalUjians.mapel', 'tahunAjaran'])
                 ->whereIn('id', $validated['sesi_ids'])
                 ->get();

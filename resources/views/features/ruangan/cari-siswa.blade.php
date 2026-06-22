@@ -72,9 +72,11 @@
                                             <div class="flex flex-wrap items-center justify-between gap-2">
                                                 <div>
                                                     <div class="flex items-center gap-2">
-                                                        <input type="checkbox" class="siswa-result-checkbox rounded border-gray-300 text-blue-600"
+                                                        <input type="checkbox"
+                                                            class="siswa-result-checkbox rounded border-gray-300 text-blue-600"
                                                             value="{{ $siswa->id }}">
-                                                        <h4 class="text-lg font-semibold text-gray-800">{{ $siswa->nama }}</h4>
+                                                        <h4 class="text-lg font-semibold text-gray-800">{{ $siswa->nama }}
+                                                        </h4>
                                                     </div>
                                                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
                                                         <span><span class="font-medium">ID Yayasan:</span>
@@ -178,8 +180,16 @@
                                                                 @endif
                                                             </div>
 
-                                                            <!-- Tombol Hapus -->
-                                                            <div class="mt-3 flex justify-end">
+                                                            <!-- Tombol Hapus dan Pindah -->
+                                                            <div class="mt-3 flex justify-end gap-2">
+                                                                <!-- Tombol Pindah Siswa -->
+                                                                <button type="button"
+                                                                    onclick="togglePindahForm('{{ $siswa->id }}-{{ $sesi->id }}')"
+                                                                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                                    <i class="fas fa-exchange-alt mr-1"></i> Pindah Siswa
+                                                                </button>
+
+                                                                <!-- Tombol Hapus -->
                                                                 <form
                                                                     action="{{ route('ruangan.sesi.siswa.destroy', [$sesi->ruangan_id, $sesi->id, $siswa->id]) }}"
                                                                     method="POST"
@@ -190,6 +200,56 @@
                                                                         class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                                                                         <i class="fas fa-trash mr-1"></i> Hapus dari sesi
                                                                     </button>
+                                                                </form>
+                                                            </div>
+
+                                                            <!-- Form Pindah Siswa (Hidden by default) -->
+                                                            <div id="pindah-form-{{ $siswa->id }}-{{ $sesi->id }}"
+                                                                class="mt-3 hidden bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                                <form
+                                                                    action="{{ route('ruangan.sesi.siswa.pindah', [$sesi->ruangan_id, $sesi->id, $siswa->id]) }}"
+                                                                    method="POST"
+                                                                    onsubmit="return confirmPindah(event, '{{ $siswa->id }}-{{ $sesi->id }}');">
+                                                                    @csrf
+                                                                    <div class="mb-3">
+                                                                        <label
+                                                                            class="block text-xs font-medium text-gray-700 mb-1">
+                                                                            Pilih Sesi Tujuan:
+                                                                        </label>
+                                                                        <select name="target_sesi_id" required
+                                                                            class="block w-full text-xs border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                                            <option value="">-- Pilih Sesi Tujuan --
+                                                                            </option>
+                                                                            @foreach ($sesiOptions as $ruanganNama => $sesiList)
+                                                                                <optgroup label="{{ $ruanganNama }}">
+                                                                                    @foreach ($sesiList as $sesiOption)
+                                                                                        @if ($sesiOption->id != $sesi->id)
+                                                                                            <option
+                                                                                                value="{{ $sesiOption->id }}">
+                                                                                                {{ $sesiOption->nama_sesi }}
+                                                                                                -
+                                                                                                {{ $sesiOption->jadwalUjians->first()?->tanggal?->format('d M') ?? '-' }}
+                                                                                                ({{ $sesiOption->waktu_mulai ? \Carbon\Carbon::parse($sesiOption->waktu_mulai)->format('H:i') : '-' }}
+                                                                                                -
+                                                                                                {{ $sesiOption->waktu_selesai ? \Carbon\Carbon::parse($sesiOption->waktu_selesai)->format('H:i') : '-' }})
+                                                                                            </option>
+                                                                                        @endif
+                                                                                    @endforeach
+                                                                                </optgroup>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="flex justify-end gap-2">
+                                                                        <button type="button"
+                                                                            onclick="togglePindahForm('{{ $siswa->id }}-{{ $sesi->id }}')"
+                                                                            class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                                                                            Batal
+                                                                        </button>
+                                                                        <button type="submit"
+                                                                            class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                                            Pindahkan
+                                                                        </button>
+                                                                    </div>
                                                                 </form>
                                                             </div>
                                                         </div>
@@ -244,7 +304,8 @@
                 <div id="selectedSiswaInputs"></div>
                 <div class="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                     <div class="rounded-md bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
-                        Centang siswa dari hasil pencarian, lalu pilih sesi. Jika jadwal dipilih manual, enrollment hanya dibuat untuk mapel yang eligible terhadap tingkat dan jurusan siswa.
+                        Centang siswa dari hasil pencarian, lalu pilih sesi. Jika jadwal dipilih manual, enrollment hanya
+                        dibuat untuk mapel yang eligible terhadap tingkat dan jurusan siswa.
                     </div>
 
                     <div>
@@ -255,12 +316,13 @@
                     </div>
 
                     <div class="space-y-4">
-                        @foreach (($sesiOptions ?? collect()) as $ruanganNama => $sesiGroup)
+                        @foreach ($sesiOptions ?? collect() as $ruanganNama => $sesiGroup)
                             <div class="border rounded-md overflow-hidden">
                                 <div class="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
                                     <div class="font-semibold text-gray-900">{{ $ruanganNama }}</div>
                                     <label class="text-xs font-medium text-gray-700">
-                                        <input type="checkbox" class="modal-select-room mr-1 rounded border-gray-300 text-blue-600"
+                                        <input type="checkbox"
+                                            class="modal-select-room mr-1 rounded border-gray-300 text-blue-600"
                                             data-room="{{ \Illuminate\Support\Str::slug($ruanganNama) }}">
                                         Select all sesi
                                     </label>
@@ -277,13 +339,16 @@
                                                         {{ $sesi->nama_sesi }} - {{ $sesi->kode_sesi }}
                                                     </div>
                                                     <div class="text-xs text-gray-500">
-                                                        {{ substr($sesi->waktu_mulai, 0, 5) }} - {{ substr($sesi->waktu_selesai, 0, 5) }}
+                                                        {{ substr($sesi->waktu_mulai, 0, 5) }} -
+                                                        {{ substr($sesi->waktu_selesai, 0, 5) }}
                                                     </div>
                                                     @if ($sesi->jadwalUjians->count() > 0)
                                                         <div class="mt-2 flex flex-wrap gap-2">
                                                             @foreach ($sesi->jadwalUjians as $jadwal)
-                                                                <label class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">
-                                                                    <input type="checkbox" name="jadwal_ids[]" value="{{ $jadwal->id }}"
+                                                                <label
+                                                                    class="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">
+                                                                    <input type="checkbox" name="jadwal_ids[]"
+                                                                        value="{{ $jadwal->id }}"
                                                                         class="rounded border-gray-300 text-indigo-600">
                                                                     {{ $jadwal->mapel->nama_mapel ?? $jadwal->judul }}
                                                                     ({{ optional($jadwal->tanggal)->format('d/m/Y') }})
@@ -291,7 +356,8 @@
                                                             @endforeach
                                                         </div>
                                                     @else
-                                                        <div class="mt-1 text-xs text-gray-400">Belum terkait jadwal ujian</div>
+                                                        <div class="mt-1 text-xs text-gray-400">Belum terkait jadwal ujian
+                                                        </div>
                                                     @endif
                                                 </div>
                                             </div>
@@ -317,7 +383,8 @@
 @section('scripts')
     <script>
         function openAssignModal() {
-            const selected = [...document.querySelectorAll('.siswa-result-checkbox:checked')].map((checkbox) => checkbox.value);
+            const selected = [...document.querySelectorAll('.siswa-result-checkbox:checked')].map((checkbox) => checkbox
+                .value);
             const container = document.getElementById('selectedSiswaInputs');
             container.innerHTML = '';
 
@@ -358,5 +425,43 @@
                 if (card) card.style.display = text.includes(term) ? '' : 'none';
             });
         });
+
+        // Toggle pindah siswa form visibility
+        function togglePindahForm(formId) {
+            const form = document.getElementById('pindah-form-' + formId);
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+            } else {
+                form.classList.add('hidden');
+            }
+        }
+
+        // Confirm before moving student
+        function confirmPindah(event, formId) {
+            const form = event.target;
+            const selectElement = form.querySelector('select[name="target_sesi_id"]');
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+
+            if (!selectedOption.value) {
+                alert('Pilih sesi tujuan terlebih dahulu.');
+                event.preventDefault();
+                return false;
+            }
+
+            const targetSesiName = selectedOption.text;
+            const confirmed = confirm('Yakin ingin memindahkan siswa ini ke sesi "' + targetSesiName +
+                '"?\n\nSemua enrollment ujian siswa akan dipindahkan ke sesi tujuan.');
+
+            if (confirmed) {
+                // Disable submit button to prevent double submission
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Memproses...';
+                return true;
+            } else {
+                event.preventDefault();
+                return false;
+            }
+        }
     </script>
 @endsection
