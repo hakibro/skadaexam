@@ -431,15 +431,17 @@
                                             </a>
                                         @endif
 
-                                        <form action="{{ route('naskah.hasil.destroy', $hasil->id) }}" method="POST"
-                                            class="inline-block"
-                                            onsubmit="return confirm('Yakin ingin menghapus hasil ujian ini?\n\nData berikut akan dihapus permanen:\n- Hasil ujian\n- Jawaban siswa\n- Pelanggaran (jika ada)\n\nEnrollment siswa akan direset ke status \'enrolled\'.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">
-                                                <i class="fa-solid fa-trash"></i> Hapus
-                                            </button>
-                                        </form>
+                                        @role('admin')
+                                            <form action="{{ route('naskah.hasil.destroy', $hasil->id) }}" method="POST"
+                                                class="inline-block"
+                                                onsubmit="return confirm('Yakin ingin menghapus hasil ujian ini?\n\nData berikut akan dihapus permanen:\n- Hasil ujian\n- Jawaban siswa\n- Pelanggaran (jika ada)\n\nEnrollment siswa akan direset ke status \'enrolled\'.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">
+                                                    <i class="fa-solid fa-trash"></i> Hapus
+                                                </button>
+                                            </form>
+                                        @endrole
                                     </td>
                                 </tr>
                             @endforeach
