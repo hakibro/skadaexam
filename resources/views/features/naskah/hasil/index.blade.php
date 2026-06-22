@@ -122,11 +122,13 @@
                 <form action="{{ route('naskah.hasil.index') }}" method="GET" data-auto-submit
                     class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
+                        <label for="tahun_ajaran_id" class="block text-sm font-medium text-gray-700 mb-1">Tahun
+                            Ajaran</label>
                         <select id="tahun_ajaran_id" name="tahun_ajaran_id"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
                             @foreach ($tahunAjarans as $tahun)
-                                <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                <option value="{{ $tahun->id }}"
+                                    {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                     {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
@@ -139,7 +141,8 @@
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
                             <option value="">Semua Paket</option>
                             @foreach ($paketUjians as $paket)
-                                <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                <option value="{{ $paket->id }}"
+                                    {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
                                     {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                                 </option>
                             @endforeach
@@ -418,10 +421,20 @@
 
                                         @if ($hasil->jadwalUjian)
                                             <a href="{{ route('naskah.hasil.by-jadwal', $hasil->jadwal_ujian_id) }}"
-                                                class="text-indigo-600 hover:text-indigo-900">
+                                                class="text-indigo-600 hover:text-indigo-900 mr-3">
                                                 <i class="fa-solid fa-list"></i> Satu Jadwal
                                             </a>
                                         @endif
+
+                                        <form action="{{ route('naskah.hasil.destroy', $hasil->id) }}" method="POST"
+                                            class="inline-block"
+                                            onsubmit="return confirm('Yakin ingin menghapus hasil ujian ini?\n\nData berikut akan dihapus permanen:\n- Hasil ujian\n- Jawaban siswa\n- Pelanggaran (jika ada)\n\nEnrollment siswa akan direset ke status \'enrolled\'.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                                <i class="fa-solid fa-trash"></i> Hapus
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach

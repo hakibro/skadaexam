@@ -484,15 +484,58 @@ class HasilUjianController extends Controller
     }
 
     /**
-     * Delete a hasil ujian.
+     * Delete a hasil ujian and reset enrollment.
      */
     public function destroy(HasilUjian $hasil)
     {
-        $jadwalId = $hasil->jadwal_ujian_id;
-        $hasil->delete();
+        DB::beginTransaction();
 
-        return redirect()->route('naskah.hasil.by-jadwal', $jadwalId)
-            ->with('success', 'Data hasil ujian berhasil dihapus');
+        try {
+            // Load necessary relationships
+            $hasil->load(['enrollment', 'pelanggaranUjian', 'jawabanSiswas']);
+
+            $siswaName = $hasil->siswa->nama ?? 'Unknown';
+            $jadwalTitle = $hasil->jadwalUjian->judul ?? 'Unknown';
+
+            // Delete related pelanggaran_ujian records
+            $hasil->pelanggaranUjian()->delete();
+
+            // Delete related jawaban_siswa records
+            $hasil->jawabanSiswas()->delete();
+
+            // Reset enrollment status and clear exam timing fields
+            if ($hasil->enrollment) {
+                $hasil->enrollment->update([
+                    'status_enrollment' => 'enrolled',
+                    'waktu_mulai_ujian' => null,
+                    'waktu_selesai_ujian' => null,
+                    'catatan' => null,
+                ]);
+            }
+
+            // Delete hasil ujian record
+            $hasil->delete();
+
+            DB::commit();
+
+            // Log for audit trail
+            \Log::info('Hasil ujian deleted', [
+                'siswa_name' => $siswaName,
+                'jadwal_title' => $jadwalTitle,
+                'deleted_by' => auth()->user()->name ?? 'System',
+                'deleted_at' => now(),
+            ]);
+
+            return redirect()->route('naskah.hasil.index')
+                ->with('success', 'Hasil ujian berhasil dihapus dan enrollment direset ke status "enrolled".');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error deleting hasil ujian: ' . $e->getMessage());
+
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus hasil ujian: ' . $e->getMessage());
+        }
     }
 
     /**
