@@ -347,7 +347,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if ($hasil->status === 'selesai')
+                                        @if ($hasil->status === 'selesai' || $hasil->status === 'auto-selesai')
                                             <div class="flex items-center">
                                                 <span
                                                     class="text-sm font-semibold {{ $hasil->lulus ? 'text-green-600' : 'text-red-600' }}">
