@@ -97,6 +97,11 @@
                         <i class="fa-solid fa-school"></i>
                         <span>Setting Sekolah</span>
                     </a>
+                    <a href="{{ route('admin.kiosk-settings.edit') }}"
+                        class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.kiosk-settings.*') ? 'bg-purple-600 text-white' : '' }}">
+                        <i class="fa-solid fa-desktop"></i>
+                        <span>Mode Kiosk</span>
+                    </a>
                     <a href="{{ route('admin.reset-tabel.index') }}"
                         class="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors {{ request()->routeIs('admin.reset-tabel.*') ? 'bg-purple-600 text-white' : '' }}">
                         <i class="fa-solid fa-rotate-left"></i>

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\LiveUjianController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\KehadiranController;
 use App\Http\Controllers\Api\FilterOptionsController;
+use App\Http\Controllers\Api\KioskSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('/api')->group(function () {
@@ -40,4 +41,9 @@ Route::prefix('/api')->group(function () {
 
     // API USER
     Route::middleware('api.bearer')->get('/users', [UserController::class, 'index']);
+
+    // API KIOSK SETTINGS
+    Route::get('/kiosk/settings', [KioskSettingController::class, 'index']);
+    Route::post('/kiosk/settings', [KioskSettingController::class, 'store']);
+    Route::post('/kiosk/verify', [KioskSettingController::class, 'verify']);
 });

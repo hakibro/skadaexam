@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\KioskSettingController;
 use App\Http\Controllers\Admin\ResetTabelController;
 use App\Http\Controllers\Admin\SchoolSettingController;
 use App\Http\Controllers\Admin\TahunAjaranController;
@@ -17,6 +18,8 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->name('admin.')->
         ->name('tahun-ajaran.activate');
     Route::get('school-settings', [SchoolSettingController::class, 'edit'])->name('school-settings.edit');
     Route::put('school-settings', [SchoolSettingController::class, 'update'])->name('school-settings.update');
+    Route::get('kiosk-settings', [KioskSettingController::class, 'edit'])->name('kiosk-settings.edit');
+    Route::put('kiosk-settings', [KioskSettingController::class, 'update'])->name('kiosk-settings.update');
     Route::get('reset-tabel', [ResetTabelController::class, 'index'])->name('reset-tabel.index');
     Route::post('reset-tabel', [ResetTabelController::class, 'reset'])->name('reset-tabel.reset');
     Route::post('reset-tabel/sesi-duplikat', [ResetTabelController::class, 'resetDuplicateSesiRuangan'])
