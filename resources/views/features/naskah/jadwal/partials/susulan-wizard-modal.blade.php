@@ -153,13 +153,13 @@
                         <div>
                             <h5 class="font-medium text-sm text-gray-700 mb-2">Jadwal Susulan</h5>
                             <div id="jadwal-to-assign"
-                                class="border border-dashed border-gray-300 rounded-lg p-3 min-h-[200px] bg-gray-50 space-y-2">
+                                class="border border-dashed border-gray-300 rounded-lg p-3 min-h-[200px] max-h-[400px] overflow-y-auto bg-gray-50 space-y-2">
                                 {{-- Jadwal items akan ditambahkan via JS --}}
                             </div>
                         </div>
                         <div>
                             <h5 class="font-medium text-sm text-gray-700 mb-2">Sesi Tersedia</h5>
-                            <div id="sesi-dropzone" class="space-y-2">
+                            <div id="sesi-dropzone" class="space-y-2 max-h-[400px] overflow-y-auto">
                                 {{-- Sesi dropzones akan ditambahkan via JS --}}
                             </div>
                         </div>
