@@ -4,6 +4,13 @@
 <head>
     <meta charset="utf-8">
     <title>Hasil Ujian - {{ $hasil->siswa->nama ?? 'Siswa' }}</title>
+
+    <!-- Font support untuk bahasa daerah termasuk Jawa -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Javanese:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
     <style>
         body {
             color: #111827;
@@ -110,7 +117,8 @@
         </div>
         <div style="text-align: right;">
             <div class="score">{{ number_format((float) $hasil->nilai, 2) }}</div>
-            <span class="badge {{ $hasil->lulus ? 'pass' : 'fail' }}">{{ $hasil->lulus ? 'Lulus' : 'Tidak Lulus' }}</span>
+            <span
+                class="badge {{ $hasil->lulus ? 'pass' : 'fail' }}">{{ $hasil->lulus ? 'Lulus' : 'Tidak Lulus' }}</span>
         </div>
     </div>
 
@@ -145,7 +153,8 @@
                 </tr>
                 <tr>
                     <th>Sesi</th>
-                    <td>{{ $hasil->sesiRuangan->nama_sesi ?? '-' }} / {{ $hasil->sesiRuangan->ruangan->nama_ruangan ?? '-' }}</td>
+                    <td>{{ $hasil->sesiRuangan->nama_sesi ?? '-' }} /
+                        {{ $hasil->sesiRuangan->ruangan->nama_ruangan ?? '-' }}</td>
                 </tr>
             </table>
         </div>

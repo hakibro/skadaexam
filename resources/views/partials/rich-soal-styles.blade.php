@@ -1,6 +1,7 @@
 <style>
     .rich-soal-content {
         overflow-wrap: anywhere;
+        font-family: 'Noto Sans Javanese', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .rich-soal-content .docx-math {
@@ -20,6 +21,7 @@
         border: 1px solid #d1d5db;
         padding: 0.5rem 0.75rem;
         vertical-align: top;
+        font-family: 'Noto Sans Javanese', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     .rich-soal-content th {

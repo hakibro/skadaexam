@@ -17,6 +17,13 @@
 
     <!-- Your existing CSS and JS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Font support untuk bahasa daerah termasuk Jawa -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Javanese:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
     @include('partials.rich-soal-styles')
     @yield('styles')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>

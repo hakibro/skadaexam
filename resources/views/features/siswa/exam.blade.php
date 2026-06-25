@@ -9,6 +9,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @include('partials.pwa-meta')
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Font support untuk bahasa daerah termasuk Jawa -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Javanese:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
     @include('partials.rich-soal-styles')
     <style>
         .option-card {
@@ -463,7 +470,8 @@
                             @endphp
 
                             @if ($currentTipeSoal !== 'teks_rumpang')
-                                <div class="rich-soal-content text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
+                                <div
+                                    class="rich-soal-content text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
                                     {!! $examData['questions'][$examData['currentQuestionIndex']]['soal'] !!}
                                 </div>
                             @endif
@@ -506,12 +514,12 @@
                                     $clozeParts = preg_split('/\[\[(.+?)\]\]|___/', $clozeSource);
                                     $clozeAnswer = json_decode((string) $savedAnswer, true) ?: [];
                                 @endphp
-                                <div class="rich-soal-content rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">
+                                <div
+                                    class="rich-soal-content rounded-xl border border-gray-200 p-4 text-gray-800 leading-8">
                                     @foreach ($clozeParts as $partIndex => $part)
                                         {!! $part !!}
                                         @if ($partIndex < count($clozeParts) - 1)
-                                            <input type="text"
-                                                value="{{ $clozeAnswer[$partIndex] ?? '' }}"
+                                            <input type="text" value="{{ $clozeAnswer[$partIndex] ?? '' }}"
                                                 class="cloze-answer mx-1 inline-block min-w-32 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                                                 data-cloze-index="{{ $partIndex }}"
                                                 oninput="setClozeAnswer('{{ $currentQuestion['id'] }}')">
@@ -521,8 +529,7 @@
                             @elseif ($tipeSoal === 'isian_singkat')
                                 <textarea
                                     class="answer-text w-full min-h-32 p-4 sm:p-5 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500"
-                                    placeholder="Tulis jawaban Anda di sini"
-                                    oninput="setTextAnswer('{{ $currentQuestion['id'] }}', this.value)">{{ $savedAnswer }}</textarea>
+                                    placeholder="Tulis jawaban Anda di sini" oninput="setTextAnswer('{{ $currentQuestion['id'] }}', this.value)">{{ $savedAnswer }}</textarea>
                             @elseif ($tipeSoal === 'menjodohkan')
                                 @php
                                     $pairs = data_get($currentQuestion, 'display_settings.interactive.pairs', []);
@@ -534,14 +541,17 @@
                                         @php
                                             $left = (string) data_get($pair, 'left');
                                         @endphp
-                                        <div class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
-                                            <div class="rich-soal-content font-medium text-gray-800">{!! $left !!}</div>
+                                        <div
+                                            class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
+                                            <div class="rich-soal-content font-medium text-gray-800">
+                                                {!! $left !!}</div>
                                             <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
                                                 data-left="{{ $left }}"
                                                 onchange="setMatchingAnswer('{{ $currentQuestion['id'] }}', this.dataset.left, this.value)">
                                                 <option value="">Pilih pasangan</option>
                                                 @foreach ($rightOptions as $right)
-                                                    <option value="{{ $right }}" {{ ($matchingAnswer[$left] ?? '') === $right ? 'selected' : '' }}>
+                                                    <option value="{{ $right }}"
+                                                        {{ ($matchingAnswer[$left] ?? '') === $right ? 'selected' : '' }}>
                                                         {!! $right !!}
                                                     </option>
                                                 @endforeach
@@ -551,9 +561,15 @@
                                 </div>
                             @elseif ($tipeSoal === 'mengurutkan')
                                 @php
-                                    $items = collect(data_get($currentQuestion, 'display_settings.interactive.items', []))->filter()->values();
+                                    $items = collect(
+                                        data_get($currentQuestion, 'display_settings.interactive.items', []),
+                                    )
+                                        ->filter()
+                                        ->values();
                                     $orderingAnswer = json_decode((string) $savedAnswer, true) ?: [];
-                                    $displayItems = !empty($orderingAnswer) ? collect($orderingAnswer)->filter()->values() : $items->shuffle()->values();
+                                    $displayItems = !empty($orderingAnswer)
+                                        ? collect($orderingAnswer)->filter()->values()
+                                        : $items->shuffle()->values();
                                 @endphp
                                 <div class="space-y-3" data-ordering-question="{{ $currentQuestion['id'] }}">
                                     @foreach ($displayItems as $item)
@@ -562,11 +578,14 @@
                                             ondragover="handleOrderingDragOver(event)"
                                             ondrop="handleOrderingDrop(event, '{{ $currentQuestion['id'] }}')"
                                             class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                                            <span class="rich-soal-content font-medium text-gray-800">{!! $item !!}</span>
+                                            <span
+                                                class="rich-soal-content font-medium text-gray-800">{!! $item !!}</span>
                                             <div class="flex gap-1">
-                                                <button type="button" onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', -1)"
+                                                <button type="button"
+                                                    onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', -1)"
                                                     class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
-                                                <button type="button" onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', 1)"
+                                                <button type="button"
+                                                    onclick="moveOrderingItem(this, '{{ $currentQuestion['id'] }}', 1)"
                                                     class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Turun</button>
                                             </div>
                                         </div>
@@ -574,11 +593,20 @@
                                 </div>
                             @elseif ($tipeSoal === 'drag_drop')
                                 @php
-                                    $items = collect(data_get($currentQuestion, 'display_settings.interactive.items', []))->filter()->values();
-                                    $zones = collect(data_get($currentQuestion, 'display_settings.interactive.zones', []))->filter()->values();
+                                    $items = collect(
+                                        data_get($currentQuestion, 'display_settings.interactive.items', []),
+                                    )
+                                        ->filter()
+                                        ->values();
+                                    $zones = collect(
+                                        data_get($currentQuestion, 'display_settings.interactive.zones', []),
+                                    )
+                                        ->filter()
+                                        ->values();
                                     $dragAnswer = json_decode((string) $savedAnswer, true) ?: [];
                                 @endphp
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" data-dragdrop-question="{{ $currentQuestion['id'] }}">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"
+                                    data-dragdrop-question="{{ $currentQuestion['id'] }}">
                                     <div class="space-y-3">
                                         <div class="text-sm font-semibold text-gray-700">Item</div>
                                         <div class="min-h-32 rounded-xl border-2 border-dashed border-gray-300 p-3 space-y-2"
@@ -603,11 +631,11 @@
                                                     ->keys();
                                             @endphp
                                             <div class="dragdrop-zone min-h-24 rounded-xl border-2 border-dashed border-gray-300 p-3"
-                                                data-zone="{{ $zone }}"
-                                                ondragover="handleDragOver(event)"
+                                                data-zone="{{ $zone }}" ondragover="handleDragOver(event)"
                                                 ondragleave="handleDragLeave(event)"
                                                 ondrop="handleDrop(event, '{{ $currentQuestion['id'] }}', this.dataset.zone)">
-                                                <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">{!! $zone !!}</div>
+                                                <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">
+                                                    {!! $zone !!}</div>
                                                 <div class="space-y-2" data-zone-items="1">
                                                     @foreach ($zoneItems as $item)
                                                         <div draggable="true" data-drag-item="{{ $item }}"
@@ -627,9 +655,10 @@
                                         $answerValue = is_array($option)
                                             ? (string) ($option['original_key'] ?? $key)
                                             : (string) $key;
-                                        $isSelected = $tipeSoal === 'pilihan_kompleks'
-                                            ? in_array($answerValue, $selectedAnswers, true)
-                                            : $savedAnswer == $answerValue;
+                                        $isSelected =
+                                            $tipeSoal === 'pilihan_kompleks'
+                                                ? in_array($answerValue, $selectedAnswers, true)
+                                                : $savedAnswer == $answerValue;
                                     @endphp
                                     <button
                                         class="option-card w-full p-3 sm:p-6 rounded-xl border-2 border-gray-200 text-left 
@@ -643,7 +672,8 @@
                                                    flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                                                 {{ strtoupper($key) }}
                                             </div>
-                                            <div class="rich-soal-content flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
+                                            <div
+                                                class="rich-soal-content flex-1 text-sm sm:text-base text-gray-700 leading-relaxed">
                                                 @if (is_array($option))
                                                     @if ($option['tipe'] == 'gambar' && $option['gambar'])
                                                         <img src="{{ asset('storage/soal/pilihan/' . $option['gambar']) }}"
@@ -660,7 +690,8 @@
                                                 @endif
                                             </div>
                                             @if ($tipeSoal === 'pilihan_kompleks')
-                                                <div data-checkmark="1" class="flex-shrink-0 w-6 h-6 rounded border-2 {{ $isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300' }} flex items-center justify-center text-white">
+                                                <div data-checkmark="1"
+                                                    class="flex-shrink-0 w-6 h-6 rounded border-2 {{ $isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300' }} flex items-center justify-center text-white">
                                                     @if ($isSelected)
                                                         <i class="fas fa-check text-xs"></i>
                                                     @endif
@@ -988,9 +1019,9 @@
             if (!question.tingkat_kesulitan) return '';
 
             const difficulty = String(question.tingkat_kesulitan);
-            const className = difficulty === 'mudah'
-                ? 'bg-green-100 text-green-800'
-                : (difficulty === 'sedang' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
+            const className = difficulty === 'mudah' ?
+                'bg-green-100 text-green-800' :
+                (difficulty === 'sedang' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
 
             return `<div class="px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${className}">${escapeHtml(difficulty.charAt(0).toUpperCase() + difficulty.slice(1))}</div>`;
         }
@@ -1054,14 +1085,14 @@
             return `<div class="space-y-3">${pairs.map(pair => {
                 const left = String(pair.left ?? '');
                 return `<div class="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3 items-center p-4 rounded-xl border border-gray-200">
-                    <div class="rich-soal-content font-medium text-gray-800">${left}</div>
-                    <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
-                        data-left="${escapeHtml(left)}"
-                        onchange="setMatchingAnswer('${question.id}', this.dataset.left, this.value)">
-                        <option value="">Pilih pasangan</option>
-                        ${rightOptions.map(right => `<option value="${escapeHtml(right)}" ${String(matchingAnswer[left] ?? '') === String(right) ? 'selected' : ''}>${right}</option>`).join('')}
-                    </select>
-                </div>`;
+                        <div class="rich-soal-content font-medium text-gray-800">${left}</div>
+                        <select class="matching-answer border border-gray-300 rounded-md px-3 py-2"
+                            data-left="${escapeHtml(left)}"
+                            onchange="setMatchingAnswer('${question.id}', this.dataset.left, this.value)">
+                            <option value="">Pilih pasangan</option>
+                            ${rightOptions.map(right => `<option value="${escapeHtml(right)}" ${String(matchingAnswer[left] ?? '') === String(right) ? 'selected' : ''}>${right}</option>`).join('')}
+                        </select>
+                    </div>`;
             }).join('')}</div>`;
         }
 
@@ -1072,16 +1103,16 @@
 
             return `<div class="space-y-3" data-ordering-question="${question.id}">
                 ${displayItems.map(item => `<div draggable="true" data-ordering-item="${escapeHtml(item)}"
-                    ondragstart="handleOrderingDragStart(event)"
-                    ondragover="handleOrderingDragOver(event)"
-                    ondrop="handleOrderingDrop(event, '${question.id}')"
-                    class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                    <span class="rich-soal-content font-medium text-gray-800">${item}</span>
-                    <div class="flex gap-1">
-                        <button type="button" onclick="moveOrderingItem(this, '${question.id}', -1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
-                        <button type="button" onclick="moveOrderingItem(this, '${question.id}', 1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Turun</button>
-                    </div>
-                </div>`).join('')}
+                        ondragstart="handleOrderingDragStart(event)"
+                        ondragover="handleOrderingDragOver(event)"
+                        ondrop="handleOrderingDrop(event, '${question.id}')"
+                        class="ordering-item flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                        <span class="rich-soal-content font-medium text-gray-800">${item}</span>
+                        <div class="flex gap-1">
+                            <button type="button" onclick="moveOrderingItem(this, '${question.id}', -1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Naik</button>
+                            <button type="button" onclick="moveOrderingItem(this, '${question.id}', 1)" class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600">Turun</button>
+                        </div>
+                    </div>`).join('')}
             </div>`;
         }
 
@@ -1100,15 +1131,15 @@
                 <div class="space-y-3">
                     <div class="text-sm font-semibold text-gray-700">Area Tujuan</div>
                     ${zones.map(zone => `<div class="dragdrop-zone min-h-24 rounded-xl border-2 border-dashed border-gray-300 p-3"
-                        data-zone="${escapeHtml(zone)}"
-                        ondragover="handleDragOver(event)"
-                        ondragleave="handleDragLeave(event)"
-                        ondrop="handleDrop(event, '${question.id}', this.dataset.zone)">
-                        <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">${zone}</div>
-                        <div class="space-y-2" data-zone-items="1">
-                            ${Object.keys(dragAnswer).filter(item => dragAnswer[item] === zone).map(item => `<div draggable="true" data-drag-item="${escapeHtml(item)}" ondragstart="handleDragStart(event)" class="dragdrop-item cursor-move rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-sm">${item}</div>`).join('')}
-                        </div>
-                    </div>`).join('')}
+                            data-zone="${escapeHtml(zone)}"
+                            ondragover="handleDragOver(event)"
+                            ondragleave="handleDragLeave(event)"
+                            ondrop="handleDrop(event, '${question.id}', this.dataset.zone)">
+                            <div class="rich-soal-content mb-2 text-sm font-medium text-gray-800">${zone}</div>
+                            <div class="space-y-2" data-zone-items="1">
+                                ${Object.keys(dragAnswer).filter(item => dragAnswer[item] === zone).map(item => `<div draggable="true" data-drag-item="${escapeHtml(item)}" ondragstart="handleDragStart(event)" class="dragdrop-item cursor-move rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-sm">${item}</div>`).join('')}
+                            </div>
+                        </div>`).join('')}
                 </div>
             </div>`;
         }
@@ -1165,8 +1196,10 @@
 
                     const draggedElement = document.querySelector(`[data-drag-item="${cssEscape(item)}"]`);
                     if (draggedElement) {
-                        draggedElement.classList.remove('border-green-200', 'bg-green-50', 'text-green-800');
-                        draggedElement.classList.add('border-indigo-200', 'bg-indigo-50', 'text-indigo-800');
+                        draggedElement.classList.remove('border-green-200', 'bg-green-50',
+                        'text-green-800');
+                        draggedElement.classList.add('border-indigo-200', 'bg-indigo-50',
+                        'text-indigo-800');
                         this.appendChild(draggedElement);
                     }
 
@@ -1714,7 +1747,9 @@
         async function requestWakeLock(showWarning = false) {
             if (!('wakeLock' in navigator) || !window.isSecureContext) {
                 if (showWarning) {
-                    showSystemNotification('Browser tidak mendukung stay awake. Pastikan layar tidak sleep selama ujian.', 'warning', 6000);
+                    showSystemNotification(
+                        'Browser tidak mendukung stay awake. Pastikan layar tidak sleep selama ujian.', 'warning',
+                        6000);
                 }
                 return;
             }
@@ -1726,7 +1761,8 @@
                 });
             } catch (error) {
                 if (showWarning) {
-                    showSystemNotification('Stay awake tidak aktif. Atur layar agar tidak mati selama ujian.', 'warning', 6000);
+                    showSystemNotification('Stay awake tidak aktif. Atur layar agar tidak mati selama ujian.',
+                        'warning', 6000);
                 }
             }
         }
@@ -1962,7 +1998,8 @@
                     .catch(() => {
                         // Even if submission fails, redirect to dashboard
                         releaseWakeLock();
-                        window.location.href = '{{ route('siswa.dashboard', ['notice' => 'duration_expired']) }}';
+                        window.location.href =
+                            '{{ route('siswa.dashboard', ['notice' => 'duration_expired']) }}';
                     });
             }).catch(() => {
                 // Even if save fails, still redirect
@@ -1999,7 +2036,8 @@
                             releaseWakeLock();
                             window.location.href = data.redirect_url || '{{ route('siswa.dashboard') }}';
                         } else {
-                            showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data.error ||
+                            showSystemNotification('Gagal mengumpulkan ujian: ' + (data.message || data
+                                .error ||
                                 'Unknown error'));
                         }
                     })
@@ -2042,7 +2080,8 @@
                     if (data.success) {
                         // Update UI
                         const flagText = document.getElementById('flagText');
-                        const questionNavBtn = document.querySelector(`[data-question-index="${currentQuestionIndex}"]`);
+                        const questionNavBtn = document.querySelector(
+                        `[data-question-index="${currentQuestionIndex}"]`);
 
                         if (data.is_flagged) {
                             if (!flaggedQuestions.includes(currentQuestion.id)) {
