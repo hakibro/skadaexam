@@ -43,6 +43,14 @@ class HasilUjianController extends Controller
             $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
 
+        // Filter by tanggal ujian
+        if ($request->has('tanggal_ujian') && $request->tanggal_ujian != '') {
+            $tanggalUjian = $request->tanggal_ujian;
+            $query->whereHas('jadwalUjian', function ($q) use ($tanggalUjian) {
+                $q->whereDate('tanggal', $tanggalUjian);
+            });
+        }
+
         // Filter by kelas
         $this->applySiswaTahunFilters($query, $request, $tahunAjaranId);
 
@@ -297,6 +305,14 @@ class HasilUjianController extends Controller
         // Apply filters just like in the index method
         if ($request->has('jadwal_id') && $request->jadwal_id != '') {
             $query->where('jadwal_ujian_id', $request->jadwal_id);
+        }
+
+        // Filter by tanggal ujian
+        if ($request->has('tanggal_ujian') && $request->tanggal_ujian != '') {
+            $tanggalUjian = $request->tanggal_ujian;
+            $query->whereHas('jadwalUjian', function ($q) use ($tanggalUjian) {
+                $q->whereDate('tanggal', $tanggalUjian);
+            });
         }
 
         // Filter by kelas

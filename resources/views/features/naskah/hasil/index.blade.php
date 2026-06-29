@@ -164,6 +164,16 @@
                         </select>
                     </div>
 
+                    <!-- Tanggal Ujian Filter -->
+                    <div>
+                        <label for="tanggal_ujian" class="block text-sm font-medium text-gray-700 mb-1">Tanggal
+                            Ujian</label>
+                        <input type="date" id="tanggal_ujian" name="tanggal_ujian"
+                            value="{{ request('tanggal_ujian') }}"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+                        <p class="text-xs text-gray-500 mt-1">Filter hasil berdasarkan tanggal ujian</p>
+                    </div>
+
                     <!-- Tingkat Filter -->
                     <div>
                         <label for="tingkat" class="block text-sm font-medium text-gray-700 mb-1">Tingkat</label>
@@ -248,7 +258,18 @@
                             <i class="fa-solid fa-filter mr-2"></i> Terapkan Filter
                         </button>
 
-                        @if (request()->hasAny(['tahun_ajaran_id', 'paket_ujian_id', 'jadwal_id', 'kelas_id', 'status', 'search']))
+                        @if (request()->hasAny([
+                                'tahun_ajaran_id',
+                                'paket_ujian_id',
+                                'jadwal_id',
+                                'tanggal_ujian',
+                                'tingkat',
+                                'jurusan',
+                                'kelas_id',
+                                'status',
+                                'lulus',
+                                'search',
+                            ]))
                             <a href="{{ route('naskah.hasil.index') }}"
                                 class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center">
                                 <i class="fa-solid fa-times mr-2"></i> Reset Filter
@@ -462,7 +483,7 @@
                     </svg>
                     <h3 class="mt-4 text-lg font-medium text-gray-700">Tidak ada hasil ujian</h3>
                     <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                        @if (request()->hasAny(['jadwal_id', 'kelas_id', 'status', 'search']))
+                        @if (request()->hasAny(['jadwal_id', 'tanggal_ujian', 'tingkat', 'jurusan', 'kelas_id', 'status', 'lulus', 'search']))
                             Tidak ada hasil yang sesuai dengan filter yang dipilih.
                             <a href="{{ route('naskah.hasil.index') }}" class="text-blue-600 hover:underline">Reset
                                 filter</a>
@@ -517,10 +538,15 @@
                         PDF
                     </a>
 
-                    @if (request()->hasAny(['jadwal_id', 'kelas_id', 'status', 'search']))
+                    @if (request()->hasAny(['jadwal_id', 'tanggal_ujian', 'tingkat', 'jurusan', 'kelas_id', 'status', 'lulus', 'search']))
                         <p class="text-xs text-gray-500 mt-2 flex-full">
                             <i class="fa-solid fa-info-circle mr-1"></i>
                             Data yang diekspor sesuai dengan filter yang dipilih.
+                            @if (request('tanggal_ujian'))
+                                <br>
+                                <strong>Tanggal:</strong>
+                                {{ \Carbon\Carbon::parse(request('tanggal_ujian'))->format('d/m/Y') }}
+                            @endif
                         </p>
                     @endif
                 </div>
