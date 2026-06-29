@@ -58,15 +58,18 @@
 
             <!-- Filter Form -->
             <div class="p-3 bg-white border-b border-gray-200">
-                <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form" data-auto-submit>
+                <form action="{{ route('naskah.enrollment-ujian.index') }}" method="get" class="enrollment-filter-form"
+                    data-auto-submit>
                     <div class="flex flex-nowrap items-end gap-2 overflow-x-auto pb-2 lg:pb-0">
 
                         <div class="min-w-[180px] flex-1">
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Tahun Ajaran</label>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Tahun
+                                Ajaran</label>
                             <select name="tahun_ajaran_id"
                                 class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                                 @foreach ($tahunAjarans as $tahun)
-                                    <option value="{{ $tahun->id }}" {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
+                                    <option value="{{ $tahun->id }}"
+                                        {{ (string) $tahunAjaranId === (string) $tahun->id ? 'selected' : '' }}>
                                         {{ $tahun->nama }}{{ $tahun->is_active ? ' - Aktif' : '' }}
                                     </option>
                                 @endforeach
@@ -79,7 +82,8 @@
                                 class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                                 <option value="">Semua Paket</option>
                                 @foreach ($paketUjians as $paket)
-                                    <option value="{{ $paket->id }}" {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
+                                    <option value="{{ $paket->id }}"
+                                        {{ (string) $paketUjianId === (string) $paket->id ? 'selected' : '' }}>
                                         {{ $paket->nama }}{{ $paket->status === 'aktif' ? ' - Aktif' : '' }}
                                     </option>
                                 @endforeach
@@ -118,6 +122,13 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        <div class="min-w-[140px] flex-1">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1">Tanggal
+                                Ujian</label>
+                            <input type="date" name="tanggal_ujian" value="{{ request('tanggal_ujian') }}"
+                                class="w-full text-xs rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1.5">
                         </div>
 
                         <div class="min-w-[110px]">
@@ -172,6 +183,38 @@
                 </form>
             </div>
 
+            <!-- Export Section -->
+            @if (count($enrollments) > 0)
+                <div class="p-4 bg-gray-50 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-1">
+                                <i class="fa-solid fa-download mr-2"></i>Ekspor Data Enrollment
+                            </h4>
+                            <p class="text-xs text-gray-500">
+                                Total: <strong>{{ $enrollments->total() }}</strong> enrollment
+                                @if (request()->hasAny(['jadwal_id', 'tanggal_ujian', 'kelas_id', 'status', 'kehadiran', 'siswa_search']))
+                                    (sesuai filter yang dipilih)
+                                @endif
+                            </p>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="{{ route('naskah.enrollment-ujian.export', array_merge(request()->all(), ['format' => 'xlsx'])) }}"
+                                class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition duration-150 shadow-sm">
+                                <i class="fa-solid fa-file-excel mr-2"></i> Export Excel
+                            </a>
+                        </div>
+                    </div>
+                    @if (request('tanggal_ujian'))
+                        <p class="text-xs text-blue-600 mt-2">
+                            <i class="fa-solid fa-calendar mr-1"></i>
+                            Filter Tanggal:
+                            <strong>{{ \Carbon\Carbon::parse(request('tanggal_ujian'))->format('d/m/Y') }}</strong>
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             <div class="overflow-x-auto">
                 @if (count($enrollments) > 0)
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
@@ -214,7 +257,9 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             @php
-                                                $kelasTahun = $enrollment->siswa?->kelasForTahunAjaran($enrollment->jadwalUjian?->tahun_ajaran_id);
+                                                $kelasTahun = $enrollment->siswa?->kelasForTahunAjaran(
+                                                    $enrollment->jadwalUjian?->tahun_ajaran_id,
+                                                );
                                             @endphp
                                             <span
                                                 class="text-gray-600">{{ $kelasTahun->nama_kelas ?? ($enrollment->siswa->kelas->nama_kelas ?? '-') }}</span>

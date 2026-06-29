@@ -66,6 +66,14 @@ class EnrollmentUjianController extends Controller
             $query->where('jadwal_ujian_id', $request->jadwal_id);
         }
 
+        // Filter by tanggal ujian
+        if ($request->filled('tanggal_ujian')) {
+            $tanggalUjian = $request->tanggal_ujian;
+            $query->whereHas('jadwalUjian', function ($q) use ($tanggalUjian) {
+                $q->whereDate('tanggal', $tanggalUjian);
+            });
+        }
+
         if ($request->filled('sesi_ruangan_id')) {
             $query->where('sesi_ruangan_id', $request->sesi_ruangan_id);
         }
@@ -853,6 +861,71 @@ class EnrollmentUjianController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan saat membaca file: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Export enrollment data to Excel
+     */
+    public function export(Request $request)
+    {
+        $activeYearId = app(TahunAjaranService::class)->activeId();
+        $tahunAjaranId = $request->get('tahun_ajaran_id', $activeYearId);
+
+        $query = EnrollmentUjian::with(['siswa.tahunAjaranRecords.kelas', 'jadwalUjian', 'sesiRuangan', 'sesiRuanganSiswa']);
+
+        if ($tahunAjaranId) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
+        }
+
+        if ($request->filled('paket_ujian_id')) {
+            $query->whereHas('jadwalUjian', fn($q) => $q->where('paket_ujian_id', $request->paket_ujian_id));
+        }
+
+        if ($request->filled('jadwal_id')) {
+            $query->where('jadwal_ujian_id', $request->jadwal_id);
+        }
+
+        // Filter by tanggal ujian
+        if ($request->filled('tanggal_ujian')) {
+            $tanggalUjian = $request->tanggal_ujian;
+            $query->whereHas('jadwalUjian', function ($q) use ($tanggalUjian) {
+                $q->whereDate('tanggal', $tanggalUjian);
+            });
+        }
+
+        if ($request->filled('sesi_ruangan_id')) {
+            $query->where('sesi_ruangan_id', $request->sesi_ruangan_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status_enrollment', $request->status);
+        }
+
+        if ($request->filled('kehadiran')) {
+            $query->whereHas('sesiRuanganSiswa', function ($q) use ($request) {
+                $q->where('status_kehadiran', $request->kehadiran);
+            });
+        }
+
+        if ($request->filled('siswa_search')) {
+            $search = $request->siswa_search;
+            $query->whereHas('siswa', function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('idyayasan', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('kelas_id')) {
+            $kelasId = $request->kelas_id;
+            $query->whereHas('siswa.tahunAjaranRecords', function ($q) use ($kelasId, $tahunAjaranId) {
+                $q->where('kelas_id', $kelasId)
+                    ->when($tahunAjaranId, fn($pivot) => $pivot->where('tahun_ajaran_id', $tahunAjaranId));
+            });
+        }
+
+        $fileName = 'enrollment_ujian_' . date('Y-m-d_His') . '.xlsx';
+
+        return Excel::download(new \App\Exports\EnrollmentUjianExport($query), $fileName);
     }
 
     private function kelasForTahun(Siswa $siswa, ?int $tahunAjaranId)

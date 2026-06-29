@@ -30,6 +30,7 @@ Route::middleware(['auth:web', 'role:admin,naskah'])->prefix('naskah')->name('na
     Route::get('enrollment-ujian/{enrollmentUjian}/print-qr', [EnrollmentUjianController::class, 'printQR'])->name('enrollment-ujian.print-qr');
 
     Route::patch('enrollment-ujian/{enrollmentUjian}/status/{status}', [EnrollmentUjianController::class, 'updateStatus'])->name('enrollment-ujian.update-status');
+    Route::get('enrollment-ujian/export', [EnrollmentUjianController::class, 'export'])->name('enrollment-ujian.export');
     Route::resource('enrollment-ujian', EnrollmentUjianController::class);
 
     Route::post('enrollment-ujian/import', [EnrollmentUjianController::class, 'importExcel'])->name('enrollment-ujian.import');
